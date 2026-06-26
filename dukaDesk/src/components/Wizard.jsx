@@ -44,7 +44,7 @@ export default function Wizard() {
   };
   const handlePublish = () => { setPublished(true); };
 
-  if (published) return <Published onFinish={() => navigate("/")} showToast={showToast} isMobile={isMobile} />;
+  if (published) return <Published onFinish={() => navigate("/dashboard")} showToast={showToast} isMobile={isMobile} />;
 
   return (
     <div style={{ minHeight: "100vh", background: "#F7F8FA", display: "flex", flexDirection: isMobile ? "column" : "row" }}>
