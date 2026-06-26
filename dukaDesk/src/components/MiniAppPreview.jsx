@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
+import PropTypes from "prop-types";
+import { AMBER, NAVY } from "../theme";
+
 const MERCHANT_COLOR = "#1B4332";
-const AMBER = "#F4A026";
-const NAVY = "#1A1A2E";
 
 const menuItems = [
   { id: 1, name: "Jollof Rice & Chicken", desc: "Rich, smoky jollof with tender grilled chicken", price: 2500, img: "🍛", cat: "Popular" },
@@ -15,6 +18,7 @@ const menuItems = [
 const cats = ["Popular", "Mains", "Grills", "Drinks", "Desserts"];
 
 export default function MiniAppPreview({ onBack }) {
+  const navigate = useNavigate();
   const [frame, setFrame] = useState(1);
   const [activeCat, setActiveCat] = useState("Popular");
   const [cart, setCart] = useState({});
@@ -43,7 +47,7 @@ export default function MiniAppPreview({ onBack }) {
     setTooltipDismissed(true);
   };
 
-  const handleLeave = () => { onBack(); };
+  const handleLeave = () => { onBack(); navigate("/"); };
   const handleStay = () => { setLeaveSheet(false); setFrame(cartCount > 0 ? 3 : 2); };
 
   const filteredItems = menuItems.filter(m => activeCat === "Popular" ? m.cat === "Popular" : m.cat === activeCat);
@@ -51,9 +55,10 @@ export default function MiniAppPreview({ onBack }) {
 
   return (
     <div style={{ minHeight: "100vh", background: "#1a1a2e", display: "flex", flexDirection: "column" }}>
-      {/* Controls bar */}
       <div style={{ background: "#252547", padding: "12px 32px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={onBack} style={{ background: "none", border: "1px solid #6B7280", color: "#D1D5DB", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer" }}>← Back to Dashboard</button>
+        <button onClick={() => navigate("/")} style={{ background: "none", border: "1px solid #6B7280", color: "#D1D5DB", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+          <ChevronLeft size={16} /> Back to Dashboard
+        </button>
         <span style={{ color: "#9CA3AF", fontSize: 13 }}>|</span>
         <span style={{ color: "#9CA3AF", fontSize: 13 }}>Frames:</span>
         {[
@@ -66,30 +71,22 @@ export default function MiniAppPreview({ onBack }) {
         ))}
       </div>
 
-      {/* Phone frame */}
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
         <div style={{ position: "relative" }}>
-          {/* Frame label */}
           <div style={{ textAlign: "center", marginBottom: 16 }}>
             <span style={{ background: AMBER, color: NAVY, fontSize: 13, fontWeight: 700, padding: "6px 16px", borderRadius: 20 }}>
               Frame {frame}: {["","First Entry (Tooltip)","Browsing Menu","Item Added to Cart","Leave Confirmation"][frame]}
             </span>
           </div>
 
-          {/* Phone */}
           <div style={{ width: 390, background: NAVY, borderRadius: 44, padding: "12px", boxShadow: "0 40px 120px rgba(0,0,0,0.6)", position: "relative" }}>
-            {/* Notch */}
             <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", width: 120, height: 32, background: NAVY, borderRadius: "0 0 20px 20px", zIndex: 10 }} />
 
-            {/* Screen */}
             <div style={{ background: "#fff", borderRadius: 36, overflow: "hidden", position: "relative", minHeight: 760 }}>
-
-              {/* ── PERSISTENT D BUTTON ── */}
               <div style={{ position: "absolute", top: 16, right: 16, zIndex: 1000 }}>
                 <div onClick={handleDIconTap} style={{ width: 40, height: 40, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", border: "2px solid rgba(255,255,255,0.6)" }}>
                   <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 18, color: NAVY }}>D</span>
                 </div>
-                {/* Tooltip — Frame 1 only */}
                 {frame === 1 && !tooltipDismissed && (
                   <div style={{ position: "absolute", top: 48, right: 0, background: NAVY, color: "#fff", fontSize: 11, padding: "8px 12px", borderRadius: 8, whiteSpace: "nowrap", boxShadow: "0 4px 12px rgba(0,0,0,0.2)", zIndex: 1001 }}>
                     Tap to return to DukaDesk
@@ -98,7 +95,6 @@ export default function MiniAppPreview({ onBack }) {
                 )}
               </div>
 
-              {/* Merchant brand header */}
               <div style={{ background: `linear-gradient(180deg, ${MERCHANT_COLOR} 0%, ${MERCHANT_COLOR}DD 100%)`, padding: "48px 16px 16px", minHeight: 160, position: "relative" }}>
                 <div style={{ position: "absolute", inset: 0, backgroundImage: "url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }} />
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>🟢 Open Now · 4.8 ⭐ · Nigerian Cuisine</div>
@@ -110,7 +106,6 @@ export default function MiniAppPreview({ onBack }) {
                 </div>
               </div>
 
-              {/* Category scroll */}
               <div style={{ padding: "12px 12px 4px", display: "flex", gap: 8, overflowX: "auto", background: "#fff", borderBottom: "1px solid #F3F4F6" }}>
                 {cats.map(c => (
                   <button key={c} onClick={() => setActiveCat(c)} style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${activeCat === c ? MERCHANT_COLOR : "#E5E7EB"}`, background: activeCat === c ? MERCHANT_COLOR : "#fff", color: activeCat === c ? "#fff" : "#6B7280", fontSize: 12, fontWeight: activeCat === c ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}>
@@ -119,7 +114,6 @@ export default function MiniAppPreview({ onBack }) {
                 ))}
               </div>
 
-              {/* Menu items */}
               <div style={{ padding: "8px 12px", background: "#F9FAFB", flex: 1 }}>
                 {visibleItems.slice(0, 4).map(item => (
                   <div key={item.id} style={{ display: "flex", gap: 10, padding: "12px 10px", background: "#fff", borderRadius: 10, marginBottom: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -138,7 +132,6 @@ export default function MiniAppPreview({ onBack }) {
                 ))}
               </div>
 
-              {/* Cart bar — Frame 3 */}
               {cartCount > 0 && !leaveSheet && (
                 <div style={{ position: "absolute", bottom: 56, left: 0, right: 0, zIndex: 50, padding: "0 12px" }}>
                   <div style={{ background: AMBER, borderRadius: 14, padding: "14px 18px", display: "flex", alignItems: "center", boxShadow: "0 8px 24px rgba(244,160,38,0.4)" }}>
@@ -149,7 +142,6 @@ export default function MiniAppPreview({ onBack }) {
                 </div>
               )}
 
-              {/* Merchant bottom nav */}
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 52, background: "#fff", borderTop: "1px solid #E5E7EB", display: "flex", zIndex: 40 }}>
                 {[{ icon: "🏠", label: "Menu", active: true }, { icon: "📦", label: "Orders" }, { icon: "📅", label: "Reserve" }, { icon: "ℹ️", label: "Info" }].map((t, i) => (
                   <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "pointer" }}>
@@ -159,7 +151,6 @@ export default function MiniAppPreview({ onBack }) {
                 ))}
               </div>
 
-              {/* Leave confirmation sheet — Frame 4 */}
               {leaveSheet && (
                 <>
                   <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200 }} onClick={handleStay} />
@@ -178,7 +169,6 @@ export default function MiniAppPreview({ onBack }) {
                 </>
               )}
 
-              {/* Toast */}
               {showToast && (
                 <div style={{ position: "absolute", top: 64, left: 12, right: 12, zIndex: 300, background: NAVY, color: "#fff", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 500, boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
                   ✓ {showToast}
@@ -191,3 +181,5 @@ export default function MiniAppPreview({ onBack }) {
     </div>
   );
 }
+
+MiniAppPreview.propTypes = { onBack: PropTypes.func };

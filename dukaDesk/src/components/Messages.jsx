@@ -1,5 +1,8 @@
 import { useState } from "react";
-const NAVY = "#1A1A2E", AMBER = "#F4A026";
+import { Search, X, Send, Paperclip } from "lucide-react";
+import { useToast } from "../App";
+import { NAVY, AMBER, inputStyle } from "../theme";
+
 const conversations = [
   { id: 1, name: "Chika Obi", last: "Is peppered gizzard still available?", time: "10:24 AM", unread: 2, orders: 5, spent: 12500 },
   { id: 2, name: "Tunde Adeyemi", last: "Thanks! Order received.", time: "9:05 AM", unread: 0, orders: 3, spent: 8200 },
@@ -26,7 +29,8 @@ const initMessages = {
   ],
 };
 
-export default function Messages({ showToast }) {
+export default function Messages() {
+  const showToast = useToast();
   const [active, setActive] = useState(conversations[0]);
   const [messages, setMessages] = useState(initMessages);
   const [text, setText] = useState("");
@@ -55,12 +59,11 @@ export default function Messages({ showToast }) {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "300px 1fr 280px", height: "calc(100vh - 128px)", background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-      {/* Conversation list */}
       <div style={{ borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "20px 16px 12px" }}>
           <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: NAVY, marginBottom: 12 }}>Messages</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F3F4F6", borderRadius: 8, padding: "8px 12px" }}>
-            <span style={{ color: "#9CA3AF" }}>🔍</span>
+            <Search size={16} color="#9CA3AF" />
             <input placeholder="Search customers..." style={{ background: "none", border: "none", outline: "none", fontSize: 13, color: NAVY, flex: 1, fontFamily: "inherit" }} />
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
@@ -84,20 +87,16 @@ export default function Messages({ showToast }) {
         </div>
       </div>
 
-      {/* Chat area */}
       <div style={{ display: "flex", flexDirection: "column", position: "relative" }}>
-        {/* Header */}
         <div style={{ padding: "16px 20px", borderBottom: "1px solid #E5E7EB", display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 40, height: 40, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: NAVY }}>{active.name[0]}</div>
           <div>
             <div style={{ fontWeight: 600, fontSize: 15, color: NAVY }}>{active.name}</div>
             <div style={{ fontSize: 12, color: "#6B7280" }}>Customer since May 2025 · {active.orders} orders</div>
           </div>
-          {/* ⚠️ MANDATORY Report button */}
           <button onClick={() => setReportOpen(true)} style={{ marginLeft: "auto", background: "#FEE2E2", color: "#E74C3C", border: "1px solid #FECACA", borderRadius: 20, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>⚠️ Report</button>
         </div>
 
-        {/* Messages */}
         <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ textAlign: "center", fontSize: 11, color: "#9CA3AF", padding: "4px 0" }}>Today</div>
           {(messages[active.id] || []).map((m, i) => (
@@ -111,15 +110,17 @@ export default function Messages({ showToast }) {
           ))}
         </div>
 
-        {/* Input */}
         <div style={{ padding: "12px 20px", borderTop: "1px solid #E5E7EB", display: "flex", gap: 10, alignItems: "center" }}>
-          <button onClick={() => showToast("File attachment coming soon", "info")} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#9CA3AF" }}>📎</button>
+          <button onClick={() => showToast("File attachment coming soon", "info")} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", display: "flex" }}>
+            <Paperclip size={20} />
+          </button>
           <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Type a reply..." style={{ flex: 1, height: 44, border: "1px solid #E5E7EB", borderRadius: 22, padding: "0 16px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#F9FAFB" }} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
-          <button onClick={send} style={{ width: 44, height: 44, background: AMBER, border: "none", borderRadius: "50%", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>➤</button>
+          <button onClick={send} style={{ width: 44, height: 44, background: AMBER, border: "none", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Send size={18} color={NAVY} />
+          </button>
         </div>
       </div>
 
-      {/* Customer info */}
       <div style={{ borderLeft: "1px solid #E5E7EB", padding: 20, overflowY: "auto" }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Customer Details</div>
         <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -149,7 +150,6 @@ export default function Messages({ showToast }) {
         ))}
       </div>
 
-      {/* Report modal */}
       {reportOpen && (
         <>
           <div onClick={() => setReportOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200 }} />

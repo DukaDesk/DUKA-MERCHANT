@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-const NAVY = "#1A1A2E", AMBER = "#F4A026";
+import { Plus, Package, BarChart3, MessageSquare } from "lucide-react";
+import { useToast } from "../App";
+import { NAVY, AMBER, cardStyle } from "../theme";
 
 const revenueData = [
   { week: "W1", revenue: 12000 }, { week: "W2", revenue: 28000 },
@@ -14,21 +17,22 @@ const activity = [
   { icon: "📱", title: "App viewed 43 times today", sub: "Via QR scan", time: "Today", color: NAVY },
 ];
 
-export default function Dashboard({ setPage, showToast }) {
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const showToast = useToast();
   const [qrCopied, setQrCopied] = useState(false);
   const copyLink = () => { setQrCopied(true); showToast("Store link copied!", "success"); setTimeout(() => setQrCopied(false), 2000); };
 
   return (
     <div>
-      {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, marginBottom: 28 }}>
         {[
           { label: "Total Customers", value: "1,204", trend: "+34 this week", trendUp: true },
           { label: "Revenue (This Month)", value: "₦48,200", trend: "+18% vs last month", trendUp: true, amber: true },
-          { label: "Unread Messages", value: "7", trend: "Reply now →", trendUp: null, action: () => setPage("messages") },
+          { label: "Unread Messages", value: "7", trend: "Reply now →", trendUp: null, action: () => navigate("/messages") },
           { label: "Avg Rating", value: "4.8 ⭐", trend: "(234 reviews)", trendUp: null },
         ].map((k, i) => (
-          <div key={i} style={{ background: "#fff", borderRadius: 12, padding: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+          <div key={i} style={{ ...cardStyle }}>
             <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 500, marginBottom: 8 }}>{k.label}</div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 32, color: k.amber ? AMBER : NAVY, marginBottom: 6 }}>{k.value}</div>
             <div onClick={k.action} style={{ fontSize: 13, color: k.trendUp === true ? "#2ECC71" : k.trendUp === false ? "#E74C3C" : AMBER, fontWeight: 500, cursor: k.action ? "pointer" : "default" }}>{k.trendUp === true ? "↑ " : ""}{k.trend}</div>
@@ -38,11 +42,10 @@ export default function Dashboard({ setPage, showToast }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* Activity */}
-          <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+          <div style={{ ...cardStyle }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Recent Activity</span>
-              <button onClick={() => setPage("orders")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>View All →</button>
+              <button onClick={() => navigate("/orders")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>View All →</button>
             </div>
             {activity.map((a, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < activity.length - 1 ? "1px solid #F3F4F6" : "none" }}>
@@ -56,8 +59,7 @@ export default function Dashboard({ setPage, showToast }) {
             ))}
           </div>
 
-          {/* Chart */}
-          <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+          <div style={{ ...cardStyle }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Revenue Trend</span>
               <span style={{ fontSize: 13, color: "#6B7280" }}>Last 30 Days</span>
@@ -74,32 +76,29 @@ export default function Dashboard({ setPage, showToast }) {
           </div>
         </div>
 
-        {/* Right column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* Quick Actions */}
-          <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+          <div style={{ ...cardStyle }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Quick Actions</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {[
-                { label: "Add Product", icon: "➕", page: "products", bg: AMBER, color: NAVY },
-                { label: "View Orders", icon: "📦", page: "orders", bg: NAVY, color: "#fff" },
-                { label: "Messages", icon: "💬", page: "messages", bg: AMBER + "22", color: NAVY, border: true },
-                { label: "Analytics", icon: "📊", page: "analytics", bg: NAVY + "11", color: NAVY, border: true },
+                { label: "Add Product", icon: Plus, page: "products" },
+                { label: "View Orders", icon: Package, page: "orders", bg: NAVY, color: "#fff" },
+                { label: "Messages", icon: MessageSquare, page: "messages", border: true },
+                { label: "Analytics", icon: BarChart3, page: "analytics", border: true },
               ].map((a, i) => (
-                <button key={i} onClick={() => setPage(a.page)} style={{ background: a.bg, color: a.color, border: a.border ? `1px solid ${AMBER}` : "none", borderRadius: 10, padding: "14px 12px", cursor: "pointer", fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>{a.icon}</span>{a.label}
+                <button key={i} onClick={() => navigate(`/${a.page}`)} style={{ background: a.bg || `${AMBER}22`, color: a.color || NAVY, border: a.border ? `1px solid ${AMBER}` : "none", borderRadius: 10, padding: "14px 12px", cursor: "pointer", fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+                  <a.icon size={16} />{a.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* App Health */}
-          <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+          <div style={{ ...cardStyle }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>App Status</div>
             {[
               { dot: "#2ECC71", label: "App Live", sub: "Your app is active" },
               { dot: "#2ECC71", label: "Paystack Connected", sub: "Payments enabled" },
-              { dot: AMBER, label: "No products added yet", sub: "Add products →", action: () => setPage("products") },
+              { dot: AMBER, label: "No products added yet", sub: "Add products →", action: () => navigate("/products") },
               { dot: AMBER, label: "2 unresponded reviews", sub: "Respond now →" },
             ].map((r, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", borderBottom: i < 3 ? "1px solid #F3F4F6" : "none" }}>
@@ -112,8 +111,7 @@ export default function Dashboard({ setPage, showToast }) {
             ))}
           </div>
 
-          {/* QR Card */}
-          <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", textAlign: "center" }}>
+          <div style={{ ...cardStyle, textAlign: "center" }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Your QR Code</div>
             <div style={{ width: 100, height: 100, background: "#F3F4F6", borderRadius: 8, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>▣</div>
             <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 12 }}>dukadesk.app/mamas-kitchen</div>

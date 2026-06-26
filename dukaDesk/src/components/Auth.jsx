@@ -1,20 +1,27 @@
 import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft } from "lucide-react";
+import PropTypes from "prop-types";
+import { NAVY, AMBER, inputStyle, labelStyle } from "../theme";
 
-const NAVY = "#1A1A2E";
-const AMBER = "#F4A026";
+export default function Auth({ onAuth }) {
+  const location = useLocation();
+  const page = location.pathname.replace("/", "") || "login";
+  const navigate = useNavigate();
 
-export default function Auth({ page, setPage, onAuth, showToast }) {
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       <LeftPanel page={page} />
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", padding: "40px 24px" }}>
-        {page === "login" && <LoginForm setPage={setPage} onAuth={onAuth} showToast={showToast} />}
-        {page === "signup" && <SignupForm setPage={setPage} onAuth={onAuth} showToast={showToast} />}
-        {page === "forgot" && <ForgotForm setPage={setPage} showToast={showToast} />}
+        {page === "login" && <LoginForm onAuth={onAuth} setPage={navigate} />}
+        {page === "signup" && <SignupForm onAuth={onAuth} setPage={navigate} />}
+        {page === "forgot" && <ForgotForm setPage={navigate} />}
       </div>
     </div>
   );
 }
+
+Auth.propTypes = { onAuth: PropTypes.func.isRequired };
 
 function LeftPanel({ page }) {
   const copy = {
@@ -71,7 +78,7 @@ function LeftPanel({ page }) {
       <div style={{ marginTop: 48 }}>
         <div style={{ display: "flex", gap: 8 }}>
           {["Ada", "Ibrahim", "Grace"].map((n, i) => (
-            <div key={i} style={{ width: 32, height: 32, borderRadius: "50%", background: ["#2ECC71", "#E74C3C", "#7C3AED"][i], display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff", border: "2px solid " + NAVY, marginLeft: i > 0 ? -8 : 0 }}>{n[0]}</div>
+            <div key={i} style={{ width: 32, height: 32, borderRadius: "50%", background: ["#2ECC71", "#E74C3C", "#7C3AED"][i], display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff", border: `2px solid ${NAVY}`, marginLeft: i > 0 ? -8 : 0 }}>{n[0]}</div>
           ))}
           <span style={{ color: "#9CA3AF", fontSize: 13, marginLeft: 12, alignSelf: "center" }}>Join 2,000+ businesses</span>
         </div>
@@ -80,7 +87,7 @@ function LeftPanel({ page }) {
   );
 }
 
-function LoginForm({ setPage, onAuth, showToast }) {
+function LoginForm({ onAuth, setPage }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -94,6 +101,7 @@ function LoginForm({ setPage, onAuth, showToast }) {
     setTimeout(() => {
       setLoading(false);
       onAuth({ name: "Ada Okafor", business: "Mama's Kitchen", email });
+      setPage("/wizard");
     }, 1200);
   };
 
@@ -103,27 +111,30 @@ function LoginForm({ setPage, onAuth, showToast }) {
       <p style={{ color: "#6B7280", fontSize: 15, margin: "0 0 36px" }}>Manage your apps, orders, and customers.</p>
       {error && <div style={{ background: "#FEF2F2", border: "1px solid #E74C3C", borderRadius: 8, padding: "12px 16px", color: "#991B1B", fontSize: 14, marginBottom: 20 }}>⚠ {error}</div>}
       <form onSubmit={handleSubmit}>
-        <Field label="Email address" type="email" value={email} onChange={e => { setEmail(e.target.value); setError(""); }} placeholder="ada@mamaskitchen.com" />
-        <div style={{ position: "relative", marginBottom: 8 }}>
-          <Field label="Password" type={showPw ? "text" : "password"} value={password} onChange={e => { setPassword(e.target.value); setError(""); }} placeholder="Your password" />
-          <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: "absolute", right: 14, top: 38, background: "none", border: "none", cursor: "pointer", color: "#6B7280", fontSize: 13 }}>{showPw ? "Hide" : "Show"}</button>
-        </div>
+        <Field label="Email address" type="email" value={email} onChange={e => { setEmail(e.target.value); setError(""); }} placeholder="ada@mamaskitchen.com" icon={<Mail size={18} />} />
+        <Field label="Password" type={showPw ? "text" : "password"} value={password} onChange={e => { setPassword(e.target.value); setError(""); }} placeholder="Your password" icon={<Lock size={18} />} suffix={
+          <button type="button" onClick={() => setShowPw(!showPw)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex", alignItems: "center" }}>
+            {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        } />
         <div style={{ textAlign: "right", marginBottom: 24 }}>
-          <button type="button" onClick={() => setPage("forgot")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, cursor: "pointer", fontWeight: 500 }}>Forgot password?</button>
+          <button type="button" onClick={() => setPage("/forgot")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, cursor: "pointer", fontWeight: 500 }}>Forgot password?</button>
         </div>
         <Btn loading={loading}>{loading ? "Logging in..." : "Log in"}</Btn>
       </form>
       <Divider />
-      <OutlineBtn onClick={() => showToast("Google OAuth coming soon", "info")}>Continue with Google</OutlineBtn>
+      <OutlineBtn>Continue with Google</OutlineBtn>
       <p style={{ textAlign: "center", marginTop: 24, fontSize: 14, color: "#6B7280" }}>
         Don't have an account?{" "}
-        <button onClick={() => setPage("signup")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer" }}>Sign up →</button>
+        <button onClick={() => setPage("/signup")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer" }}>Sign up →</button>
       </p>
     </div>
   );
 }
 
-function SignupForm({ setPage, onAuth, showToast }) {
+LoginForm.propTypes = { onAuth: PropTypes.func.isRequired, setPage: PropTypes.func.isRequired };
+
+function SignupForm({ onAuth, setPage }) {
   const [form, setForm] = useState({ name: "", business: "", email: "", phone: "", password: "", confirm: "" });
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -160,6 +171,7 @@ function SignupForm({ setPage, onAuth, showToast }) {
     setTimeout(() => {
       setLoading(false);
       onAuth({ name: form.name, business: form.business, email: form.email });
+      setPage("/wizard");
     }, 1400);
   };
 
@@ -170,20 +182,22 @@ function SignupForm({ setPage, onAuth, showToast }) {
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 32, color: NAVY, margin: "0 0 8px" }}>Create your merchant account</h2>
       <p style={{ color: "#6B7280", fontSize: 15, margin: "0 0 32px" }}>Start free. No credit card required.</p>
       <form onSubmit={handleSubmit}>
-        <Field label="Full name" value={form.name} onChange={set("name")} placeholder="Ada Okafor" error={errors.name} />
-        <Field label="Business name" value={form.business} onChange={set("business")} placeholder="Mama's Kitchen" error={errors.business} />
-        <Field label="Email address" type="email" value={form.email} onChange={set("email")} placeholder="ada@mamaskitchen.com" error={errors.email} />
+        <Field label="Full name" value={form.name} onChange={set("name")} placeholder="Ada Okafor" error={errors.name} icon={<User size={18} />} />
+        <Field label="Business name" value={form.business} onChange={set("business")} placeholder="Mama's Kitchen" error={errors.business} icon={<Store size={18} />} />
+        <Field label="Email address" type="email" value={form.email} onChange={set("email")} placeholder="ada@mamaskitchen.com" error={errors.email} icon={<Mail size={18} />} />
         <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>Phone number</label>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Phone size={18} color="#6B7280" />
             <div style={{ ...inputStyle, width: 80, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, cursor: "default" }}>🇳🇬 +234</div>
             <input style={{ ...inputStyle, flex: 1 }} placeholder="801 234 5678" type="tel" />
           </div>
         </div>
-        <div style={{ position: "relative" }}>
-          <Field label="Password" type={showPw ? "text" : "password"} value={form.password} onChange={set("password")} placeholder="Min. 8 characters" error={errors.password} />
-          <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: "absolute", right: 14, top: 38, background: "none", border: "none", cursor: "pointer", color: "#6B7280", fontSize: 13 }}>{showPw ? "Hide" : "Show"}</button>
-        </div>
+        <Field label="Password" type={showPw ? "text" : "password"} value={form.password} onChange={set("password")} placeholder="Min. 8 characters" error={errors.password} icon={<Lock size={18} />} suffix={
+          <button type="button" onClick={() => setShowPw(!showPw)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex", alignItems: "center" }}>
+            {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        } />
         {pw && (
           <div style={{ marginTop: -8, marginBottom: 16 }}>
             <div style={{ height: 4, background: "#E5E7EB", borderRadius: 2, overflow: "hidden" }}>
@@ -192,7 +206,7 @@ function SignupForm({ setPage, onAuth, showToast }) {
             <span style={{ fontSize: 11, color: strColor, fontWeight: 600 }}>{strLabel}</span>
           </div>
         )}
-        <Field label="Confirm password" type="password" value={form.confirm} onChange={set("confirm")} placeholder="Repeat password" error={errors.confirm} />
+        <Field label="Confirm password" type="password" value={form.confirm} onChange={set("confirm")} placeholder="Repeat password" error={errors.confirm} icon={<Lock size={18} />} />
         <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 20 }}>
           By signing up you agree to our{" "}
           <span style={{ color: AMBER, cursor: "pointer" }}>Terms</span> &{" "}
@@ -201,16 +215,18 @@ function SignupForm({ setPage, onAuth, showToast }) {
         <Btn loading={loading}>{loading ? "Creating account..." : "Create merchant account"}</Btn>
       </form>
       <Divider />
-      <OutlineBtn onClick={() => showToast("Google OAuth coming soon", "info")}>Continue with Google</OutlineBtn>
+      <OutlineBtn>Continue with Google</OutlineBtn>
       <p style={{ textAlign: "center", marginTop: 24, fontSize: 14, color: "#6B7280" }}>
         Already have an account?{" "}
-        <button onClick={() => setPage("login")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer" }}>Log in →</button>
+        <button onClick={() => setPage("/login")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer" }}>Log in →</button>
       </p>
     </div>
   );
 }
 
-function ForgotForm({ setPage, showToast }) {
+SignupForm.propTypes = { onAuth: PropTypes.func.isRequired, setPage: PropTypes.func.isRequired };
+
+function ForgotForm({ setPage }) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -228,7 +244,9 @@ function ForgotForm({ setPage, showToast }) {
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: NAVY, marginBottom: 12 }}>Check your inbox</h2>
       <p style={{ color: "#6B7280", marginBottom: 32 }}>We sent a reset link to <strong>{email}</strong>. It expires in 15 minutes.</p>
       <OutlineBtn onClick={() => { setSent(false); setEmail(""); }}>Resend link</OutlineBtn>
-      <button onClick={() => setPage("login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>← Back to login</button>
+      <button onClick={() => setPage("/login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+        <ArrowLeft size={14} style={{ verticalAlign: "middle", marginRight: 4 }} /> Back to login
+      </button>
     </div>
   );
 
@@ -240,35 +258,43 @@ function ForgotForm({ setPage, showToast }) {
         <p style={{ color: "#6B7280" }}>Enter your email and we'll send a reset link.</p>
       </div>
       <form onSubmit={handleSubmit}>
-        <Field label="Email address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ada@mamaskitchen.com" />
+        <Field label="Email address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ada@mamaskitchen.com" icon={<Mail size={18} />} />
         <Btn loading={loading}>{loading ? "Sending..." : "Send reset link"}</Btn>
       </form>
-      <button onClick={() => setPage("login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>← Back to login</button>
+      <button onClick={() => setPage("/login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+        <ArrowLeft size={14} style={{ verticalAlign: "middle", marginRight: 4 }} /> Back to login
+      </button>
     </div>
   );
 }
 
-// ── Shared UI helpers ──────────────────────────────────────────────────────
-const labelStyle = { display: "block", fontSize: 13, fontWeight: 600, color: NAVY, marginBottom: 6 };
-const inputStyle = { width: "100%", height: 52, border: "1px solid #E5E7EB", borderRadius: 8, padding: "0 14px", fontSize: 15, color: NAVY, outline: "none", boxSizing: "border-box", fontFamily: "inherit", background: "#fff" };
+ForgotForm.propTypes = { setPage: PropTypes.func.isRequired };
 
-function Field({ label, error, ...props }) {
+function Field({ label, error, icon, suffix, ...props }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <label style={labelStyle}>{label}</label>
-      <input style={{ ...inputStyle, ...(error ? { borderColor: "#E74C3C" } : {}) }} {...props} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = error ? "#E74C3C" : "#E5E7EB"} />
+      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        {icon && <span style={{ position: "absolute", left: 14, color: "#9CA3AF", display: "flex" }}>{icon}</span>}
+        <input style={{ ...inputStyle, paddingLeft: icon ? 42 : 14, ...(error ? { borderColor: "#E74C3C" } : {}) }} {...props} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = error ? "#E74C3C" : "#E5E7EB"} />
+        {suffix && <span style={{ position: "absolute", right: 14 }}>{suffix}</span>}
+      </div>
       {error && <p style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>⚠ {error}</p>}
     </div>
   );
 }
 
-function Btn({ children, loading, onClick, type = "submit", variant = "primary" }) {
-  const base = { width: "100%", height: 52, borderRadius: 28, border: "none", fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, cursor: loading ? "wait" : "pointer", transition: "opacity 0.2s" };
-  const styles = {
-    primary: { background: loading ? "#D1D5DB" : AMBER, color: NAVY },
-  };
-  return <button type={type} onClick={onClick} style={{ ...base, ...styles[variant] }}>{children}</button>;
+Field.propTypes = { label: PropTypes.string.isRequired, error: PropTypes.string, icon: PropTypes.node, suffix: PropTypes.node };
+
+function Btn({ children, loading, onClick, type = "submit" }) {
+  return (
+    <button type={type} onClick={onClick} style={{ width: "100%", height: 52, borderRadius: 28, border: "none", fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, cursor: loading ? "wait" : "pointer", transition: "opacity 0.2s", background: loading ? "#D1D5DB" : AMBER, color: NAVY }}>
+      {children}
+    </button>
+  );
 }
+
+Btn.propTypes = { children: PropTypes.node.isRequired, loading: PropTypes.bool, onClick: PropTypes.func, type: PropTypes.string };
 
 function OutlineBtn({ children, onClick }) {
   return (
@@ -277,6 +303,8 @@ function OutlineBtn({ children, onClick }) {
     </button>
   );
 }
+
+OutlineBtn.propTypes = { children: PropTypes.node.isRequired, onClick: PropTypes.func };
 
 function Divider() {
   return (

@@ -1,5 +1,7 @@
 import { useState } from "react";
-const NAVY = "#1A1A2E", AMBER = "#F4A026";
+import { X, Lock } from "lucide-react";
+import { useToast } from "../App";
+import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../theme";
 
 const allIntegrations = [
   { cat: "Payments", items: [
@@ -41,7 +43,8 @@ const badgeStyle = {
   Premium: { bg: `${NAVY}11`, color: NAVY },
 };
 
-export default function Integrations({ showToast }) {
+export default function Integrations() {
+  const showToast = useToast();
   const [integrations, setIntegrations] = useState(allIntegrations);
   const [catFilter, setCatFilter] = useState("All");
   const [configPanel, setConfigPanel] = useState(null);
@@ -72,8 +75,7 @@ export default function Integrations({ showToast }) {
         <p style={{ color: "#6B7280", margin: 0 }}>Manage the features powering your app. Add or remove anytime.</p>
       </div>
 
-      {/* Active integrations */}
-      <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: 24 }}>
+      <div style={{ ...cardStyle, marginBottom: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Active ({activeItems.length})</span>
         </div>
@@ -95,11 +97,9 @@ export default function Integrations({ showToast }) {
         </div>
       </div>
 
-      {/* Add more */}
-      <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+      <div style={{ ...cardStyle }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Expand Your App's Capabilities</div>
 
-        {/* Category filter */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
           {cats.map(c => (
             <button key={c} onClick={() => setCatFilter(c)} style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${catFilter === c ? AMBER : "#E5E7EB"}`, background: catFilter === c ? "#FFF8ED" : "#fff", color: catFilter === c ? "#92400E" : "#6B7280", fontSize: 13, fontWeight: catFilter === c ? 600 : 400, cursor: "pointer" }}>{c}</button>
@@ -117,7 +117,7 @@ export default function Integrations({ showToast }) {
                   const bc = badgeStyle[item.badge] || badgeStyle.Free;
                   return (
                     <div key={ii} style={{ border: `2px solid ${item.active ? AMBER : item.locked ? "#E5E7EB" : "#E5E7EB"}`, background: item.active ? "#FFF8ED" : item.locked ? "#F9FAFB" : "#fff", borderRadius: 10, padding: 16, opacity: item.locked ? 0.75 : 1, position: "relative", transition: "all 0.15s" }}>
-                      {item.locked && <div style={{ position: "absolute", top: 10, right: 10, fontSize: 14 }}>🔒</div>}
+                      {item.locked && <div style={{ position: "absolute", top: 10, right: 10 }}><Lock size={14} color="#9CA3AF" /></div>}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                         <span style={{ fontSize: 28 }}>{item.icon}</span>
                         <span style={{ background: bc.bg, color: bc.color, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10 }}>{item.badge}</span>
@@ -143,7 +143,6 @@ export default function Integrations({ showToast }) {
         </div>
       </div>
 
-      {/* Configure panel */}
       {configPanel && (
         <>
           <div onClick={() => setConfigPanel(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 100 }} />
@@ -156,24 +155,23 @@ export default function Integrations({ showToast }) {
                   <span style={{ fontSize: 12, color: "#2ECC71", fontWeight: 500 }}>🟢 Connected</span>
                 </div>
               </div>
-              <button onClick={() => setConfigPanel(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#6B7280" }}>×</button>
+              <button onClick={() => setConfigPanel(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}>
+                <X size={22} />
+              </button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
               {configPanel.name === "Paystack" && (
                 <>
                   {[["Business Name", "Mama's Kitchen"], ["Public Key", "pk_live_••••••••••••xxxx"], ["Currency", "NGN"]].map(([label, val]) => (
                     <div key={label} style={{ marginBottom: 16 }}>
-                      <label style={lbl}>{label}</label>
-                      <input defaultValue={val} style={inp} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+                      <label style={labelStyle}>{label}</label>
+                      <input defaultValue={val} style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
                     </div>
                   ))}
                   {[["Allow Bank Transfer", true], ["Allow USSD", true], ["Test Mode", false], ["Charge customer transaction fee", false]].map(([label, def]) => (
                     <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #F3F4F6" }}>
                       <span style={{ fontSize: 14, color: NAVY }}>{label}</span>
-                      <label style={{ position: "relative", display: "inline-block", width: 44, height: 24 }}>
-                        <input type="checkbox" defaultChecked={def} style={{ opacity: 0, width: 0, height: 0 }} />
-                        <span style={{ position: "absolute", cursor: "pointer", inset: 0, background: def ? AMBER : "#E5E7EB", borderRadius: 12, transition: "0.3s" }} />
-                      </label>
+                      <input type="checkbox" defaultChecked={def} style={{ width: 44, height: 24, accentColor: AMBER, cursor: "pointer" }} />
                     </div>
                   ))}
                 </>
@@ -185,8 +183,8 @@ export default function Integrations({ showToast }) {
                   </div>
                   {[["Auto-reply message", "Hi! Thanks for reaching out to Mama's Kitchen. We'll respond shortly 😊"], ["Away message", "We're currently closed. We'll reply when we reopen."]].map(([label, val]) => (
                     <div key={label} style={{ marginBottom: 16 }}>
-                      <label style={lbl}>{label}</label>
-                      <textarea defaultValue={val} style={{ ...inp, height: 72, paddingTop: 10, resize: "none" }} />
+                      <label style={labelStyle}>{label}</label>
+                      <textarea defaultValue={val} style={{ ...inputStyle, height: 72, paddingTop: 10, resize: "none" }} />
                     </div>
                   ))}
                 </>
@@ -195,8 +193,8 @@ export default function Integrations({ showToast }) {
                 <div>
                   {[["Max items per cart", "20"], ["Minimum order amount (₦)", "500"]].map(([label, val]) => (
                     <div key={label} style={{ marginBottom: 16 }}>
-                      <label style={lbl}>{label}</label>
-                      <input defaultValue={val} type="number" style={inp} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+                      <label style={labelStyle}>{label}</label>
+                      <input defaultValue={val} type="number" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
                     </div>
                   ))}
                   {[["Allow notes on order", true], ["Show estimated delivery time", true]].map(([label, def]) => (
@@ -216,7 +214,6 @@ export default function Integrations({ showToast }) {
         </>
       )}
 
-      {/* Remove confirm modal */}
       {removeConfirm && (
         <>
           <div onClick={() => setRemoveConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200 }} />
@@ -240,6 +237,3 @@ export default function Integrations({ showToast }) {
     </div>
   );
 }
-
-const lbl = { display: "block", fontSize: 13, fontWeight: 600, color: NAVY, marginBottom: 6 };
-const inp = { width: "100%", height: 52, border: "1px solid #E5E7EB", borderRadius: 8, padding: "0 14px", fontSize: 15, color: NAVY, outline: "none", boxSizing: "border-box", fontFamily: "inherit", background: "#fff" };

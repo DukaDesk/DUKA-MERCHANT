@@ -1,5 +1,8 @@
 import { useState } from "react";
-const NAVY = "#1A1A2E", AMBER = "#F4A026";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "../App";
+import { NAVY, AMBER, inputStyle, labelStyle } from "../theme";
+
 const steps = ["Category", "Template", "Branding", "Business Info", "Integrations"];
 const categories = [
   { icon: "🍽️", name: "Restaurant", desc: "Full menus, ordering & delivery" },
@@ -23,7 +26,9 @@ const integrations = [
   { cat: "Communication", items: [{ icon: "💬", name: "In-App Messaging", desc: "Live chat with customers", badge: "Popular" }, { icon: "📱", name: "WhatsApp Link", desc: "Quick WhatsApp contact", badge: "Free" }] },
 ];
 
-export default function Wizard({ onFinish, showToast }) {
+export default function Wizard() {
+  const navigate = useNavigate();
+  const showToast = useToast();
   const [step, setStep] = useState(0);
   const [data, setData] = useState({ category: null, template: null, logo: null, appName: "Mama's Kitchen", tagline: "Authentic Nigerian home cooking", color: AMBER, selectedIntegrations: ["Paystack", "Product Cart", "In-App Messaging"], bizDesc: "", phone: "", address: "" });
   const [published, setPublished] = useState(false);
@@ -37,11 +42,10 @@ export default function Wizard({ onFinish, showToast }) {
   };
   const handlePublish = () => { setPublished(true); };
 
-  if (published) return <Published onFinish={onFinish} showToast={showToast} />;
+  if (published) return <Published onFinish={() => navigate("/")} showToast={showToast} />;
 
   return (
     <div style={{ minHeight: "100vh", background: "#F7F8FA", display: "flex" }}>
-      {/* Sidebar */}
       <div style={{ width: 240, background: NAVY, minHeight: "100vh", padding: "32px 20px", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 48 }}>
           <div style={{ width: 36, height: 36, background: AMBER, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: NAVY, fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18 }}>D</span></div>
@@ -55,7 +59,6 @@ export default function Wizard({ onFinish, showToast }) {
         ))}
       </div>
 
-      {/* Main */}
       <div style={{ flex: 1, padding: "48px", overflowY: "auto" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
           {step === 0 && <StepCategory data={data} setData={setData} />}
@@ -129,7 +132,7 @@ function StepBranding({ data, setData }) {
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 36, color: NAVY, margin: "0 0 8px" }}>Brand your app</h2>
         <p style={{ color: "#6B7280", fontSize: 16, margin: "0 0 32px" }}>Your logo, colors and name appear throughout your customer-facing app.</p>
         <div style={{ marginBottom: 20 }}>
-          <label style={lbl}>App Logo</label>
+          <label style={labelStyle}>App Logo</label>
           <div style={{ width: 140, height: 140, border: "2px dashed #E5E7EB", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "#FAFAFA", gap: 8 }} onClick={() => {}}>
             <span style={{ fontSize: 32 }}>📷</span>
             <span style={{ fontSize: 13, color: "#9CA3AF" }}>Upload Logo</span>
@@ -137,16 +140,16 @@ function StepBranding({ data, setData }) {
           </div>
         </div>
         <div style={{ marginBottom: 16 }}>
-          <label style={lbl}>App / Business Name</label>
-          <input value={data.appName} onChange={e => setData(d => ({ ...d, appName: e.target.value }))} style={inp} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+          <label style={labelStyle}>App / Business Name</label>
+          <input value={data.appName} onChange={e => setData(d => ({ ...d, appName: e.target.value }))} style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
           <div style={{ textAlign: "right", fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>{data.appName.length}/50</div>
         </div>
         <div style={{ marginBottom: 24 }}>
-          <label style={lbl}>Tagline</label>
-          <input value={data.tagline} onChange={e => setData(d => ({ ...d, tagline: e.target.value }))} placeholder="Authentic Nigerian home cooking" style={inp} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+          <label style={labelStyle}>Tagline</label>
+          <input value={data.tagline} onChange={e => setData(d => ({ ...d, tagline: e.target.value }))} placeholder="Authentic Nigerian home cooking" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
         </div>
         <div>
-          <label style={lbl}>Brand Color</label>
+          <label style={labelStyle}>Brand Color</label>
           <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 12 }}>Used for buttons, highlights and accents in your app.</p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {colors.map((c, i) => (
@@ -161,7 +164,6 @@ function StepBranding({ data, setData }) {
           </div>
         </div>
       </div>
-      {/* Live Preview */}
       <div style={{ position: "sticky", top: 20 }}>
         <div style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>Live Preview</div>
         <div style={{ background: NAVY, borderRadius: 32, padding: 12, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", width: 240 }}>
@@ -200,23 +202,23 @@ function StepBusiness({ data, setData }) {
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 36, color: NAVY, margin: "0 0 8px" }}>Tell customers about your business</h2>
       <p style={{ color: "#6B7280", fontSize: 16, margin: "0 0 32px" }}>This information appears on your store page in the DukaDesk app.</p>
       <div style={{ marginBottom: 16 }}>
-        <label style={lbl}>About Your Business</label>
-        <textarea value={data.bizDesc} onChange={e => setData(d => ({ ...d, bizDesc: e.target.value }))} placeholder="Tell customers what makes you special..." style={{ ...inp, height: 100, resize: "vertical", paddingTop: 12 }} />
+        <label style={labelStyle}>About Your Business</label>
+        <textarea value={data.bizDesc} onChange={e => setData(d => ({ ...d, bizDesc: e.target.value }))} placeholder="Tell customers what makes you special..." style={{ ...inputStyle, height: 100, resize: "vertical", paddingTop: 12 }} />
         <div style={{ textAlign: "right", fontSize: 11, color: "#9CA3AF" }}>{(data.bizDesc || "").length}/500</div>
       </div>
       <div style={{ marginBottom: 16 }}>
-        <label style={lbl}>Contact Phone</label>
+        <label style={labelStyle}>Contact Phone</label>
         <div style={{ display: "flex", gap: 8 }}>
-          <div style={{ ...inp, width: 90, display: "flex", alignItems: "center", justifyContent: "center" }}>🇳🇬 +234</div>
-          <input value={data.phone} onChange={e => setData(d => ({ ...d, phone: e.target.value }))} placeholder="801 234 5678" style={{ ...inp, flex: 1 }} />
+          <div style={{ ...inputStyle, width: 90, display: "flex", alignItems: "center", justifyContent: "center" }}>🇳🇬 +234</div>
+          <input value={data.phone} onChange={e => setData(d => ({ ...d, phone: e.target.value }))} placeholder="801 234 5678" style={{ ...inputStyle, flex: 1 }} />
         </div>
       </div>
       <div style={{ marginBottom: 16 }}>
-        <label style={lbl}>Business Address</label>
-        <input value={data.address} onChange={e => setData(d => ({ ...d, address: e.target.value }))} placeholder="12 Admiralty Way, Lekki, Lagos" style={inp} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+        <label style={labelStyle}>Business Address</label>
+        <input value={data.address} onChange={e => setData(d => ({ ...d, address: e.target.value }))} placeholder="12 Admiralty Way, Lekki, Lagos" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
       </div>
       <div style={{ marginBottom: 24 }}>
-        <label style={lbl}>Operating Hours</label>
+        <label style={labelStyle}>Operating Hours</label>
         <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden" }}>
           {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 16px", borderBottom: i < 6 ? "1px solid #F3F4F6" : "none" }}>
@@ -272,7 +274,6 @@ function StepIntegrations({ data, setData }) {
             </div>
           ))}
         </div>
-        {/* Selected summary */}
         <div style={{ position: "sticky", top: 20 }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #E5E7EB", marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -336,6 +337,3 @@ function Published({ onFinish, showToast }) {
     </div>
   );
 }
-
-const lbl = { display: "block", fontSize: 13, fontWeight: 600, color: NAVY, marginBottom: 6 };
-const inp = { width: "100%", height: 52, border: "1px solid #E5E7EB", borderRadius: 8, padding: "0 14px", fontSize: 15, color: NAVY, outline: "none", boxSizing: "border-box", fontFamily: "inherit", background: "#fff" };

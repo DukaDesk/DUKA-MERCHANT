@@ -1,5 +1,8 @@
 import { useState } from "react";
-const NAVY = "#1A1A2E", AMBER = "#F4A026";
+import { X, Download } from "lucide-react";
+import { useToast } from "../App";
+import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../theme";
+
 const plans = [
   { name: "Starter", price: 0, label: "Free (Beta)", color: "#6B7280", features: { "Apps": "1", "Products": "20", "QR Scans": "Unlimited", "Customers": "500", "Integrations": "Basic", "Analytics": "Basic", "Team Members": "1", "Priority Support": false, "Custom Domain": false }, current: true },
   { name: "Growth", price: 9999, label: "₦9,999/mo", color: AMBER, features: { "Apps": "3", "Products": "Unlimited", "QR Scans": "Unlimited", "Customers": "Unlimited", "Integrations": "All", "Analytics": "Advanced", "Team Members": "3", "Priority Support": false, "Custom Domain": false }, current: false },
@@ -10,7 +13,8 @@ const history = [
   { date: "May 1, 2025", desc: "Starter Plan (Beta)", amount: "₦0", status: "Paid" },
 ];
 
-export default function Billing({ showToast }) {
+export default function Billing() {
+  const showToast = useToast();
   const [upgradeModal, setUpgradeModal] = useState(null);
   const [payStep, setPayStep] = useState(0);
   const [cardNum, setCardNum] = useState("");
@@ -27,7 +31,6 @@ export default function Billing({ showToast }) {
     <div>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: NAVY, margin: "0 0 24px" }}>Billing & Subscription</h2>
 
-      {/* Current plan */}
       <div style={{ background: `linear-gradient(135deg, ${AMBER}, #E8910A)`, borderRadius: 16, padding: 32, marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: "#fff", marginBottom: 4 }}>Starter Plan</div>
@@ -44,8 +47,7 @@ export default function Billing({ showToast }) {
         </div>
       </div>
 
-      {/* Plan comparison */}
-      <div style={{ background: "#fff", borderRadius: 16, padding: 32, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: 24 }}>
+      <div style={{ ...cardStyle, marginBottom: 24 }}>
         <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: NAVY, margin: "0 0 24px", textAlign: "center" }}>Choose the Right Plan</h3>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
@@ -86,11 +88,12 @@ export default function Billing({ showToast }) {
         </table>
       </div>
 
-      {/* Billing history */}
-      <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+      <div style={{ ...cardStyle }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Billing History</span>
-          <button onClick={() => showToast("Downloading all invoices...", "info")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Download All</button>
+          <button onClick={() => showToast("Downloading all invoices...", "info")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+            <Download size={14} /> Download All
+          </button>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
@@ -117,7 +120,6 @@ export default function Billing({ showToast }) {
         </div>
       </div>
 
-      {/* Upgrade modal */}
       {upgradeModal && (
         <>
           <div onClick={() => { setUpgradeModal(null); setPayStep(0); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200 }} />
@@ -132,24 +134,26 @@ export default function Billing({ showToast }) {
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                   <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 22, color: NAVY, margin: 0 }}>Upgrade to {upgradeModal.name}</h3>
-                  <button onClick={() => { setUpgradeModal(null); setPayStep(0); }} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#6B7280" }}>×</button>
+                  <button onClick={() => { setUpgradeModal(null); setPayStep(0); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}>
+                    <X size={22} />
+                  </button>
                 </div>
                 <div style={{ background: "#FFF8ED", borderRadius: 10, padding: 16, marginBottom: 24 }}>
                   <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24, color: AMBER }}>{upgradeModal.label}</div>
                   <div style={{ fontSize: 13, color: "#92400E", marginTop: 4 }}>Billed monthly · Cancel anytime</div>
                 </div>
                 <div style={{ marginBottom: 16 }}>
-                  <label style={lbl}>Card Number</label>
-                  <input value={cardNum} onChange={e => setCardNum(e.target.value.replace(/\D/g, "").slice(0, 16))} placeholder="1234 5678 9012 3456" style={inp} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+                  <label style={labelStyle}>Card Number</label>
+                  <input value={cardNum} onChange={e => setCardNum(e.target.value.replace(/\D/g, "").slice(0, 16))} placeholder="1234 5678 9012 3456" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
                   <div>
-                    <label style={lbl}>Expiry</label>
-                    <input value={expiry} onChange={e => setExpiry(e.target.value)} placeholder="MM/YY" style={inp} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+                    <label style={labelStyle}>Expiry</label>
+                    <input value={expiry} onChange={e => setExpiry(e.target.value)} placeholder="MM/YY" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
                   </div>
                   <div>
-                    <label style={lbl}>CVV</label>
-                    <input value={cvv} onChange={e => setCvv(e.target.value.slice(0, 3))} placeholder="123" type="password" style={inp} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+                    <label style={labelStyle}>CVV</label>
+                    <input value={cvv} onChange={e => setCvv(e.target.value.slice(0, 3))} placeholder="123" type="password" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
                   </div>
                 </div>
                 <button onClick={handleUpgrade} style={{ width: "100%", background: AMBER, color: NAVY, border: "none", borderRadius: 28, height: 52, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>{payStep === 1 ? "Processing..." : `Subscribe — ${upgradeModal.label}`}</button>
@@ -162,5 +166,3 @@ export default function Billing({ showToast }) {
     </div>
   );
 }
-const lbl = { display: "block", fontSize: 13, fontWeight: 600, color: NAVY, marginBottom: 6 };
-const inp = { width: "100%", height: 52, border: "1px solid #E5E7EB", borderRadius: 8, padding: "0 14px", fontSize: 15, color: NAVY, outline: "none", boxSizing: "border-box", fontFamily: "inherit", background: "#fff" };

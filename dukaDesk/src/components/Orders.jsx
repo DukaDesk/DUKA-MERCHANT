@@ -1,5 +1,8 @@
 import { useState } from "react";
-const NAVY = "#1A1A2E", AMBER = "#F4A026";
+import { Search, X, Download } from "lucide-react";
+import { useToast } from "../App";
+import { NAVY, AMBER, cardStyle, statusColors } from "../theme";
+
 const initial = [
   { id: "DD-2041", customer: "Tunde Adeyemi", items: "Jollof Rice ×2", total: 7000, payment: "Paystack", status: "Pending", date: "Jun 22, 2:14 PM", address: "12 Admiralty Way, Lekki" },
   { id: "DD-2040", customer: "Chika Obi", items: "Grilled Tilapia ×1", total: 4500, payment: "Paystack", status: "Processing", date: "Jun 22, 1:05 PM", address: "5 Allen Ave, Ikeja" },
@@ -7,10 +10,11 @@ const initial = [
   { id: "DD-2038", customer: "Ibrahim Musa", items: "Egusi Soup ×1", total: 3200, payment: "Paystack", status: "Cancelled", date: "Jun 22, 9:00 AM", address: "Garki, Abuja" },
   { id: "DD-2037", customer: "Grace Eze", items: "Puff Puff ×5, Zobo ×1", total: 4500, payment: "Paystack", status: "Completed", date: "Jun 21, 7:45 PM", address: "Trans Amadi, PH" },
 ];
-const statusStyle = { Pending: { bg: "#FFF8ED", color: "#92400E" }, Processing: { bg: `${NAVY}11`, color: NAVY }, Completed: { bg: "#F0FDF4", color: "#065F46" }, Cancelled: { bg: "#FEF2F2", color: "#991B1B" } };
+
 const nextStatus = { Pending: "Processing", Processing: "Completed" };
 
-export default function Orders({ showToast }) {
+export default function Orders() {
+  const showToast = useToast();
   const [orders, setOrders] = useState(initial);
   const [tab, setTab] = useState("All");
   const [detail, setDetail] = useState(null);
@@ -29,10 +33,11 @@ export default function Orders({ showToast }) {
     <div style={{ position: "relative" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: NAVY, margin: 0 }}>Orders</h2>
-        <button onClick={() => showToast("Export started", "success")} style={{ border: "1px solid #E5E7EB", background: "#fff", borderRadius: 8, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY }}>Export Orders</button>
+        <button onClick={() => showToast("Export started", "success")} style={{ border: "1px solid #E5E7EB", background: "#fff", borderRadius: 8, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
+          <Download size={16} /> Export Orders
+        </button>
       </div>
 
-      {/* KPI strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
         {[
           { label: "Today", value: `${orders.length} orders`, sub: `₦${orders.reduce((a,o) => a+o.total,0).toLocaleString()}` },
@@ -48,7 +53,6 @@ export default function Orders({ showToast }) {
         ))}
       </div>
 
-      {/* Tabs + search */}
       <div style={{ background: "#fff", borderRadius: 10, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
           {tabs.map(t => {
@@ -57,12 +61,11 @@ export default function Orders({ showToast }) {
           })}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F3F4F6", borderRadius: 8, padding: "8px 12px" }}>
-          <span>🔍</span>
+          <Search size={16} color="#9CA3AF" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search order ID or customer name..." style={{ background: "none", border: "none", outline: "none", fontSize: 14, color: NAVY, flex: 1, fontFamily: "inherit" }} />
         </div>
       </div>
 
-      {/* Table */}
       <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
@@ -74,7 +77,7 @@ export default function Orders({ showToast }) {
           </thead>
           <tbody>
             {filtered.map((o, i) => {
-              const ss = statusStyle[o.status] || statusStyle.Pending;
+              const ss = statusColors[o.status] || statusColors.Pending;
               return (
                 <tr key={o.id} style={{ borderBottom: "1px solid #F3F4F6", background: i % 2 === 0 ? "#fff" : "#FAFAFA" }}>
                   <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: NAVY }}>{o.id}</td>
@@ -105,7 +108,6 @@ export default function Orders({ showToast }) {
         {filtered.length === 0 && <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>No orders found.</div>}
       </div>
 
-      {/* Detail panel */}
       {detail && (
         <>
           <div onClick={() => setDetail(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 100 }} />
@@ -113,9 +115,11 @@ export default function Orders({ showToast }) {
             <div style={{ padding: 24, borderBottom: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: NAVY }}>Order #{detail.id}</div>
-                <span style={{ background: (statusStyle[detail.status]||statusStyle.Pending).bg, color: (statusStyle[detail.status]||statusStyle.Pending).color, fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 10 }}>{detail.status}</span>
+                <span style={{ background: (statusColors[detail.status]||statusColors.Pending).bg, color: (statusColors[detail.status]||statusColors.Pending).color, fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 10 }}>{detail.status}</span>
               </div>
-              <button onClick={() => setDetail(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#6B7280" }}>×</button>
+              <button onClick={() => setDetail(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}>
+                <X size={22} />
+              </button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
               <div style={{ background: "#F9FAFB", borderRadius: 10, padding: 16, marginBottom: 20 }}>
@@ -137,7 +141,6 @@ export default function Orders({ showToast }) {
                 <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: 700, color: NAVY }}>Total</span><span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>₦{detail.total.toLocaleString()}</span></div>
               </div>
               <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Paid via {detail.payment} · {detail.date}</div>
-              {/* Timeline */}
               <div style={{ fontWeight: 600, fontSize: 14, color: NAVY, marginBottom: 10 }}>Order Timeline</div>
               {["Order placed", "Accepted", "Preparing", "Ready", "Delivered"].map((step, i) => {
                 const doneSteps = { Pending: 0, Processing: 1, Completed: 4, Cancelled: 0 };
