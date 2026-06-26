@@ -11,7 +11,7 @@ const pageLabels = {
 export default function Topbar() {
   const location = useLocation();
   const showToast = useToast();
-  const page = location.pathname.replace("/", "") || "dashboard";
+  const page = location.pathname.split("/")[1] || "dashboard";
 
   return (
     <div style={{ height: 64, background: "#fff", borderBottom: "1px solid #E5E7EB", display: "flex", alignItems: "center", padding: "0 32px", gap: 16, flexShrink: 0 }}>

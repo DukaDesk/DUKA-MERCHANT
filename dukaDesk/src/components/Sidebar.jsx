@@ -17,9 +17,9 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const currentPage = location.pathname.replace("/", "") || "dashboard";
+  const currentPage = location.pathname.split("/")[1] || "dashboard";
 
-  const navigateTo = (path) => navigate(path === "dashboard" ? "/" : `/${path}`);
+  const navigateTo = (path) => navigate(path === "dashboard" ? "/dashboard" : `/dashboard/${path}`);
 
   return (
     <div style={{ width: collapsed ? 68 : 240, background: NAVY, minHeight: "100vh", display: "flex", flexDirection: "column", transition: "width 0.25s ease", flexShrink: 0, position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}>

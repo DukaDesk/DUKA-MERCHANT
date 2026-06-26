@@ -65,7 +65,8 @@ export default function App() {
               <Route path="/forgot" element={<Auth onAuth={handleAuth} />} />
               <Route path="/wizard" element={<Wizard />} />
               <Route path="/miniapp" element={<MiniAppPreview onBack={() => {}} />} />
-              <Route path="/" element={<ProtectedLayout />}>
+              <Route path="/" element={<Navigate to="/signup" replace />} />
+              <Route path="/dashboard" element={<ProtectedLayout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="products" element={<Products />} />
                 <Route path="orders" element={<Orders />} />
