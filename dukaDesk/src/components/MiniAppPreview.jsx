@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import PropTypes from "prop-types";
+import { useIsMobile } from "../hooks/useMediaQuery";
 import { AMBER, NAVY } from "../theme";
 
 const MERCHANT_COLOR = "#1B4332";
@@ -19,6 +20,7 @@ const cats = ["Popular", "Mains", "Grills", "Drinks", "Desserts"];
 
 export default function MiniAppPreview({ onBack }) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [frame, setFrame] = useState(1);
   const [activeCat, setActiveCat] = useState("Popular");
   const [cart, setCart] = useState({});
@@ -55,23 +57,23 @@ export default function MiniAppPreview({ onBack }) {
 
   return (
     <div style={{ minHeight: "100vh", background: "#1a1a2e", display: "flex", flexDirection: "column" }}>
-      <div style={{ background: "#252547", padding: "12px 32px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={() => navigate("/")} style={{ background: "none", border: "1px solid #6B7280", color: "#D1D5DB", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-          <ChevronLeft size={16} /> Back to Dashboard
+      <div style={{ background: "#252547", padding: isMobile ? "10px 12px" : "12px 32px", display: "flex", gap: 8, alignItems: "center", overflowX: "auto", flexWrap: isMobile ? "nowrap" : "wrap" }}>
+        <button onClick={() => navigate("/")} style={{ background: "none", border: "1px solid #6B7280", color: "#D1D5DB", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+          <ChevronLeft size={16} /> Back
         </button>
-        <span style={{ color: "#9CA3AF", fontSize: 13 }}>|</span>
-        <span style={{ color: "#9CA3AF", fontSize: 13 }}>Frames:</span>
+        <span style={{ color: "#9CA3AF", fontSize: 13, flexShrink: 0 }}>|</span>
+        <span style={{ color: "#9CA3AF", fontSize: 13, flexShrink: 0, display: isMobile ? "none" : "inline" }}>Frames:</span>
         {[
-          { num: 1, label: "First Entry" },
-          { num: 2, label: "Browsing" },
-          { num: 3, label: "Cart Active" },
-          { num: 4, label: "Leave Prompt" },
+          { num: 1, label: isMobile ? "Entry" : "First Entry" },
+          { num: 2, label: isMobile ? "Browse" : "Browsing" },
+          { num: 3, label: isMobile ? "Cart" : "Cart Active" },
+          { num: 4, label: isMobile ? "Leave" : "Leave Prompt" },
         ].map(f => (
-          <button key={f.num} onClick={() => { setFrame(f.num); setLeaveSheet(f.num === 4); setTooltipDismissed(f.num > 1); }} style={{ background: frame === f.num ? AMBER : "#374151", color: frame === f.num ? NAVY : "#D1D5DB", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: frame === f.num ? 700 : 400, cursor: "pointer" }}>Frame {f.num}: {f.label}</button>
+          <button key={f.num} onClick={() => { setFrame(f.num); setLeaveSheet(f.num === 4); setTooltipDismissed(f.num > 1); }} style={{ background: frame === f.num ? AMBER : "#374151", color: frame === f.num ? NAVY : "#D1D5DB", border: "none", borderRadius: 8, padding: "8px 10px", fontSize: isMobile ? 12 : 13, fontWeight: frame === f.num ? 700 : 400, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>F{f.num}: {f.label}</button>
         ))}
       </div>
 
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? "16px 8px" : "40px 20px" }}>
         <div style={{ position: "relative" }}>
           <div style={{ textAlign: "center", marginBottom: 16 }}>
             <span style={{ background: AMBER, color: NAVY, fontSize: 13, fontWeight: 700, padding: "6px 16px", borderRadius: 20 }}>
@@ -79,13 +81,13 @@ export default function MiniAppPreview({ onBack }) {
             </span>
           </div>
 
-          <div style={{ width: 390, background: NAVY, borderRadius: 44, padding: "12px", boxShadow: "0 40px 120px rgba(0,0,0,0.6)", position: "relative" }}>
+          <div style={{ width: isMobile ? "calc(100vw - 32px)" : 390, maxWidth: 390, background: NAVY, borderRadius: 44, padding: "12px", boxShadow: "0 40px 120px rgba(0,0,0,0.6)", position: "relative", margin: "0 auto" }}>
             <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", width: 120, height: 32, background: NAVY, borderRadius: "0 0 20px 20px", zIndex: 10 }} />
 
-            <div style={{ background: "#fff", borderRadius: 36, overflow: "hidden", position: "relative", minHeight: 760 }}>
+            <div style={{ background: "#fff", borderRadius: 36, overflow: "hidden", position: "relative", minHeight: isMobile ? 500 : 760 }}>
               <div style={{ position: "absolute", top: 16, right: 16, zIndex: 1000 }}>
-                <div onClick={handleDIconTap} style={{ width: 40, height: 40, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", border: "2px solid rgba(255,255,255,0.6)" }}>
-                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 18, color: NAVY }}>D</span>
+                <div onClick={handleDIconTap} style={{ width: isMobile ? 36 : 40, height: isMobile ? 36 : 40, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", border: "2px solid rgba(255,255,255,0.6)" }}>
+                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: isMobile ? 16 : 18, color: NAVY }}>D</span>
                 </div>
                 {frame === 1 && !tooltipDismissed && (
                   <div style={{ position: "absolute", top: 48, right: 0, background: NAVY, color: "#fff", fontSize: 11, padding: "8px 12px", borderRadius: 8, whiteSpace: "nowrap", boxShadow: "0 4px 12px rgba(0,0,0,0.2)", zIndex: 1001 }}>
@@ -95,13 +97,13 @@ export default function MiniAppPreview({ onBack }) {
                 )}
               </div>
 
-              <div style={{ background: `linear-gradient(180deg, ${MERCHANT_COLOR} 0%, ${MERCHANT_COLOR}DD 100%)`, padding: "48px 16px 16px", minHeight: 160, position: "relative" }}>
+              <div style={{ background: `linear-gradient(180deg, ${MERCHANT_COLOR} 0%, ${MERCHANT_COLOR}DD 100%)`, padding: "48px 16px 16px", minHeight: isMobile ? 130 : 160, position: "relative" }}>
                 <div style={{ position: "absolute", inset: 0, backgroundImage: "url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }} />
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>🟢 Open Now · 4.8 ⭐ · Nigerian Cuisine</div>
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: "#fff", marginBottom: 10 }}>Mama's Kitchen</div>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 18 : 22, color: "#fff", marginBottom: 10 }}>Mama's Kitchen</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {["Delivery", "Pickup"].map(t => (
-                    <button key={t} onClick={() => setOrderType(t)} style={{ padding: "7px 18px", borderRadius: 20, border: `1.5px solid ${orderType === t ? "#fff" : "rgba(255,255,255,0.3)"}`, background: orderType === t ? "#fff" : "transparent", color: orderType === t ? MERCHANT_COLOR : "#fff", fontSize: 13, fontWeight: orderType === t ? 700 : 400, cursor: "pointer" }}>{t}</button>
+                    <button key={t} onClick={() => setOrderType(t)} style={{ padding: "7px 18px", borderRadius: 20, border: `1.5px solid ${orderType === t ? "#fff" : "rgba(255,255,255,0.3)"}`, background: orderType === t ? "#fff" : "transparent", color: orderType === t ? MERCHANT_COLOR : "#fff", fontSize: isMobile ? 12 : 13, fontWeight: orderType === t ? 700 : 400, cursor: "pointer" }}>{t}</button>
                   ))}
                 </div>
               </div>
@@ -117,12 +119,12 @@ export default function MiniAppPreview({ onBack }) {
               <div style={{ padding: "8px 12px", background: "#F9FAFB", flex: 1 }}>
                 {visibleItems.slice(0, 4).map(item => (
                   <div key={item.id} style={{ display: "flex", gap: 10, padding: "12px 10px", background: "#fff", borderRadius: 10, marginBottom: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                    <div style={{ width: 80, height: 80, background: "#F3F4F6", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>{item.img}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: NAVY, marginBottom: 3 }}>{item.name}</div>
+                    <div style={{ width: isMobile ? 60 : 80, height: isMobile ? 60 : 80, background: "#F3F4F6", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 28 : 36, flexShrink: 0 }}>{item.img}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: isMobile ? 12 : 13, color: NAVY, marginBottom: 3 }}>{item.name}</div>
                       <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6, lineHeight: 1.3 }}>{item.desc}</div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: MERCHANT_COLOR }}>₦{item.price.toLocaleString()}</span>
+                        <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 13 : 14, color: MERCHANT_COLOR }}>₦{item.price.toLocaleString()}</span>
                         <button onClick={() => addToCart(item)} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 16, padding: "5px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                           {cart[item.id] ? `${cart[item.id]} +` : "Add +"}
                         </button>

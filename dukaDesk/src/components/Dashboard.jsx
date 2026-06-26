@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Plus, Package, BarChart3, MessageSquare } from "lucide-react";
 import { useToast } from "../App";
+import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../theme";
 
 const revenueData = [
@@ -20,12 +21,15 @@ const activity = [
 export default function Dashboard() {
   const navigate = useNavigate();
   const showToast = useToast();
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   const [qrCopied, setQrCopied] = useState(false);
   const copyLink = () => { setQrCopied(true); showToast("Store link copied!", "success"); setTimeout(() => setQrCopied(false), 2000); };
+  const kpiCols = isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(2,1fr)" : "repeat(4,1fr)";
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, marginBottom: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: kpiCols, gap: isMobile ? 12 : 20, marginBottom: isMobile ? 20 : 28 }}>
         {[
           { label: "Total Customers", value: "1,204", trend: "+34 this week", trendUp: true },
           { label: "Revenue (This Month)", value: "₦48,200", trend: "+18% vs last month", trendUp: true, amber: true },
@@ -40,7 +44,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 380px", gap: isMobile ? 16 : 20 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div style={{ ...cardStyle }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>

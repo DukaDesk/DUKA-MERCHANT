@@ -1,5 +1,6 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Download } from "lucide-react";
+import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../theme";
 
 const rev = [{ w:"W1",v:12000},{w:"W2",v:28000},{w:"W3",v:22000},{w:"W4",v:48200}];
@@ -15,6 +16,8 @@ const products = [
 const PIE_COLORS = [AMBER, NAVY, "#E74C3C"];
 
 export default function Analytics() {
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -27,7 +30,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 14, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(3,1fr)" : "repeat(5,1fr)", gap: isMobile ? 10 : 14, marginBottom: 24 }}>
         {[
           { label:"Revenue", value:"₦48,200", trend:"+18%", up:true },
           { label:"Orders", value:"124", trend:"+7 today", up:true },
@@ -43,7 +46,7 @@ export default function Analytics() {
         ))}
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"3fr 2fr", gap:20, marginBottom:20 }}>
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "3fr 2fr", gap:20, marginBottom:20 }}>
         <div style={{ ...cardStyle }}>
           <div style={{ fontFamily:"'Sora',sans-serif", fontWeight:600, fontSize:16, color:NAVY, marginBottom:20 }}>Revenue Over Time</div>
           <ResponsiveContainer width="100%" height={220}>
@@ -71,7 +74,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:20 }}>
+      <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:20, marginBottom:20 }}>
         <div style={{ ...cardStyle }}>
           <div style={{ fontFamily:"'Sora',sans-serif", fontWeight:600, fontSize:16, color:NAVY, marginBottom:4 }}>QR Scan Activity</div>
           <div style={{ fontSize:13, color:"#6B7280", marginBottom:16 }}>Your QR code was scanned 525 times this week</div>

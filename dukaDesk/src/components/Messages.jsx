@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Search, X, Send, Paperclip } from "lucide-react";
+import { Search, X, Send, Paperclip, ChevronLeft } from "lucide-react";
 import { useToast } from "../App";
+import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle } from "../theme";
 
 const conversations = [
@@ -31,6 +32,7 @@ const initMessages = {
 
 export default function Messages() {
   const showToast = useToast();
+  const isMobile = useIsMobile();
   const [active, setActive] = useState(conversations[0]);
   const [messages, setMessages] = useState(initMessages);
   const [text, setText] = useState("");
@@ -58,7 +60,7 @@ export default function Messages() {
   const filtered = tab === "All" ? conversations : conversations.filter(c => c.unread > 0);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "300px 1fr 280px", height: "calc(100vh - 128px)", background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "300px 1fr 280px", height: isMobile ? "calc(100vh - 120px)" : "calc(100vh - 128px)", background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
       <div style={{ borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "20px 16px 12px" }}>
           <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: NAVY, marginBottom: 12 }}>Messages</div>
@@ -121,7 +123,7 @@ export default function Messages() {
         </div>
       </div>
 
-      <div style={{ borderLeft: "1px solid #E5E7EB", padding: 20, overflowY: "auto" }}>
+      {!isMobile && <div style={{ borderLeft: "1px solid #E5E7EB", padding: 20, overflowY: "auto" }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Customer Details</div>
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div style={{ width: 56, height: 56, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 22, color: NAVY, margin: "0 auto 8px" }}>{active.name[0]}</div>
@@ -148,7 +150,7 @@ export default function Messages() {
             <span style={{ color: "#2ECC71" }}>✓</span>
           </div>
         ))}
-      </div>
+      </div>}
 
       {reportOpen && (
         <>

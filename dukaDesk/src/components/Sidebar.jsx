@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, ChevronLeft, ChevronRight, Store } from "lucide-react";
+import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER } from "../theme";
 
 const navItems = [
@@ -14,12 +15,29 @@ const navItems = [
 ];
 
 export default function Sidebar() {
+  const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const currentPage = location.pathname.split("/")[1] || "dashboard";
-
   const navigateTo = (path) => navigate(path === "dashboard" ? "/dashboard" : `/dashboard/${path}`);
+
+  if (isMobile) {
+    return (
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: NAVY, display: "flex", padding: "4px 0", borderTop: "1px solid #252547", justifyContent: "space-around" }}>
+        {navItems.filter(i => ["dashboard","products","orders","messages"].includes(i.id)).map(item => {
+          const active = currentPage === item.id;
+          const Icon = item.icon;
+          return (
+            <button key={item.id} onClick={() => navigateTo(item.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "6px 0", background: "none", border: "none", cursor: "pointer" }}>
+              <Icon size={18} color={active ? AMBER : "#9CA3AF"} />
+              <span style={{ fontSize: 10, color: active ? AMBER : "#9CA3AF", fontWeight: active ? 600 : 400 }}>{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div style={{ width: collapsed ? 68 : 240, background: NAVY, minHeight: "100vh", display: "flex", flexDirection: "column", transition: "width 0.25s ease", flexShrink: 0, position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}>

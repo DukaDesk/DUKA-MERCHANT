@@ -2,17 +2,19 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft } from "lucide-react";
 import PropTypes from "prop-types";
+import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../theme";
 
 export default function Auth({ onAuth }) {
+  const isMobile = useIsMobile();
   const location = useLocation();
   const page = location.pathname.replace("/", "") || "login";
   const navigate = useNavigate();
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <LeftPanel page={page} />
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", padding: "40px 24px" }}>
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh" }}>
+      <LeftPanel page={page} isMobile={isMobile} />
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", padding: isMobile ? "24px 16px" : "40px 24px" }}>
         {page === "login" && <LoginForm onAuth={onAuth} setPage={navigate} />}
         {page === "signup" && <SignupForm onAuth={onAuth} setPage={navigate} />}
         {page === "forgot" && <ForgotForm setPage={navigate} />}
@@ -23,7 +25,7 @@ export default function Auth({ onAuth }) {
 
 Auth.propTypes = { onAuth: PropTypes.func.isRequired };
 
-function LeftPanel({ page }) {
+function LeftPanel({ page, isMobile }) {
   const copy = {
     login: {
       headline: "Welcome back.",
@@ -46,8 +48,8 @@ function LeftPanel({ page }) {
   };
   const c = copy[page] || copy.login;
   return (
-    <div style={{ width: 520, background: NAVY, minHeight: "100vh", display: "flex", flexDirection: "column", padding: "48px 56px", position: "sticky", top: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 64 }}>
+    <div style={{ width: isMobile ? "100%" : 520, background: NAVY, minHeight: isMobile ? "auto" : "100vh", display: "flex", flexDirection: "column", padding: isMobile ? "32px 24px" : "48px 56px", position: isMobile ? "relative" : "sticky", top: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: isMobile ? 32 : 64 }}>
         <div style={{ width: 36, height: 36, background: AMBER, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <span style={{ color: NAVY, fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18 }}>D</span>
         </div>
@@ -55,8 +57,8 @@ function LeftPanel({ page }) {
         <span style={{ background: AMBER, color: NAVY, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 20, marginLeft: 4 }}>Merchant</span>
       </div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 48, color: "#fff", margin: "0 0 16px", lineHeight: 1.1 }}>{c.headline}</h1>
-        <p style={{ color: "#9CA3AF", fontSize: 18, margin: "0 0 48px", lineHeight: 1.6 }}>{c.sub}</p>
+        <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 32 : 48, color: "#fff", margin: "0 0 16px", lineHeight: 1.1 }}>{c.headline}</h1>
+        <p style={{ color: "#9CA3AF", fontSize: isMobile ? 15 : 18, margin: `0 0 ${isMobile ? 24 : 48}px`, lineHeight: 1.6 }}>{c.sub}</p>
         {c.props && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {c.props.map((p, i) => (

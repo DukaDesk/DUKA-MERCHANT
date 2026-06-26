@@ -112,12 +112,26 @@ button:focus-visible {
 }
 
 @keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
+
+/* ── Responsive Overrides ──────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .resp-hide-tablet { display: none !important; }
+  .resp-stack-tablet { flex-direction: column !important; }
+  .resp-grid-2-tablet { grid-template-columns: repeat(2, 1fr) !important; }
+  .resp-grid-1-tablet { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 768px) {
+  .resp-hide-mobile { display: none !important; }
+  .resp-stack-mobile { flex-direction: column !important; }
+  .resp-grid-2-mobile { grid-template-columns: repeat(2, 1fr) !important; }
+  .resp-grid-1-mobile { grid-template-columns: 1fr !important; }
+  .resp-full-mobile { width: 100% !important; }
+  .resp-pad-mobile { padding: 16px !important; }
+  .resp-overflow-mobile { overflow-x: auto !important; }
+}
+

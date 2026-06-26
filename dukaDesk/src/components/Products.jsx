@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Search, Plus, X, Upload, Trash2 } from "lucide-react";
 import { useToast } from "../App";
+import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, statusColors } from "../theme";
 
 const initialProducts = [
@@ -20,6 +21,8 @@ const statusStyle = {
 
 export default function Products() {
   const showToast = useToast();
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   const [products, setProducts] = useState(initialProducts);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -51,17 +54,17 @@ export default function Products() {
 
   return (
     <div style={{ position: "relative" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", gap: 12, marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: NAVY, margin: 0 }}>Products</h2>
+          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: 0 }}>Products</h2>
           <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>{products.length} total · {products.filter(p => p.status === "Low Stock").length} low stock · {products.filter(p => p.status === "Out of Stock").length} out of stock</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={() => showToast("CSV import coming soon", "info")} style={{ border: "1px solid #E5E7EB", background: "#fff", borderRadius: 8, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
-            <Upload size={16} /> Import CSV
+            <Upload size={16} /> {isMobile ? "" : "Import CSV"}
           </button>
           <button onClick={openAdd} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-            <Plus size={18} /> Add Product
+            <Plus size={18} /> {isMobile ? "Add" : "Add Product"}
           </button>
         </div>
       </div>
@@ -88,7 +91,7 @@ export default function Products() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : isTablet ? "repeat(2,1fr)" : "repeat(3,1fr)", gap: isMobile ? 12 : 16 }}>
         {filtered.map(p => {
           const ss = statusStyle[p.status] || statusStyle["In Stock"];
           const isSel = selected.includes(p.id);

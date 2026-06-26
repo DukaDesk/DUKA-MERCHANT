@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Lock } from "lucide-react";
 import { useToast } from "../App";
+import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../theme";
 
 const allIntegrations = [
@@ -45,6 +46,7 @@ const badgeStyle = {
 
 export default function Integrations() {
   const showToast = useToast();
+  const isMobile = useIsMobile();
   const [integrations, setIntegrations] = useState(allIntegrations);
   const [catFilter, setCatFilter] = useState("All");
   const [configPanel, setConfigPanel] = useState(null);
@@ -71,7 +73,7 @@ export default function Integrations() {
   return (
     <div style={{ position: "relative" }}>
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: NAVY, margin: "0 0 4px" }}>Integrations</h2>
+        <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: "0 0 4px" }}>Integrations</h2>
         <p style={{ color: "#6B7280", margin: 0 }}>Manage the features powering your app. Add or remove anytime.</p>
       </div>
 
@@ -86,12 +88,12 @@ export default function Integrations() {
           {activeItems.map((item, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "#F9FAFB", borderRadius: 10, borderLeft: `4px solid ${AMBER}` }}>
               <span style={{ fontSize: 28 }}>{item.icon}</span>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>{item.name}</div>
-                <div style={{ fontSize: 12, color: "#2ECC71", fontWeight: 500 }}>Connected ✓ {item.stat ? `— ${item.stat}` : ""}</div>
+                <div style={{ fontSize: 12, color: "#2ECC71", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Connected ✓ {item.stat ? `— ${item.stat}` : ""}</div>
               </div>
-              <button onClick={() => setConfigPanel(item)} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", marginRight: 8 }}>Configure</button>
-              <button onClick={() => setRemoveConfirm(item)} style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: 13, cursor: "pointer" }}>Remove</button>
+              <button onClick={() => setConfigPanel(item)} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", marginRight: 8, flexShrink: 0 }}>Configure</button>
+              <button onClick={() => setRemoveConfirm(item)} style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: 13, cursor: "pointer", flexShrink: 0 }}>Remove</button>
             </div>
           ))}
         </div>
@@ -111,7 +113,7 @@ export default function Integrations() {
           return (
             <div key={ci} style={{ marginBottom: 28 }}>
               <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 15, color: NAVY, marginBottom: 12 }}>{cat.cat}</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 12 }}>
                 {cat.items.map((item, ii) => {
                   const itemIdx = integrations[catIdx].items.findIndex(x => x.name === item.name);
                   const bc = badgeStyle[item.badge] || badgeStyle.Free;
@@ -146,7 +148,7 @@ export default function Integrations() {
       {configPanel && (
         <>
           <div onClick={() => setConfigPanel(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 100 }} />
-          <div style={{ position: "fixed", right: 0, top: 0, width: 480, height: "100vh", background: "#fff", zIndex: 101, boxShadow: "-8px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column" }}>
+          <div style={{ position: "fixed", right: 0, top: 0, width: isMobile ? "100%" : 480, height: "100vh", background: "#fff", zIndex: 101, boxShadow: "-8px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "24px", borderBottom: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <span style={{ fontSize: 32 }}>{configPanel.icon}</span>
@@ -217,7 +219,7 @@ export default function Integrations() {
       {removeConfirm && (
         <>
           <div onClick={() => setRemoveConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200 }} />
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 16, padding: 32, width: 400, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", textAlign: "center" }}>
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 16, padding: 32, width: isMobile ? "92%" : 400, maxWidth: 400, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", textAlign: "center", boxSizing: "border-box" }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>{removeConfirm.icon}</div>
             <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 20, color: NAVY, margin: "0 0 8px" }}>Remove {removeConfirm.name}?</h3>
             <p style={{ color: "#6B7280", fontSize: 14, margin: "0 0 24px" }}>This will remove {removeConfirm.name} from your app. You can re-add it anytime.</p>

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
+import { useIsMobile, useIsTablet } from "./hooks/useMediaQuery";
 
 const Auth = lazy(() => import("./components/Auth"));
 const Dashboard = lazy(() => import("./components/Dashboard"));
@@ -85,12 +86,16 @@ export default function App() {
 }
 
 function ProtectedLayout() {
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+  const padding = isMobile ? "16px" : isTablet ? "24px" : "32px";
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh" }}>
       <Sidebar />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", marginBottom: isMobile ? 64 : 0 }}>
         <Topbar />
-        <main style={{ flex: 1, overflowY: "auto", padding: "32px", background: "#F7F8FA" }}>
+        <main style={{ flex: 1, overflowY: "auto", padding, background: "#F7F8FA" }}>
           <ErrorBoundary>
             <Suspense fallback={<Loader />}>
               <Routes>

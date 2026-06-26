@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Search, X, Download } from "lucide-react";
 import { useToast } from "../App";
+import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle, statusColors } from "../theme";
 
 const initial = [
@@ -15,6 +16,7 @@ const nextStatus = { Pending: "Processing", Processing: "Completed" };
 
 export default function Orders() {
   const showToast = useToast();
+  const isMobile = useIsMobile();
   const [orders, setOrders] = useState(initial);
   const [tab, setTab] = useState("All");
   const [detail, setDetail] = useState(null);
@@ -38,7 +40,7 @@ export default function Orders() {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 12 : 16, marginBottom: 24 }}>
         {[
           { label: "Today", value: `${orders.length} orders`, sub: `₦${orders.reduce((a,o) => a+o.total,0).toLocaleString()}` },
           { label: "Pending", value: orders.filter(o=>o.status==="Pending").length, sub: "Needs action", color: AMBER },
@@ -66,8 +68,8 @@ export default function Orders() {
         </div>
       </div>
 
-      <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div style={{ background: "#fff", borderRadius: 12, overflowX: "auto", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <table style={{ width: "100%", minWidth: isMobile ? 600 : "auto", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#F9FAFB" }}>
               {["Order ID", "Customer", "Items", "Total", "Payment", "Status", "Date", "Actions"].map(h => (

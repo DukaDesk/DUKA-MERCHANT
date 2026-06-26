@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Download } from "lucide-react";
 import { useToast } from "../App";
+import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../theme";
 
 const plans = [
@@ -15,6 +16,7 @@ const history = [
 
 export default function Billing() {
   const showToast = useToast();
+  const isMobile = useIsMobile();
   const [upgradeModal, setUpgradeModal] = useState(null);
   const [payStep, setPayStep] = useState(0);
   const [cardNum, setCardNum] = useState("");
@@ -29,27 +31,27 @@ export default function Billing() {
 
   return (
     <div>
-      <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: NAVY, margin: "0 0 24px" }}>Billing & Subscription</h2>
+      <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: "0 0 24px" }}>Billing & Subscription</h2>
 
-      <div style={{ background: `linear-gradient(135deg, ${AMBER}, #E8910A)`, borderRadius: 16, padding: 32, marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ background: `linear-gradient(135deg, ${AMBER}, #E8910A)`, borderRadius: 16, padding: isMobile ? 20 : 32, marginBottom: 24, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 16 : 0 }}>
         <div>
-          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: "#fff", marginBottom: 4 }}>Starter Plan</div>
-          <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 18, marginBottom: 8 }}>₦0 / month during beta</div>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: "#fff", marginBottom: 4 }}>Starter Plan</div>
+          <div style={{ color: "rgba(255,255,255,0.85)", fontSize: isMobile ? 16 : 18, marginBottom: 8 }}>₦0 / month during beta</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {["1 App", "Unlimited QR scans", "Basic integrations", "Up to 500 customers"].map((f, i) => (
               <div key={i} style={{ color: "rgba(255,255,255,0.9)", fontSize: 14 }}>✓ {f}</div>
             ))}
           </div>
         </div>
-        <div style={{ textAlign: "right" }}>
+        <div style={{ textAlign: isMobile ? "left" : "right" }}>
           <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, marginBottom: 8 }}>Renews: N/A (Beta)</div>
           <button onClick={() => setUpgradeModal(plans[1])} style={{ background: "#fff", color: AMBER, border: "none", borderRadius: 24, padding: "12px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Upgrade Plan →</button>
         </div>
       </div>
 
-      <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: NAVY, margin: "0 0 24px", textAlign: "center" }}>Choose the Right Plan</h3>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div style={{ ...cardStyle, marginBottom: 24, overflowX: "auto" }}>
+        <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 18 : 22, color: NAVY, margin: "0 0 24px", textAlign: "center" }}>Choose the Right Plan</h3>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: isMobile ? 600 : "auto" }}>
           <thead>
             <tr>
               <th style={{ padding: "14px 16px", textAlign: "left", fontSize: 13, color: "#6B7280", fontWeight: 600, width: "30%" }}>Feature</th>
@@ -88,14 +90,14 @@ export default function Billing() {
         </table>
       </div>
 
-      <div style={{ ...cardStyle }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+      <div style={{ ...cardStyle, overflowX: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Billing History</span>
           <button onClick={() => showToast("Downloading all invoices...", "info")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             <Download size={14} /> Download All
           </button>
         </div>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: isMobile ? 500 : "auto" }}>
           <thead>
             <tr style={{ background: "#F9FAFB" }}>
               {["Date", "Description", "Amount", "Status", "Invoice"].map(h => (
@@ -123,7 +125,7 @@ export default function Billing() {
       {upgradeModal && (
         <>
           <div onClick={() => { setUpgradeModal(null); setPayStep(0); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200 }} />
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 20, padding: 40, width: 480, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 20, padding: isMobile ? 24 : 40, width: isMobile ? "92%" : 480, maxWidth: 480, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", boxSizing: "border-box" }}>
             {payStep === 2 ? (
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
@@ -133,7 +135,7 @@ export default function Billing() {
             ) : (
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-                  <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 22, color: NAVY, margin: 0 }}>Upgrade to {upgradeModal.name}</h3>
+                  <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: isMobile ? 18 : 22, color: NAVY, margin: 0 }}>Upgrade to {upgradeModal.name}</h3>
                   <button onClick={() => { setUpgradeModal(null); setPayStep(0); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}>
                     <X size={22} />
                   </button>
