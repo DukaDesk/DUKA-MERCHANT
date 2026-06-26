@@ -1,53 +1,62 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Download } from "lucide-react";
 import { useToast } from "../App";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../theme";
-
-const plans = [
-  { name: "Starter", price: 0, label: "Free (Beta)", color: "#6B7280", features: { "Apps": "1", "Products": "20", "QR Scans": "Unlimited", "Customers": "500", "Integrations": "Basic", "Analytics": "Basic", "Team Members": "1", "Priority Support": false, "Custom Domain": false }, current: true },
-  { name: "Growth", price: 9999, label: "₦9,999/mo", color: AMBER, features: { "Apps": "3", "Products": "Unlimited", "QR Scans": "Unlimited", "Customers": "Unlimited", "Integrations": "All", "Analytics": "Advanced", "Team Members": "3", "Priority Support": false, "Custom Domain": false }, current: false },
-  { name: "Business", price: 24999, label: "₦24,999/mo", color: NAVY, features: { "Apps": "10", "Products": "Unlimited", "QR Scans": "Unlimited", "Customers": "Unlimited", "Integrations": "All + Premium", "Analytics": "Advanced + Export", "Team Members": "10", "Priority Support": true, "Custom Domain": true }, current: false },
-];
-const history = [
-  { date: "Jun 1, 2025", desc: "Starter Plan (Beta)", amount: "₦0", status: "Paid" },
-  { date: "May 1, 2025", desc: "Starter Plan (Beta)", amount: "₦0", status: "Paid" },
-];
+import { getCurrentPlan, getPlans, getBillingHistory, upgradePlan } from "../services/api";
 
 export default function Billing() {
   const showToast = useToast();
   const isMobile = useIsMobile();
+  const [currentPlan, setCurrentPlan] = useState(null);
+  const [plans, setPlans] = useState([]);
+  const [history, setHistory] = useState([]);
   const [upgradeModal, setUpgradeModal] = useState(null);
   const [payStep, setPayStep] = useState(0);
   const [cardNum, setCardNum] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const handleUpgrade = () => {
+  useEffect(() => {
+    Promise.all([getCurrentPlan(), getPlans(), getBillingHistory()])
+      .then(([cp, p, h]) => { setCurrentPlan(cp); setPlans(p); setHistory(h); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleUpgrade = async () => {
     if (!cardNum || !expiry || !cvv) { showToast("Please fill in all card details", "error"); return; }
     setPayStep(2);
-    setTimeout(() => { setUpgradeModal(null); setPayStep(0); showToast(`Upgraded to ${upgradeModal.name} plan! 🎉`, "success"); }, 1500);
+    try {
+      await upgradePlan({ planName: upgradeModal.name, cardNumber: cardNum, expiry, cvv });
+      setTimeout(() => { setUpgradeModal(null); setPayStep(0); showToast(`Upgraded to ${upgradeModal.name} plan! 🎉`, "success"); }, 1500);
+    } catch { showToast("Upgrade failed. Please try again.", "error"); setPayStep(0); }
   };
+
+  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading billing info...</div>;
 
   return (
     <div>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: "0 0 24px" }}>Billing & Subscription</h2>
 
-      <div style={{ background: `linear-gradient(135deg, ${AMBER}, #E8910A)`, borderRadius: 16, padding: isMobile ? 20 : 32, marginBottom: 24, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 16 : 0 }}>
-        <div>
-          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: "#fff", marginBottom: 4 }}>Starter Plan</div>
-          <div style={{ color: "rgba(255,255,255,0.85)", fontSize: isMobile ? 16 : 18, marginBottom: 8 }}>₦0 / month during beta</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {["1 App", "Unlimited QR scans", "Basic integrations", "Up to 500 customers"].map((f, i) => (
-              <div key={i} style={{ color: "rgba(255,255,255,0.9)", fontSize: 14 }}>✓ {f}</div>
-            ))}
+      {currentPlan && (
+        <div style={{ background: `linear-gradient(135deg, ${AMBER}, #E8910A)`, borderRadius: 16, padding: isMobile ? 20 : 32, marginBottom: 24, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 16 : 0 }}>
+          <div>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: "#fff", marginBottom: 4 }}>{currentPlan.plan}</div>
+            <div style={{ color: "rgba(255,255,255,0.85)", fontSize: isMobile ? 16 : 18, marginBottom: 8 }}>{currentPlan.label}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {currentPlan.features.map((f, i) => (
+                <div key={i} style={{ color: "rgba(255,255,255,0.9)", fontSize: 14 }}>✓ {f}</div>
+              ))}
+            </div>
+          </div>
+          <div style={{ textAlign: isMobile ? "left" : "right" }}>
+            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, marginBottom: 8 }}>Renews: {currentPlan.renews}</div>
+            <button onClick={() => setUpgradeModal(plans[1])} style={{ background: "#fff", color: AMBER, border: "none", borderRadius: 24, padding: "12px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Upgrade Plan →</button>
           </div>
         </div>
-        <div style={{ textAlign: isMobile ? "left" : "right" }}>
-          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, marginBottom: 8 }}>Renews: N/A (Beta)</div>
-          <button onClick={() => setUpgradeModal(plans[1])} style={{ background: "#fff", color: AMBER, border: "none", borderRadius: 24, padding: "12px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Upgrade Plan →</button>
-        </div>
-      </div>
+      )}
 
       <div style={{ ...cardStyle, marginBottom: 24, overflowX: "auto" }}>
         <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 18 : 22, color: NAVY, margin: "0 0 24px", textAlign: "center" }}>Choose the Right Plan</h3>
@@ -64,7 +73,7 @@ export default function Billing() {
             </tr>
           </thead>
           <tbody>
-            {Object.keys(plans[0].features).map((feat, fi) => (
+            {plans.length > 0 && Object.keys(plans[0].features).map((feat, fi) => (
               <tr key={feat} style={{ background: fi % 2 === 0 ? "#F9FAFB" : "#fff" }}>
                 <td style={{ padding: "12px 16px", fontSize: 14, color: "#374151", fontWeight: 500 }}>{feat}</td>
                 {plans.map(p => (

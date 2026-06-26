@@ -1,22 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Plus, Package, BarChart3, MessageSquare } from "lucide-react";
 import { useToast } from "../App";
 import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../theme";
-
-const revenueData = [
-  { week: "W1", revenue: 12000 }, { week: "W2", revenue: 28000 },
-  { week: "W3", revenue: 22000 }, { week: "W4", revenue: 48200 },
-];
-const activity = [
-  { icon: "🛒", title: "New order from Tunde Adeyemi", sub: "₦3,500 · 2 items", time: "10 min ago", color: AMBER },
-  { icon: "💬", title: "New message from Chika Obi", sub: "Hi, is delivery available?", time: "25 min ago", color: "#7C3AED" },
-  { icon: "⭐", title: "New 5-star review", sub: "Amazing food, will order again!", time: "1 hr ago", color: "#2ECC71" },
-  { icon: "🛒", title: "New order from Fatima Bello", sub: "₦5,200 · 3 items", time: "3 hrs ago", color: AMBER },
-  { icon: "📱", title: "App viewed 43 times today", sub: "Via QR scan", time: "Today", color: NAVY },
-];
+import { getDashboardStats, getRevenue, getActivity } from "../services/api";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -24,17 +13,31 @@ export default function Dashboard() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const [qrCopied, setQrCopied] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [revenueData, setRevenueData] = useState([]);
+  const [activity, setActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([getDashboardStats(), getRevenue(), getActivity()])
+      .then(([s, r, a]) => { setStats(s); setRevenueData(r); setActivity(a); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
   const copyLink = () => { setQrCopied(true); showToast("Store link copied!", "success"); setTimeout(() => setQrCopied(false), 2000); };
   const kpiCols = isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(2,1fr)" : "repeat(4,1fr)";
+
+  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading dashboard...</div>;
 
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: kpiCols, gap: isMobile ? 12 : 20, marginBottom: isMobile ? 20 : 28 }}>
         {[
-          { label: "Total Customers", value: "1,204", trend: "+34 this week", trendUp: true },
-          { label: "Revenue (This Month)", value: "₦48,200", trend: "+18% vs last month", trendUp: true, amber: true },
-          { label: "Unread Messages", value: "7", trend: "Reply now →", trendUp: null, action: () => navigate("/messages") },
-          { label: "Avg Rating", value: "4.8 ⭐", trend: "(234 reviews)", trendUp: null },
+          { label: "Total Customers", value: stats.customers.toLocaleString(), trend: "+34 this week", trendUp: true },
+          { label: "Revenue (This Month)", value: `₦${stats.revenue.toLocaleString()}`, trend: "+18% vs last month", trendUp: true, amber: true },
+          { label: "Unread Messages", value: stats.unreadMessages, trend: "Reply now →", trendUp: null, action: () => navigate("/messages") },
+          { label: "Avg Rating", value: `${stats.avgRating} ⭐`, trend: `(${stats.reviewsCount} reviews)`, trendUp: null },
         ].map((k, i) => (
           <div key={i} style={{ ...cardStyle }}>
             <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 500, marginBottom: 8 }}>{k.label}</div>

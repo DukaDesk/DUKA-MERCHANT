@@ -1,17 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Plus, X, Upload, Trash2 } from "lucide-react";
 import { useToast } from "../App";
 import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, statusColors } from "../theme";
-
-const initialProducts = [
-  { id: 1, name: "Jollof Rice & Chicken", cat: "Mains", price: 2500, oldPrice: null, stock: 34, status: "In Stock", img: "🍛" },
-  { id: 2, name: "Peppered Gizzard", cat: "Sides", price: 1800, oldPrice: 2200, stock: 12, status: "In Stock", img: "🍗" },
-  { id: 3, name: "Grilled Tilapia", cat: "Mains", price: 4500, oldPrice: null, stock: 4, status: "Low Stock", img: "🐟" },
-  { id: 4, name: "Egusi Soup", cat: "Mains", price: 3200, oldPrice: null, stock: 0, status: "Out of Stock", img: "🥣" },
-  { id: 5, name: "Zobo Drink", cat: "Drinks", price: 500, oldPrice: null, stock: 50, status: "In Stock", img: "🥤" },
-  { id: 6, name: "Puff Puff (10 pcs)", cat: "Snacks", price: 800, oldPrice: 1000, stock: 20, status: "In Stock", img: "🍩" },
-];
+import { getProducts, createProduct, updateProduct, deleteProduct } from "../services/api";
 
 const statusStyle = {
   "In Stock": { bg: "#F0FDF4", color: "#065F46" },
@@ -23,12 +15,15 @@ export default function Products() {
   const showToast = useToast();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
-  const [products, setProducts] = useState(initialProducts);
+  const [products, setProducts] = useState([]);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [panel, setPanel] = useState(null);
   const [form, setForm] = useState({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "🍛" });
   const [selected, setSelected] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { getProducts().then(setProducts).catch(() => {}).finally(() => setLoading(false)); }, []);
 
   const filtered = products.filter(p => {
     if (filter !== "All" && p.status !== filter) return false;
@@ -36,21 +31,35 @@ export default function Products() {
     return true;
   });
   const toggleSelect = (id) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
-  const deleteSelected = () => { setProducts(p => p.filter(x => !selected.includes(x.id))); setSelected([]); showToast(`${selected.length} product(s) deleted`, "info"); };
-  const saveProduct = () => {
+  const deleteSelected = async () => {
+    await Promise.all(selected.map(id => deleteProduct(id).catch(() => {})));
+    setProducts(p => p.filter(x => !selected.includes(x.id)));
+    setSelected([]);
+    showToast(`${selected.length} product(s) deleted`, "info");
+  };
+  const saveProduct = async () => {
     if (!form.name || !form.price) { showToast("Name and price are required", "error"); return; }
-    const np = { id: Date.now(), ...form, price: Number(form.price), stock: Number(form.stock) || 0, oldPrice: null };
-    if (panel && panel.id) {
-      setProducts(p => p.map(x => x.id === panel.id ? { ...x, ...np, id: x.id } : x));
-      showToast("Product updated!", "success");
-    } else {
-      setProducts(p => [...p, np]);
-      showToast("Product added!", "success");
-    }
+    try {
+      if (panel && panel.id) {
+        await updateProduct(panel.id, { ...form, price: Number(form.price), stock: Number(form.stock) || 0 });
+        setProducts(p => p.map(x => x.id === panel.id ? { ...x, ...form, price: Number(form.price), stock: Number(form.stock) || 0 } : x));
+        showToast("Product updated!", "success");
+      } else {
+        const created = await createProduct({ ...form, price: Number(form.price), stock: Number(form.stock) || 0 });
+        setProducts(p => [...p, created]);
+        showToast("Product added!", "success");
+      }
+    } catch { showToast("Failed to save product", "error"); }
     setPanel(null);
   };
   const openEdit = (p) => { setForm({ name: p.name, cat: p.cat, price: p.price, stock: p.stock, status: p.status, img: p.img }); setPanel(p); };
   const openAdd = () => { setForm({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "🍛" }); setPanel("add"); };
+  const deleteOne = async (id) => {
+    try { await deleteProduct(id); setProducts(p => p.filter(x => x.id !== id)); showToast("Product deleted", "info"); }
+    catch { showToast("Failed to delete product", "error"); }
+  };
+
+  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading products...</div>;
 
   return (
     <div style={{ position: "relative" }}>
@@ -113,7 +122,7 @@ export default function Products() {
               </div>
               <div style={{ padding: "10px 16px", borderTop: "1px solid #F3F4F6", display: "flex", gap: 12 }}>
                 <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Edit</button>
-                <button onClick={() => { setProducts(pr => pr.filter(x => x.id !== p.id)); showToast("Product deleted", "info"); }} style={{ background: "none", border: "none", color: "#E74C3C", fontSize: 13, cursor: "pointer" }}>Delete</button>
+                <button onClick={() => deleteOne(p.id)} style={{ background: "none", border: "none", color: "#E74C3C", fontSize: 13, cursor: "pointer" }}>Delete</button>
               </div>
             </div>
           );

@@ -1,42 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Lock } from "lucide-react";
 import { useToast } from "../App";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../theme";
-
-const allIntegrations = [
-  { cat: "Payments", items: [
-    { icon: "💳", name: "Paystack", desc: "Cards, bank transfer & USSD", badge: "Popular", active: true, stat: "₦48,200 processed this month" },
-    { icon: "💳", name: "Flutterwave", desc: "Pan-African payment gateway", badge: "Popular", active: false },
-    { icon: "🏦", name: "Bank Transfer", desc: "Manual bank details", badge: "Free", active: false },
-  ]},
-  { cat: "Commerce", items: [
-    { icon: "🛒", name: "Product Cart", desc: "Full cart & checkout flow", badge: "Popular", active: true, stat: "24 products · 124 orders" },
-    { icon: "🏷️", name: "Discount Codes", desc: "Create promo codes", badge: "Free", active: false },
-    { icon: "📦", name: "Order Tracking", desc: "Real-time order status", badge: "Popular", active: false },
-    { icon: "❤️", name: "Wishlist", desc: "Let customers save products", badge: "Free", active: false },
-  ]},
-  { cat: "Booking", items: [
-    { icon: "📅", name: "Appointment Calendar", desc: "Self-booking for customers", badge: "Popular", active: false },
-    { icon: "⏰", name: "Booking Reminders", desc: "SMS/push reminders", badge: "Popular", active: false },
-    { icon: "📋", name: "Waitlist", desc: "Queue for full time slots", badge: "Free", active: false },
-  ]},
-  { cat: "Loyalty & Engagement", items: [
-    { icon: "⭐", name: "Loyalty Points", desc: "Earn & redeem rewards", badge: "Popular", active: false },
-    { icon: "🔔", name: "Push Notifications", desc: "Broadcast offers to users", badge: "Popular", active: false },
-    { icon: "👥", name: "Referral Program", desc: "Refer friends, earn rewards", badge: "Premium", active: false, locked: true },
-  ]},
-  { cat: "Communication", items: [
-    { icon: "💬", name: "In-App Messaging", desc: "Live chat with customers", badge: "Popular", active: true, stat: "7 unread conversations" },
-    { icon: "📱", name: "WhatsApp Link", desc: "Quick WhatsApp contact", badge: "Free", active: false },
-    { icon: "📧", name: "Email Capture", desc: "Build your email list", badge: "Free", active: false },
-  ]},
-  { cat: "Content & Media", items: [
-    { icon: "🖼️", name: "Photo Gallery", desc: "Image showcase", badge: "Free", active: false },
-    { icon: "📄", name: "PDF Menu", desc: "Upload and display a PDF menu", badge: "Free", active: false },
-    { icon: "🔗", name: "Social Media Links", desc: "Link Instagram, Facebook, TikTok", badge: "Free", active: false },
-  ]},
-];
+import { getIntegrations, toggleIntegration } from "../services/api";
 
 const badgeStyle = {
   Popular: { bg: "#FFF8ED", color: "#92400E" },
@@ -47,28 +14,36 @@ const badgeStyle = {
 export default function Integrations() {
   const showToast = useToast();
   const isMobile = useIsMobile();
-  const [integrations, setIntegrations] = useState(allIntegrations);
+  const [integrations, setIntegrations] = useState([]);
   const [catFilter, setCatFilter] = useState("All");
   const [configPanel, setConfigPanel] = useState(null);
   const [removeConfirm, setRemoveConfirm] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const toggle = (catIdx, itemIdx) => {
+  useEffect(() => { getIntegrations().then(setIntegrations).catch(() => {}).finally(() => setLoading(false)); }, []);
+
+  const toggle = async (catIdx, itemIdx) => {
     const item = integrations[catIdx].items[itemIdx];
     if (item.locked) { showToast("Upgrade to Growth plan to unlock Premium integrations", "info"); return; }
-    setIntegrations(prev => prev.map((cat, ci) =>
-      ci !== catIdx ? cat : {
-        ...cat,
-        items: cat.items.map((it, ii) =>
-          ii !== itemIdx ? it : { ...it, active: !it.active }
-        ),
-      }
-    ));
-    showToast(item.active ? `${item.name} removed` : `${item.name} added to your app!`, item.active ? "info" : "success");
+    try {
+      await toggleIntegration(item.name);
+      setIntegrations(prev => prev.map((cat, ci) =>
+        ci !== catIdx ? cat : {
+          ...cat,
+          items: cat.items.map((it, ii) =>
+            ii !== itemIdx ? it : { ...it, active: !it.active }
+          ),
+        }
+      ));
+      showToast(item.active ? `${item.name} removed` : `${item.name} added to your app!`, item.active ? "info" : "success");
+    } catch { showToast("Failed to toggle integration", "error"); }
   };
 
   const activeItems = integrations.flatMap(cat => cat.items.filter(i => i.active));
-  const cats = ["All", ...allIntegrations.map(c => c.cat)];
+  const cats = ["All", ...(integrations.map(c => c.cat))];
   const filtered = catFilter === "All" ? integrations : integrations.filter(c => c.cat === catFilter);
+
+  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading integrations...</div>;
 
   return (
     <div style={{ position: "relative" }}>

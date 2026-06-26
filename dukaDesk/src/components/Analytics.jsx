@@ -1,23 +1,33 @@
+import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Download } from "lucide-react";
 import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../theme";
+import { getRevenueData, getOrderStats, getScanData, getTopProducts, getCustomerSplit } from "../services/api";
 
-const rev = [{ w:"W1",v:12000},{w:"W2",v:28000},{w:"W3",v:22000},{w:"W4",v:48200}];
-const orders = [{ name:"Completed",value:89},{name:"Pending",value:25},{name:"Cancelled",value:10}];
-const scans = [{ day:"Mon",scans:42},{day:"Tue",scans:67},{day:"Wed",scans:55},{day:"Thu",scans:80},{day:"Fri",scans:93},{day:"Sat",scans:110},{day:"Sun",scans:78}];
-const products = [
-  { name:"Jollof Rice",views:340,orders:89,revenue:222500,trend:"↑"},
-  { name:"Grilled Tilapia",views:210,orders:45,revenue:202500,trend:"↑"},
-  { name:"Peppered Gizzard",views:180,orders:60,revenue:108000,trend:"↓"},
-  { name:"Egusi Soup",views:120,orders:30,revenue:96000,trend:"→"},
-  { name:"Zobo Drink",views:95,orders:70,revenue:35000,trend:"↑"},
-];
 const PIE_COLORS = [AMBER, NAVY, "#E74C3C"];
 
 export default function Analytics() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
+  const [rev, setRev] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [scans, setScans] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([{ name: "New", value: 34 }, { name: "Returning", value: 66 }]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([getRevenueData(), getOrderStats(), getScanData(), getTopProducts(), getCustomerSplit()])
+      .then(([r, o, s, p, c]) => { setRev(r); setOrders(o); setScans(s); setProducts(p); setCustomers(c); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const totalScans = scans.reduce((a, s) => a + s.scans, 0);
+
+  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading analytics...</div>;
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -32,10 +42,10 @@ export default function Analytics() {
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(3,1fr)" : "repeat(5,1fr)", gap: isMobile ? 10 : 14, marginBottom: 24 }}>
         {[
-          { label:"Revenue", value:"₦48,200", trend:"+18%", up:true },
-          { label:"Orders", value:"124", trend:"+7 today", up:true },
-          { label:"Customers", value:"1,204", trend:"34 new", up:true },
-          { label:"QR Views", value:"3,840", trend:"via scan", up:null },
+          { label:"Revenue", value:`₦${(rev.length ? rev[rev.length-1].v : 0).toLocaleString()}`, trend:"+18%", up:true },
+          { label:"Orders", value:orders.reduce((a,o) => a+o.value, 0).toString(), trend:"Orders this period", up:null },
+          { label:"Customers", value:customers.reduce((a,c) => a+c.value, 0).toString(), trend:"Total customers", up:null },
+          { label:"QR Views", value:totalScans.toLocaleString(), trend:"via scan", up:null },
           { label:"Avg Rating", value:"4.8 ⭐", trend:"(234 reviews)", up:null },
         ].map((k,i) => (
           <div key={i} style={{ background:"#fff", borderRadius:10, padding:18, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -65,7 +75,7 @@ export default function Analytics() {
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={orders} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
-                {orders.map((_,i) => <Cell key={i} fill={PIE_COLORS[i]}/>)}
+                {orders.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]}/>)}
               </Pie>
               <Legend formatter={(v)=><span style={{fontSize:12,color:"#6B7280"}}>{v}</span>}/>
               <Tooltip/>
@@ -77,7 +87,7 @@ export default function Analytics() {
       <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap:20, marginBottom:20 }}>
         <div style={{ ...cardStyle }}>
           <div style={{ fontFamily:"'Sora',sans-serif", fontWeight:600, fontSize:16, color:NAVY, marginBottom:4 }}>QR Scan Activity</div>
-          <div style={{ fontSize:13, color:"#6B7280", marginBottom:16 }}>Your QR code was scanned 525 times this week</div>
+          <div style={{ fontSize:13, color:"#6B7280", marginBottom:16 }}>Your QR code was scanned {totalScans} times this week</div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={scans}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6"/>
@@ -93,8 +103,8 @@ export default function Analytics() {
           <div style={{ fontSize:13, color:"#6B7280", marginBottom:16 }}>New vs returning customers</div>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
-              <Pie data={[{name:"New",value:34},{name:"Returning",value:66}]} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value">
-                <Cell fill={NAVY}/><Cell fill={AMBER}/>
+              <Pie data={customers} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value">
+                {customers.map((_,i) => <Cell key={i} fill={i===0?NAVY:AMBER}/>)}
               </Pie>
               <Legend formatter={(v)=><span style={{fontSize:12,color:"#6B7280"}}>{v}</span>}/>
               <Tooltip/>

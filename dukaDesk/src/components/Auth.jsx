@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft } from "lucide-r
 import PropTypes from "prop-types";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../theme";
+import { login, signup, forgotPassword, setToken } from "../services/api";
 
 export default function Auth({ onAuth }) {
   const isMobile = useIsMobile();
@@ -96,15 +97,20 @@ function LoginForm({ onAuth, setPage }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) { setError("Please fill in all fields."); return; }
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      onAuth({ name: "Ada Okafor", business: "Mama's Kitchen", email });
+    setLoading(true); setError("");
+    try {
+      const res = await login({ email, password });
+      setToken(res.token);
+      onAuth(res.merchant);
       setPage("/wizard");
-    }, 1200);
+    } catch (err) {
+      setError(err.message || "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -165,16 +171,21 @@ function SignupForm({ onAuth, setPage }) {
     return e;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const e2 = validate();
     if (Object.keys(e2).length) { setErrors(e2); return; }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      onAuth({ name: form.name, business: form.business, email: form.email });
+    try {
+      const res = await signup({ fullName: form.name, businessName: form.business, email: form.email, phone: form.phone, password: form.password });
+      setToken(res.token);
+      onAuth(res.merchant);
       setPage("/wizard");
-    }, 1400);
+    } catch (err) {
+      setErrors({ submit: err.message || "Signup failed. Please try again." });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const set = (k) => (e) => { setForm(f => ({ ...f, [k]: e.target.value })); setErrors(er => ({ ...er, [k]: "" })); };
@@ -184,6 +195,7 @@ function SignupForm({ onAuth, setPage }) {
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 32, color: NAVY, margin: "0 0 8px" }}>Create your merchant account</h2>
       <p style={{ color: "#6B7280", fontSize: 15, margin: "0 0 32px" }}>Start free. No credit card required.</p>
       <form onSubmit={handleSubmit}>
+        {errors.submit && <div style={{ background: "#FEF2F2", border: "1px solid #E74C3C", borderRadius: 8, padding: "12px 16px", color: "#991B1B", fontSize: 14, marginBottom: 20 }}>⚠ {errors.submit}</div>}
         <Field label="Full name" value={form.name} onChange={set("name")} placeholder="Ada Okafor" error={errors.name} icon={<User size={18} />} />
         <Field label="Business name" value={form.business} onChange={set("business")} placeholder="Mama's Kitchen" error={errors.business} icon={<Store size={18} />} />
         <Field label="Email address" type="email" value={form.email} onChange={set("email")} placeholder="ada@mamaskitchen.com" error={errors.email} icon={<Mail size={18} />} />
@@ -232,12 +244,20 @@ function ForgotForm({ setPage }) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email) return;
-    setLoading(true);
-    setTimeout(() => { setLoading(false); setSent(true); }, 1200);
+    setLoading(true); setError("");
+    try {
+      await forgotPassword({ email });
+      setSent(true);
+    } catch (err) {
+      setError(err.message || "Request failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (sent) return (
@@ -259,6 +279,7 @@ function ForgotForm({ setPage }) {
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: NAVY, marginBottom: 8 }}>Reset your password</h2>
         <p style={{ color: "#6B7280" }}>Enter your email and we'll send a reset link.</p>
       </div>
+      {error && <div style={{ background: "#FEF2F2", border: "1px solid #E74C3C", borderRadius: 8, padding: "12px 16px", color: "#991B1B", fontSize: 14, marginBottom: 20 }}>⚠ {error}</div>}
       <form onSubmit={handleSubmit}>
         <Field label="Email address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ada@mamaskitchen.com" icon={<Mail size={18} />} />
         <Btn loading={loading}>{loading ? "Sending..." : "Send reset link"}</Btn>

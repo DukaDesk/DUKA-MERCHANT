@@ -1,26 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, X, Download } from "lucide-react";
 import { useToast } from "../App";
 import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle, statusColors } from "../theme";
-
-const initial = [
-  { id: "DD-2041", customer: "Tunde Adeyemi", items: "Jollof Rice ×2", total: 7000, payment: "Paystack", status: "Pending", date: "Jun 22, 2:14 PM", address: "12 Admiralty Way, Lekki" },
-  { id: "DD-2040", customer: "Chika Obi", items: "Grilled Tilapia ×1", total: 4500, payment: "Paystack", status: "Processing", date: "Jun 22, 1:05 PM", address: "5 Allen Ave, Ikeja" },
-  { id: "DD-2039", customer: "Fatima Bello", items: "Peppered Gizzard ×3, Zobo ×2", total: 6400, payment: "Bank Transfer", status: "Completed", date: "Jun 22, 11:30 AM", address: "7 Aba Road, PH" },
-  { id: "DD-2038", customer: "Ibrahim Musa", items: "Egusi Soup ×1", total: 3200, payment: "Paystack", status: "Cancelled", date: "Jun 22, 9:00 AM", address: "Garki, Abuja" },
-  { id: "DD-2037", customer: "Grace Eze", items: "Puff Puff ×5, Zobo ×1", total: 4500, payment: "Paystack", status: "Completed", date: "Jun 21, 7:45 PM", address: "Trans Amadi, PH" },
-];
+import { getOrders, updateOrderStatus } from "../services/api";
 
 const nextStatus = { Pending: "Processing", Processing: "Completed" };
 
 export default function Orders() {
   const showToast = useToast();
   const isMobile = useIsMobile();
-  const [orders, setOrders] = useState(initial);
+  const [orders, setOrders] = useState([]);
   const [tab, setTab] = useState("All");
   const [detail, setDetail] = useState(null);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { getOrders().then(setOrders).catch(() => {}).finally(() => setLoading(false)); }, []);
 
   const filtered = orders.filter(o => {
     if (tab !== "All" && o.status !== tab) return false;
@@ -28,8 +24,17 @@ export default function Orders() {
     return true;
   });
 
-  const updateStatus = (id, status) => { setOrders(o => o.map(x => x.id === id ? { ...x, status } : x)); showToast(`Order ${id} updated to ${status}`, "success"); if (detail?.id === id) setDetail(d => ({ ...d, status })); };
+  const updateStatus = async (id, status) => {
+    try {
+      await updateOrderStatus(id, status);
+      setOrders(o => o.map(x => x.id === id ? { ...x, status } : x));
+      showToast(`Order ${id} updated to ${status}`, "success");
+      if (detail?.id === id) setDetail(d => ({ ...d, status }));
+    } catch { showToast("Failed to update order", "error"); }
+  };
   const tabs = ["All", "Pending", "Processing", "Completed", "Cancelled"];
+
+  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading orders...</div>;
 
   return (
     <div style={{ position: "relative" }}>

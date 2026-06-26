@@ -49,17 +49,22 @@ export default function Wizard() {
   return (
     <div style={{ minHeight: "100vh", background: "#F7F8FA", display: "flex", flexDirection: isMobile ? "column" : "row" }}>
       {/* Sidebar / Mobile steps bar */}
-      <div style={{
+      <div style={isMobile ? {
         background: NAVY,
-        [isMobile ? "padding" : "width"]: isMobile ? "12px 16px" : 240,
-        [isMobile ? "minHeight" : "minHeight"]: isMobile ? "auto" : "100vh",
-        padding: isMobile ? "12px 16px" : "32px 20px",
+        padding: "12px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        overflowX: "auto",
+        flexShrink: 0,
+      } : {
+        width: 240,
+        minHeight: "100vh",
+        background: NAVY,
+        padding: "32px 20px",
         flexShrink: 0,
         display: "flex",
-        [isMobile ? "flexDirection" : "flexDirection"]: isMobile ? "row" : "column",
-        alignItems: isMobile ? "center" : "stretch",
-        gap: isMobile ? 8 : 0,
-        overflowX: isMobile ? "auto" : "visible",
+        flexDirection: "column",
       }}>
         {!isMobile && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 48 }}>
@@ -68,14 +73,20 @@ export default function Wizard() {
           </div>
         )}
         {steps.map((s, i) => (
-          <div key={i} style={{
+          <div key={i} style={isMobile ? {
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 10px",
+            opacity: i > step ? 0.4 : 1,
+            whiteSpace: "nowrap",
+          } : {
             display: "flex",
             alignItems: "center",
             gap: 12,
-            padding: isMobile ? "6px 10px" : "12px 0",
+            padding: "12px 0",
             opacity: i > step ? 0.4 : 1,
-            [isMobile ? "flexDirection" : "flexDirection"]: isMobile ? "column" : "row",
-            whiteSpace: "nowrap",
           }}>
             <div style={{
               width: isMobile ? 24 : 28, height: isMobile ? 24 : 28, borderRadius: "50%",
