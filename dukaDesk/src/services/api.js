@@ -1,5 +1,4 @@
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-const TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
 const USE_MOCK = true;
 
 function delay(ms = 600) {
@@ -13,7 +12,6 @@ function mockError(rate = 0.05) {
 /* ───── Helpers ───── */
 let _token = localStorage.getItem("dukadesk_token") || null;
 export function setToken(t) { _token = t; if (t) localStorage.setItem("dukadesk_token", t); else localStorage.removeItem("dukadesk_token"); }
-export function getToken() { return _token; }
 
 /* ===================================================================
    AUTH
@@ -315,58 +313,4 @@ export async function getCustomerSplit() {
   return (await fetch(`${BASE_URL}/api/analytics/customers`, { headers: { Authorization: `Bearer ${_token}` } })).json();
 }
 
-/* ===================================================================
-   WIZARD
-   =================================================================== */
 
-/**
- * GET /api/wizard/categories
- * Response: [{ icon, name, desc }]
- */
-export async function getWizardCategories() {
-  if (USE_MOCK) { await delay(200); return [{ icon: "🍽️", name: "Restaurant", desc: "Full menus, ordering & delivery" }, { icon: "🛍️", name: "Ecommerce", desc: "Products, cart & checkout" }, { icon: "🥗", name: "Food Vendor", desc: "Bukas, home kitchens, caterers" }, { icon: "🛒", name: "Grocery", desc: "Supermarkets & local stores" }, { icon: "⛪", name: "Church", desc: "Events, giving & community" }, { icon: "🏫", name: "School", desc: "Timetables, fees & announcements" }, { icon: "📅", name: "Booking", desc: "Appointments & scheduling" }]; }
-  return (await fetch(`${BASE_URL}/api/wizard/categories`, { headers: { Authorization: `Bearer ${_token}` } })).json();
-}
-
-/**
- * GET /api/wizard/templates
- * Response: [{ name, tags, features, preview }]
- */
-export async function getWizardTemplates() {
-  if (USE_MOCK) { await delay(200); return [{ name: "Classic Dine", tags: ["Elegant", "Warm tones"], features: ["Menu", "Cart", "Orders", "Reservations"], preview: "🍜" }, { name: "Modern Bites", tags: ["Dark theme", "Bold type"], features: ["Menu", "Cart", "Orders", "Table Booking"], preview: "🍔" }, { name: "Fresh & Bright", tags: ["Minimal", "Photo-forward"], features: ["Menu", "Cart", "Delivery", "Pickup"], preview: "🥗" }]; }
-  return (await fetch(`${BASE_URL}/api/wizard/templates`, { headers: { Authorization: `Bearer ${_token}` } })).json();
-}
-
-/**
- * GET /api/wizard/integrations
- * Response: [{ cat, items: [{ icon, name, desc, badge }] }]
- */
-export async function getWizardIntegrations() {
-  if (USE_MOCK) { await delay(200); return [{ cat: "Payments", items: [{ icon: "💳", name: "Paystack", desc: "Cards, bank transfer & USSD", badge: "Popular" }, { icon: "💳", name: "Flutterwave", desc: "Pan-African gateway", badge: "Popular" }, { icon: "🏦", name: "Bank Transfer", desc: "Manual bank details", badge: "Free" }] }, { cat: "Commerce", items: [{ icon: "🛒", name: "Product Cart", desc: "Full cart & checkout flow", badge: "Popular" }, { icon: "🏷️", name: "Discount Codes", desc: "Create promo codes", badge: "Free" }, { icon: "📦", name: "Order Tracking", desc: "Real-time order status", badge: "Popular" }] }, { cat: "Booking", items: [{ icon: "📅", name: "Appointment Calendar", desc: "Self-booking for customers", badge: "Popular" }, { icon: "⏰", name: "Booking Reminders", desc: "SMS/push reminders", badge: "Popular" }] }, { cat: "Loyalty", items: [{ icon: "⭐", name: "Loyalty Points", desc: "Earn & redeem rewards", badge: "Popular" }, { icon: "🔔", name: "Push Notifications", desc: "Broadcast offers to users", badge: "Popular" }] }, { cat: "Communication", items: [{ icon: "💬", name: "In-App Messaging", desc: "Live chat with customers", badge: "Popular" }, { icon: "📱", name: "WhatsApp Link", desc: "Quick WhatsApp contact", badge: "Free" }] }]; }
-  return (await fetch(`${BASE_URL}/api/wizard/integrations`, { headers: { Authorization: `Bearer ${_token}` } })).json();
-}
-
-/**
- * POST /api/wizard/publish
- * Body: { category, template, logo, appName, tagline, color, selectedIntegrations, bizDesc, phone, address }
- * Response: { message, appUrl }
- */
-export async function publishApp(body) {
-  if (USE_MOCK) { await delay(1200); mockError(0.1); return { message: "Your app is live!", appUrl: "dukadesk.app/mamas-kitchen" }; }
-  const res = await fetch(`${BASE_URL}/api/wizard/publish`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${_token}` }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error("Failed to publish app");
-  return res.json();
-}
-
-/* ===================================================================
-   NOTIFICATIONS
-   =================================================================== */
-
-/**
- * GET /api/notifications
- * Response: { unreadCount: number, items: [{ id, icon, title, time }] }
- */
-export async function getNotifications() {
-  if (USE_MOCK) { await delay(200); return { unreadCount: 3, items: [{ id: 1, icon: "🛒", title: "New order received", time: "2 min ago" }, { id: 2, icon: "💬", title: "Message from Chika", time: "15 min ago" }, { id: 3, icon: "⭐", title: "New 5-star review", time: "1 hr ago" }] }; }
-  return (await fetch(`${BASE_URL}/api/notifications`, { headers: { Authorization: `Bearer ${_token}` } })).json();
-}

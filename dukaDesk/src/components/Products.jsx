@@ -5,12 +5,6 @@ import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, statusColors } from "../theme";
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../services/api";
 
-const statusStyle = {
-  "In Stock": { bg: "#F0FDF4", color: "#065F46" },
-  "Low Stock": { bg: "#FFF8ED", color: "#92400E" },
-  "Out of Stock": { bg: "#FEF2F2", color: "#991B1B" },
-};
-
 export default function Products() {
   const showToast = useToast();
   const isMobile = useIsMobile();
@@ -102,7 +96,7 @@ export default function Products() {
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : isTablet ? "repeat(2,1fr)" : "repeat(3,1fr)", gap: isMobile ? 12 : 16 }}>
         {filtered.map(p => {
-          const ss = statusStyle[p.status] || statusStyle["In Stock"];
+          const ss = statusColors[p.status] || statusColors["In Stock"];
           const isSel = selected.includes(p.id);
           return (
             <div key={p.id} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: isSel ? `2px solid ${AMBER}` : "2px solid transparent", transition: "all 0.15s" }}>

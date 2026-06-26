@@ -4,6 +4,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import { useIsMobile, useIsTablet } from "./hooks/useMediaQuery";
+import { setToken } from "./services/api";
 
 const Auth = lazy(() => import("./components/Auth"));
 const Dashboard = lazy(() => import("./components/Dashboard"));
@@ -17,7 +18,9 @@ const Billing = lazy(() => import("./components/Billing"));
 const MiniAppPreview = lazy(() => import("./components/MiniAppPreview"));
 
 const ToastContext = createContext();
+const AuthContext = createContext();
 export const useToast = () => useContext(ToastContext);
+export const useAuth = () => useContext(AuthContext);
 
 function Toast({ toast }) {
   const colors = {
@@ -54,7 +57,13 @@ export default function App() {
     setMerchant(data);
   };
 
+  const logout = () => {
+    setMerchant(null);
+    setToken(null);
+  };
+
   return (
+    <AuthContext.Provider value={{ merchant, logout }}>
     <ToastContext.Provider value={showToast}>
       <ErrorBoundary>
         <div style={{ fontFamily: "'Inter', sans-serif", minHeight: "100vh", background: "#F7F8FA" }}>
@@ -82,6 +91,7 @@ export default function App() {
         </div>
       </ErrorBoundary>
     </ToastContext.Provider>
+    </AuthContext.Provider>
   );
 }
 

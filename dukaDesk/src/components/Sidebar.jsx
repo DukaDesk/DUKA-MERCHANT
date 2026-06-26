@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, ChevronLeft, ChevronRight, Store } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, ChevronLeft, ChevronRight, Store, LogOut } from "lucide-react";
 import { useIsMobile } from "../hooks/useMediaQuery";
+import { useAuth } from "../App";
 import { NAVY, AMBER } from "../theme";
 
 const navItems = [
@@ -22,6 +23,9 @@ export default function Sidebar() {
   const currentPage = location.pathname.split("/")[1] || "dashboard";
   const navigateTo = (path) => navigate(path === "dashboard" ? "/dashboard" : `/dashboard/${path}`);
 
+  const { logout } = useAuth();
+  const handleLogout = () => { logout(); navigate("/login"); };
+
   if (isMobile) {
     return (
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: NAVY, display: "flex", padding: "4px 0", borderTop: "1px solid #252547", justifyContent: "space-around" }}>
@@ -35,6 +39,10 @@ export default function Sidebar() {
             </button>
           );
         })}
+        <button onClick={handleLogout} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "6px 0", background: "none", border: "none", cursor: "pointer" }}>
+          <LogOut size={18} color="#9CA3AF" />
+          <span style={{ fontSize: 10, color: "#9CA3AF" }}>Logout</span>
+        </button>
       </div>
     );
   }
@@ -79,6 +87,10 @@ export default function Sidebar() {
           <div style={{ width: 32, height: 32, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: NAVY, flexShrink: 0 }}>A</div>
           {!collapsed && <div style={{ flex: 1, overflow: "hidden" }}><div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Ada Okafor</div><div style={{ color: "#9CA3AF", fontSize: 11 }}>ada@mamaskitchen.com</div></div>}
         </div>
+        <button onClick={handleLogout} style={{ marginTop: 10, width: "100%", display: "flex", alignItems: "center", gap: 8, justifyContent: collapsed ? "center" : "flex-start", padding: "8px 10px", background: "transparent", border: "1px solid #374151", borderRadius: 8, color: "#9CA3AF", cursor: "pointer", fontSize: 13 }} title="Logout">
+          <LogOut size={16} />
+          {!collapsed && <span>Logout</span>}
+        </button>
       </div>
       <button onClick={() => setCollapsed(!collapsed)} style={{ background: "#252547", border: "none", color: "#9CA3AF", padding: "10px", cursor: "pointer", fontSize: 14, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
         {collapsed ? <ChevronRight size={16} /> : <><ChevronLeft size={16} /> Collapse</>}

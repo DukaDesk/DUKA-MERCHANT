@@ -40,7 +40,7 @@ export default function Messages() {
     try {
       await sendMessage(active.id, text);
       setTimeout(async () => {
-        const auto = await sendMessage(active.id, "Got it, thanks! 🙏");
+        await sendMessage(active.id, "Got it, thanks! 🙏");
         setMessages(m => ({ ...m, [active.id]: [...(m[active.id] || []), { from: "customer", text: "Got it, thanks! 🙏", time: "Just now" }] }));
       }, 1200);
     } catch {}

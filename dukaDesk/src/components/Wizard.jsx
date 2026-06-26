@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../App";
 import { useIsMobile } from "../hooks/useMediaQuery";
@@ -133,7 +133,7 @@ function StepCategory({ data, setData, isMobile }) {
   return (
     <div>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>What type of business are you?</h2>
-      <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 36px" }}>We'll recommend the best templates and integrations for you.</p>
+      <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 36px" }}>We&apos;ll recommend the best templates and integrations for you.</p>
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)", gap: isMobile ? 12 : 16 }}>
         {categories.map((c, i) => {
           const selected = data.category === c.name;
@@ -178,6 +178,15 @@ function StepTemplate({ data, setData, isMobile }) {
 
 function StepBranding({ data, setData, isMobile }) {
   const colors = ["#1A1A2E", "#F4A026", "#2ECC71", "#E74C3C", "#7C3AED", "#0D9488", "#EA580C", "#EC4899", "#000000"];
+  const logoInputRef = useRef(null);
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert("File too large. Max 5MB."); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => setData(d => ({ ...d, logo: ev.target.result }));
+    reader.readAsDataURL(file);
+  };
   return (
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: isMobile ? 24 : 40 }}>
       <div>
@@ -185,10 +194,11 @@ function StepBranding({ data, setData, isMobile }) {
         <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 32px" }}>Your logo, colors and name appear throughout your customer-facing app.</p>
         <div style={{ marginBottom: 20 }}>
           <label style={labelStyle}>App Logo</label>
-          <div style={{ width: isMobile ? 100 : 140, height: isMobile ? 100 : 140, border: "2px dashed #E5E7EB", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "#FAFAFA", gap: 8 }} onClick={() => {}}>
-            <span style={{ fontSize: isMobile ? 24 : 32 }}>📷</span>
+          <input ref={logoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogoUpload} />
+          <div onClick={() => logoInputRef.current?.click()} style={{ width: isMobile ? 100 : 140, height: isMobile ? 100 : 140, border: "2px dashed #E5E7EB", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", background: data.logo ? `url(${data.logo}) center/cover no-repeat` : "#FAFAFA", gap: 8 }}>
+            {!data.logo && <><span style={{ fontSize: isMobile ? 24 : 32 }}>📷</span>
             <span style={{ fontSize: 13, color: "#9CA3AF" }}>Upload Logo</span>
-            <span style={{ fontSize: 11, color: "#D1D5DB" }}>PNG · Max 5MB</span>
+            <span style={{ fontSize: 11, color: "#D1D5DB" }}>PNG · Max 5MB</span></>}
           </div>
         </div>
         <div style={{ marginBottom: 16 }}>
@@ -221,10 +231,13 @@ function StepBranding({ data, setData, isMobile }) {
           <div style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>Live Preview</div>
           <div style={{ background: NAVY, borderRadius: 32, padding: 12, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", width: 240 }}>
             <div style={{ background: "#fff", borderRadius: 24, overflow: "hidden", minHeight: 420 }}>
-              <div style={{ background: data.color, padding: "20px 16px" }}>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Open Now · 4.8 ⭐</div>
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: "#fff" }}>{data.appName || "Your App"}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>{data.tagline}</div>
+              <div style={{ background: data.color, padding: "20px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                {data.logo && <img src={data.logo} alt="logo" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} />}
+                <div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Open Now · 4.8 ⭐</div>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: "#fff" }}>{data.appName || "Your App"}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>{data.tagline}</div>
+                </div>
               </div>
               <div style={{ padding: "12px 12px 8px" }}>
                 {["Popular", "Mains", "Drinks"].map((cat, i) => (
@@ -362,7 +375,7 @@ function Published({ onFinish, showToast, isMobile }) {
         <div style={{ fontSize: 80, marginBottom: 16 }}>🎉</div>
         <div style={{ width: 80, height: 80, background: "#F0FDF4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 40 }}>✓</div>
         <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 32 : 48, color: NAVY, marginBottom: 8 }}>Your App is Live!</h1>
-        <p style={{ color: "#6B7280", fontSize: isMobile ? 16 : 18, marginBottom: 40 }}>Mama's Kitchen is now on DukaDesk. 🚀</p>
+        <p style={{ color: "#6B7280", fontSize: isMobile ? 16 : 18, marginBottom: 40 }}>Mama&apos;s Kitchen is now on DukaDesk. 🚀</p>
         <div style={{ background: "#fff", borderRadius: 16, padding: isMobile ? 24 : 40, boxShadow: "0 4px 24px rgba(0,0,0,0.08)", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 24 : 40, textAlign: "left", marginBottom: 32 }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Your QR Code</div>

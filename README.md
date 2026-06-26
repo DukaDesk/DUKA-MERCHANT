@@ -18,7 +18,7 @@ A modern, production-ready React dashboard for e-commerce merchants to manage pr
 - **React** 18.2.0 - UI Framework
 - **Recharts** - Data visualization
 - **Lucide React** - Icons
-- **React Scripts** - Build tooling
+- **Vite** - Build tooling
 
 ## Prerequisites
 
@@ -46,16 +46,12 @@ cp .env.example .env
 
 ## Available Scripts
 
-### `npm start`
-Runs the app in development mode.
+### `npm start` / `npm run dev`
+Runs the app in development mode via Vite dev server.
 Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
 ### `npm run build`
 Builds the app for production to the `build` folder.
-It correctly bundles React in production mode and optimizes the build for best performance.
-
-### `npm test`
-Launches the test runner.
 
 ### `npm run lint`
 Checks code for linting errors.
@@ -67,28 +63,19 @@ Formats code using Prettier.
 
 ```
 dukaDesk/
-├── public/              # Static assets
-│   ├── index.html      # Main HTML file
-│   ├── manifest.json   # PWA manifest
-│   └── robots.txt      # SEO robots file
+├── index.html          # Main HTML file (Vite entry)
 ├── src/
 │   ├── components/     # React components
-│   │   ├── Analytics.jsx
-│   │   ├── Auth.jsx
-│   │   ├── Dashboard.jsx
-│   │   ├── Orders.jsx
-│   │   ├── Products.jsx
-│   │   ├── Sidebar.jsx
-│   │   └── ...
 │   ├── hooks/          # Custom React hooks
-│   ├── utils/          # Utility functions
+│   ├── services/       # API service layer
+│   ├── theme.js        # Design tokens & theme
 │   ├── App.jsx         # Root component
-│   ├── index.js        # Entry point
+│   ├── main.jsx        # Entry point
 │   └── index.css       # Global styles
 ├── .env.example        # Environment variables template
 ├── .eslintrc.json      # ESLint configuration
-├── .gitignore          # Git ignore rules
-├── .prettierrc          # Prettier configuration
+├── .prettierrc         # Prettier configuration
+├── vite.config.js      # Vite configuration
 └── package.json        # Dependencies and scripts
 ```
 
@@ -98,11 +85,7 @@ Copy `.env.example` to `.env` and configure:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `REACT_APP_API_URL` | Backend API endpoint | http://localhost:3001 |
-| `REACT_APP_API_TIMEOUT` | API request timeout (ms) | 10000 |
-| `REACT_APP_ENV` | Environment (development/production) | development |
-| `REACT_APP_ENABLE_ANALYTICS` | Enable analytics | true |
-| `REACT_APP_ENABLE_CHAT` | Enable chat feature | true |
+| `VITE_API_URL` | Backend API endpoint | http://localhost:3001 |
 
 ## Deployment
 
@@ -121,25 +104,8 @@ The build folder is ready to be deployed to any static hosting service:
 
 ### Docker Deployment
 
-Create a `Dockerfile`:
+A `Dockerfile` is included. Build and run:
 
-```dockerfile
-FROM node:18-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-FROM node:18-alpine
-RUN npm install -g serve
-WORKDIR /app
-COPY --from=build /app/build ./build
-EXPOSE 3000
-CMD ["serve", "-s", "build", "-l", "3000"]
-```
-
-Build and run:
 ```bash
 docker build -t dukadesk-merchant .
 docker run -p 3000:3000 dukadesk-merchant
