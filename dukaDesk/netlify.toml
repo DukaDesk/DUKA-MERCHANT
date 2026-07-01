@@ -1,0 +1,4 @@
+[build]
+  base = "dukaDesk"
+  command = "npm run build"
+  publish = "build"
