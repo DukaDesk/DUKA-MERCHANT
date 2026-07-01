@@ -4,6 +4,8 @@ import { useToast } from "../App";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle } from "../theme";
 import { getConversations, getMessages, sendMessage } from "../services/api";
+import { MESSAGE_REPORT_REASONS } from "../services/mockData";
+import { Loading, Empty } from "./States";
 
 export default function Messages() {
   const showToast = useToast();
@@ -21,13 +23,13 @@ export default function Messages() {
     getConversations().then(list => {
       setConversations(list);
       if (list.length > 0) setActive(list[0]);
-    }).catch(() => {}).finally(() => setConvLoading(false));
+    }).catch(() => showToast("Failed to load conversations", "error")).finally(() => setConvLoading(false));
   }, []);
 
   useEffect(() => {
     if (!active) return;
     if (!messages[active.id]) {
-      getMessages(active.id).then(msgs => setMessages(m => ({ ...m, [active.id]: msgs }))).catch(() => {});
+      getMessages(active.id).then(msgs => setMessages(m => ({ ...m, [active.id]: msgs }))).catch(() => showToast("Failed to load messages", "error"));
     }
   }, [active?.id]);
 
@@ -43,7 +45,7 @@ export default function Messages() {
         await sendMessage(active.id, "Got it, thanks! 🙏");
         setMessages(m => ({ ...m, [active.id]: [...(m[active.id] || []), { from: "customer", text: "Got it, thanks! 🙏", time: "Just now" }] }));
       }, 1200);
-    } catch {}
+    } catch { showToast("Failed to send message", "error"); }
   };
 
   const submitReport = () => {
@@ -55,7 +57,8 @@ export default function Messages() {
 
   const filtered = tab === "All" ? conversations : conversations.filter(c => c.unread > 0);
 
-  if (convLoading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading messages...</div>;
+  if (convLoading) return <Loading message="Loading messages..." />;
+  if (conversations.length === 0) return <Empty icon="💬" message="No conversations yet" sub="Messages from customers will appear here" />;
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "300px 1fr 280px", height: isMobile ? "calc(100vh - 120px)" : "calc(100vh - 128px)", background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
@@ -74,7 +77,7 @@ export default function Messages() {
         <div style={{ flex: 1, overflowY: "auto" }}>
           {filtered.map(c => (
             <div key={c.id} onClick={() => setActive(c)} style={{ padding: "14px 16px", cursor: "pointer", background: active?.id === c.id ? "#FFF8ED" : c.unread ? "#fff" : "#FAFAFA", borderLeft: active?.id === c.id ? `3px solid ${AMBER}` : "3px solid transparent", borderBottom: "1px solid #F3F4F6", display: "flex", gap: 10 }}>
-              <div style={{ width: 44, height: 44, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: NAVY, flexShrink: 0, fontSize: 16 }}>{c.name[0]}</div>
+              <div style={{ width: 44, height: 44, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: NAVY, flexShrink: 0, fontSize: 16 }}>{(c.name || "?")[0]}</div>
               <div style={{ flex: 1, overflow: "hidden" }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontWeight: c.unread ? 700 : 500, fontSize: 14, color: NAVY }}>{c.name}</span>
@@ -97,7 +100,7 @@ export default function Messages() {
                   <ChevronLeft size={20} />
                 </button>
               )}
-              <div style={{ width: 40, height: 40, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: NAVY }}>{active.name[0]}</div>
+              <div style={{ width: 40, height: 40, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: NAVY }}>{(active.name || "?")[0]}</div>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 15, color: NAVY }}>{active.name}</div>
                 <div style={{ fontSize: 12, color: "#6B7280" }}>Customer since May 2025 · {active.orders} orders</div>
@@ -109,7 +112,7 @@ export default function Messages() {
               <div style={{ textAlign: "center", fontSize: 11, color: "#9CA3AF", padding: "4px 0" }}>Today</div>
               {(messages[active.id] || []).map((m, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: m.from === "merchant" ? "flex-end" : "flex-start", gap: 8 }}>
-                  {m.from === "customer" && <div style={{ width: 28, height: 28, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: NAVY, flexShrink: 0, alignSelf: "flex-end" }}>{active.name[0]}</div>}
+                  {m.from === "customer" && <div style={{ width: 28, height: 28, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: NAVY, flexShrink: 0, alignSelf: "flex-end" }}>{(active.name || "?")[0]}</div>}
                   <div style={{ maxWidth: "60%", background: m.from === "merchant" ? AMBER : "#fff", color: m.from === "merchant" ? NAVY : "#374151", borderRadius: m.from === "merchant" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", padding: "10px 14px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
                     <div style={{ fontSize: 14, lineHeight: 1.5 }}>{m.text}</div>
                     <div style={{ fontSize: 10, color: m.from === "merchant" ? "rgba(26,26,46,0.5)" : "#9CA3AF", marginTop: 4, textAlign: "right" }}>{m.time} {m.from === "merchant" ? "✓✓" : ""}</div>
@@ -122,7 +125,7 @@ export default function Messages() {
               <button onClick={() => showToast("File attachment coming soon", "info")} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", display: "flex" }}>
                 <Paperclip size={20} />
               </button>
-              <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Type a reply..." style={{ flex: 1, height: 44, border: "1px solid #E5E7EB", borderRadius: 22, padding: "0 16px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#F9FAFB" }} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+              <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Type a reply..." style={{ flex: 1, height: 44, border: "1px solid #E5E7EB", borderRadius: 22, padding: "0 16px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#F9FAFB" }} onFocus={() => {}} onBlur={() => {}} />
               <button onClick={send} style={{ width: 44, height: 44, background: AMBER, border: "none", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Send size={18} color={NAVY} />
               </button>
@@ -132,7 +135,7 @@ export default function Messages() {
           {!isMobile && <div style={{ borderLeft: "1px solid #E5E7EB", padding: 20, overflowY: "auto" }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Customer Details</div>
             <div style={{ textAlign: "center", marginBottom: 20 }}>
-              <div style={{ width: 56, height: 56, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 22, color: NAVY, margin: "0 auto 8px" }}>{active.name[0]}</div>
+              <div style={{ width: 56, height: 56, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 22, color: NAVY, margin: "0 auto 8px" }}>{(active.name || "?")[0]}</div>
               <div style={{ fontWeight: 600, fontSize: 16, color: NAVY }}>{active.name}</div>
               <div style={{ fontSize: 12, color: "#9CA3AF" }}>{active.name.toLowerCase().replace(" ",".")}@gmail.com</div>
             </div>
@@ -171,7 +174,7 @@ export default function Messages() {
           <div onClick={() => setReportOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200 }} />
           <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 16, padding: 32, width: isMobile ? "92%" : 420, maxWidth: 420, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", boxSizing: "border-box" }}>
             <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 20, color: NAVY, margin: "0 0 20px" }}>Report this conversation</h3>
-            {["Scam or Fraud", "Harassment or Abuse", "Spam", "Fake Business", "Other"].map(r => (
+            {MESSAGE_REPORT_REASONS.map(r => (
               <label key={r} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #F3F4F6", cursor: "pointer" }}>
                 <input type="radio" name="report" value={r} checked={reportReason === r} onChange={() => setReportReason(r)} />
                 <span style={{ fontSize: 14, color: NAVY }}>{r}</span>

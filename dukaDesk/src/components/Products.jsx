@@ -4,6 +4,7 @@ import { useToast } from "../App";
 import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, statusColors } from "../theme";
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../services/api";
+import { Loading, Empty } from "./States";
 
 export default function Products() {
   const showToast = useToast();
@@ -16,8 +17,9 @@ export default function Products() {
   const [form, setForm] = useState({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "🍛" });
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [focusedField, setFocusedField] = useState(null);
 
-  useEffect(() => { getProducts().then(setProducts).catch(() => {}).finally(() => setLoading(false)); }, []);
+  useEffect(() => { getProducts().then(setProducts).catch(() => showToast("Failed to load products", "error")).finally(() => setLoading(false)); }, []);
 
   const filtered = products.filter(p => {
     if (filter !== "All" && p.status !== filter) return false;
@@ -26,7 +28,7 @@ export default function Products() {
   });
   const toggleSelect = (id) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
   const deleteSelected = async () => {
-    await Promise.all(selected.map(id => deleteProduct(id).catch(() => {})));
+    await Promise.all(selected.map(id => deleteProduct(id).catch(() => showToast("Failed to delete some products", "error"))));
     setProducts(p => p.filter(x => !selected.includes(x.id)));
     setSelected([]);
     showToast(`${selected.length} product(s) deleted`, "info");
@@ -53,7 +55,7 @@ export default function Products() {
     catch { showToast("Failed to delete product", "error"); }
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading products...</div>;
+  if (loading) return <Loading message="Loading products..." />;
 
   return (
     <div style={{ position: "relative" }}>
@@ -94,6 +96,9 @@ export default function Products() {
         ))}
       </div>
 
+      {filtered.length === 0 ? (
+        <Empty icon={products.length === 0 ? "📦" : "🔍"} message={products.length === 0 ? "No products yet" : "No products match your filter"} sub={products.length === 0 ? "Click 'Add Product' to get started" : "Try a different filter or search term"} />
+      ) : (
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : isTablet ? "repeat(2,1fr)" : "repeat(3,1fr)", gap: isMobile ? 12 : 16 }}>
         {filtered.map(p => {
           const ss = statusColors[p.status] || statusColors["In Stock"];
@@ -128,6 +133,7 @@ export default function Products() {
           <span style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>Add New Product</span>
         </div>
       </div>
+      )}
 
       {panel && (
         <>
@@ -143,7 +149,7 @@ export default function Products() {
               {[["Product Name *", "name", "text", "Jollof Rice & Chicken"], ["Category", "cat", "text", "Mains"], ["Price (₦) *", "price", "number", "2500"], ["Stock Quantity", "stock", "number", "10"]].map(([label, key, type, ph]) => (
                 <div key={key} style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>{label}</label>
-                  <input type={type} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={ph} style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+                  <input type={type} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={ph} style={{ ...inputStyle, borderColor: focusedField === key ? AMBER : undefined }} onFocus={() => setFocusedField(key)} onBlur={() => setFocusedField(null)} />
                 </div>
               ))}
               <div style={{ marginBottom: 16 }}>

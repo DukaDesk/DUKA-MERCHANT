@@ -1,26 +1,25 @@
 import { useState, useEffect } from "react";
 import { X, Lock } from "lucide-react";
-import { useToast } from "../App";
+import { useAuth, useToast } from "../App";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../theme";
 import { getIntegrations, toggleIntegration } from "../services/api";
+import { INTEGRATION_BADGE_COLORS } from "../services/mockData";
+import { Loading, Empty } from "./States";
 
-const badgeStyle = {
-  Popular: { bg: "#FFF8ED", color: "#92400E" },
-  Free: { bg: "#F0FDF4", color: "#065F46" },
-  Premium: { bg: `${NAVY}11`, color: NAVY },
-};
+const badgeStyle = INTEGRATION_BADGE_COLORS;
 
 export default function Integrations() {
   const showToast = useToast();
   const isMobile = useIsMobile();
+  const { merchant } = useAuth();
   const [integrations, setIntegrations] = useState([]);
   const [catFilter, setCatFilter] = useState("All");
   const [configPanel, setConfigPanel] = useState(null);
   const [removeConfirm, setRemoveConfirm] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { getIntegrations().then(setIntegrations).catch(() => {}).finally(() => setLoading(false)); }, []);
+  useEffect(() => { getIntegrations().then(setIntegrations).catch(() => showToast("Failed to load integrations", "error")).finally(() => setLoading(false)); }, []);
 
   const toggle = async (catIdx, itemIdx) => {
     const item = integrations[catIdx].items[itemIdx];
@@ -43,7 +42,8 @@ export default function Integrations() {
   const cats = ["All", ...(integrations.map(c => c.cat))];
   const filtered = catFilter === "All" ? integrations : integrations.filter(c => c.cat === catFilter);
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading integrations...</div>;
+  if (loading) return <Loading message="Loading integrations..." />;
+  if (integrations.length === 0) return <Empty icon="🔌" message="No integrations available" sub="Integration categories will appear here" />;
 
   return (
     <div style={{ position: "relative" }}>
@@ -139,10 +139,10 @@ export default function Integrations() {
             <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
               {configPanel.name === "Paystack" && (
                 <>
-                  {[["Business Name", "Mama's Kitchen"], ["Public Key", "pk_live_••••••••••••xxxx"], ["Currency", "NGN"]].map(([label, val]) => (
+                  {[["Business Name", merchant?.business || "My Store"], ["Public Key", "pk_live_••••••••••••xxxx"], ["Currency", "NGN"]].map(([label, val]) => (
                     <div key={label} style={{ marginBottom: 16 }}>
                       <label style={labelStyle}>{label}</label>
-                      <input defaultValue={val} style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+                      <input defaultValue={val} style={inputStyle} />
                     </div>
                   ))}
                   {[["Allow Bank Transfer", true], ["Allow USSD", true], ["Test Mode", false], ["Charge customer transaction fee", false]].map(([label, def]) => (
@@ -158,7 +158,7 @@ export default function Integrations() {
                   <div style={{ background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 8, padding: 14, marginBottom: 20 }}>
                     <div style={{ fontSize: 13, color: "#065F46" }}>✓ 7 active conversations · Avg response time: 12 min</div>
                   </div>
-                  {[["Auto-reply message", "Hi! Thanks for reaching out to Mama's Kitchen. We'll respond shortly 😊"], ["Away message", "We're currently closed. We'll reply when we reopen."]].map(([label, val]) => (
+                  {[["Auto-reply message", `Hi! Thanks for reaching out to ${merchant?.business || "our store"}. We'll respond shortly 😊`], ["Away message", "We're currently closed. We'll reply when we reopen."]].map(([label, val]) => (
                     <div key={label} style={{ marginBottom: 16 }}>
                       <label style={labelStyle}>{label}</label>
                       <textarea defaultValue={val} style={{ ...inputStyle, height: 72, paddingTop: 10, resize: "none" }} />
@@ -171,7 +171,7 @@ export default function Integrations() {
                   {[["Max items per cart", "20"], ["Minimum order amount (₦)", "500"]].map(([label, val]) => (
                     <div key={label} style={{ marginBottom: 16 }}>
                       <label style={labelStyle}>{label}</label>
-                      <input defaultValue={val} type="number" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+                      <input defaultValue={val} type="number" style={inputStyle} />
                     </div>
                   ))}
                   {[["Allow notes on order", true], ["Show estimated delivery time", true]].map(([label, def]) => (
@@ -201,7 +201,9 @@ export default function Integrations() {
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => {
                 const catIdx = integrations.findIndex(c => c.items.some(i => i.name === removeConfirm.name));
+                if (catIdx < 0) { setRemoveConfirm(null); return; }
                 const itemIdx = integrations[catIdx].items.findIndex(i => i.name === removeConfirm.name);
+                if (itemIdx < 0) { setRemoveConfirm(null); return; }
                 toggle(catIdx, itemIdx);
                 setRemoveConfirm(null);
                 setConfigPanel(null);

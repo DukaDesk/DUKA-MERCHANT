@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Download } from "lucide-react";
+import { useToast } from "../App";
 import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../theme";
 import { getRevenueData, getOrderStats, getScanData, getTopProducts, getCustomerSplit } from "../services/api";
+import { Loading, Empty } from "./States";
 
 const PIE_COLORS = [AMBER, NAVY, "#E74C3C"];
 
 export default function Analytics() {
+  const showToast = useToast();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const [rev, setRev] = useState([]);
@@ -20,13 +23,13 @@ export default function Analytics() {
   useEffect(() => {
     Promise.all([getRevenueData(), getOrderStats(), getScanData(), getTopProducts(), getCustomerSplit()])
       .then(([r, o, s, p, c]) => { setRev(r); setOrders(o); setScans(s); setProducts(p); setCustomers(c); })
-      .catch(() => {})
+      .catch(() => showToast("Failed to load analytics", "error"))
       .finally(() => setLoading(false));
   }, []);
 
   const totalScans = scans.reduce((a, s) => a + s.scans, 0);
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading analytics...</div>;
+  if (loading) return <Loading message="Loading analytics..." />;
 
   return (
     <div>
@@ -59,6 +62,7 @@ export default function Analytics() {
       <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "3fr 2fr", gap:20, marginBottom:20 }}>
         <div style={{ ...cardStyle }}>
           <div style={{ fontFamily:"'Sora',sans-serif", fontWeight:600, fontSize:16, color:NAVY, marginBottom:20 }}>Revenue Over Time</div>
+          {rev.length === 0 ? <Empty icon="📈" message="No revenue data yet" /> : (
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={rev}>
               <defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={AMBER} stopOpacity={0.3}/><stop offset="100%" stopColor={AMBER} stopOpacity={0}/></linearGradient></defs>
@@ -69,9 +73,11 @@ export default function Analytics() {
               <Area type="monotone" dataKey="v" stroke={AMBER} strokeWidth={3} fill="url(#rg)"/>
             </AreaChart>
           </ResponsiveContainer>
+          )}
         </div>
         <div style={{ ...cardStyle }}>
           <div style={{ fontFamily:"'Sora',sans-serif", fontWeight:600, fontSize:16, color:NAVY, marginBottom:20 }}>Orders Breakdown</div>
+          {orders.length === 0 ? <Empty icon="📦" message="No orders yet" /> : (
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={orders} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
@@ -81,6 +87,7 @@ export default function Analytics() {
               <Tooltip/>
             </PieChart>
           </ResponsiveContainer>
+          )}
         </div>
       </div>
 
@@ -88,6 +95,7 @@ export default function Analytics() {
         <div style={{ ...cardStyle }}>
           <div style={{ fontFamily:"'Sora',sans-serif", fontWeight:600, fontSize:16, color:NAVY, marginBottom:4 }}>QR Scan Activity</div>
           <div style={{ fontSize:13, color:"#6B7280", marginBottom:16 }}>Your QR code was scanned {totalScans} times this week</div>
+          {scans.length === 0 ? <Empty icon="📱" message="No scan data yet" /> : (
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={scans}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6"/>
@@ -97,10 +105,12 @@ export default function Analytics() {
               <Bar dataKey="scans" fill={AMBER} radius={[4,4,0,0]}/>
             </BarChart>
           </ResponsiveContainer>
+          )}
         </div>
         <div style={{ ...cardStyle }}>
           <div style={{ fontFamily:"'Sora',sans-serif", fontWeight:600, fontSize:16, color:NAVY, marginBottom:4 }}>Customer Insights</div>
           <div style={{ fontSize:13, color:"#6B7280", marginBottom:16 }}>New vs returning customers</div>
+          {customers.length === 0 ? <Empty icon="👥" message="No customer data yet" /> : (
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
               <Pie data={customers} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value">
@@ -110,11 +120,13 @@ export default function Analytics() {
               <Tooltip/>
             </PieChart>
           </ResponsiveContainer>
+          )}
         </div>
       </div>
 
       <div style={{ ...cardStyle }}>
         <div style={{ fontFamily:"'Sora',sans-serif", fontWeight:600, fontSize:16, color:NAVY, marginBottom:16 }}>Top Products</div>
+        {products.length === 0 ? <Empty icon="🏆" message="No product data yet" sub="Sales data will appear once you start receiving orders" /> : (
         <table style={{ width:"100%", borderCollapse:"collapse" }}>
           <thead><tr style={{ background:"#F9FAFB" }}>{["#","Product","Views","Orders","Revenue","Trend"].map(h=><th key={h} style={{ padding:"10px 14px", textAlign:"left", fontSize:12, fontWeight:600, color:"#6B7280", textTransform:"uppercase", letterSpacing:0.5, borderBottom:"1px solid #E5E7EB" }}>{h}</th>)}</tr></thead>
           <tbody>{products.map((p,i)=>(
@@ -128,6 +140,7 @@ export default function Analytics() {
             </tr>
           ))}</tbody>
         </table>
+        )}
       </div>
     </div>
   );

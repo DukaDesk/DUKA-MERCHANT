@@ -4,6 +4,7 @@ import { useToast } from "../App";
 import { useIsMobile, useIsTablet } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle, statusColors } from "../theme";
 import { getOrders, updateOrderStatus } from "../services/api";
+import { Loading } from "./States";
 
 const nextStatus = { Pending: "Processing", Processing: "Completed" };
 
@@ -16,7 +17,7 @@ export default function Orders() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { getOrders().then(setOrders).catch(() => {}).finally(() => setLoading(false)); }, []);
+  useEffect(() => { getOrders().then(setOrders).catch(() => showToast("Failed to load orders", "error")).finally(() => setLoading(false)); }, []);
 
   const filtered = orders.filter(o => {
     if (tab !== "All" && o.status !== tab) return false;
@@ -34,7 +35,7 @@ export default function Orders() {
   };
   const tabs = ["All", "Pending", "Processing", "Completed", "Cancelled"];
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading orders...</div>;
+  if (loading) return <Loading message="Loading orders..." />;
 
   return (
     <div style={{ position: "relative" }}>
@@ -90,7 +91,7 @@ export default function Orders() {
                   <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: NAVY }}>{o.id}</td>
                   <td style={{ padding: "14px 16px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 32, height: 32, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: NAVY, flexShrink: 0 }}>{o.customer[0]}</div>
+                      <div style={{ width: 32, height: 32, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: NAVY, flexShrink: 0 }}>{(o.customer || "?")[0]}</div>
                       <span style={{ fontSize: 14, fontWeight: 500, color: NAVY }}>{o.customer}</span>
                     </div>
                   </td>
@@ -131,7 +132,7 @@ export default function Orders() {
             <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
               <div style={{ background: "#F9FAFB", borderRadius: 10, padding: 16, marginBottom: 20 }}>
                 <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <div style={{ width: 44, height: 44, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: NAVY, fontSize: 16 }}>{detail.customer[0]}</div>
+                  <div style={{ width: 44, height: 44, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: NAVY, fontSize: 16 }}>{(detail.customer || "?")[0]}</div>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 15, color: NAVY }}>{detail.customer}</div>
                     <div style={{ fontSize: 12, color: "#6B7280" }}>📍 {detail.address}</div>

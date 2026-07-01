@@ -23,7 +23,7 @@ export default function Sidebar() {
   const currentPage = location.pathname.split("/")[1] || "dashboard";
   const navigateTo = (path) => navigate(path === "dashboard" ? "/dashboard" : `/dashboard/${path}`);
 
-  const { logout } = useAuth();
+  const { merchant, logout } = useAuth();
   const handleLogout = () => { logout(); navigate("/login"); };
 
   if (isMobile) {
@@ -62,7 +62,7 @@ export default function Sidebar() {
               <Store size={14} color="#fff" />
             </div>
             <div style={{ flex: 1, overflow: "hidden" }}>
-              <div style={{ color: "#fff", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Mama's Kitchen</div>
+              <div style={{ color: "#fff", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{merchant?.business || "My Store"}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 6, height: 6, background: "#2ECC71", borderRadius: "50%" }} /><span style={{ color: "#9CA3AF", fontSize: 11 }}>Live</span></div>
             </div>
             <span style={{ color: "#9CA3AF", fontSize: 12 }}>▼</span>
@@ -84,8 +84,8 @@ export default function Sidebar() {
       <div style={{ padding: collapsed ? "16px 0" : "16px 20px", borderTop: "1px solid #252547" }}>
         {!collapsed && <div style={{ background: `${AMBER}22`, border: `1px solid ${AMBER}44`, borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}><div style={{ color: AMBER, fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Starter Plan</div><div style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 8 }}>1 of 1 apps used</div><button style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", width: "100%" }}>Upgrade Plan ↑</button></div>}
         <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: collapsed ? "center" : "flex-start" }}>
-          <div style={{ width: 32, height: 32, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: NAVY, flexShrink: 0 }}>A</div>
-          {!collapsed && <div style={{ flex: 1, overflow: "hidden" }}><div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Ada Okafor</div><div style={{ color: "#9CA3AF", fontSize: 11 }}>ada@mamaskitchen.com</div></div>}
+          <div style={{ width: 32, height: 32, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: NAVY, flexShrink: 0 }}>{merchant?.avatar?.[0] || merchant?.name?.[0] || "M"}</div>
+          {!collapsed && <div style={{ flex: 1, overflow: "hidden" }}><div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>{merchant?.name || "Merchant"}</div><div style={{ color: "#9CA3AF", fontSize: 11 }}>{merchant?.email || ""}</div></div>}
         </div>
         <button onClick={handleLogout} style={{ marginTop: 10, width: "100%", display: "flex", alignItems: "center", gap: 8, justifyContent: collapsed ? "center" : "flex-start", padding: "8px 10px", background: "transparent", border: "1px solid #374151", borderRadius: 8, color: "#9CA3AF", cursor: "pointer", fontSize: 13 }} title="Logout">
           <LogOut size={16} />

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import PropTypes from "prop-types";
 import { useIsMobile } from "../hooks/useMediaQuery";
+import { useAuth } from "../App";
 import { AMBER, NAVY } from "../theme";
 
 const MERCHANT_COLOR = "#1B4332";
@@ -21,6 +22,8 @@ const cats = ["Popular", "Mains", "Grills", "Drinks", "Desserts"];
 export default function MiniAppPreview({ onBack }) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { merchant } = useAuth();
+  const storeName = merchant?.business || "My Store";
   const [frame, setFrame] = useState(1);
   const [activeCat, setActiveCat] = useState("Popular");
   const [cart, setCart] = useState({});
@@ -100,7 +103,7 @@ export default function MiniAppPreview({ onBack }) {
               <div style={{ background: `linear-gradient(180deg, ${MERCHANT_COLOR} 0%, ${MERCHANT_COLOR}DD 100%)`, padding: "48px 16px 16px", minHeight: isMobile ? 130 : 160, position: "relative" }}>
                 <div style={{ position: "absolute", inset: 0, backgroundImage: "url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }} />
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>🟢 Open Now · 4.8 ⭐ · Nigerian Cuisine</div>
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 18 : 22, color: "#fff", marginBottom: 10 }}>Mama's Kitchen</div>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 18 : 22, color: "#fff", marginBottom: 10 }}>{storeName}</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {["Delivery", "Pickup"].map(t => (
                     <button key={t} onClick={() => setOrderType(t)} style={{ padding: "7px 18px", borderRadius: 20, border: `1.5px solid ${orderType === t ? "#fff" : "rgba(255,255,255,0.3)"}`, background: orderType === t ? "#fff" : "transparent", color: orderType === t ? MERCHANT_COLOR : "#fff", fontSize: isMobile ? 12 : 13, fontWeight: orderType === t ? 700 : 400, cursor: "pointer" }}>{t}</button>
@@ -158,7 +161,7 @@ export default function MiniAppPreview({ onBack }) {
                   <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200 }} onClick={handleStay} />
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#fff", borderRadius: "20px 20px 0 0", padding: "24px 20px 36px", zIndex: 201, boxShadow: "0 -8px 32px rgba(0,0,0,0.2)" }}>
                     <div style={{ width: 40, height: 4, background: "#E5E7EB", borderRadius: 2, margin: "0 auto 20px" }} />
-                    <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY, marginBottom: 6, textAlign: "center" }}>Leave Mama's Kitchen?</div>
+                    <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY, marginBottom: 6, textAlign: "center" }}>Leave {storeName}?</div>
                     <div style={{ fontSize: 13, color: "#6B7280", textAlign: "center", marginBottom: 8 }}>You'll return to the DukaDesk home screen.</div>
                     {cartCount > 0 && <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 8, padding: "8px 12px", marginBottom: 16, textAlign: "center" }}>
                       <span style={{ fontSize: 12, color: "#92400E" }}>🛒 Your cart will be saved for 24 hours.</span>

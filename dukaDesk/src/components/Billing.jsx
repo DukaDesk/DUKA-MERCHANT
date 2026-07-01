@@ -4,6 +4,7 @@ import { useToast } from "../App";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../theme";
 import { getCurrentPlan, getPlans, getBillingHistory, upgradePlan } from "../services/api";
+import { Loading, Empty } from "./States";
 
 export default function Billing() {
   const showToast = useToast();
@@ -17,11 +18,12 @@ export default function Billing() {
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
   const [loading, setLoading] = useState(true);
+  const [focusedField, setFocusedField] = useState(null);
 
   useEffect(() => {
     Promise.all([getCurrentPlan(), getPlans(), getBillingHistory()])
       .then(([cp, p, h]) => { setCurrentPlan(cp); setPlans(p); setHistory(h); })
-      .catch(() => {})
+      .catch(() => showToast("Failed to load billing info", "error"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -34,7 +36,8 @@ export default function Billing() {
     } catch { showToast("Upgrade failed. Please try again.", "error"); setPayStep(0); }
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>Loading billing info...</div>;
+  if (loading) return <Loading message="Loading billing info..." />;
+  if (!currentPlan && plans.length === 0) return <Empty icon="💳" message="No billing data available" sub="Your subscription information will appear here" />;
 
   return (
     <div>
@@ -53,7 +56,7 @@ export default function Billing() {
           </div>
           <div style={{ textAlign: isMobile ? "left" : "right" }}>
             <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, marginBottom: 8 }}>Renews: {currentPlan.renews}</div>
-            <button onClick={() => setUpgradeModal(plans[1])} style={{ background: "#fff", color: AMBER, border: "none", borderRadius: 24, padding: "12px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Upgrade Plan →</button>
+            <button onClick={() => setUpgradeModal(plans.find(p => !p.current) || plans[0])} style={{ background: "#fff", color: AMBER, border: "none", borderRadius: 24, padding: "12px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Upgrade Plan →</button>
           </div>
         </div>
       )}
@@ -155,16 +158,16 @@ export default function Billing() {
                 </div>
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>Card Number</label>
-                  <input value={cardNum} onChange={e => setCardNum(e.target.value.replace(/\D/g, "").slice(0, 16))} placeholder="1234 5678 9012 3456" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+                  <input value={cardNum} onChange={e => setCardNum(e.target.value.replace(/\D/g, "").slice(0, 16))} placeholder="1234 5678 9012 3456" style={{ ...inputStyle, borderColor: focusedField === "card" ? AMBER : undefined }} onFocus={() => setFocusedField("card")} onBlur={() => setFocusedField(null)} />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
                   <div>
                     <label style={labelStyle}>Expiry</label>
-                    <input value={expiry} onChange={e => setExpiry(e.target.value)} placeholder="MM/YY" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+                    <input value={expiry} onChange={e => setExpiry(e.target.value)} placeholder="MM/YY" style={{ ...inputStyle, borderColor: focusedField === "expiry" ? AMBER : undefined }} onFocus={() => setFocusedField("expiry")} onBlur={() => setFocusedField(null)} />
                   </div>
                   <div>
                     <label style={labelStyle}>CVV</label>
-                    <input value={cvv} onChange={e => setCvv(e.target.value.slice(0, 3))} placeholder="123" type="password" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+                    <input value={cvv} onChange={e => setCvv(e.target.value.slice(0, 3))} placeholder="123" type="password" style={{ ...inputStyle, borderColor: focusedField === "cvv" ? AMBER : undefined }} onFocus={() => setFocusedField("cvv")} onBlur={() => setFocusedField(null)} />
                   </div>
                 </div>
                 <button onClick={handleUpgrade} style={{ width: "100%", background: AMBER, color: NAVY, border: "none", borderRadius: 28, height: 52, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>{payStep === 1 ? "Processing..." : `Subscribe — ${upgradeModal.label}`}</button>

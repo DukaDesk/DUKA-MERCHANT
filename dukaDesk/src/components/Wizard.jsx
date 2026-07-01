@@ -1,50 +1,55 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import QRCode from "qrcode";
 import { useToast } from "../App";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../theme";
+import { setSetupData } from "../services/api";
+import { WIZARD_STEPS, WIZARD_CATEGORIES, WIZARD_TEMPLATES_BY_CATEGORY, WIZARD_FEATURE_INTEGRATION_MAP, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_PREVIEW_DATA, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, INTEGRATION_BADGE_COLORS } from "../services/mockData";
 
-const steps = ["Category", "Template", "Branding", "Business Info", "Integrations"];
-const categories = [
-  { icon: "🍽️", name: "Restaurant", desc: "Full menus, ordering & delivery" },
-  { icon: "🛍️", name: "Ecommerce", desc: "Products, cart & checkout" },
-  { icon: "🥗", name: "Food Vendor", desc: "Bukas, home kitchens, caterers" },
-  { icon: "🛒", name: "Grocery", desc: "Supermarkets & local stores" },
-  { icon: "⛪", name: "Church", desc: "Events, giving & community" },
-  { icon: "🏫", name: "School", desc: "Timetables, fees & announcements" },
-  { icon: "📅", name: "Booking", desc: "Appointments & scheduling" },
-];
-const templates = [
-  { name: "Classic Dine", tags: ["Elegant", "Warm tones"], features: ["Menu", "Cart", "Orders", "Reservations"], preview: "🍜" },
-  { name: "Modern Bites", tags: ["Dark theme", "Bold type"], features: ["Menu", "Cart", "Orders", "Table Booking"], preview: "🍔" },
-  { name: "Fresh & Bright", tags: ["Minimal", "Photo-forward"], features: ["Menu", "Cart", "Delivery", "Pickup"], preview: "🥗" },
-];
-const integrations = [
-  { cat: "Payments", items: [{ icon: "💳", name: "Paystack", desc: "Cards, bank transfer & USSD", badge: "Popular" }, { icon: "💳", name: "Flutterwave", desc: "Pan-African gateway", badge: "Popular" }, { icon: "🏦", name: "Bank Transfer", desc: "Manual bank details", badge: "Free" }] },
-  { cat: "Commerce", items: [{ icon: "🛒", name: "Product Cart", desc: "Full cart & checkout flow", badge: "Popular" }, { icon: "🏷️", name: "Discount Codes", desc: "Create promo codes", badge: "Free" }, { icon: "📦", name: "Order Tracking", desc: "Real-time order status", badge: "Popular" }] },
-  { cat: "Booking", items: [{ icon: "📅", name: "Appointment Calendar", desc: "Self-booking for customers", badge: "Popular" }, { icon: "⏰", name: "Booking Reminders", desc: "SMS/push reminders", badge: "Popular" }] },
-  { cat: "Loyalty", items: [{ icon: "⭐", name: "Loyalty Points", desc: "Earn & redeem rewards", badge: "Popular" }, { icon: "🔔", name: "Push Notifications", desc: "Broadcast offers to users", badge: "Popular" }] },
-  { cat: "Communication", items: [{ icon: "💬", name: "In-App Messaging", desc: "Live chat with customers", badge: "Popular" }, { icon: "📱", name: "WhatsApp Link", desc: "Quick WhatsApp contact", badge: "Free" }] },
-];
+const steps = WIZARD_STEPS;
+const categories = WIZARD_CATEGORIES;
+const templatesByCategory = WIZARD_TEMPLATES_BY_CATEGORY;
+const integrations = WIZARD_INTEGRATIONS;
+const featureIntegrationMap = WIZARD_FEATURE_INTEGRATION_MAP;
+const alwaysIncluded = WIZARD_ALWAYS_INCLUDED;
+const previewData = WIZARD_PREVIEW_DATA;
+
+function getTemplateIntegrations(templateName) {
+  const allTemplates = Object.values(templatesByCategory).flat();
+  const tmpl = allTemplates.find(t => t.name === templateName);
+  if (!tmpl) return [...alwaysIncluded];
+  const names = new Set(tmpl.features.flatMap(f => featureIntegrationMap[f] || []));
+  return [...alwaysIncluded, ...names];
+}
 
 export default function Wizard() {
   const navigate = useNavigate();
   const showToast = useToast();
   const isMobile = useIsMobile();
   const [step, setStep] = useState(0);
-  const [data, setData] = useState({ category: null, template: null, logo: null, appName: "Mama's Kitchen", tagline: "Authentic Nigerian home cooking", color: AMBER, selectedIntegrations: ["Paystack", "Product Cart", "In-App Messaging"], bizDesc: "", phone: "", address: "" });
+  const [data, setData] = useState({ category: null, template: null, logo: null, appName: "", tagline: "", color: AMBER, selectedIntegrations: [...alwaysIncluded], bizDesc: "", phone: "", address: "" });
+  const [errors, setErrors] = useState({});
   const [published, setPublished] = useState(false);
 
-  const next = () => { if (step < 4) setStep(s => s + 1); else handlePublish(); };
+  const validate = () => {
+    const e = {};
+    if (step === 2 && !data.appName.trim()) e.appName = "App name is required";
+    if (step === 3 && !data.phone.trim()) e.phone = "Phone number is required for customer contact";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const next = () => { if (!validate()) return; if (step < 4) setStep(s => s + 1); else handlePublish(); };
   const back = () => setStep(s => s - 1);
   const canNext = () => {
     if (step === 0) return !!data.category;
     if (step === 1) return !!data.template;
     return true;
   };
-  const handlePublish = () => { setPublished(true); };
+  const handlePublish = () => { setSetupData({ category: data.category, template: data.template, appName: data.appName, tagline: data.tagline, color: data.color, selectedIntegrations: data.selectedIntegrations }); setPublished(true); };
 
-  if (published) return <Published onFinish={() => navigate("/dashboard")} showToast={showToast} isMobile={isMobile} />;
+  if (published) return <Published data={data} onFinish={() => navigate("/dashboard")} showToast={showToast} isMobile={isMobile} />;
 
   return (
     <div style={{ minHeight: "100vh", background: "#F7F8FA", display: "flex", flexDirection: isMobile ? "column" : "row" }}>
@@ -89,10 +94,10 @@ export default function Wizard() {
             opacity: i > step ? 0.4 : 1,
           }}>
             <div style={{
-              width: isMobile ? 24 : 28, height: isMobile ? 24 : 28, borderRadius: "50%",
+              width: isMobile ? 32 : 28, height: isMobile ? 32 : 28, borderRadius: "50%",
               background: i < step ? "#2ECC71" : i === step ? AMBER : "#252547",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: isMobile ? 10 : 12, fontWeight: 700,
+              fontSize: isMobile ? 14 : 12, fontWeight: 700,
               color: i < step ? "#fff" : NAVY, flexShrink: 0,
             }}>
               {i < step ? "✓" : i + 1}
@@ -115,8 +120,8 @@ export default function Wizard() {
 
           {step === 0 && <StepCategory data={data} setData={setData} isMobile={isMobile} />}
           {step === 1 && <StepTemplate data={data} setData={setData} isMobile={isMobile} />}
-          {step === 2 && <StepBranding data={data} setData={setData} isMobile={isMobile} />}
-          {step === 3 && <StepBusiness data={data} setData={setData} isMobile={isMobile} />}
+          {step === 2 && <StepBranding data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} />}
+          {step === 3 && <StepBusiness data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} />}
           {step === 4 && <StepIntegrations data={data} setData={setData} isMobile={isMobile} />}
 
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 40, paddingTop: 24, borderTop: "1px solid #E5E7EB" }}>
@@ -130,6 +135,7 @@ export default function Wizard() {
 }
 
 function StepCategory({ data, setData, isMobile }) {
+  const [hovered, setHovered] = useState(null);
   return (
     <div>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>What type of business are you?</h2>
@@ -138,7 +144,7 @@ function StepCategory({ data, setData, isMobile }) {
         {categories.map((c, i) => {
           const selected = data.category === c.name;
           return (
-            <div key={i} onClick={() => setData(d => ({ ...d, category: c.name }))} style={{ background: selected ? "#FFF8ED" : "#fff", border: `2px solid ${selected ? AMBER : "#E5E7EB"}`, borderRadius: 12, padding: isMobile ? 16 : 24, cursor: "pointer", transition: "all 0.15s", position: "relative" }}>
+            <div key={i} onClick={() => setData(d => ({ ...d, category: c.name, template: d.category === c.name ? d.template : null }))} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} style={{ background: selected ? "#FFF8ED" : hovered === i ? "#F9FAFB" : "#fff", border: `2px solid ${selected ? AMBER : hovered === i ? "#D1D5DB" : "#E5E7EB"}`, borderRadius: 12, padding: isMobile ? 16 : 24, cursor: "pointer", transition: "all 0.15s", position: "relative", transform: hovered === i && !selected ? "translateY(-2px)" : "none", boxShadow: hovered === i && !selected ? "0 4px 12px rgba(0,0,0,0.08)" : "none" }}>
               {selected && <div style={{ position: "absolute", top: 10, right: 10, background: AMBER, color: "#fff", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>✓</div>}
               <div style={{ fontSize: isMobile ? 28 : 40, marginBottom: 12 }}>{c.icon}</div>
               <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: isMobile ? 14 : 16, color: NAVY, marginBottom: 4 }}>{c.name}</div>
@@ -152,6 +158,8 @@ function StepCategory({ data, setData, isMobile }) {
 }
 
 function StepTemplate({ data, setData, isMobile }) {
+  const templates = templatesByCategory[data.category] || [];
+  const [hovered, setHovered] = useState(null);
   return (
     <div>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Choose your template</h2>
@@ -160,7 +168,7 @@ function StepTemplate({ data, setData, isMobile }) {
         {templates.map((t, i) => {
           const selected = data.template === t.name;
           return (
-            <div key={i} style={{ background: "#fff", border: `2px solid ${selected ? AMBER : "#E5E7EB"}`, borderRadius: 12, overflow: "hidden", cursor: "pointer", transition: "all 0.15s", position: "relative" }} onClick={() => setData(d => ({ ...d, template: t.name }))}>
+            <div key={i} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} style={{ background: "#fff", border: `2px solid ${selected ? AMBER : hovered === i ? "#D1D5DB" : "#E5E7EB"}`, borderRadius: 12, overflow: "hidden", cursor: "pointer", transition: "all 0.15s", position: "relative", transform: hovered === i && !selected ? "translateY(-2px)" : "none", boxShadow: hovered === i && !selected ? "0 4px 12px rgba(0,0,0,0.08)" : "none" }} onClick={() => setData(d => ({ ...d, template: t.name, selectedIntegrations: getTemplateIntegrations(t.name) }))}>
               {selected && <div style={{ position: "absolute", top: 10, left: 10, background: AMBER, color: NAVY, fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 12, zIndex: 2 }}>Selected ✓</div>}
               <div style={{ height: isMobile ? 140 : 180, background: NAVY, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 56 : 72 }}>{t.preview}</div>
               <div style={{ padding: 16 }}>
@@ -176,8 +184,9 @@ function StepTemplate({ data, setData, isMobile }) {
   );
 }
 
-function StepBranding({ data, setData, isMobile }) {
-  const colors = ["#1A1A2E", "#F4A026", "#2ECC71", "#E74C3C", "#7C3AED", "#0D9488", "#EA580C", "#EC4899", "#000000"];
+function StepBranding({ data, setData, errors, setErrors, isMobile }) {
+  const colors = WIZARD_COLORS;
+  const [focused, setFocused] = useState(null);
   const logoInputRef = useRef(null);
   const handleLogoUpload = (e) => {
     const file = e.target.files?.[0];
@@ -202,13 +211,14 @@ function StepBranding({ data, setData, isMobile }) {
           </div>
         </div>
         <div style={{ marginBottom: 16 }}>
-          <label style={labelStyle}>App / Business Name</label>
-          <input value={data.appName} onChange={e => setData(d => ({ ...d, appName: e.target.value }))} style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+          <label style={labelStyle}>App / Business Name *</label>
+          <input value={data.appName} onChange={e => { setData(d => ({ ...d, appName: e.target.value })); if (errors.appName) setErrors(e => ({ ...e, appName: "" })); } } style={{ ...inputStyle, borderColor: errors.appName ? "#E74C3C" : focused === "appName" ? AMBER : undefined }} onFocus={() => setFocused("appName")} onBlur={() => setFocused(null)} />
+          {errors.appName && <div style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.appName}</div>}
           <div style={{ textAlign: "right", fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>{data.appName.length}/50</div>
         </div>
         <div style={{ marginBottom: 24 }}>
           <label style={labelStyle}>Tagline</label>
-          <input value={data.tagline} onChange={e => setData(d => ({ ...d, tagline: e.target.value }))} placeholder="Authentic Nigerian home cooking" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+          <input value={data.tagline} onChange={e => setData(d => ({ ...d, tagline: e.target.value }))} placeholder="Authentic Nigerian home cooking" style={{ ...inputStyle, borderColor: focused === "tagline" ? AMBER : undefined }} onFocus={() => setFocused("tagline")} onBlur={() => setFocused(null)} />
         </div>
         <div>
           <label style={labelStyle}>Brand Color</label>
@@ -222,11 +232,13 @@ function StepBranding({ data, setData, isMobile }) {
           </div>
           <div style={{ marginTop: 16, padding: "12px 16px", background: "#F9FAFB", borderRadius: 8 }}>
             <span style={{ fontSize: 12, color: "#6B7280" }}>Button preview: </span>
-            <button style={{ background: data.color, color: data.color === "#fff" ? NAVY : "#fff", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "default" }}>Add to Cart</button>
+            <button style={{ background: data.color, color: data.color === "#fff" ? NAVY : "#fff", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "default" }}>{(previewData[data.category] || previewData.Restaurant).cta}</button>
           </div>
         </div>
       </div>
-      {!isMobile && (
+      {!isMobile && (() => {
+        const pv = previewData[data.category] || previewData.Restaurant;
+        return (
         <div style={{ position: "sticky", top: 20 }}>
           <div style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>Live Preview</div>
           <div style={{ background: NAVY, borderRadius: 32, padding: 12, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", width: 240 }}>
@@ -234,19 +246,19 @@ function StepBranding({ data, setData, isMobile }) {
               <div style={{ background: data.color, padding: "20px 16px", display: "flex", alignItems: "center", gap: 12 }}>
                 {data.logo && <img src={data.logo} alt="logo" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} />}
                 <div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Open Now · 4.8 ⭐</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>{pv.badge} · 4.8 ⭐</div>
                   <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: "#fff" }}>{data.appName || "Your App"}</div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>{data.tagline}</div>
                 </div>
               </div>
               <div style={{ padding: "12px 12px 8px" }}>
-                {["Popular", "Mains", "Drinks"].map((cat, i) => (
+                {pv.categories.map((cat, i) => (
                   <span key={i} style={{ background: i === 0 ? data.color : "#F3F4F6", color: i === 0 ? "#fff" : "#6B7280", fontSize: 11, padding: "4px 10px", borderRadius: 12, marginRight: 6, fontWeight: i === 0 ? 600 : 400 }}>{cat}</span>
                 ))}
               </div>
-              {[{ name: "Jollof Rice", price: "₦2,500" }, { name: "Grilled Chicken", price: "₦4,500" }].map((item, i) => (
+              {pv.items.map((item, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderTop: "1px solid #F3F4F6" }}>
-                  <div style={{ width: 48, height: 48, background: "#F3F4F6", borderRadius: 6, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🍛</div>
+                  <div style={{ width: 48, height: 48, background: "#F3F4F6", borderRadius: 6, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{item.emoji}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: NAVY }}>{item.name}</div>
                     <div style={{ fontSize: 11, color: data.color, fontWeight: 700 }}>{item.price}</div>
@@ -258,12 +270,14 @@ function StepBranding({ data, setData, isMobile }) {
           </div>
           <p style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center", marginTop: 8 }}>Updates as you type</p>
         </div>
-      )}
+      );
+      })()}
     </div>
   );
 }
 
-function StepBusiness({ data, setData, isMobile }) {
+function StepBusiness({ data, setData, errors, setErrors, isMobile }) {
+  const [focused, setFocused] = useState(null);
   return (
     <div style={{ maxWidth: 600 }}>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Tell customers about your business</h2>
@@ -274,20 +288,21 @@ function StepBusiness({ data, setData, isMobile }) {
         <div style={{ textAlign: "right", fontSize: 11, color: "#9CA3AF" }}>{(data.bizDesc || "").length}/500</div>
       </div>
       <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>Contact Phone</label>
+        <label style={labelStyle}>Contact Phone *</label>
         <div style={{ display: "flex", gap: 8, flexDirection: isMobile ? "column" : "row" }}>
           <div style={{ ...inputStyle, maxWidth: isMobile ? "100%" : 90, display: "flex", alignItems: "center", justifyContent: "center" }}>🇳🇬 +234</div>
-          <input value={data.phone} onChange={e => setData(d => ({ ...d, phone: e.target.value }))} placeholder="801 234 5678" style={{ ...inputStyle, flex: 1 }} />
+          <input value={data.phone} onChange={e => { setData(d => ({ ...d, phone: e.target.value })); if (errors.phone) setErrors(e => ({ ...e, phone: "" })); } } placeholder="801 234 5678" style={{ ...inputStyle, flex: 1, borderColor: errors.phone ? "#E74C3C" : undefined }} />
         </div>
+        {errors.phone && <div style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.phone}</div>}
       </div>
       <div style={{ marginBottom: 16 }}>
         <label style={labelStyle}>Business Address</label>
-        <input value={data.address} onChange={e => setData(d => ({ ...d, address: e.target.value }))} placeholder="12 Admiralty Way, Lekki, Lagos" style={inputStyle} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = "#E5E7EB"} />
+        <input value={data.address} onChange={e => setData(d => ({ ...d, address: e.target.value }))} placeholder="12 Admiralty Way, Lekki, Lagos" style={{ ...inputStyle, borderColor: focused === "address" ? AMBER : undefined }} onFocus={() => setFocused("address")} onBlur={() => setFocused(null)} />
       </div>
       <div style={{ marginBottom: 24 }}>
         <label style={labelStyle}>Operating Hours</label>
         <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden" }}>
-          {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day, i) => (
+          {WIZARD_DAYS.map((day, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 16, padding: "12px 16px", borderBottom: i < 6 ? "1px solid #F3F4F6" : "none", flexWrap: isMobile ? "wrap" : "nowrap" }}>
               <span style={{ width: isMobile ? 60 : 90, fontSize: 14, color: NAVY, fontWeight: 500 }}>{day}</span>
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
@@ -310,15 +325,20 @@ function StepIntegrations({ data, setData, isMobile }) {
     const has = d.selectedIntegrations.includes(name);
     return { ...d, selectedIntegrations: has ? d.selectedIntegrations.filter(x => x !== name) : [...d.selectedIntegrations, name] };
   });
-  const badgeColor = { Popular: { bg: "#FFF8ED", color: "#92400E" }, Free: { bg: "#F0FDF4", color: "#065F46" }, Premium: { bg: `${NAVY}11`, color: NAVY } };
+  const badgeColor = INTEGRATION_BADGE_COLORS;
+  const relevant = getTemplateIntegrations(data.template);
+  const relevantSet = new Set(relevant);
+  const filteredIntegrations = integrations
+    .map(cat => ({ ...cat, items: cat.items.filter(item => relevantSet.has(item.name)) }))
+    .filter(cat => cat.items.length > 0);
 
   return (
     <div>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Supercharge your app</h2>
-      <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 32px" }}>Pick the integrations that match your business. Add more anytime.</p>
+      <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 32px" }}>Integrations tailored to your template. Add more anytime.</p>
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 300px", gap: 28 }}>
         <div>
-          {integrations.map((cat, ci) => (
+          {filteredIntegrations.map((cat, ci) => (
             <div key={ci} style={{ marginBottom: 28 }}>
               <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 12 }}>{cat.cat}</div>
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
@@ -366,34 +386,40 @@ function StepIntegrations({ data, setData, isMobile }) {
   );
 }
 
-function Published({ onFinish, showToast, isMobile }) {
+function Published({ data, onFinish, showToast, isMobile }) {
   const [copied, setCopied] = useState(false);
-  const copy = () => { setCopied(true); showToast("Store link copied!", "success"); setTimeout(() => setCopied(false), 2000); };
+  const [qrDataUrl, setQrDataUrl] = useState(null);
+  const appName = data.appName || "Your App";
+  const slug = appName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const storeUrl = `dukadesk.app/${slug}`;
+  const qrSize = isMobile ? 120 : 160;
+  useEffect(() => { QRCode.toDataURL(`https://${storeUrl}`, { width: qrSize * 2, margin: 1 }).then(setQrDataUrl).catch(() => {}); }, [storeUrl, qrSize]);
+  const downloadQr = () => {
+    if (!qrDataUrl) { showToast("QR code not ready", "error"); return; }
+    const a = document.createElement("a"); a.href = qrDataUrl; a.download = `${slug}-qr.png`; a.click();
+    showToast("QR code downloaded!", "success");
+  };
+  const copy = () => { navigator.clipboard.writeText(storeUrl); setCopied(true); showToast("Store link copied!", "success"); setTimeout(() => setCopied(false), 2000); };
   return (
     <div style={{ minHeight: "100vh", background: "#F7F8FA", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ textAlign: "center", maxWidth: 760, padding: isMobile ? 20 : 40 }}>
         <div style={{ fontSize: 80, marginBottom: 16 }}>🎉</div>
         <div style={{ width: 80, height: 80, background: "#F0FDF4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 40 }}>✓</div>
         <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 32 : 48, color: NAVY, marginBottom: 8 }}>Your App is Live!</h1>
-        <p style={{ color: "#6B7280", fontSize: isMobile ? 16 : 18, marginBottom: 40 }}>Mama&apos;s Kitchen is now on DukaDesk. 🚀</p>
+        <p style={{ color: "#6B7280", fontSize: isMobile ? 16 : 18, marginBottom: 40 }}>{appName} is now on DukaDesk. 🚀</p>
         <div style={{ background: "#fff", borderRadius: 16, padding: isMobile ? 24 : 40, boxShadow: "0 4px 24px rgba(0,0,0,0.08)", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 24 : 40, textAlign: "left", marginBottom: 32 }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Your QR Code</div>
-            <div style={{ width: isMobile ? 120 : 160, height: isMobile ? 120 : 160, background: "#F3F4F6", borderRadius: 12, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 60 : 80 }}>▣</div>
-            <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 16, wordBreak: "break-all" }}>dukadesk.app/mamas-kitchen</div>
+            {qrDataUrl ? <img src={qrDataUrl} alt="QR code" style={{ width: qrSize, height: qrSize, borderRadius: 12, margin: "0 auto 16px", display: "block" }} /> : <div style={{ width: qrSize, height: qrSize, background: "#F3F4F6", borderRadius: 12, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 60 : 80 }}>▣</div>}
+            <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 16, wordBreak: "break-all" }}>{storeUrl}</div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-              <button onClick={() => showToast("QR downloaded!", "success")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>⬇ Download PNG</button>
+              <button onClick={downloadQr} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>⬇ Download PNG</button>
               <button onClick={copy} style={{ background: copied ? "#2ECC71" : "none", color: copied ? "#fff" : AMBER, border: `1px solid ${copied ? "#2ECC71" : AMBER}`, borderRadius: 20, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{copied ? "Copied! ✓" : "Copy Link"}</button>
             </div>
           </div>
           <div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>What Happens Next</div>
-            {[
-              "Our team reviews your app (usually within 2 hours)",
-              "You'll receive an email when you go live",
-              "Start adding your products from your dashboard",
-              "Share your QR code — customers scan to access your app!",
-            ].map((step, i) => (
+            {WIZARD_PUBLISH_STEPS.map((step, i) => (
               <div key={i} style={{ display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-start" }}>
                 <div style={{ width: 24, height: 24, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: NAVY, flexShrink: 0 }}>{i + 1}</div>
                 <span style={{ fontSize: 14, color: "#374151", lineHeight: 1.5 }}>{step}</span>

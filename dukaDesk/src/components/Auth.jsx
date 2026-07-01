@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft, KeyRound } from "lucide-react";
 import PropTypes from "prop-types";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../theme";
@@ -105,7 +105,7 @@ function LoginForm({ onAuth, setPage }) {
       const res = await login({ email, password });
       setToken(res.token);
       onAuth(res.merchant);
-      setPage("/wizard");
+      setPage("/dashboard");
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
     } finally {
@@ -119,14 +119,16 @@ function LoginForm({ onAuth, setPage }) {
       <p style={{ color: "#6B7280", fontSize: 15, margin: "0 0 36px" }}>Manage your apps, orders, and customers.</p>
       {error && <div style={{ background: "#FEF2F2", border: "1px solid #E74C3C", borderRadius: 8, padding: "12px 16px", color: "#991B1B", fontSize: 14, marginBottom: 20 }}>⚠ {error}</div>}
       <form onSubmit={handleSubmit}>
-        <Field label="Email address" type="email" value={email} onChange={e => { setEmail(e.target.value); setError(""); }} placeholder="ada@mamaskitchen.com" icon={<Mail size={18} />} />
+        <Field label="Email address" type="email" value={email} onChange={e => { setEmail(e.target.value); setError(""); }} placeholder="ada@example.com" icon={<Mail size={18} />} />
         <Field label="Password" type={showPw ? "text" : "password"} value={password} onChange={e => { setPassword(e.target.value); setError(""); }} placeholder="Your password" icon={<Lock size={18} />} suffix={
           <button type="button" onClick={() => setShowPw(!showPw)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex", alignItems: "center" }}>
             {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         } />
         <div style={{ textAlign: "right", marginBottom: 24 }}>
-          <button type="button" onClick={() => setPage("/forgot")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, cursor: "pointer", fontWeight: 500 }}>Forgot password?</button>
+          <button type="button" onClick={() => setPage("/forgot")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, cursor: "pointer", fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <KeyRound size={14} /> Forgot password?
+          </button>
         </div>
         <Btn loading={loading}>{loading ? "Logging in..." : "Log in"}</Btn>
       </form>
@@ -145,6 +147,7 @@ LoginForm.propTypes = { onAuth: PropTypes.func.isRequired, setPage: PropTypes.fu
 function SignupForm({ onAuth, setPage }) {
   const [form, setForm] = useState({ name: "", business: "", email: "", phone: "", password: "", confirm: "" });
   const [showPw, setShowPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -197,8 +200,8 @@ function SignupForm({ onAuth, setPage }) {
       <form onSubmit={handleSubmit}>
         {errors.submit && <div style={{ background: "#FEF2F2", border: "1px solid #E74C3C", borderRadius: 8, padding: "12px 16px", color: "#991B1B", fontSize: 14, marginBottom: 20 }}>⚠ {errors.submit}</div>}
         <Field label="Full name" value={form.name} onChange={set("name")} placeholder="Ada Okafor" error={errors.name} icon={<User size={18} />} />
-        <Field label="Business name" value={form.business} onChange={set("business")} placeholder="Mama's Kitchen" error={errors.business} icon={<Store size={18} />} />
-        <Field label="Email address" type="email" value={form.email} onChange={set("email")} placeholder="ada@mamaskitchen.com" error={errors.email} icon={<Mail size={18} />} />
+        <Field label="Business name" value={form.business} onChange={set("business")} placeholder="Your business name" error={errors.business} icon={<Store size={18} />} />
+        <Field label="Email address" type="email" value={form.email} onChange={set("email")} placeholder="ada@example.com" error={errors.email} icon={<Mail size={18} />} />
         <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>Phone number</label>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -220,7 +223,11 @@ function SignupForm({ onAuth, setPage }) {
             <span style={{ fontSize: 11, color: strColor, fontWeight: 600 }}>{strLabel}</span>
           </div>
         )}
-        <Field label="Confirm password" type="password" value={form.confirm} onChange={set("confirm")} placeholder="Repeat password" error={errors.confirm} icon={<Lock size={18} />} />
+        <Field label="Confirm password" type={showConfirmPw ? "text" : "password"} value={form.confirm} onChange={set("confirm")} placeholder="Repeat password" error={errors.confirm} icon={<Lock size={18} />} suffix={
+          <button type="button" onClick={() => setShowConfirmPw(!showConfirmPw)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex", alignItems: "center" }}>
+            {showConfirmPw ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        } />
         <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 20 }}>
           By signing up you agree to our{" "}
           <span style={{ color: AMBER, cursor: "pointer" }}>Terms</span> &{" "}
@@ -281,7 +288,7 @@ function ForgotForm({ setPage }) {
       </div>
       {error && <div style={{ background: "#FEF2F2", border: "1px solid #E74C3C", borderRadius: 8, padding: "12px 16px", color: "#991B1B", fontSize: 14, marginBottom: 20 }}>⚠ {error}</div>}
       <form onSubmit={handleSubmit}>
-        <Field label="Email address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ada@mamaskitchen.com" icon={<Mail size={18} />} />
+        <Field label="Email address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ada@example.com" icon={<Mail size={18} />} />
         <Btn loading={loading}>{loading ? "Sending..." : "Send reset link"}</Btn>
       </form>
       <button onClick={() => setPage("/login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
@@ -294,12 +301,13 @@ function ForgotForm({ setPage }) {
 ForgotForm.propTypes = { setPage: PropTypes.func.isRequired };
 
 function Field({ label, error, icon, suffix, ...props }) {
+  const [focused, setFocused] = useState(false);
   return (
     <div style={{ marginBottom: 16 }}>
       <label style={labelStyle}>{label}</label>
       <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
         {icon && <span style={{ position: "absolute", left: 14, color: "#9CA3AF", display: "flex" }}>{icon}</span>}
-        <input style={{ ...inputStyle, paddingLeft: icon ? 42 : 14, ...(error ? { borderColor: "#E74C3C" } : {}) }} {...props} onFocus={e => e.target.style.borderColor = AMBER} onBlur={e => e.target.style.borderColor = error ? "#E74C3C" : "#E5E7EB"} />
+        <input style={{ ...inputStyle, paddingLeft: icon ? 42 : 14, paddingRight: suffix ? 42 : 14, borderColor: error ? "#E74C3C" : focused ? AMBER : undefined }} {...props} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
         {suffix && <span style={{ position: "absolute", right: 14 }}>{suffix}</span>}
       </div>
       {error && <p style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>⚠ {error}</p>}
