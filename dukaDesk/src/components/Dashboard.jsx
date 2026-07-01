@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [revenueData, setRevenueData] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  // testing vercel pipeline
 
   const storeSlug = (merchant?.business || "my-store").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   const storeUrl = `dukadesk.app/${storeSlug}`;
