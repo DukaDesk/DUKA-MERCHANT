@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { X, Lock } from "lucide-react";
-import { useAuth, useToast } from "../App";
-import { useIsMobile } from "../hooks/useMediaQuery";
-import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../theme";
-import { getIntegrations, toggleIntegration } from "../services/api";
-import { INTEGRATION_BADGE_COLORS } from "../services/mockData";
-import { Loading, Empty } from "./States";
+import { useAuth, useToast } from "../../App";
+import { useIsMobile } from "../../hooks/useMediaQuery";
+import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
+import { getIntegrations, toggleIntegration } from "../../services/api";
+import { INTEGRATION_BADGE_COLORS } from "../../services/mockData";
+import { Loading, Empty } from "../layout/States";
 
 const badgeStyle = INTEGRATION_BADGE_COLORS;
 

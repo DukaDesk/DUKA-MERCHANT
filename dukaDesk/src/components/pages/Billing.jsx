@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { X, Download } from "lucide-react";
-import { useToast } from "../App";
-import { useIsMobile } from "../hooks/useMediaQuery";
-import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../theme";
-import { getCurrentPlan, getPlans, getBillingHistory, upgradePlan } from "../services/api";
-import { Loading, Empty } from "./States";
+import { useToast } from "../../App";
+import { useIsMobile } from "../../hooks/useMediaQuery";
+import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
+import { getCurrentPlan, getPlans, getBillingHistory, upgradePlan } from "../../services/api";
+import { Loading, Empty } from "../layout/States";
 
 export default function Billing() {
   const showToast = useToast();
