@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../App";
-import { getMyApp, getSetupData } from "../../services/api";
+import { getMyApp, getSetupData, getProducts } from "../../services/api";
 import { AMBER, NAVY } from "../../theme";
 
 const FALLBACK_COLOR = "#1B4332";
@@ -22,6 +22,7 @@ export default function MiniAppPreview() {
   const { merchant } = useAuth();
   const [app, setApp] = useState(null);
   const [activeCat, setActiveCat] = useState("Popular");
+  const [products, setProducts] = useState([]);
   const [cart, setCart] = useState({});
   const [orderType, setOrderType] = useState("Delivery");
   const [loading, setLoading] = useState(true);
@@ -29,16 +30,18 @@ export default function MiniAppPreview() {
   const [showCartModal, setShowCartModal] = useState(false);
 
   useEffect(() => {
-    getMyApp().then(data => { setApp(data); }).catch(() => {
-      // fallback to setup data if no deployed app
-      const setup = getSetupData();
-      if (setup) setApp(setup);
+    Promise.all([
+      getMyApp().catch(() => getSetupData()),
+      getProducts(),
+    ]).then(([appData, prodData]) => {
+      if (appData) setApp(appData);
+      if (prodData?.length) setProducts(prodData);
     }).finally(() => setLoading(false));
   }, []);
 
   const brandColor = app?.color || FALLBACK_COLOR;
   const storeName = app?.appName || app?.businessName || app?.business || merchant?.business || "My Store";
-  const menuItems = app?.products?.length > 0 ? app.products.map(p => ({
+  const menuItems = products?.length > 0 ? products.map(p => ({
     id: p.id, name: p.name, desc: p.cat || "", price: p.price, img: p.img || "🍛", cat: p.cat || "Mains",
   })) : FALLBACK_ITEMS;
 

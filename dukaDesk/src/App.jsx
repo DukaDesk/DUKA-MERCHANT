@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState, createContext, useContext, useCallback, useEffect } from "react";
-import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { lazy, Suspense, useState, createContext, useContext, useCallback, useEffect, useRef } from "react";
+import { Routes, Route, Navigate, useLocation, useNavigate, Outlet } from "react-router-dom";
 import ErrorBoundary from "./components/layout/ErrorBoundary";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
@@ -14,6 +14,7 @@ const Orders = lazy(() => import("./components/pages/Orders"));
 const Analytics = lazy(() => import("./components/pages/Analytics"));
 const Messages = lazy(() => import("./components/pages/Messages"));
 const Integrations = lazy(() => import("./components/pages/Integrations"));
+const IntegrationDetails = lazy(() => import("./components/pages/IntegrationDetails"));
 const Billing = lazy(() => import("./components/pages/Billing"));
 const Profile = lazy(() => import("./components/pages/Profile"));
 const MiniAppPreview = lazy(() => import("./components/app-builder/MiniAppPreview"));
@@ -88,7 +89,14 @@ export default function App() {
   const logout = useCallback(() => {
     setMerchant(null);
     setToken(null);
-    try { localStorage.removeItem("dd_merchant"); } catch {}
+    const keys = ["dd_merchant", "dd_deployed_app", "dd_products", "dukadesk_setup", "dd_integration_states"];
+    keys.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+    const toRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("dd_integration_config_")) toRemove.push(key);
+    }
+    toRemove.forEach(k => { try { localStorage.removeItem(k); } catch {} });
   }, []);
 
   return (
@@ -116,7 +124,9 @@ export default function App() {
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="messages" element={<Messages />} />
                 <Route path="integrations" element={<Integrations />} />
+                <Route path="integrations/:name" element={<IntegrationDetails />} />
                 <Route path="billing" element={<Billing />} />
+                <Route path="profile" element={<Profile />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
@@ -134,13 +144,13 @@ function ProtectedLayout() {
   const isTablet = useIsTablet();
   const padding = isMobile ? "16px" : isTablet ? "24px" : "32px";
   const { merchant } = useAuth();
-  const setup = getSetupData();
+  const hasSetup = useRef(!!getSetupData());
 
   useEffect(() => {
-    if (merchant && !setup && window.location.pathname === "/dashboard") {
+    if (merchant && !hasSetup.current && window.location.pathname === "/dashboard") {
       navigate("/wizard", { replace: true });
     }
-  }, [merchant, setup]);
+  }, [merchant, navigate]);
 
   return (
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh" }}>
@@ -150,16 +160,7 @@ function ProtectedLayout() {
         <main style={{ flex: 1, overflowY: "auto", padding, background: "var(--bg)" }}>
           <ErrorBoundary>
             <Suspense fallback={<Loader />}>
-              <Routes>
-                <Route index element={<Dashboard />} />
-                <Route path="products" element={<Products />} />
-                <Route path="orders" element={<Orders />} />
-                <Route path="analytics" element={<Analytics />} />
-                <Route path="messages" element={<Messages />} />
-                <Route path="integrations" element={<Integrations />} />
-                <Route path="billing" element={<Billing />} />
-                <Route path="profile" element={<Profile />} />
-              </Routes>
+              <Outlet />
             </Suspense>
           </ErrorBoundary>
         </main>

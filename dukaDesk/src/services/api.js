@@ -248,14 +248,34 @@ export async function sendMessage(conversationId, text) {
    INTEGRATIONS
    ═══════════════════════════════════════════════════════════════════ */
 
+function getIntegrationStates() {
+  try { return JSON.parse(localStorage.getItem("dd_integration_states")) || {}; } catch { return {}; }
+}
+function setIntegrationState(name, active) {
+  const states = getIntegrationStates();
+  states[name] = active;
+  try { localStorage.setItem("dd_integration_states", JSON.stringify(states)); } catch {}
+}
+
 export async function getIntegrations() {
   await delay();
-  return MOCK_INTEGRATIONS;
+  const states = getIntegrationStates();
+  return MOCK_INTEGRATIONS.map(cat => ({
+    ...cat,
+    items: cat.items.map(item => ({
+      ...item,
+      active: item.name in states ? states[item.name] : item.active,
+    })),
+  }));
 }
 
 export async function toggleIntegration(name) {
   await delay();
-  return { name, active: true };
+  const states = getIntegrationStates();
+  const current = name in states ? states[name] : MOCK_INTEGRATIONS.flatMap(c => c.items).find(i => i.name === name)?.active || false;
+  const next = !current;
+  setIntegrationState(name, next);
+  return { name, active: next };
 }
 
 /* ═══════════════════════════════════════════════════════════════════

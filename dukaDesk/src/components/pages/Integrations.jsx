@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Lock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Lock, Store } from "lucide-react";
 import { useToast } from "../../App";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
-import { getIntegrations, toggleIntegration } from "../../services/api";
-import { INTEGRATION_BADGE_COLORS } from "../../services/mockData";
+import { getIntegrations, toggleIntegration, getMyApp } from "../../services/api";
+import { INTEGRATION_BADGE_COLORS, getTemplateIntegrationNames } from "../../services/mockData";
 import { Loading, Empty } from "../layout/States";
 import IntegrationConfigPanel from "./IntegrationConfigPanel";
 
@@ -13,13 +14,36 @@ const badgeStyle = INTEGRATION_BADGE_COLORS;
 export default function Integrations() {
   const showToast = useToast();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [integrations, setIntegrations] = useState([]);
+  const [relevantNames, setRelevantNames] = useState(null);
+  const [appTemplate, setAppTemplate] = useState(null);
   const [catFilter, setCatFilter] = useState("All");
   const [configPanel, setConfigPanel] = useState(null);
   const [removeConfirm, setRemoveConfirm] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { getIntegrations().then(setIntegrations).catch(() => showToast("Failed to load integrations", "error")).finally(() => setLoading(false)); }, []);
+  useEffect(() => {
+    Promise.all([
+      getIntegrations(),
+      getMyApp().catch(() => null),
+    ]).then(([intData, appData]) => {
+      const template = appData?.template || null;
+      setAppTemplate(template);
+      if (template) {
+        const names = getTemplateIntegrationNames(template);
+        setRelevantNames(new Set(names));
+        const filtered = intData.map(cat => ({
+          ...cat,
+          items: cat.items.filter(item => names.includes(item.name)),
+        })).filter(cat => cat.items.length > 0);
+        setIntegrations(filtered);
+      } else {
+        setIntegrations(intData);
+      }
+    }).catch(() => showToast("Failed to load integrations", "error"))
+    .finally(() => setLoading(false));
+  }, []);
 
   const toggle = async (catIdx, itemIdx) => {
     const item = integrations[catIdx].items[itemIdx];
@@ -51,6 +75,23 @@ export default function Integrations() {
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: "0 0 4px" }}>Integrations</h2>
         <p style={{ color: "#6B7280", margin: 0 }}>Manage the features powering your app. Add or remove anytime.</p>
       </div>
+
+      {appTemplate && (
+        <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+          <Store size={18} color={AMBER} />
+          <div style={{ fontSize: 13, color: "#92400E" }}>
+            Showing integrations compatible with your <strong>{appTemplate}</strong> app. {integrations.flatMap(c => c.items).length} available.
+          </div>
+        </div>
+      )}
+      {!appTemplate && (
+        <div style={{ background: "#EFF6FF", border: "1px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+          <Store size={18} color="#3B82F6" />
+          <div style={{ fontSize: 13, color: "#1E40AF" }}>
+            Complete the app setup wizard to see integrations tailored to your template. Showing all integrations for now.
+          </div>
+        </div>
+      )}
 
       <div style={{ ...cardStyle, marginBottom: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -93,7 +134,7 @@ export default function Integrations() {
                   const itemIdx = integrations[catIdx].items.findIndex(x => x.name === item.name);
                   const bc = badgeStyle[item.badge] || badgeStyle.Free;
                   return (
-                    <div key={ii} style={{ border: `2px solid ${item.active ? AMBER : item.locked ? "#E5E7EB" : "#E5E7EB"}`, background: item.active ? "#FFF8ED" : item.locked ? "#F9FAFB" : "#fff", borderRadius: 10, padding: 16, opacity: item.locked ? 0.75 : 1, position: "relative", transition: "all 0.15s" }}>
+                    <div onClick={() => navigate(`/dashboard/integrations/${encodeURIComponent(item.name)}`)} style={{ border: `2px solid ${item.active ? AMBER : item.locked ? "#E5E7EB" : "#E5E7EB"}`, background: item.active ? "#FFF8ED" : item.locked ? "#F9FAFB" : "#fff", borderRadius: 10, padding: 16, opacity: item.locked ? 0.75 : 1, position: "relative", transition: "all 0.15s", cursor: "pointer" }}>
                       {item.locked && <div style={{ position: "absolute", top: 10, right: 10 }}><Lock size={14} color="#9CA3AF" /></div>}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                         <span style={{ fontSize: 28 }}>{item.icon}</span>
@@ -102,11 +143,12 @@ export default function Integrations() {
                       <div style={{ fontWeight: 600, fontSize: 14, color: NAVY, marginBottom: 4 }}>{item.name}</div>
                       <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 12, lineHeight: 1.4 }}>{item.desc}</div>
                       <button
-                        onClick={() => item.locked ? showToast("Upgrade to Growth plan to unlock", "info") : toggle(catIdx, itemIdx)}
+                        onClick={(e) => { e.stopPropagation(); item.locked ? showToast("Upgrade to Growth plan to unlock", "info") : toggle(catIdx, itemIdx); }}
                         style={{ width: "100%", background: item.active ? "#2ECC71" : item.locked ? "#E5E7EB" : AMBER, color: item.active ? "#fff" : item.locked ? "#9CA3AF" : NAVY, border: "none", borderRadius: 20, padding: "8px 0", fontSize: 13, fontWeight: 600, cursor: item.locked ? "not-allowed" : "pointer" }}
                       >
                         {item.active ? "✓ Added" : item.locked ? "🔒 Upgrade to Unlock" : "Add to App →"}
                       </button>
+                      {item.active && <div style={{ fontSize: 11, color: AMBER, fontWeight: 600, marginTop: 8, textAlign: "center" }}>Click card for details →</div>}
                     </div>
                   );
                 })}

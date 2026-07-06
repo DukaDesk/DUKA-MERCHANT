@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, ChevronLeft, ChevronRight, Store, LogOut, Sparkles } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../App";
 import { NAVY, AMBER, cardStyle } from "../../theme";
+import { getOrders, getConversations } from "../../services/api";
 
 const navItems = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { id: "products", icon: Package, label: "Products" },
-  { id: "orders", icon: ShoppingCart, label: "Orders", badge: 5 },
+  { id: "orders", icon: ShoppingCart, label: "Orders" },
   { id: "analytics", icon: BarChart3, label: "Analytics" },
-  { id: "messages", icon: MessageSquare, label: "Messages", badge: 7 },
+  { id: "messages", icon: MessageSquare, label: "Messages" },
   { id: "integrations", icon: Link2, label: "Integrations" },
   { id: "billing", icon: CreditCard, label: "Billing" },
 ];
@@ -18,17 +19,26 @@ const navItems = [
 export default function Sidebar() {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
+  const [badges, setBadges] = useState({ orders: 0, messages: 0 });
   const location = useLocation();
   const navigate = useNavigate();
   const currentPage = location.pathname.split("/")[2] || "dashboard";
   const navigateTo = (path) => navigate(path === "dashboard" ? "/dashboard" : `/dashboard/${path}`);
   const { merchant, logout } = useAuth();
-  const handleLogout = () => { logout(); }; 
+  const handleLogout = () => { logout(); };
+
+  useEffect(() => {
+    getOrders().then(data => setBadges(b => ({ ...b, orders: data.length || 0 }))).catch(() => {});
+    getConversations().then(data => {
+      const unread = data.filter(c => c.unread > 0).length;
+      setBadges(b => ({ ...b, messages: unread }));
+    }).catch(() => {});
+  }, []); 
 
   if (isMobile) {
     return (
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: NAVY, display: "flex", padding: "4px 0", borderTop: "1px solid rgba(255,255,255,0.06)", justifyContent: "space-around", backdropFilter: "blur(20px)" }}>
-        {navItems.filter(i => ["dashboard","products","orders","messages"].includes(i.id)).map(item => {
+        {navItems.filter(i => ["dashboard","products","orders","analytics","messages","integrations","billing"].includes(i.id)).map(item => {
           const active = currentPage === item.id;
           const Icon = item.icon;
           return (
@@ -36,7 +46,7 @@ export default function Sidebar() {
               {active && <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 20, height: 2, background: AMBER, borderRadius: "0 0 2px 2px" }} />}
               <Icon size={18} color={active ? AMBER : "#6B7280"} />
               <span style={{ fontSize: 10, color: active ? AMBER : "#6B7280", fontWeight: active ? 600 : 400 }}>{item.label}</span>
-              {item.badge && <span style={{ position: "absolute", top: 0, right: "12%", background: AMBER, color: NAVY, fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 8, lineHeight: 1.4 }}>{item.badge}</span>}
+              {badges[item.id] > 0 && <span style={{ position: "absolute", top: 0, right: "12%", background: AMBER, color: NAVY, fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 8, lineHeight: 1.4 }}>{badges[item.id]}</span>}
             </button>
           );
         })}
@@ -91,7 +101,7 @@ export default function Sidebar() {
               {!collapsed && (
                 <>
                   <span style={{ color: active ? AMBER : "#D1D5DB", fontSize: 14, fontWeight: active ? 600 : 400, flex: 1, textAlign: "left" }}>{item.label}</span>
-                  {item.badge && <span style={{ background: AMBER, color: NAVY, fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 10 }}>{item.badge}</span>}
+                  {badges[item.id] > 0 && <span style={{ background: AMBER, color: NAVY, fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 10 }}>{badges[item.id]}</span>}
                 </>
               )}
             </button>

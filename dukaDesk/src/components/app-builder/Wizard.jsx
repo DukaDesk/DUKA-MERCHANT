@@ -5,25 +5,31 @@ import { useToast } from "../../App";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
 import { setSetupData, deployApp } from "../../services/api";
-import { WIZARD_STEPS, WIZARD_CATEGORIES, WIZARD_TEMPLATES_BY_CATEGORY, WIZARD_FEATURE_INTEGRATION_MAP, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_PREVIEW_DATA, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, INTEGRATION_BADGE_COLORS } from "../../services/mockData";
+import { WIZARD_STEPS, WIZARD_CATEGORIES, WIZARD_TEMPLATES_BY_CATEGORY, WIZARD_FEATURE_INTEGRATION_MAP, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_PREVIEW_DATA, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, INTEGRATION_BADGE_COLORS, getTemplateIntegrationNames } from "../../services/mockData";
 
 const steps = WIZARD_STEPS;
 const categories = WIZARD_CATEGORIES;
-
-function getTemplateIntegrations(templateName) {
-  const allTemplates = Object.values(WIZARD_TEMPLATES_BY_CATEGORY).flat();
-  const tmpl = allTemplates.find(t => t.name === templateName);
-  if (!tmpl) return [...WIZARD_ALWAYS_INCLUDED];
-  const names = new Set(tmpl.features.flatMap(f => WIZARD_FEATURE_INTEGRATION_MAP[f] || []));
-  return [...WIZARD_ALWAYS_INCLUDED, ...names];
-}
 
 export default function Wizard() {
   const navigate = useNavigate();
   const showToast = useToast();
   const isMobile = useIsMobile();
+  const saved = getSetupData();
+  const defaultHours = () => WIZARD_DAYS.map((d, i) => ({ day: d, open: i < 5, start: "09:00", end: "22:00" }));
   const [step, setStep] = useState(0);
-  const [data, setData] = useState({ category: null, template: null, logo: null, appName: "", tagline: "", color: AMBER, selectedIntegrations: [...WIZARD_ALWAYS_INCLUDED], bizDesc: "", phone: "", address: "" });
+  const [data, setData] = useState({
+    category: saved?.category || null,
+    template: saved?.template || null,
+    logo: saved?.logo || null,
+    appName: saved?.appName || "",
+    tagline: saved?.tagline || "",
+    color: saved?.color || AMBER,
+    selectedIntegrations: saved?.selectedIntegrations || [...WIZARD_ALWAYS_INCLUDED],
+    bizDesc: saved?.bizDesc || "",
+    phone: saved?.phone || "",
+    address: saved?.address || "",
+    hours: (saved?.hours && saved.hours.length > 0) ? saved.hours : defaultHours(),
+  });
   const [errors, setErrors] = useState({});
   const [published, setPublished] = useState(false);
 
@@ -36,7 +42,7 @@ export default function Wizard() {
   };
 
   const saveProgress = () => {
-    setSetupData({ category: data.category, template: data.template, appName: data.appName, tagline: data.tagline, color: data.color, logo: data.logo, selectedIntegrations: data.selectedIntegrations, bizDesc: data.bizDesc, phone: data.phone, address: data.address });
+    setSetupData({ category: data.category, template: data.template, appName: data.appName, tagline: data.tagline, color: data.color, logo: data.logo, selectedIntegrations: data.selectedIntegrations, bizDesc: data.bizDesc, phone: data.phone, address: data.address, hours: data.hours });
   };
 
   const next = () => { if (!validate()) return; saveProgress(); if (step < 4) setStep(s => s + 1); else handlePublish(); };
@@ -54,6 +60,7 @@ export default function Wizard() {
         tagline: data.tagline, color: data.color, logo: data.logo,
         selectedIntegrations: data.selectedIntegrations,
         bizDesc: data.bizDesc, phone: data.phone, address: data.address,
+        hours: data.hours,
       });
       setPublished(true);
     } catch (err) {
@@ -111,12 +118,12 @@ export default function Wizard() {
             {step === 0 && <StepCategory data={data} setData={setData} isMobile={isMobile} />}
             {step === 1 && <StepTemplate data={data} setData={setData} isMobile={isMobile}
               templatesByCategory={WIZARD_TEMPLATES_BY_CATEGORY}
-              getTemplateIntegrations={getTemplateIntegrations}
+              getTemplateIntegrations={getTemplateIntegrationNames}
             />}
             {step === 2 && <StepBranding data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} />}
             {step === 3 && <StepBusiness data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} />}
             {step === 4 && <StepIntegrations data={data} setData={setData} isMobile={isMobile}
-              getTemplateIntegrations={getTemplateIntegrations}
+              getTemplateIntegrations={getTemplateIntegrationNames}
             />}
           </div>
 
@@ -312,6 +319,7 @@ function StepBranding({ data, setData, errors, setErrors, isMobile }) {
 }
 
 function StepBusiness({ data, setData, errors, setErrors, isMobile }) {
+  const defaultHours = WIZARD_DAYS.map((d, i) => ({ day: d, open: i < 5, start: "09:00", end: "22:00" }));
   const [focused, setFocused] = useState(null);
   return (
     <div style={{ maxWidth: 600 }}>
@@ -337,16 +345,16 @@ function StepBusiness({ data, setData, errors, setErrors, isMobile }) {
       <div style={{ marginBottom: 24 }}>
         <label style={labelStyle}>Operating Hours</label>
         <div style={{ background: "#fff", border: "1px solid #E8E8F0", borderRadius: 10, overflow: "hidden" }}>
-          {WIZARD_DAYS.map((day, i) => (
+          {(data.hours || defaultHours).map((h, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 16, padding: "12px 16px", borderBottom: i < 6 ? "1px solid #F3F4F6" : "none", flexWrap: isMobile ? "wrap" : "nowrap" }}>
-              <span style={{ width: isMobile ? 60 : 90, fontSize: 14, color: NAVY, fontWeight: 500 }}>{day}</span>
+              <span style={{ width: isMobile ? 60 : 90, fontSize: 14, color: NAVY, fontWeight: 500 }}>{h.day}</span>
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                <input type="checkbox" defaultChecked={i < 5} style={{ accentColor: AMBER }} />
+                <input type="checkbox" checked={h.open} onChange={e => { const hh = [...(data.hours || defaultHours)]; hh[i] = { ...hh[i], open: e.target.checked }; setData(d => ({ ...d, hours: hh })); }} style={{ accentColor: AMBER }} />
                 <span style={{ fontSize: 13, color: "#6B7280" }}>Open</span>
               </label>
-              <input type="time" defaultValue="09:00" style={{ border: "1px solid #E8E8F0", borderRadius: 6, padding: "4px 8px", fontSize: 13 }} />
+              <input type="time" value={h.start} onChange={e => { const hh = [...(data.hours || defaultHours)]; hh[i] = { ...hh[i], start: e.target.value }; setData(d => ({ ...d, hours: hh })); }} style={{ border: "1px solid #E8E8F0", borderRadius: 6, padding: "4px 8px", fontSize: 13 }} />
               <span style={{ color: "#9CA3AF" }}>to</span>
-              <input type="time" defaultValue="22:00" style={{ border: "1px solid #E8E8F0", borderRadius: 6, padding: "4px 8px", fontSize: 13 }} />
+              <input type="time" value={h.end} onChange={e => { const hh = [...(data.hours || defaultHours)]; hh[i] = { ...hh[i], end: e.target.value }; setData(d => ({ ...d, hours: hh })); }} style={{ border: "1px solid #E8E8F0", borderRadius: 6, padding: "4px 8px", fontSize: 13 }} />
             </div>
           ))}
         </div>

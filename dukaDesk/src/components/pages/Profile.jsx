@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth, useToast } from "../../App";
 import { NAVY, AMBER, cardStyle, inputStyle, labelStyle } from "../../theme";
 import { getMerchantProfile, updateMerchantProfile } from "../../services/api";
 import { Loading } from "../layout/States";
-import { Store, Mail, Phone, User, Save } from "lucide-react";
+import { Store, Mail, Phone, User, Save, ArrowLeft } from "lucide-react";
 
 export default function Profile() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const showToast = useToast();
   const { merchant: contextMerchant, handleAuth } = useAuth();
   const [profile, setProfile] = useState(null);
@@ -40,6 +42,9 @@ export default function Profile() {
 
   return (
     <div style={{ animation: "fadeIn 0.35s ease", maxWidth: 720 }}>
+      <button onClick={() => navigate("/dashboard")} style={{ background: "none", border: "none", color: "#6B7280", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 14, marginBottom: 12, padding: 0 }}>
+        <ArrowLeft size={16} /> Back to Dashboard
+      </button>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: "0 0 6px" }}>Profile</h2>
       <p style={{ color: "#6B7280", fontSize: 14, marginBottom: 24 }}>Manage your merchant account</p>
 

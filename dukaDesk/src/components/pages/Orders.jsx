@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, X, Download, Eye, ChevronRight } from "lucide-react";
+import { Search, X, Download, Eye, ChevronRight, Package } from "lucide-react";
 import { useToast } from "../../App";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle, statusBadge } from "../../theme";
@@ -125,7 +125,7 @@ export default function Orders() {
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && <div style={{ padding: 40, textAlign: "center", color: "#9CA3AF" }}>No orders found.</div>}
+        {filtered.length === 0 && <Empty icon={<Package size={32} />} message="No orders found" sub={search || tab !== "All" ? "Try a different filter or search term" : "Orders will appear here once customers start ordering"} />}
       </div>
 
       {detail && (
