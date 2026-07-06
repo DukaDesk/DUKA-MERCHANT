@@ -105,7 +105,16 @@ export default function Billing() {
       <div style={{ ...cardStyle, overflowX: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Billing History</span>
-          <button onClick={() => showToast("Downloading all invoices...", "info")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+          <button onClick={() => {
+            const csv = [["Date","Description","Amount","Status"].join(","), ...history.map(r =>
+              [r.date, `"${r.desc}"`, r.amount, r.status].join(",")
+            )].join("\n");
+            const blob = new Blob([csv], {type:"text/csv"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = url; a.download = "billing-history.csv"; a.click();
+            URL.revokeObjectURL(url);
+            showToast("All invoices downloaded!", "success");
+          }} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             <Download size={14} /> Download All
           </button>
         </div>
@@ -124,7 +133,14 @@ export default function Billing() {
                 <td style={{ padding: "12px 14px", fontSize: 14, color: "#374151" }}>{row.desc}</td>
                 <td style={{ padding: "12px 14px", fontSize: 14, fontWeight: 600, color: NAVY }}>{row.amount}</td>
                 <td style={{ padding: "12px 14px" }}><span style={{ background: "#F0FDF4", color: "#065F46", fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 10 }}>{row.status} ✓</span></td>
-                <td style={{ padding: "12px 14px" }}><button onClick={() => showToast("Invoice downloaded", "success")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, cursor: "pointer" }}>Download PDF</button></td>
+                <td style={{ padding: "12px 14px" }}><button onClick={() => {
+                  const txt = `DUKADESK INVOICE\n${"=".repeat(40)}\nDate: ${row.date}\nDescription: ${row.desc}\nAmount: ${row.amount}\nStatus: ${row.status}\n${"=".repeat(40)}\nThank you for your business!`;
+                  const blob = new Blob([txt], {type:"text/plain"});
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a"); a.href = url; a.download = `invoice-${row.date.replace(/\//g,"-")}.txt`; a.click();
+                  URL.revokeObjectURL(url);
+                  showToast("Invoice downloaded", "success");
+                }} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, cursor: "pointer" }}>Download PDF</button></td>
               </tr>
             ))}
           </tbody>

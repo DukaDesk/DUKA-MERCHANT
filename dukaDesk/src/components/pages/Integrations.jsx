@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
-import { X, Lock } from "lucide-react";
-import { useAuth, useToast } from "../../App";
+import { Lock } from "lucide-react";
+import { useToast } from "../../App";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
+import { NAVY, AMBER, cardStyle } from "../../theme";
 import { getIntegrations, toggleIntegration } from "../../services/api";
 import { INTEGRATION_BADGE_COLORS } from "../../services/mockData";
 import { Loading, Empty } from "../layout/States";
+import IntegrationConfigPanel from "./IntegrationConfigPanel";
 
 const badgeStyle = INTEGRATION_BADGE_COLORS;
 
 export default function Integrations() {
   const showToast = useToast();
   const isMobile = useIsMobile();
-  const { merchant } = useAuth();
   const [integrations, setIntegrations] = useState([]);
   const [catFilter, setCatFilter] = useState("All");
   const [configPanel, setConfigPanel] = useState(null);
@@ -121,74 +121,17 @@ export default function Integrations() {
       </div>
 
       {configPanel && (
-        <>
-          <div onClick={() => setConfigPanel(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 100 }} />
-          <div style={{ position: "fixed", right: 0, top: 0, width: isMobile ? "100%" : 480, height: "100vh", background: "#fff", zIndex: 101, boxShadow: "-8px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "24px", borderBottom: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ fontSize: 32 }}>{configPanel.icon}</span>
-                <div>
-                  <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: NAVY, margin: 0 }}>Configure {configPanel.name}</h3>
-                  <span style={{ fontSize: 12, color: "#2ECC71", fontWeight: 500 }}>🟢 Connected</span>
-                </div>
-              </div>
-              <button onClick={() => setConfigPanel(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}>
-                <X size={22} />
-              </button>
-            </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
-              {configPanel.name === "Paystack" && (
-                <>
-                  {[["Business Name", merchant?.business || "My Store"], ["Public Key", "pk_live_••••••••••••xxxx"], ["Currency", "NGN"]].map(([label, val]) => (
-                    <div key={label} style={{ marginBottom: 16 }}>
-                      <label style={labelStyle}>{label}</label>
-                      <input defaultValue={val} style={inputStyle} />
-                    </div>
-                  ))}
-                  {[["Allow Bank Transfer", true], ["Allow USSD", true], ["Test Mode", false], ["Charge customer transaction fee", false]].map(([label, def]) => (
-                    <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #F3F4F6" }}>
-                      <span style={{ fontSize: 14, color: NAVY }}>{label}</span>
-                      <input type="checkbox" defaultChecked={def} style={{ width: 44, height: 24, accentColor: AMBER, cursor: "pointer" }} />
-                    </div>
-                  ))}
-                </>
-              )}
-              {configPanel.name === "In-App Messaging" && (
-                <>
-                  <div style={{ background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-                    <div style={{ fontSize: 13, color: "#065F46" }}>✓ 7 active conversations · Avg response time: 12 min</div>
-                  </div>
-                  {[["Auto-reply message", `Hi! Thanks for reaching out to ${merchant?.business || "our store"}. We'll respond shortly 😊`], ["Away message", "We're currently closed. We'll reply when we reopen."]].map(([label, val]) => (
-                    <div key={label} style={{ marginBottom: 16 }}>
-                      <label style={labelStyle}>{label}</label>
-                      <textarea defaultValue={val} style={{ ...inputStyle, height: 72, paddingTop: 10, resize: "none" }} />
-                    </div>
-                  ))}
-                </>
-              )}
-              {configPanel.name === "Product Cart" && (
-                <div>
-                  {[["Max items per cart", "20"], ["Minimum order amount (₦)", "500"]].map(([label, val]) => (
-                    <div key={label} style={{ marginBottom: 16 }}>
-                      <label style={labelStyle}>{label}</label>
-                      <input defaultValue={val} type="number" style={inputStyle} />
-                    </div>
-                  ))}
-                  {[["Allow notes on order", true], ["Show estimated delivery time", true]].map(([label, def]) => (
-                    <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #F3F4F6" }}>
-                      <span style={{ fontSize: 14, color: NAVY }}>{label}</span>
-                      <input type="checkbox" defaultChecked={def} style={{ width: 18, height: 18, cursor: "pointer", accentColor: AMBER }} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ padding: 24, borderTop: "1px solid #E5E7EB", display: "flex", flexDirection: "column", gap: 10 }}>
-              <button onClick={() => { setConfigPanel(null); showToast("Settings saved!", "success"); }} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 24, height: 48, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Save Changes</button>
-              <button onClick={() => setRemoveConfirm(configPanel)} style={{ background: "none", border: "none", color: "#E74C3C", fontSize: 13, cursor: "pointer" }}>Disconnect {configPanel.name}</button>
-            </div>
-          </div>
-        </>
+        <IntegrationConfigPanel
+          integration={configPanel}
+          config={JSON.parse(localStorage.getItem(`dd_integration_config_${configPanel.name}`) || "null")}
+          onConfig={(name, cfg) => localStorage.setItem(`dd_integration_config_${name}`, JSON.stringify(cfg))}
+          onSave={(cfg) => {
+            if (cfg) localStorage.setItem(`dd_integration_config_${configPanel.name}`, JSON.stringify(cfg));
+            setConfigPanel(null);
+            showToast(`${configPanel.name} settings saved!`, "success");
+          }}
+          onRemove={(item) => setRemoveConfirm(item)}
+        />
       )}
 
       {removeConfirm && (

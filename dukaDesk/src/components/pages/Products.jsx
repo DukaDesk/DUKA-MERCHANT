@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search, Plus, X, Upload, Trash2, Grid, List } from "lucide-react";
 import { useToast } from "../../App";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
@@ -54,6 +54,42 @@ export default function Products() {
     setPanel(null);
   };
 
+  const fileRef = useRef(null);
+  const handleCSVImport = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const text = evt.target.result;
+      const lines = text.split("\n").filter(Boolean);
+      if (lines.length < 2) { showToast("CSV must have a header row and at least one product", "error"); return; }
+      const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+      const nameIdx = headers.indexOf("name");
+      const priceIdx = headers.indexOf("price");
+      if (nameIdx < 0 || priceIdx < 0) { showToast("CSV must have 'name' and 'price' columns", "error"); return; }
+      let imported = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+        const p = {
+          name: cols[nameIdx] || "Untitled",
+          price: Number(cols[priceIdx]) || 0,
+          cat: cols[headers.indexOf("category")] || "",
+          stock: Number(cols[headers.indexOf("stock")]) || 0,
+          status: cols[headers.indexOf("status")] || "In Stock",
+          img: cols[headers.indexOf("emoji")] || "🍛",
+        };
+        try {
+          const created = await createProduct(p);
+          setProducts(pr => [...pr, created]);
+          imported++;
+        } catch { /* skip row */ }
+      }
+      showToast(`${imported} product(s) imported from CSV`, "success");
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
   const openEdit = (p) => {
     setForm({ name: p.name, cat: p.cat, price: String(p.price), stock: String(p.stock), status: p.status, img: p.img });
     setPanel(p);
@@ -73,7 +109,8 @@ export default function Products() {
           <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>{products.length} total · {products.filter(p => p.status === "Low Stock").length} low stock · {products.filter(p => p.status === "Out of Stock").length} out of stock</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={() => showToast("CSV import coming soon", "info")} style={{ border: "1.5px solid var(--border)", background: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
+          <input type="file" ref={fileRef} accept=".csv" onChange={handleCSVImport} style={{ display: "none" }} />
+          <button onClick={() => fileRef.current?.click()} style={{ border: "1.5px solid var(--border)", background: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
             <Upload size={16} /> {isMobile ? "" : "Import CSV"}
           </button>
           <button onClick={openAdd} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>

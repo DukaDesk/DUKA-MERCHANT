@@ -92,7 +92,7 @@ export default function App() {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ merchant, logout }}>
+    <AuthContext.Provider value={{ merchant, logout, handleAuth }}>
     <ToastContext.Provider value={showToast}>
       <ErrorBoundary>
         <div style={{ fontFamily: "var(--font-sans)", minHeight: "100vh", background: "var(--bg)" }}>

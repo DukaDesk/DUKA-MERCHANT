@@ -25,6 +25,8 @@ export default function MiniAppPreview() {
   const [cart, setCart] = useState({});
   const [orderType, setOrderType] = useState("Delivery");
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState("menu");
+  const [showCartModal, setShowCartModal] = useState(false);
 
   useEffect(() => {
     getMyApp().then(data => { setApp(data); }).catch(() => {
@@ -72,7 +74,7 @@ export default function MiniAppPreview() {
         <div style={{ width: isMobile ? "calc(100vw - 32px)" : 390, maxWidth: 390, background: NAVY, borderRadius: 44, padding: "12px", boxShadow: "0 40px 120px rgba(0,0,0,0.6)", position: "relative", margin: "0 auto" }}>
           <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", width: 120, height: 32, background: NAVY, borderRadius: "0 0 20px 20px", zIndex: 10 }} />
           <div style={{ background: "#fff", borderRadius: 36, overflow: "hidden", position: "relative", minHeight: isMobile ? 500 : 760 }}>
-            <div style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}>
+            <div onClick={() => navigate("/dashboard")} style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}>
               <div style={{ width: isMobile ? 36 : 40, height: isMobile ? 36 : 40, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", border: "2px solid rgba(255,255,255,0.6)" }}>
                 <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: isMobile ? 16 : 18, color: NAVY }}>D</span>
               </div>
@@ -120,19 +122,63 @@ export default function MiniAppPreview() {
                 <div style={{ background: AMBER, borderRadius: 14, padding: "14px 18px", display: "flex", alignItems: "center", boxShadow: "0 8px 24px rgba(244,160,38,0.4)" }}>
                   <span style={{ fontSize: 18, marginRight: 8 }}>🛒</span>
                   <span style={{ fontWeight: 600, fontSize: 13, color: NAVY, flex: 1 }}>{cartCount} {cartCount === 1 ? "item" : "items"} · ₦{cartTotal.toLocaleString()}</span>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: NAVY }}>View Cart →</span>
+                  <span onClick={() => setShowCartModal(true)} style={{ fontWeight: 700, fontSize: 13, color: NAVY, cursor: "pointer" }}>View Cart →</span>
                 </div>
               </div>
             )}
 
             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 52, background: "#fff", borderTop: "1px solid #E5E7EB", display: "flex", zIndex: 40 }}>
-              {[{ icon: "🏠", label: "Menu", active: true }, { icon: "📦", label: "Orders" }, { icon: "📅", label: "Reserve" }, { icon: "ℹ️", label: "Info" }].map((t, i) => (
-                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "pointer" }}>
+              {[{ id:"menu", icon: "🏠", label: "Menu" }, { id:"orders", icon: "📦", label: "Orders" }, { id:"reserve", icon: "📅", label: "Reserve" }, { id:"info", icon: "ℹ️", label: "Info" }].map(t => (
+                <div key={t.id} onClick={() => setView(t.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "pointer" }}>
                   <span style={{ fontSize: 16 }}>{t.icon}</span>
-                  <span style={{ fontSize: 9, color: t.active ? brandColor : "#9CA3AF", fontWeight: t.active ? 700 : 400 }}>{t.label}</span>
+                  <span style={{ fontSize: 9, color: view === t.id ? brandColor : "#9CA3AF", fontWeight: view === t.id ? 700 : 400 }}>{t.label}</span>
                 </div>
               ))}
             </div>
+
+            {showCartModal && (
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 60, display: "flex", alignItems: "flex-end" }}>
+                <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxHeight: "70%", overflowY: "auto", padding: "20px 16px", animation: "fadeIn 0.2s ease" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY }}>Your Cart ({cartCount})</span>
+                    <button onClick={() => setShowCartModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#6B7280" }}>✕</button>
+                  </div>
+                  {Object.entries(cart).filter(([,q]) => q > 0).map(([id, qty]) => {
+                    const item = menuItems.find(m => String(m.id) === String(id));
+                    if (!item) return null;
+                    return (
+                      <div key={id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #F3F4F6" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 24 }}>{item.img}</span>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: NAVY }}>{item.name}</div>
+                            <div style={{ fontSize: 12, color: "#9CA3AF" }}>₦{item.price.toLocaleString()} × {qty}</div>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: brandColor }}>₦{(item.price * qty).toLocaleString()}</span>
+                          <button onClick={() => {
+                            setCart(c => { const n = { ...c }; if (n[id] <= 1) delete n[id]; else n[id]--; return n; });
+                            if (cartCount <= 1) setShowCartModal(false);
+                          }} style={{ background: "#FEE2E2", border: "none", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 12, color: "#E74C3C" }}>Remove</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {cartCount > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY, marginBottom: 12 }}>
+                        <span>Total</span>
+                        <span style={{ color: AMBER }}>₦{cartTotal.toLocaleString()}</span>
+                      </div>
+                      <button style={{ width: "100%", background: AMBER, color: NAVY, border: "none", borderRadius: 12, padding: "14px 0", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                        Proceed to Checkout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

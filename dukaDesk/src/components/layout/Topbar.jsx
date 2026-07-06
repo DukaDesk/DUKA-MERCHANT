@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Bell, Search, Settings, Grid } from "lucide-react";
+import { Bell, Search, Grid } from "lucide-react";
 import { useAuth, useToast } from "../../App";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { AMBER, NAVY } from "../../theme";
@@ -13,6 +13,7 @@ export default function Topbar() {
   const { merchant } = useAuth();
   const page = location.pathname.split("/")[2] || "dashboard";
   const greetingName = merchant?.name?.split(" ")[0] || "there";
+  const [search, setSearch] = useState("");
 
   const pageTitles = {
     dashboard: "Dashboard",
@@ -62,7 +63,7 @@ export default function Topbar() {
       {!isMobile && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F3F4F6", borderRadius: 10, padding: "8px 12px", width: 220, transition: "all 0.2s" }}>
           <Search size={16} color="#9CA3AF" />
-          <input placeholder="Search orders, products..." style={{ background: "none", border: "none", outline: "none", fontSize: 13, color: NAVY, width: "100%", fontFamily: "inherit" }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && showToast(`Searching for "${search}"...`, "info")} placeholder="Search orders, products..." style={{ background: "none", border: "none", outline: "none", fontSize: 13, color: NAVY, width: "100%", fontFamily: "inherit" }} />
         </div>
       )}
 

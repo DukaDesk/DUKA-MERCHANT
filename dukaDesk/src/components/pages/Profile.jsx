@@ -9,7 +9,7 @@ import { Store, Mail, Phone, User, Save } from "lucide-react";
 export default function Profile() {
   const isMobile = useIsMobile();
   const showToast = useToast();
-  const { merchant: contextMerchant } = useAuth();
+  const { merchant: contextMerchant, handleAuth } = useAuth();
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({ name: "", business: "", email: "", phone: "" });
   const [saving, setSaving] = useState(false);
@@ -27,8 +27,9 @@ export default function Profile() {
     if (!form.name.trim() || !form.business.trim()) { showToast("Name and business name are required", "error"); return; }
     setSaving(true);
     try {
-      const updated = await updateMerchantProfile({ name: form.name, business: form.business, phone: form.phone });
+      const updated = await updateMerchantProfile({ name: form.name, business: form.business, email: form.email, phone: form.phone });
       setProfile(updated);
+      handleAuth(updated);
       showToast("Profile updated!", "success");
     } catch {
       showToast("Failed to update profile", "error");
@@ -77,7 +78,7 @@ export default function Profile() {
               <label style={labelStyle}>Email</label>
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <Mail size={16} style={{ position: "absolute", left: 12, color: "#9CA3AF" }} />
-                <input style={{ ...inputStyle, paddingLeft: 36 }} value={form.email} disabled placeholder="Email address" />
+                <input style={{ ...inputStyle, paddingLeft: 36 }} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email address" />
               </div>
             </div>
             <div>

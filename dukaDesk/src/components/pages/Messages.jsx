@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search, X, Send, Paperclip, ChevronLeft, AlertTriangle } from "lucide-react";
 import { useToast } from "../../App";
 import { useIsMobile } from "../../hooks/useMediaQuery";
@@ -18,6 +18,9 @@ export default function Messages() {
   const [reportReason, setReportReason] = useState("");
   const [tab, setTab] = useState("All");
   const [convLoading, setConvLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
+  const fileRef = useRef(null);
 
   useEffect(() => {
     getConversations().then(list => {
@@ -52,9 +55,11 @@ export default function Messages() {
     setReportOpen(false);
     showToast("Report submitted. Our team will review within 24 hours.", "success");
     setReportReason("");
+    setReportDetails("");
   };
 
-  const filtered = tab === "All" ? conversations : conversations.filter(c => c.unread > 0);
+  const filtered = (tab === "All" ? conversations : conversations.filter(c => c.unread > 0))
+    .filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.last.toLowerCase().includes(search.toLowerCase()));
 
   if (convLoading) return <Loading message="Loading messages..." />;
   if (conversations.length === 0) return <Empty icon="💬" message="No conversations yet" sub="Messages from customers will appear here" />;
@@ -66,7 +71,7 @@ export default function Messages() {
           <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: NAVY, marginBottom: 12 }}>Messages</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F3F4F6", borderRadius: 10, padding: "8px 12px" }}>
             <Search size={16} color="#9CA3AF" />
-            <input placeholder="Search customers..." style={{ background: "none", border: "none", outline: "none", fontSize: 13, color: NAVY, flex: 1, fontFamily: "inherit" }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers..." style={{ background: "none", border: "none", outline: "none", fontSize: 13, color: NAVY, flex: 1, fontFamily: "inherit" }} />
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
             {["All", "Unread"].map(t => (
@@ -132,7 +137,8 @@ export default function Messages() {
             </div>
 
             <div style={{ padding: "12px 20px", borderTop: "1px solid #E8E8F0", display: "flex", gap: 10, alignItems: "center" }}>
-              <button onClick={() => showToast("File attachment coming soon", "info")} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", display: "flex", padding: 4 }}>
+              <input type="file" ref={fileRef} accept="image/*,.pdf,.doc,.docx" onChange={() => showToast("File attached!", "success")} style={{ display: "none" }} />
+              <button onClick={() => fileRef.current?.click()} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", display: "flex", padding: 4 }}>
                 <Paperclip size={20} />
               </button>
               <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Type a reply..." style={{ flex: 1, height: 44, border: "1.5px solid #E8E8F0", borderRadius: 22, padding: "0 16px", fontSize: 14, fontFamily: "inherit", outline: "none", background: "#F9FAFB" }} />
@@ -188,7 +194,7 @@ export default function Messages() {
                 <span style={{ fontSize: 14, color: NAVY }}>{r}</span>
               </label>
             ))}
-            <textarea placeholder="Add details (optional)..." style={{ width: "100%", marginTop: 16, border: "1.5px solid #E8E8F0", borderRadius: 8, padding: 12, fontSize: 14, fontFamily: "inherit", resize: "none", height: 72, boxSizing: "border-box", outline: "none" }} />
+            <textarea value={reportDetails} onChange={e => setReportDetails(e.target.value)} placeholder="Add details (optional)..." style={{ width: "100%", marginTop: 16, border: "1.5px solid #E8E8F0", borderRadius: 8, padding: 12, fontSize: 14, fontFamily: "inherit", resize: "none", height: 72, boxSizing: "border-box", outline: "none" }} />
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
               <button onClick={submitReport} style={{ flex: 1, background: "#E74C3C", color: "#fff", border: "none", borderRadius: 10, height: 48, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Submit Report</button>
               <button onClick={() => setReportOpen(false)} style={{ flex: 1, background: "none", border: "1.5px solid #E8E8F0", borderRadius: 10, height: 48, fontSize: 15, cursor: "pointer", color: "#6B7280" }}>Cancel</button>

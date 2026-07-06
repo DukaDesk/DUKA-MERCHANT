@@ -19,6 +19,7 @@ export default function Analytics() {
   const [scans, setScans] = useState([]);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([{ name: "New", value: 34 }, { name: "Returning", value: 66 }]);
+  const [dateRange, setDateRange] = useState("Last 30 Days");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,12 +50,21 @@ export default function Analytics() {
           <div style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>Your business performance metrics</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <select style={{ border: "1.5px solid var(--border)", borderRadius: 10, padding: "8px 14px", fontSize: 14, color: NAVY, background: "#fff", cursor: "pointer", outline: "none" }}>
+          <select value={dateRange} onChange={e => setDateRange(e.target.value)} style={{ border: "1.5px solid var(--border)", borderRadius: 10, padding: "8px 14px", fontSize: 14, color: NAVY, background: "#fff", cursor: "pointer", outline: "none" }}>
             <option>Last 30 Days</option>
             <option>Last 7 Days</option>
             <option>This Month</option>
           </select>
-          <button style={{ border: "1.5px solid var(--border)", background: "#fff", borderRadius: 10, padding: "8px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
+          <button onClick={() => {
+            const csv = [["Week","Revenue","Orders","Scans"].join(","), ...rev.map((r,i)=>
+              [r.w, r.v, orders[i]?.value||0, scans[i]?.scans||0].join(",")
+            )].join("\n");
+            const blob = new Blob([csv], {type:"text/csv"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = url; a.download = `analytics-${dateRange.replace(/\s/g,"-").toLowerCase()}.csv`; a.click();
+            URL.revokeObjectURL(url);
+            showToast("Analytics exported!", "success");
+          }} style={{ border: "1.5px solid var(--border)", background: "#fff", borderRadius: 10, padding: "8px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
             <Download size={16} /> Export
           </button>
         </div>

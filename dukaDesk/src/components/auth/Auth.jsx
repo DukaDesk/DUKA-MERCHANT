@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft, KeyRound } from "lucide-react";
 import PropTypes from "prop-types";
 import { useIsMobile } from "../../hooks/useMediaQuery";
+import { useToast } from "../../App";
 import { NAVY, AMBER, GREEN, RED, PURPLE, inputStyle, labelStyle } from "../../theme";
 import { login, signup, forgotPassword, setToken } from "../../services/api";
 
@@ -213,7 +214,7 @@ function SignupForm({ onAuth, setPage }) {
           </button>
         } />
         <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 20 }}>
-          By signing up you agree to our <span style={{ color: AMBER, cursor: "pointer", fontWeight: 500 }}>Terms</span> & <span style={{ color: AMBER, cursor: "pointer", fontWeight: 500 }}>Privacy Policy</span>
+          By signing up you agree to our <span onClick={() => window.open("https://dukadesk.com/terms", "_blank")} style={{ color: AMBER, cursor: "pointer", fontWeight: 500 }}>Terms</span> & <span onClick={() => window.open("https://dukadesk.com/privacy", "_blank")} style={{ color: AMBER, cursor: "pointer", fontWeight: 500 }}>Privacy Policy</span>
         </p>
         <PrimaryBtn loading={loading}>{loading ? "Creating account..." : "Create merchant account"}</PrimaryBtn>
       </form>
@@ -308,8 +309,9 @@ function PrimaryBtn({ children, loading, onClick, type = "submit" }) {
 PrimaryBtn.propTypes = { children: PropTypes.node.isRequired, loading: PropTypes.bool, onClick: PropTypes.func, type: PropTypes.string };
 
 function SocialBtn({ icon, provider }) {
+  const showToast = useToast();
   return (
-    <button style={{ width: "100%", height: 50, borderRadius: 10, border: "1.5px solid #E8E8F0", background: "#fff", fontSize: 14, color: NAVY, cursor: "pointer", fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s" }}>
+    <button onClick={() => showToast(`${provider} sign-in coming soon`, "info")} style={{ width: "100%", height: 50, borderRadius: 10, border: "1.5px solid #E8E8F0", background: "#fff", fontSize: 14, color: NAVY, cursor: "pointer", fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s" }}>
       <div style={{ width: 20, height: 20, background: NAVY, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 700 }}>{icon}</div>
       Continue with {provider}
     </button>

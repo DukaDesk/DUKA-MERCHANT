@@ -59,7 +59,7 @@ export default function Sidebar() {
 
       {!collapsed && (
         <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div onClick={() => navigate("/dashboard/profile")} style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: "1px solid rgba(255,255,255,0.06)" }}>
             <div style={{ width: 30, height: 30, background: "rgba(46,204,113,0.2)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Store size={14} color="#2ECC71" />
             </div>
@@ -113,7 +113,7 @@ export default function Sidebar() {
       )}
 
       <div style={{ padding: collapsed ? "12px 0" : "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: collapsed ? "center" : "flex-start", marginBottom: 8 }}>
+        <div onClick={() => navigate("/dashboard/profile")} style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: collapsed ? "center" : "flex-start", marginBottom: 8, cursor: "pointer" }}>
           <div style={{ width: 32, height: 32, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: NAVY, flexShrink: 0 }}>
             {merchant?.avatar?.[0] || merchant?.name?.[0] || "M"}
           </div>
