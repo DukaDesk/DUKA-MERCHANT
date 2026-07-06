@@ -1,8 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig(({ mode }) => ({
-  base: mode === "production" ? "/DUKA-MERCHANT/" : "/",
+export default defineConfig({
   plugins: [react()],
   build: {
     outDir: "build",
@@ -16,4 +15,4 @@ export default defineConfig(({ mode }) => ({
     environment: "node",
     include: ["src/**/*.test.{js,jsx}"],
   },
-}));
+});
