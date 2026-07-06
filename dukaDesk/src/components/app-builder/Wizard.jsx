@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { useToast } from "../../App";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
-import { setSetupData, deployApp } from "../../services/api";
+import { setSetupData, getSetupData, deployApp } from "../../services/api";
 import { WIZARD_STEPS, WIZARD_CATEGORIES, WIZARD_TEMPLATES_BY_CATEGORY, WIZARD_FEATURE_INTEGRATION_MAP, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_PREVIEW_DATA, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, INTEGRATION_BADGE_COLORS, getTemplateIntegrationNames } from "../../services/mockData";
 
 const steps = WIZARD_STEPS;
