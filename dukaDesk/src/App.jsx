@@ -140,6 +140,7 @@ export default function App() {
 
 function ProtectedLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const padding = isMobile ? "16px" : isTablet ? "24px" : "32px";
@@ -147,10 +148,10 @@ function ProtectedLayout() {
   const hasSetup = useRef(!!getSetupData());
 
   useEffect(() => {
-    if (merchant && !hasSetup.current && window.location.pathname === "/dashboard") {
+    if (merchant && !hasSetup.current && location.pathname === "/dashboard") {
       navigate("/wizard", { replace: true });
     }
-  }, [merchant, navigate]);
+  }, [merchant, navigate, location]);
 
   return (
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh" }}>
