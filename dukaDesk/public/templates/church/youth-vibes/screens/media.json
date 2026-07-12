@@ -1,0 +1,12 @@
+{
+  "screenId": "media",
+  "title": "Media",
+  "children": [
+    {
+      "type": "promotion_list",
+      "key": "media-list",
+      "props": { "offers": [] },
+      "actions": { "tap": { "type": "navigate", "payload": { "push": "/media-detail" } } }
+    }
+  ]
+}

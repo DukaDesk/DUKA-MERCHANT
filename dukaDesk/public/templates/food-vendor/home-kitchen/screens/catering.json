@@ -1,0 +1,23 @@
+{
+  "screenId": "catering",
+  "title": "Catering",
+  "children": [
+    {
+      "type": "hero_banner",
+      "key": "catering-banner",
+      "props": { "title": "Catering", "subtitle": "Warm meals for your events", "image": null }
+    },
+    {
+      "type": "calendar_strip",
+      "key": "catering-date",
+      "props": { "minDate": "today", "maxDate": "+30" },
+      "actions": { "selectDate": { "type": "filter", "payload": { "source": "date" } } }
+    },
+    {
+      "type": "booking_summary",
+      "key": "catering-summary",
+      "props": {},
+      "actions": { "confirm": { "type": "api_request", "payload": { "method": "POST", "path": "/catering" } } }
+    }
+  ]
+}

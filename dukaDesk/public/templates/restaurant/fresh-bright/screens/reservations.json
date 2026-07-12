@@ -1,0 +1,24 @@
+{
+  "screenId": "reservations",
+  "title": "Reserve a Table",
+  "children": [
+    {
+      "type": "calendar_strip",
+      "key": "date-picker",
+      "props": { "minDate": "today", "maxDate": "+30", "variant": "default" },
+      "actions": { "selectDate": { "type": "filter", "payload": { "source": "date" } } }
+    },
+    {
+      "type": "slot_grid",
+      "key": "time-slots",
+      "props": { "duration": 60, "variant": "default" },
+      "actions": { "selectSlot": { "type": "filter", "payload": { "source": "slot" } } }
+    },
+    {
+      "type": "booking_summary",
+      "key": "booking-summary",
+      "props": {},
+      "actions": { "confirm": { "type": "api_request", "payload": { "method": "POST", "path": "/bookings" } } }
+    }
+  ]
+}

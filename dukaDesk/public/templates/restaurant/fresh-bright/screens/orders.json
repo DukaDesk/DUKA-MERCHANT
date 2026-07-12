@@ -1,0 +1,17 @@
+{
+  "screenId": "orders",
+  "title": "My Orders",
+  "children": [
+    {
+      "type": "order_history",
+      "key": "order-list",
+      "props": {
+        "showStatus": true,
+        "variant": "minimal"
+      },
+      "actions": {
+        "selectOrder": { "type": "navigate", "payload": { "push": "/order-detail" } }
+      }
+    }
+  ]
+}

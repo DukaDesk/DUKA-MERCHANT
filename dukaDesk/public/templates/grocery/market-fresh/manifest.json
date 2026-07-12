@@ -1,0 +1,31 @@
+{
+  "templateId": "market-fresh",
+  "name": "Market Fresh",
+  "category": "Grocery",
+  "tags": ["Clean", "Fresh"],
+  "features": ["Products", "Cart", "Delivery", "Pickup"],
+  "preview": "🥬",
+  "theme": {
+    "primaryColor": "#2ECC71",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#F0FDF4",
+    "cardColor": "#FFFFFF",
+    "textColor": "#0F0F1A",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "shop",
+    "tabs": [
+      { "label": "Shop", "icon": "storefront-outline", "screenId": "shop" },
+      { "label": "Cart", "icon": "cart-outline", "screenId": "cart" },
+      { "label": "Orders", "icon": "receipt-outline", "screenId": "orders" },
+      { "label": "Profile", "icon": "person-outline", "screenId": "profile" }
+    ]
+  },
+  "screens": [
+    { "id": "shop", "path": "screens/shop.json" },
+    { "id": "cart", "path": "screens/cart.json" },
+    { "id": "orders", "path": "screens/orders.json" },
+    { "id": "profile", "path": "screens/profile.json" }
+  ]
+}

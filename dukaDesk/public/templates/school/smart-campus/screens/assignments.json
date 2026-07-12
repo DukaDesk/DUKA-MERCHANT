@@ -1,0 +1,12 @@
+{
+  "screenId": "assignments",
+  "title": "Assignments",
+  "children": [
+    {
+      "type": "notification_list",
+      "key": "assignments-list",
+      "props": { "notifications": [] },
+      "actions": { "tap": { "type": "navigate", "payload": { "push": "/assignment-detail" } } }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "screenId": "sermons",
+  "title": "Sermons",
+  "children": [
+    {
+      "type": "notification_list",
+      "key": "sermons-list",
+      "props": { "notifications": [] },
+      "actions": { "tap": { "type": "navigate", "payload": { "push": "/sermon-detail" } } }
+    }
+  ]
+}

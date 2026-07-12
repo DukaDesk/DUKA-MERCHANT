@@ -1,0 +1,12 @@
+{
+  "screenId": "fees",
+  "title": "Fees",
+  "children": [
+    {
+      "type": "cart_summary",
+      "key": "fees-summary",
+      "props": {},
+      "actions": { "checkout": { "type": "checkout" } }
+    }
+  ]
+}

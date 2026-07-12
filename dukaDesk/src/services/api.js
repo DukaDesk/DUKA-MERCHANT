@@ -87,10 +87,29 @@ export async function forgotPassword(body) {
    APP DEPLOYMENT
    ═══════════════════════════════════════════════════════════════════ */
 
+import { generateShopTemplate } from "./TemplateGenerator";
+
 export async function deployApp(appData) {
   await delay();
   const merchant = getMerchant();
-  const slug = appData.appName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const slug = (appData.appName || "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  
+  // Generate unique template configuration for this shop
+  const templateConfig = generateShopTemplate({
+    category: appData.category || "Restaurant",
+    template: appData.template || "Classic Dine",
+    appName: appData.appName,
+    tagline: appData.tagline || "",
+    color: appData.color || "#1B4332",
+    logo: appData.logo || null,
+    businessName: merchant?.business || appData.appName,
+    bizDesc: appData.bizDesc || "",
+    phone: appData.phone || "",
+    address: appData.address || "",
+    hours: appData.hours || [],
+    selectedIntegrations: appData.selectedIntegrations || [],
+  });
+
   const deployed = {
     id: "app_" + Date.now(),
     merchantId: merchant?.id || "unknown",
@@ -109,11 +128,46 @@ export async function deployApp(appData) {
     slug,
     storeUrl: `dukadesk.app/${slug}`,
     status: "live",
+    templateConfig, // Full customizable template per shop
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
   setDeployedApp(deployed);
   return { app: deployed, message: "App deployed successfully! 🚀" };
+}
+
+export async function updateApp(appData) {
+  await delay();
+  const deployed = getDeployedApp();
+  if (!deployed) throw new Error("No app deployed");
+  
+  // Regenerate template config if category/template/color changed
+  let templateConfig = deployed.templateConfig;
+  if (appData.category || appData.template || appData.color || appData.appName) {
+    templateConfig = generateShopTemplate({
+      category: appData.category || deployed.category,
+      template: appData.template || deployed.template,
+      appName: appData.appName || deployed.appName,
+      tagline: appData.tagline !== undefined ? appData.tagline : deployed.tagline,
+      color: appData.color || deployed.color,
+      logo: appData.logo !== undefined ? appData.logo : deployed.logo,
+      businessName: deployed.businessName,
+      bizDesc: appData.bizDesc !== undefined ? appData.bizDesc : deployed.bizDesc,
+      phone: appData.phone !== undefined ? appData.phone : deployed.phone,
+      address: appData.address !== undefined ? appData.address : deployed.address,
+      hours: appData.hours !== undefined ? appData.hours : deployed.hours,
+      selectedIntegrations: appData.selectedIntegrations || deployed.selectedIntegrations,
+    });
+  }
+
+  const updated = {
+    ...deployed,
+    ...appData,
+    templateConfig,
+    updatedAt: new Date().toISOString(),
+  };
+  setDeployedApp(updated);
+  return { app: updated, message: "App updated successfully! 🚀" };
 }
 
 export async function getMyApp() {

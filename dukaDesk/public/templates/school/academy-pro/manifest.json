@@ -1,0 +1,31 @@
+{
+  "templateId": "academy-pro",
+  "name": "Academy Pro",
+  "category": "School",
+  "tags": ["Clean", "Professional"],
+  "features": ["Timetables", "Fees", "Announcements", "Grades"],
+  "preview": "🏫",
+  "theme": {
+    "primaryColor": "#0D9488",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#FAFAFA",
+    "cardColor": "#FFFFFF",
+    "textColor": "#0F0F1A",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "timetable",
+    "tabs": [
+      { "label": "Timetable", "icon": "calendar-outline", "screenId": "timetable" },
+      { "label": "Fees", "icon": "card-outline", "screenId": "fees" },
+      { "label": "Announcements", "icon": "megaphone-outline", "screenId": "announcements" },
+      { "label": "Grades", "icon": "trophy-outline", "screenId": "grades" }
+    ]
+  },
+  "screens": [
+    { "id": "timetable", "path": "screens/timetable.json" },
+    { "id": "fees", "path": "screens/fees.json" },
+    { "id": "announcements", "path": "screens/announcements.json" },
+    { "id": "grades", "path": "screens/grades.json" }
+  ]
+}

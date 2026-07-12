@@ -1,0 +1,32 @@
+{
+  "screenId": "info",
+  "title": "Info",
+  "children": [
+    {
+      "type": "info_list",
+      "key": "contact-info",
+      "props": {
+        "items": [
+          { "icon": "📞", "label": "Call Us", "value": "+234 800 000 0000" },
+          { "icon": "📍", "label": "Address", "value": "12 Restaurant Street, Lagos" },
+          { "icon": "🕐", "label": "Hours", "value": "Mon-Sun: 8AM - 10PM" },
+          { "icon": "📧", "label": "Email", "value": "hello@classicdine.com" }
+        ]
+      },
+      "actions": {
+        "call": { "type": "call_phone", "payload": { "phone": "+2348000000000" } },
+        "email": { "type": "email", "payload": { "to": "hello@classicdine.com" } }
+      }
+    },
+    {
+      "type": "report_action",
+      "key": "report-issue",
+      "props": {
+        "title": "Report an Issue"
+      },
+      "actions": {
+        "submit": { "type": "submit_form", "payload": { "api_request": { "method": "POST", "path": "/reports" } } }
+      }
+    }
+  ]
+}

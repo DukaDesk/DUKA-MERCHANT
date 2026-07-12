@@ -1,0 +1,31 @@
+{
+  "templateId": "cathedral",
+  "name": "Cathedral",
+  "category": "Church",
+  "tags": ["Elegant", "Serene"],
+  "features": ["Events", "Giving", "Sermons", "Community"],
+  "preview": "⛪",
+  "theme": {
+    "primaryColor": "#1B4332",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#FAFAFA",
+    "cardColor": "#FFFFFF",
+    "textColor": "#0F0F1A",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "events",
+    "tabs": [
+      { "label": "Events", "icon": "calendar-outline", "screenId": "events" },
+      { "label": "Giving", "icon": "heart-outline", "screenId": "giving" },
+      { "label": "Sermons", "icon": "book-outline", "screenId": "sermons" },
+      { "label": "Community", "icon": "people-outline", "screenId": "community" }
+    ]
+  },
+  "screens": [
+    { "id": "events", "path": "screens/events.json" },
+    { "id": "giving", "path": "screens/giving.json" },
+    { "id": "sermons", "path": "screens/sermons.json" },
+    { "id": "community", "path": "screens/community.json" }
+  ]
+}

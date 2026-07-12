@@ -1,0 +1,12 @@
+{
+  "screenId": "groups",
+  "title": "Small Groups",
+  "children": [
+    {
+      "type": "notification_list",
+      "key": "groups-list",
+      "props": { "notifications": [] },
+      "actions": { "tap": { "type": "navigate", "payload": { "push": "/group-detail" } } }
+    }
+  ]
+}

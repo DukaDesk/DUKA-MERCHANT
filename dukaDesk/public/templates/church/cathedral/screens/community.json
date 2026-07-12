@@ -1,0 +1,19 @@
+{
+  "screenId": "community",
+  "title": "Community",
+  "children": [
+    {
+      "type": "info_list",
+      "key": "community-info",
+      "props": {
+        "items": [
+          { "icon": "📞", "label": "Contact Us", "value": "+234 800 000 0000" },
+          { "icon": "📍", "label": "Address", "value": "12 Church Street, Lagos" },
+          { "icon": "🕐", "label": "Service Times", "value": "Sun 8AM, Wed 6PM" },
+          { "icon": "📧", "label": "Email", "value": "hello@cathedral.org" }
+        ]
+      },
+      "actions": { "call": { "type": "call_phone", "payload": { "phone": "+2348000000000" } }, "email": { "type": "email", "payload": { "to": "hello@cathedral.org" } } }
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "templateId": "flash-sale",
+  "name": "Flash Sale",
+  "category": "Ecommerce",
+  "tags": ["Bold", "Urgency-driven"],
+  "features": ["Products", "Cart", "Deals", "Countdown"],
+  "preview": "⚡",
+  "theme": {
+    "primaryColor": "#E74C3C",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#1A1A2E",
+    "cardColor": "#252540",
+    "textColor": "#FFFFFF",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "shop",
+    "tabs": [
+      { "label": "Shop", "icon": "storefront-outline", "screenId": "shop" },
+      { "label": "Cart", "icon": "cart-outline", "screenId": "cart" },
+      { "label": "Deals", "icon": "pricetag-outline", "screenId": "deals" },
+      { "label": "Profile", "icon": "person-outline", "screenId": "profile" }
+    ]
+  },
+  "screens": [
+    { "id": "shop", "path": "screens/shop.json" },
+    { "id": "cart", "path": "screens/cart.json" },
+    { "id": "deals", "path": "screens/deals.json" },
+    { "id": "profile", "path": "screens/profile.json" }
+  ]
+}

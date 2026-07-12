@@ -1,0 +1,18 @@
+{
+  "screenId": "grades",
+  "title": "Grades",
+  "children": [
+    {
+      "type": "info_list",
+      "key": "grades-list",
+      "props": {
+        "items": [
+          { "icon": "📊", "label": "Math", "value": "A" },
+          { "icon": "📊", "label": "English", "value": "A-" },
+          { "icon": "📊", "label": "Science", "value": "B+" },
+          { "icon": "📊", "label": "History", "value": "A" }
+        ]
+      }
+    }
+  ]
+}

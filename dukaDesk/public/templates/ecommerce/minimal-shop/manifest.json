@@ -1,0 +1,31 @@
+{
+  "templateId": "minimal-shop",
+  "name": "Minimal Shop",
+  "category": "Ecommerce",
+  "tags": ["Minimal", "Modern"],
+  "features": ["Products", "Cart", "Wishlist", "Checkout"],
+  "preview": "🛒",
+  "theme": {
+    "primaryColor": "#7C3AED",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#FFFFFF",
+    "cardColor": "#F9FAFB",
+    "textColor": "#0F0F1A",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "shop",
+    "tabs": [
+      { "label": "Shop", "icon": "storefront-outline", "screenId": "shop" },
+      { "label": "Cart", "icon": "cart-outline", "screenId": "cart" },
+      { "label": "Wishlist", "icon": "heart-outline", "screenId": "wishlist" },
+      { "label": "Profile", "icon": "person-outline", "screenId": "profile" }
+    ]
+  },
+  "screens": [
+    { "id": "shop", "path": "screens/shop.json" },
+    { "id": "cart", "path": "screens/cart.json" },
+    { "id": "wishlist", "path": "screens/wishlist.json" },
+    { "id": "profile", "path": "screens/profile.json" }
+  ]
+}

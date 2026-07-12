@@ -1,0 +1,20 @@
+{
+  "screenId": "events",
+  "title": "Events",
+  "layout": {
+    "kind": "scroll",
+    "children": [
+      {
+        "type": "hero_banner",
+        "key": "events-banner",
+        "props": { "title": "Youth Events", "subtitle": "Bold faith, real life", "image": null }
+      },
+      {
+        "type": "notification_list",
+        "key": "events-list",
+        "props": { "notifications": [] },
+        "actions": { "tap": { "type": "navigate", "payload": { "push": "/event-detail" } } }
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "screenId": "orders",
+  "title": "Orders",
+  "children": [
+    {
+      "type": "order_history",
+      "key": "order-list",
+      "props": {
+        "showStatus": true,
+        "variant": "dark"
+      },
+      "actions": {
+        "selectOrder": { "type": "navigate", "payload": { "push": "/order-detail" } },
+        "reorder": { "type": "add_to_cart" }
+      }
+    }
+  ]
+}

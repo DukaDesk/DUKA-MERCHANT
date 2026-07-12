@@ -1,0 +1,27 @@
+{
+  "screenId": "shop",
+  "title": "Shop",
+  "layout": {
+    "kind": "scroll",
+    "children": [
+      {
+        "type": "promotion_list",
+        "key": "promo-banner",
+        "props": { "offers": [{ "title": "Minimalist Picks", "subtitle": "Curated for you", "image": null }] },
+        "actions": { "tap": { "type": "navigate", "payload": { "push": "/products?filter=minimal" } } }
+      },
+      {
+        "type": "category_pills",
+        "key": "category-pills",
+        "props": { "categories": ["All", "Clothing", "Electronics", "Home"] },
+        "actions": { "selectCategory": { "type": "filter", "payload": { "source": "category" } } }
+      },
+      {
+        "type": "menu_grid",
+        "key": "products-grid",
+        "props": { "columns": 2, "variant": "minimal" },
+        "actions": { "addItem": { "type": "add_to_cart" }, "viewDetails": { "type": "navigate", "payload": { "push": "/product-detail" } } }
+      }
+    ]
+  }
+}

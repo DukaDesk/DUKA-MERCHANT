@@ -1,0 +1,30 @@
+{
+  "screenId": "menu",
+  "title": "Menu",
+  "layout": {
+    "kind": "scroll",
+    "children": [
+      {
+        "type": "hero_banner",
+        "key": "welcome-banner",
+        "props": {
+          "title": "Home Kitchen",
+          "subtitle": "Warm meals made with love",
+          "image": null
+        }
+      },
+      {
+        "type": "category_pills",
+        "key": "category-pills",
+        "props": { "categories": ["Popular", "Specials", "Combo"] },
+        "actions": { "selectCategory": { "type": "filter", "payload": { "source": "category" } } }
+      },
+      {
+        "type": "menu_grid",
+        "key": "menu-items",
+        "props": { "columns": 2 },
+        "actions": { "addItem": { "type": "add_to_cart" } }
+      }
+    ]
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "version": "1.0",
+  "categories": [
+    {
+      "icon": "🍽️",
+      "name": "Restaurant",
+      "desc": "Full menus, ordering & delivery",
+      "templates": ["classic-dine", "modern-bites", "fresh-bright"]
+    },
+    {
+      "icon": "🛍️",
+      "name": "Ecommerce",
+      "desc": "Products, cart & checkout",
+      "templates": ["storefront", "flash-sale", "minimal-shop"]
+    },
+    {
+      "icon": "🥗",
+      "name": "Food Vendor",
+      "desc": "Bukas, home kitchens, caterers",
+      "templates": ["street-eats", "home-kitchen", "fast-bites"]
+    },
+    {
+      "icon": "🛒",
+      "name": "Grocery",
+      "desc": "Supermarkets & local stores",
+      "templates": ["market-fresh", "corner-shop", "bulk-buy"]
+    },
+    {
+      "icon": "⛪",
+      "name": "Church",
+      "desc": "Events, giving & community",
+      "templates": ["cathedral", "community-light", "youth-vibes"]
+    },
+    {
+      "icon": "🏫",
+      "name": "School",
+      "desc": "Timetables, fees & announcements",
+      "templates": ["academy-pro", "bright-minds", "smart-campus"]
+    },
+    {
+      "icon": "📅",
+      "name": "Booking",
+      "desc": "Appointments & scheduling",
+      "templates": ["scheduler", "spa-lounge", "quick-book"]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "templateId": "modern-bites",
+  "name": "Modern Bites",
+  "category": "Restaurant",
+  "tags": ["Dark theme", "Bold type"],
+  "features": ["Menu", "Cart", "Orders", "Table Booking"],
+  "preview": "🍔",
+  "theme": {
+    "primaryColor": "#0F0F1A",
+    "secondaryColor": "#F4A026",
+    "textColor": "#FFFFFF",
+    "bgColor": "#1A1A2E",
+    "cardColor": "#252540",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "menu",
+    "tabs": [
+      { "label": "Menu", "icon": "restaurant-outline", "screenId": "menu" },
+      { "label": "Orders", "icon": "receipt-outline", "screenId": "orders" },
+      { "label": "Book", "icon": "calendar-outline", "screenId": "booking" },
+      { "label": "Info", "icon": "information-outline", "screenId": "info" }
+    ]
+  },
+  "screens": [
+    { "id": "menu", "path": "screens/menu.json" },
+    { "id": "orders", "path": "screens/orders.json" },
+    { "id": "booking", "path": "screens/booking.json" },
+    { "id": "info", "path": "screens/info.json" }
+  ]
+}

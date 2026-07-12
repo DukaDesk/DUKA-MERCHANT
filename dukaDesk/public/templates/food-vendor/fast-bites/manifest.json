@@ -1,0 +1,31 @@
+{
+  "templateId": "fast-bites",
+  "name": "Fast Bites",
+  "category": "Food Vendor",
+  "tags": ["Clean", "Speedy"],
+  "features": ["Menu", "Cart", "Express Orders", "Pickup"],
+  "preview": "🥪",
+  "theme": {
+    "primaryColor": "#0D9488",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#FAFAFA",
+    "cardColor": "#FFFFFF",
+    "textColor": "#0F0F1A",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "menu",
+    "tabs": [
+      { "label": "Menu", "icon": "restaurant-outline", "screenId": "menu" },
+      { "label": "Orders", "icon": "receipt-outline", "screenId": "orders" },
+      { "label": "Express", "icon": "flash-outline", "screenId": "express" },
+      { "label": "Pickup", "icon": "bag-outline", "screenId": "pickup" }
+    ]
+  },
+  "screens": [
+    { "id": "menu", "path": "screens/menu.json" },
+    { "id": "orders", "path": "screens/orders.json" },
+    { "id": "express", "path": "screens/express.json" },
+    { "id": "pickup", "path": "screens/pickup.json" }
+  ]
+}

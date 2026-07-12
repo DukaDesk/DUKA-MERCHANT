@@ -1,0 +1,31 @@
+{
+  "templateId": "scheduler",
+  "name": "Scheduler",
+  "category": "Booking",
+  "tags": ["Clean", "Efficient"],
+  "features": ["Appointments", "Calendar", "Reminders", "Payments"],
+  "preview": "📅",
+  "theme": {
+    "primaryColor": "#0D9488",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#FAFAFA",
+    "cardColor": "#FFFFFF",
+    "textColor": "#0F0F1A",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "services",
+    "tabs": [
+      { "label": "Services", "icon": "grid-outline", "screenId": "services" },
+      { "label": "Calendar", "icon": "calendar-outline", "screenId": "calendar" },
+      { "label": "Bookings", "icon": "receipt-outline", "screenId": "bookings" },
+      { "label": "Profile", "icon": "person-outline", "screenId": "profile" }
+    ]
+  },
+  "screens": [
+    { "id": "services", "path": "screens/services.json" },
+    { "id": "calendar", "path": "screens/calendar.json" },
+    { "id": "bookings", "path": "screens/bookings.json" },
+    { "id": "profile", "path": "screens/profile.json" }
+  ]
+}

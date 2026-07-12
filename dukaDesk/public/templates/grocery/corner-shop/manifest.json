@@ -1,0 +1,31 @@
+{
+  "templateId": "corner-shop",
+  "name": "Corner Shop",
+  "category": "Grocery",
+  "tags": ["Warm", "Neighborhood"],
+  "features": ["Products", "Cart", "Home Delivery", "Loyalty"],
+  "preview": "🏪",
+  "theme": {
+    "primaryColor": "#1B4332",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#FEF8ED",
+    "cardColor": "#FFFFFF",
+    "textColor": "#0F0F1A",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "shop",
+    "tabs": [
+      { "label": "Shop", "icon": "storefront-outline", "screenId": "shop" },
+      { "label": "Cart", "icon": "cart-outline", "screenId": "cart" },
+      { "label": "Orders", "icon": "receipt-outline", "screenId": "orders" },
+      { "label": "Profile", "icon": "person-outline", "screenId": "profile" }
+    ]
+  },
+  "screens": [
+    { "id": "shop", "path": "screens/shop.json" },
+    { "id": "cart", "path": "screens/cart.json" },
+    { "id": "orders", "path": "screens/orders.json" },
+    { "id": "profile", "path": "screens/profile.json" }
+  ]
+}

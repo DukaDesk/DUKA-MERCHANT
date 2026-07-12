@@ -1,0 +1,12 @@
+{
+  "screenId": "announcements",
+  "title": "Announcements",
+  "children": [
+    {
+      "type": "notification_list",
+      "key": "announcements-list",
+      "props": { "notifications": [] },
+      "actions": { "tap": { "type": "navigate", "payload": { "push": "/announcement-detail" } } }
+    }
+  ]
+}

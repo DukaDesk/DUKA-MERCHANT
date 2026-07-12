@@ -1,0 +1,21 @@
+{
+  "screenId": "events",
+  "title": "Events",
+  "layout": {
+    "kind": "scroll",
+    "children": [
+      {
+        "type": "hero_banner",
+        "key": "events-banner",
+        "props": { "title": "Upcoming Events", "subtitle": "Join our community", "image": null },
+        "style": { "background": "linear-gradient(135deg, #1B4332, #1A1A2E)" }
+      },
+      {
+        "type": "notification_list",
+        "key": "events-list",
+        "props": { "notifications": [] },
+        "actions": { "tap": { "type": "navigate", "payload": { "push": "/event-detail" } } }
+      }
+    ]
+  }
+}

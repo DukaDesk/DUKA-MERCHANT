@@ -5,13 +5,16 @@ import { Plus, Package, BarChart3, MessageSquare, Store, TrendingUp, Users, Doll
 import QRCode from "qrcode";
 import { useAuth, useToast } from "../../App";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
-import { NAVY, AMBER, cardStyle, statusBadge } from "../../theme";
-import { getDashboardStats, getRevenue, getActivity, getSetupData, getMyApp } from "../../services/api";
+import { NAVY, AMBER, cardStyle } from "../../theme";
+import ApiClient from "../../services/ApiClient";
 import { Loading, Empty } from "../layout/States";
+import { useDispatchAction } from "../../runtime/RuntimeContext";
+import { EventBus } from "../../runtime/EventBus";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const showToast = useToast();
+  const dispatchAction = useDispatchAction();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { merchant } = useAuth();
@@ -21,12 +24,21 @@ export default function Dashboard() {
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deployedApp, setDeployedApp] = useState(null);
+  const [filterChanged, setFilterChanged] = useState(null);
 
   useEffect(() => {
-    getMyApp().then(setDeployedApp).catch(() => {});
+    ApiClient.getMyApp().then(setDeployedApp).catch(() => {});
   }, []);
 
-  const storeSlug = deployedApp?.slug || (merchant?.business || "my-store").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  useEffect(() => {
+    const unsub = EventBus.on("filter:changed", (data) => {
+      setFilterChanged(data);
+      showToast(`Filter applied: ${JSON.stringify(data)}`, "info");
+    });
+    return unsub;
+  }, [showToast]);
+
+  const storeSlug = deployedApp?.slug || ((merchant?.business || "my-store") || "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   const storeUrl = deployedApp?.storeUrl || `dukadesk.app/${storeSlug}`;
 
   const downloadQr = async () => {
@@ -38,13 +50,13 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    Promise.all([getDashboardStats(), getRevenue(), getActivity()])
+    Promise.all([ApiClient.getDashboardStats(), ApiClient.getRevenue(), ApiClient.getActivity()])
       .then(([s, r, a]) => { setStats(s); setRevenueData(r); setActivity(a); })
       .catch(() => showToast("Failed to load dashboard data", "error"))
       .finally(() => setLoading(false));
   }, []);
 
-  const setup = getSetupData();
+  const setup = ApiClient.getSetupData();
   const statusItems = [
     { dot: "#7C3AED", label: merchant?.name || "Merchant", sub: merchant?.email || "No email" },
     { dot: "#0D9488", label: merchant?.business || "Business", sub: merchant?.phone || "No phone" },
@@ -56,13 +68,17 @@ export default function Dashboard() {
 
   const copyLink = () => { navigator.clipboard.writeText(storeUrl); setQrCopied(true); showToast("Store link copied!", "success"); setTimeout(() => setQrCopied(false), 2000); };
 
+  const handleNavigate = useCallback((page) => {
+    dispatchAction({ type: "navigate", payload: { push: `/dashboard/${page}` } });
+  }, [dispatchAction]);
+
   if (loading) return <Loading message="Loading dashboard..." />;
   if (!stats) return <Empty icon="📊" message="No dashboard data yet" sub={setup ? "Setup data saved. Complete your app setup to see stats here." : "Complete your app setup to see stats here"} action={<button onClick={() => navigate("/wizard")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{setup ? "Continue Setup →" : "Setup Your App →"}</button>} />;
 
   const kpiData = [
     { label: "Total Customers", value: stats.customers.toLocaleString(), trend: "+34 this week", trendUp: true, icon: Users, color: "#7C3AED" },
     { label: "Revenue (This Month)", value: `₦${stats.revenue.toLocaleString()}`, trend: "+18% vs last month", trendUp: true, icon: DollarSign, color: AMBER },
-    { label: "Unread Messages", value: stats.unreadMessages, trend: "Reply now →", trendUp: null, icon: MessageSquare, color: "#0D9488", action: () => navigate("/dashboard/messages") },
+    { label: "Unread Messages", value: stats.unreadMessages, trend: "Reply now →", trendUp: null, icon: MessageSquare, color: "#0D9488", page: "messages" },
     { label: "Avg Rating", value: `${stats.avgRating} ⭐`, trend: `(${stats.reviewsCount} reviews)`, trendUp: null, icon: Star, color: "#EC4899" },
   ];
 
@@ -80,7 +96,7 @@ export default function Dashboard() {
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 12 : 18, marginBottom: isMobile ? 20 : 28 }}>
         {kpiData.map((k, i) => (
-          <div key={i} style={{ ...cardStyle, position: "relative", overflow: "hidden", cursor: k.action ? "pointer" : "default" }} onClick={k.action}>
+          <div key={i} style={{ ...cardStyle, position: "relative", overflow: "hidden", cursor: k.page ? "pointer" : "default" }} onClick={() => k.page && handleNavigate(k.page)}>
             <div style={{ position: "absolute", top: -8, right: -8, width: 56, height: 56, background: `${k.color}0A`, borderRadius: "50%" }} />
             <div style={{ width: 36, height: 36, background: `${k.color}12`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
               <k.icon size={18} color={k.color} />
@@ -109,22 +125,24 @@ export default function Dashboard() {
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Phone</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.phone || "—"}</div>
         </div>
-        {deployedApp?.appName && <><div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
-          <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>App Name</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.appName}</div>
-        </div>
-        <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
-          <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Category</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.category || setup?.category || "—"}</div>
-        </div>
-        <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
-          <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Template</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.template || setup?.template || "—"}</div>
-        </div>
-        <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
-          <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Integrations</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{(deployedApp?.selectedIntegrations?.length || setup?.selectedIntegrations?.length || 0) + " enabled"}</div>
-        </div></>}
+        {deployedApp?.appName && <>
+          <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>App Name</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.appName}</div>
+          </div>
+          <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Category</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.category || setup?.category || "—"}</div>
+          </div>
+          <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Template</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.template || setup?.template || "—"}</div>
+          </div>
+          <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Integrations</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{(deployedApp?.selectedIntegrations?.length || setup?.selectedIntegrations?.length || 0) + " enabled"}</div>
+          </div>
+        </>}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 380px", gap: isMobile ? 16 : 20 }}>
@@ -135,7 +153,7 @@ export default function Dashboard() {
                 <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Recent Activity</span>
                 <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>Latest customer actions</div>
               </div>
-              <button onClick={() => navigate("/dashboard/orders")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+              <button onClick={() => handleNavigate("orders")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                 View All <ArrowRight size={14} />
               </button>
             </div>
@@ -186,7 +204,7 @@ export default function Dashboard() {
                 { label: "Messages", icon: MessageSquare, page: "messages", outline: true },
                 { label: "Analytics", icon: BarChart3, page: "analytics", outline: true },
               ].map((a, i) => (
-                <button key={i} onClick={() => navigate(`/dashboard/${a.page}`)} style={{
+                <button key={i} onClick={() => handleNavigate(a.page)} style={{
                   background: a.accent ? NAVY : a.outline ? "#fff" : `${AMBER}15`,
                   color: a.accent ? "#fff" : NAVY,
                   border: a.outline ? `1.5px solid var(--border)` : "none",

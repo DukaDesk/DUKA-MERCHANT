@@ -1,0 +1,29 @@
+{
+  "screenId": "info",
+  "title": "Info",
+  "children": [
+    {
+      "type": "info_list",
+      "key": "contact-info",
+      "props": {
+        "variant": "dark",
+        "items": [
+          { "icon": "📞", "label": "Call Us", "value": "+234 800 111 1111" },
+          { "icon": "📍", "label": "Address", "value": "45 Modern Avenue, Lagos" },
+          { "icon": "🕐", "label": "Hours", "value": "Mon-Sun: 10AM - 11PM" },
+          { "icon": "📧", "label": "Email", "value": "info@modernbites.com" }
+        ]
+      },
+      "actions": {
+        "call": { "type": "call_phone", "payload": { "phone": "+2348001111111" } },
+        "email": { "type": "email", "payload": { "to": "info@modernbites.com" } }
+      }
+    },
+    {
+      "type": "report_action",
+      "key": "report-issue",
+      "props": { "title": "Report an Issue", "variant": "dark" },
+      "actions": { "submit": { "type": "submit_form", "payload": {} } }
+    }
+  ]
+}

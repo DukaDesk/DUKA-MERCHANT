@@ -1,0 +1,31 @@
+{
+  "templateId": "community-light",
+  "name": "Community Light",
+  "category": "Church",
+  "tags": ["Warm", "Modern"],
+  "features": ["Events", "Giving", "Announcements", "Prayer Requests"],
+  "preview": "🕯️",
+  "theme": {
+    "primaryColor": "#F4A026",
+    "secondaryColor": "#1B4332",
+    "backgroundColor": "#FEF8ED",
+    "cardColor": "#FFFFFF",
+    "textColor": "#0F0F1A",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "events",
+    "tabs": [
+      { "label": "Events", "icon": "calendar-outline", "screenId": "events" },
+      { "label": "Giving", "icon": "heart-outline", "screenId": "giving" },
+      { "label": "Announcements", "icon": "megaphone-outline", "screenId": "announcements" },
+      { "label": "Prayer", "icon": "heart-outline", "screenId": "prayer" }
+    ]
+  },
+  "screens": [
+    { "id": "events", "path": "screens/events.json" },
+    { "id": "giving", "path": "screens/giving.json" },
+    { "id": "announcements", "path": "screens/announcements.json" },
+    { "id": "prayer", "path": "screens/prayer.json" }
+  ]
+}

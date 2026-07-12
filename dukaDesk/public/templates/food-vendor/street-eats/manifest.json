@@ -1,0 +1,31 @@
+{
+  "templateId": "street-eats",
+  "name": "Street Eats",
+  "category": "Food Vendor",
+  "tags": ["Bold", "Colorful"],
+  "features": ["Menu", "Cart", "Orders", "Quick Pickup"],
+  "preview": "🌮",
+  "theme": {
+    "primaryColor": "#EA580C",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#1A1A2E",
+    "cardColor": "#252540",
+    "textColor": "#FFFFFF",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "menu",
+    "tabs": [
+      { "label": "Menu", "icon": "restaurant-outline", "screenId": "menu" },
+      { "label": "Orders", "icon": "receipt-outline", "screenId": "orders" },
+      { "label": "Pickup", "icon": "bag-outline", "screenId": "pickup" },
+      { "label": "Info", "icon": "information-outline", "screenId": "info" }
+    ]
+  },
+  "screens": [
+    { "id": "menu", "path": "screens/menu.json" },
+    { "id": "orders", "path": "screens/orders.json" },
+    { "id": "pickup", "path": "screens/pickup.json" },
+    { "id": "info", "path": "screens/info.json" }
+  ]
+}

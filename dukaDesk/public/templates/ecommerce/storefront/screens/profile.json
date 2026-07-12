@@ -1,0 +1,29 @@
+{
+  "screenId": "profile",
+  "title": "Profile",
+  "children": [
+    {
+      "type": "info_list",
+      "key": "account-info",
+      "props": {
+        "items": [
+          { "icon": "👤", "label": "My Account", "value": "Manage settings" },
+          { "icon": "📍", "label": "Shipping Addresses", "value": "2 addresses" },
+          { "icon": "💳", "label": "Payment Methods", "value": "Card, Bank Transfer" },
+          { "icon": "⭐", "label": "Wishlist", "value": "5 items" }
+        ]
+      },
+      "actions": {
+        "tap": { "type": "navigate", "payload": { "push": "/settings" } }
+      }
+    },
+    {
+      "type": "primary_button",
+      "key": "logout-btn",
+      "props": { "label": "Logout" },
+      "actions": {
+        "default": { "type": "logout" }
+      }
+    }
+  ]
+}

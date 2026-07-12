@@ -1,0 +1,12 @@
+{
+  "screenId": "bookings",
+  "title": "My Bookings",
+  "children": [
+    {
+      "type": "order_history",
+      "key": "booking-list",
+      "props": { "showStatus": true },
+      "actions": { "selectBooking": { "type": "navigate", "payload": { "push": "/booking-detail" } } }
+    }
+  ]
+}

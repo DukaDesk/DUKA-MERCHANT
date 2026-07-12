@@ -1,0 +1,20 @@
+{
+  "screenId": "services",
+  "title": "Services",
+  "layout": {
+    "kind": "scroll",
+    "children": [
+      {
+        "type": "hero_banner",
+        "key": "services-banner",
+        "props": { "title": "Our Services", "subtitle": "Book your appointment", "image": null }
+      },
+      {
+        "type": "menu_grid",
+        "key": "services-grid",
+        "props": { "columns": 2 },
+        "actions": { "bookService": { "type": "navigate", "payload": { "push": "/booking" } } }
+      }
+    ]
+  }
+}

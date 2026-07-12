@@ -1,0 +1,20 @@
+{
+  "screenId": "menu",
+  "title": "Menu",
+  "layout": {
+    "kind": "scroll",
+    "children": [
+      {
+        "type": "hero_banner",
+        "key": "featured-banner",
+        "props": { "title": "Today's Special", "subtitle": "Fresh bites, ready fast", "image": null }
+      },
+      {
+        "type": "menu_grid",
+        "key": "menu-items",
+        "props": { "columns": 2, "variant": "bold" },
+        "actions": { "addItem": { "type": "add_to_cart" }, "viewDetails": { "type": "navigate", "payload": { "push": "/item-detail" } } }
+      }
+    ]
+  }
+}

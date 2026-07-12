@@ -1,0 +1,17 @@
+{
+  "screenId": "reviews",
+  "title": "Reviews",
+  "children": [
+    {
+      "type": "hero_banner",
+      "key": "reviews-banner",
+      "props": { "title": "Guest Reviews", "subtitle": "What our clients say", "image": null }
+    },
+    {
+      "type": "notification_list",
+      "key": "reviews-list",
+      "props": { "notifications": [] },
+      "actions": { "tap": { "type": "navigate", "payload": { "push": "/review-detail" } } }
+    }
+  ]
+}

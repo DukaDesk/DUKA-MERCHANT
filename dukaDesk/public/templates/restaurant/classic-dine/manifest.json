@@ -1,0 +1,31 @@
+{
+  "templateId": "classic-dine",
+  "name": "Classic Dine",
+  "category": "Restaurant",
+  "tags": ["Elegant", "Warm tones"],
+  "features": ["Menu", "Cart", "Orders", "Reservations"],
+  "preview": "🍜",
+  "theme": {
+    "primaryColor": "#1B4332",
+    "secondaryColor": "#F4A026",
+    "textColor": "#0F0F1A",
+    "bgColor": "#FAFAFA",
+    "cardColor": "#FFFFFF",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "menu",
+    "tabs": [
+      { "label": "Menu", "icon": "restaurant-outline", "screenId": "menu" },
+      { "label": "Orders", "icon": "receipt-outline", "screenId": "orders" },
+      { "label": "Reserve", "icon": "calendar-outline", "screenId": "reservations" },
+      { "label": "Info", "icon": "information-outline", "screenId": "info" }
+    ]
+  },
+  "screens": [
+    { "id": "menu", "path": "screens/menu.json" },
+    { "id": "orders", "path": "screens/orders.json" },
+    { "id": "reservations", "path": "screens/reservations.json" },
+    { "id": "info", "path": "screens/info.json" }
+  ]
+}

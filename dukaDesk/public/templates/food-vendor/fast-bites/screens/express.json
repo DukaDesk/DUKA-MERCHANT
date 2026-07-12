@@ -1,0 +1,20 @@
+{
+  "screenId": "express",
+  "title": "Express Orders",
+  "layout": {
+    "kind": "scroll",
+    "children": [
+      {
+        "type": "hero_banner",
+        "key": "express-banner",
+        "props": { "title": "Express Orders", "subtitle": "Ready in 15 minutes", "image": null }
+      },
+      {
+        "type": "menu_grid",
+        "key": "express-items",
+        "props": { "columns": 2 },
+        "actions": { "addItem": { "type": "add_to_cart" } }
+      }
+    ]
+  }
+}

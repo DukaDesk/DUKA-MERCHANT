@@ -1,0 +1,20 @@
+{
+  "screenId": "info",
+  "title": "Info",
+  "children": [
+    {
+      "type": "info_list",
+      "key": "contact-info",
+      "props": {
+        "variant": "default",
+        "items": [
+          { "icon": "📞", "label": "Call Us", "value": "+234 800 000 0000", "action": "call" },
+          { "icon": "📍", "label": "Address", "value": "45 Street Food Lane, Lagos" },
+          { "icon": "🕐", "label": "Hours", "value": "Mon-Sun: 10AM - 10PM" },
+          { "icon": "📧", "label": "Email", "value": "hello@streeteats.com", "action": "email" }
+        ]
+      },
+      "actions": { "call": { "type": "call_phone", "payload": { "phone": "+2348000000000" } }, "email": { "type": "email", "payload": { "to": "hello@streeteats.com" } } }
+    }
+  ]
+}

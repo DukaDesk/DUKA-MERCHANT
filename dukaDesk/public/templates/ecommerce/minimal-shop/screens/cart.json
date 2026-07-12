@@ -1,0 +1,12 @@
+{
+  "screenId": "cart",
+  "title": "Cart",
+  "children": [
+    {
+      "type": "cart_summary",
+      "key": "cart-summary",
+      "props": {},
+      "actions": { "checkout": { "type": "checkout" }, "removeItem": { "type": "remove_from_cart" } }
+    }
+  ]
+}

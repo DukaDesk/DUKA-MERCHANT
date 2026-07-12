@@ -1,0 +1,12 @@
+{
+  "screenId": "live",
+  "title": "Live Classes",
+  "children": [
+    {
+      "type": "notification_list",
+      "key": "live-list",
+      "props": { "notifications": [] },
+      "actions": { "tap": { "type": "navigate", "payload": { "push": "/live-session" } } }
+    }
+  ]
+}

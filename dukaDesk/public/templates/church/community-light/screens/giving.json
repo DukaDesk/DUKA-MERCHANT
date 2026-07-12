@@ -1,0 +1,12 @@
+{
+  "screenId": "giving",
+  "title": "Giving",
+  "children": [
+    {
+      "type": "cart_summary",
+      "key": "giving-summary",
+      "props": {},
+      "actions": { "checkout": { "type": "checkout" } }
+    }
+  ]
+}

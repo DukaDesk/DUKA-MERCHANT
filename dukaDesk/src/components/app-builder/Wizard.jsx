@@ -6,6 +6,10 @@ import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
 import { setSetupData, getSetupData, deployApp } from "../../services/api";
 import { WIZARD_STEPS, WIZARD_CATEGORIES, WIZARD_TEMPLATES_BY_CATEGORY, WIZARD_FEATURE_INTEGRATION_MAP, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_PREVIEW_DATA, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, INTEGRATION_BADGE_COLORS, getTemplateIntegrationNames } from "../../services/mockData";
+import { TemplatePreview } from "../template/TemplateRenderer";
+import { loadAllTemplateScreens } from "../../services/TemplateLoader";
+import { generateShopTemplate } from "../../services/TemplateGenerator";
+import { Palette, Eye, MousePointer, SlidersHorizontal, Sparkles, ArrowRight } from "lucide-react";
 
 const steps = WIZARD_STEPS;
 const categories = WIZARD_CATEGORIES;
@@ -32,6 +36,11 @@ export default function Wizard() {
   });
   const [errors, setErrors] = useState({});
   const [published, setPublished] = useState(false);
+  const [previewScreenId, setPreviewScreenId] = useState("menu");
+  const [templateManifest, setTemplateManifest] = useState(null);
+  const [templateScreens, setTemplateScreens] = useState({});
+  const [showCustomize, setShowCustomize] = useState(false);
+  const [customizeTemplateId, setCustomizeTemplateId] = useState(null);
 
   const validate = () => {
     const e = {};
@@ -52,6 +61,7 @@ export default function Wizard() {
     if (step === 1) return !!data.template;
     return true;
   };
+
   const handlePublish = async () => {
     saveProgress();
     try {
@@ -68,9 +78,74 @@ export default function Wizard() {
     }
   };
 
+  // Load template preview when category/template selected
+  useEffect(() => {
+    if (data.category && data.template && typeof data.category === 'string' && typeof data.template === 'string') {
+      const templateId = `${data.category.toLowerCase()}/${data.template.toLowerCase().replace(/\s+/g, '-')}`;
+      loadAllTemplateScreens(templateId).then(({ manifest, screens }) => {
+        setTemplateManifest(manifest);
+        setTemplateScreens(screens);
+        setPreviewScreenId(manifest?.navigation?.initialScreen || "menu");
+      }).catch(() => {
+        // Fallback to generated template
+        const generated = generateShopTemplate({
+          category: data.category,
+          template: data.template,
+          appName: data.appName,
+          tagline: data.tagline,
+          color: data.color,
+          logo: data.logo,
+          businessName: data.appName,
+          bizDesc: data.bizDesc,
+          phone: data.phone,
+          address: data.address,
+          hours: data.hours,
+          selectedIntegrations: data.selectedIntegrations,
+        });
+        setTemplateManifest(generated);
+        setTemplateScreens({});
+        setPreviewScreenId(generated.navigation?.initialScreen || "menu");
+      });
+    }
+  }, [data.category, data.template]);
+
+  const openCustomize = () => {
+    if (data.category && data.template) {
+      const templateId = `${data.category.toLowerCase()}/${data.template.toLowerCase().replace(/\s+/g, '-')}`;
+      setCustomizeTemplateId(templateId);
+      setShowCustomize(true);
+    }
+  };
+
+  const handlePreviewAction = (actionKey, payload) => {
+    if (actionKey === "navigate" && payload?.push) {
+      const screenMatch = payload.push.match(/\/([^/]+)$/);
+      if (screenMatch) {
+        const newScreenId = screenMatch[1].replace(/-/g, '');
+        const found = templateManifest?.screens?.find(s => s.id === newScreenId || s.id.replace(/-/g, '') === newScreenId);
+        if (found) {
+          setPreviewScreenId(found.id);
+        }
+      }
+    }
+  };
+
   const stepLabels = ["Choose category", "Pick template", "Brand your app", "Business info", "Integrations"];
 
   if (published) return <Published data={data} onFinish={() => navigate("/dashboard")} showToast={showToast} isMobile={isMobile} />;
+
+  // Render customize modal
+  if (showCustomize && customizeTemplateId) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#F7F8FA", position: "relative" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 99, onClick: () => setShowCustomize(false) }} />
+        <iframe
+          src={`/template-editor/${customizeTemplateId}`}
+          style={{ position: "fixed", top: "40px", left: "40px", right: "40px", bottom: "40px", border: "none", borderRadius: 12, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", zIndex: 100 }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#F7F8FA", display: "flex", flexDirection: isMobile ? "column" : "row" }}>
@@ -107,7 +182,7 @@ export default function Wizard() {
       </div>
 
       <div style={{ flex: 1, padding: isMobile ? "24px 16px" : "48px", overflowY: "auto" }}>
-        <div style={{ maxWidth: 860, margin: "0 auto" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           {isMobile && (
             <div style={{ textAlign: "center", marginBottom: 20, animation: "fadeIn 0.3s ease" }}>
               <span style={{ background: AMBER, color: NAVY, fontSize: 12, fontWeight: 700, padding: "4px 14px", borderRadius: 12 }}>{stepLabels[step]}</span>
@@ -119,11 +194,35 @@ export default function Wizard() {
             {step === 1 && <StepTemplate data={data} setData={setData} isMobile={isMobile}
               templatesByCategory={WIZARD_TEMPLATES_BY_CATEGORY}
               getTemplateIntegrations={getTemplateIntegrationNames}
+              templateManifest={templateManifest}
+              templateScreens={templateScreens}
+              previewScreenId={previewScreenId}
+              setPreviewScreenId={setPreviewScreenId}
+              onPreviewAction={handlePreviewAction}
+              openCustomize={openCustomize}
             />}
-            {step === 2 && <StepBranding data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} />}
-            {step === 3 && <StepBusiness data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} />}
+            {step === 2 && <StepBranding data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile}
+              templateManifest={templateManifest}
+              templateScreens={templateScreens}
+              previewScreenId={previewScreenId}
+              setPreviewScreenId={setPreviewScreenId}
+              onPreviewAction={handlePreviewAction}
+              openCustomize={openCustomize}
+            />}
+            {step === 3 && <StepBusiness data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile}
+              templateManifest={templateManifest}
+              templateScreens={templateScreens}
+              previewScreenId={previewScreenId}
+              setPreviewScreenId={setPreviewScreenId}
+              onPreviewAction={handlePreviewAction}
+            />}
             {step === 4 && <StepIntegrations data={data} setData={setData} isMobile={isMobile}
               getTemplateIntegrations={getTemplateIntegrationNames}
+              templateManifest={templateManifest}
+              templateScreens={templateScreens}
+              previewScreenId={previewScreenId}
+              setPreviewScreenId={setPreviewScreenId}
+              onPreviewAction={handlePreviewAction}
             />}
           </div>
 
@@ -180,43 +279,63 @@ function StepCategory({ data, setData, isMobile }) {
   );
 }
 
-function StepTemplate({ data, setData, isMobile, templatesByCategory, getTemplateIntegrations }) {
+function StepTemplate({ data, setData, isMobile, templatesByCategory, getTemplateIntegrations, templateManifest, templateScreens, previewScreenId, setPreviewScreenId, onPreviewAction, openCustomize }) {
   const templates = templatesByCategory[data.category] || [];
   const [hovered, setHovered] = useState(null);
+  
   return (
-    <div>
-      <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Choose your template</h2>
-      <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 36px" }}>Pick the look and feel for your app. You can customise everything next.</p>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 20 }}>
-        {templates.map((t, i) => {
-          const selected = data.template === t.name;
-          return (
-            <div key={i} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
-              style={{
-                background: "#fff", border: `1.5px solid ${selected ? AMBER : hovered === i ? "#D1D5DB" : "#E8E8F0"}`,
-                borderRadius: 12, overflow: "hidden", cursor: "pointer", transition: "all 0.15s",
-                position: "relative", transform: hovered === i && !selected ? "translateY(-2px)" : "none",
-                boxShadow: hovered === i && !selected ? "0 4px 16px rgba(0,0,0,0.06)" : "none",
-              }}
-              onClick={() => setData(d => ({ ...d, template: t.name, selectedIntegrations: getTemplateIntegrations(t.name) }))}>
-              {selected && <div style={{ position: "absolute", top: 8, left: 8, background: AMBER, color: NAVY, fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 8, zIndex: 2 }}>Selected</div>}
-              <div style={{ height: isMobile ? 130 : 170, background: `linear-gradient(135deg, ${NAVY}, #1a1a2e)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 56 : 72 }}>{t.preview}</div>
-              <div style={{ padding: 16 }}>
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, color: NAVY, marginBottom: 8 }}>{t.name}</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                  {t.tags.map((tag, j) => <span key={j} style={{ background: "#F3F4F6", color: "#6B7280", fontSize: 11, padding: "3px 8px", borderRadius: 8 }}>{tag}</span>)}
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 420px", gap: isMobile ? 24 : 40 }}>
+      <div>
+        <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Choose your template</h2>
+        <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 36px" }}>Pick the look and feel for your app. Each template gives you a different set of screens and layout.</p>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 20 }}>
+          {templates.map((t, i) => {
+            const selected = data.template === t.name;
+            return (
+              <div key={i} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
+                style={{
+                  background: "#fff", border: `1.5px solid ${selected ? AMBER : hovered === i ? "#D1D5DB" : "#E8E8F0"}`,
+                  borderRadius: 12, overflow: "hidden", cursor: "pointer", transition: "all 0.15s",
+                  position: "relative", transform: hovered === i && !selected ? "translateY(-2px)" : "none",
+                  boxShadow: hovered === i && !selected ? "0 4px 16px rgba(0,0,0,0.06)" : "none",
+                }}
+                onClick={() => {
+                  setData(d => ({ ...d, template: t.name, selectedIntegrations: getTemplateIntegrations(t.name) }));
+                  setTimeout(() => setStep(2), 100);
+                }}>
+                {selected && <div style={{ position: "absolute", top: 8, left: 8, background: AMBER, color: NAVY, fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 8, zIndex: 2 }}>Selected</div>}
+                <div style={{ height: isMobile ? 130 : 170, background: `linear-gradient(135deg, ${NAVY}, #1a1a2e)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 56 : 72 }}>{t.preview}</div>
+                <div style={{ padding: 16 }}>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, color: NAVY, marginBottom: 8 }}>{t.name}</div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                    {t.tags.map((tag, j) => <span key={j} style={{ background: "#F3F4F6", color: "#6B7280", fontSize: 11, padding: "3px 8px", borderRadius: 8 }}>{tag}</span>)}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.5 }}>{t.features.map(f => `✓ ${f}`).join("  ")}</div>
                 </div>
-                <div style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.5 }}>{t.features.map(f => `✓ ${f}`).join("  ")}</div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
+
+      {!isMobile && templateManifest && (
+        <div style={{ position: "sticky", top: 20, animation: "slideIn 0.3s ease" }}>
+          <InteractivePreview
+            manifest={templateManifest}
+            screens={templateScreens}
+            currentScreenId={previewScreenId}
+            setCurrentScreenId={setPreviewScreenId}
+            onAction={onPreviewAction}
+            openCustomize={openCustomize}
+            isMobile={false}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
-function StepBranding({ data, setData, errors, setErrors, isMobile }) {
+function StepBranding({ data, setData, errors, setErrors, isMobile, templateManifest, templateScreens, previewScreenId, setPreviewScreenId, onPreviewAction, openCustomize }) {
   const colors = WIZARD_COLORS;
   const logoInputRef = useRef(null);
   const [focused, setFocused] = useState(null);
@@ -228,12 +347,12 @@ function StepBranding({ data, setData, errors, setErrors, isMobile }) {
     reader.onload = (ev) => setData(d => ({ ...d, logo: ev.target.result }));
     reader.readAsDataURL(file);
   };
-  const pv = WIZARD_PREVIEW_DATA[data.category] || WIZARD_PREVIEW_DATA.Restaurant;
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: isMobile ? 24 : 40 }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 420px", gap: isMobile ? 24 : 40 }}>
       <div>
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Brand your app</h2>
-        <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 32px" }}>Your logo, colors and name appear throughout your customer-facing app.</p>
+        <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 32px" }}>Your logo, colors and name appear throughout your customer-facing app. Changes update the live preview instantly.</p>
         <div style={{ marginBottom: 20 }}>
           <label style={labelStyle}>App Logo</label>
           <input ref={logoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogoUpload} />
@@ -281,89 +400,87 @@ function StepBranding({ data, setData, errors, setErrors, isMobile }) {
           </div>
         </div>
       </div>
-      {!isMobile && (
-        <div style={{ position: "sticky", top: 20 }}>
-          <div style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>Live Preview</div>
-          <div style={{ background: NAVY, borderRadius: 32, padding: 12, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", width: 240, margin: "0 auto" }}>
-            <div style={{ background: "#fff", borderRadius: 24, overflow: "hidden", minHeight: 420 }}>
-              <div style={{ background: data.color, padding: "20px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                {data.logo && <img src={data.logo} alt="logo" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} />}
-                <div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>{pv.badge} · 4.8 ⭐</div>
-                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: "#fff" }}>{data.appName || "Your App"}</div>
-                  {data.tagline && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>{data.tagline}</div>}
-                </div>
-              </div>
-              <div style={{ padding: "12px 12px 8px" }}>
-                {pv.categories.map((cat, i) => (
-                  <span key={i} style={{ background: i === 0 ? data.color : "#F3F4F6", color: i === 0 ? "#fff" : "#6B7280", fontSize: 11, padding: "4px 10px", borderRadius: 12, marginRight: 6, fontWeight: i === 0 ? 600 : 400 }}>{cat}</span>
-                ))}
-              </div>
-              {pv.items.map((item, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderTop: "1px solid #F3F4F6" }}>
-                  <div style={{ width: 48, height: 48, background: "#F3F4F6", borderRadius: 8, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{item.emoji}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: NAVY }}>{item.name}</div>
-                    <div style={{ fontSize: 11, color: data.color, fontWeight: 700 }}>{item.price}</div>
-                  </div>
-                  <div style={{ background: data.color, color: data.color === "#fff" ? NAVY : "#fff", borderRadius: 12, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>+</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <p style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center", marginTop: 8 }}>Updates as you type</p>
+
+      {!isMobile && templateManifest && (
+        <div style={{ position: "sticky", top: 20, animation: "slideIn 0.3s ease" }}>
+          <InteractivePreview
+            manifest={templateManifest}
+            screens={templateScreens}
+            currentScreenId={previewScreenId}
+            setCurrentScreenId={setPreviewScreenId}
+            onAction={handlePreviewAction}
+            openCustomize={openCustomize}
+            branding={data}
+            isMobile={false}
+          />
         </div>
       )}
     </div>
   );
 }
 
-function StepBusiness({ data, setData, errors, setErrors, isMobile }) {
+function StepBusiness({ data, setData, errors, setErrors, isMobile, templateManifest, templateScreens, previewScreenId, setPreviewScreenId, onPreviewAction }) {
   const defaultHours = WIZARD_DAYS.map((d, i) => ({ day: d, open: i < 5, start: "09:00", end: "22:00" }));
   const [focused, setFocused] = useState(null);
   return (
-    <div style={{ maxWidth: 600 }}>
-      <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Tell customers about your business</h2>
-      <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 32px" }}>This information appears on your store page in the DukaDesk app.</p>
-      <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>About Your Business</label>
-        <textarea value={data.bizDesc} onChange={e => setData(d => ({ ...d, bizDesc: e.target.value }))} placeholder="Tell customers what makes you special..." style={{ ...inputStyle, height: 100, resize: "vertical", paddingTop: 12 }} />
-        <div style={{ textAlign: "right", fontSize: 11, color: "#9CA3AF" }}>{(data.bizDesc || "").length}/500</div>
-      </div>
-      <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>Contact Phone *</label>
-        <div style={{ display: "flex", gap: 8, flexDirection: isMobile ? "column" : "row" }}>
-          <div style={{ ...inputStyle, maxWidth: isMobile ? "100%" : 90, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>🇳🇬 +234</div>
-          <input value={data.phone} onChange={e => { setData(d => ({ ...d, phone: e.target.value })); if (errors.phone) setErrors(e => ({ ...e, phone: "" })); }} placeholder="801 234 5678" style={{ ...inputStyle, flex: 1, borderColor: errors.phone ? "#E74C3C" : undefined }} />
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 420px", gap: isMobile ? 24 : 40 }}>
+      <div style={{ maxWidth: 600 }}>
+        <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Tell customers about your business</h2>
+        <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 32px" }}>This information appears on your store page in the DukaDesk app.</p>
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>About Your Business</label>
+          <textarea value={data.bizDesc} onChange={e => setData(d => ({ ...d, bizDesc: e.target.value }))} placeholder="Tell customers what makes you special..." style={{ ...inputStyle, height: 100, resize: "vertical", paddingTop: 12 }} />
+          <div style={{ textAlign: "right", fontSize: 11, color: "#9CA3AF" }}>{(data.bizDesc || "").length}/500</div>
         </div>
-        {errors.phone && <div style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.phone}</div>}
-      </div>
-      <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>Business Address</label>
-        <input value={data.address} onChange={e => setData(d => ({ ...d, address: e.target.value }))} placeholder="12 Admiralty Way, Lekki, Lagos" style={{ ...inputStyle, borderColor: focused === "address" ? AMBER : undefined }} onFocus={() => setFocused("address")} onBlur={() => setFocused(null)} />
-      </div>
-      <div style={{ marginBottom: 24 }}>
-        <label style={labelStyle}>Operating Hours</label>
-        <div style={{ background: "#fff", border: "1px solid #E8E8F0", borderRadius: 10, overflow: "hidden" }}>
-          {(data.hours || defaultHours).map((h, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 16, padding: "12px 16px", borderBottom: i < 6 ? "1px solid #F3F4F6" : "none", flexWrap: isMobile ? "wrap" : "nowrap" }}>
-              <span style={{ width: isMobile ? 60 : 90, fontSize: 14, color: NAVY, fontWeight: 500 }}>{h.day}</span>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                <input type="checkbox" checked={h.open} onChange={e => { const hh = [...(data.hours || defaultHours)]; hh[i] = { ...hh[i], open: e.target.checked }; setData(d => ({ ...d, hours: hh })); }} style={{ accentColor: AMBER }} />
-                <span style={{ fontSize: 13, color: "#6B7280" }}>Open</span>
-              </label>
-              <input type="time" value={h.start} onChange={e => { const hh = [...(data.hours || defaultHours)]; hh[i] = { ...hh[i], start: e.target.value }; setData(d => ({ ...d, hours: hh })); }} style={{ border: "1px solid #E8E8F0", borderRadius: 6, padding: "4px 8px", fontSize: 13 }} />
-              <span style={{ color: "#9CA3AF" }}>to</span>
-              <input type="time" value={h.end} onChange={e => { const hh = [...(data.hours || defaultHours)]; hh[i] = { ...hh[i], end: e.target.value }; setData(d => ({ ...d, hours: hh })); }} style={{ border: "1px solid #E8E8F0", borderRadius: 6, padding: "4px 8px", fontSize: 13 }} />
-            </div>
-          ))}
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>Contact Phone *</label>
+          <div style={{ display: "flex", gap: 8, flexDirection: isMobile ? "column" : "row" }}>
+            <div style={{ ...inputStyle, maxWidth: isMobile ? "100%" : 90, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>🇳🇬 +234</div>
+            <input value={data.phone} onChange={e => { setData(d => ({ ...d, phone: e.target.value })); if (errors.phone) setErrors(e => ({ ...e, phone: "" })); }} placeholder="801 234 5678" style={{ ...inputStyle, flex: 1, borderColor: errors.phone ? "#E74C3C" : undefined }} />
+          </div>
+          {errors.phone && <div style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.phone}</div>}
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>Business Address</label>
+          <input value={data.address} onChange={e => setData(d => ({ ...d, address: e.target.value }))} placeholder="12 Admiralty Way, Lekki, Lagos" style={{ ...inputStyle, borderColor: focused === "address" ? AMBER : undefined }} onFocus={() => setFocused("address")} onBlur={() => setFocused(null)} />
+        </div>
+        <div style={{ marginBottom: 24 }}>
+          <label style={labelStyle}>Operating Hours</label>
+          <div style={{ background: "#fff", border: "1px solid #E8E8F0", borderRadius: 10, overflow: "hidden" }}>
+            {(data.hours || defaultHours).map((h, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 16, padding: "12px 16px", borderBottom: i < 6 ? "1px solid #F3F4F6" : "none", flexWrap: isMobile ? "wrap" : "nowrap" }}>
+                <span style={{ width: isMobile ? 60 : 90, fontSize: 14, color: NAVY, fontWeight: 500 }}>{h.day}</span>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input type="checkbox" checked={h.open} onChange={e => { const hh = [...(data.hours || defaultHours)]; hh[i] = { ...hh[i], open: e.target.checked }; setData(d => ({ ...d, hours: hh })); }} style={{ accentColor: AMBER }} />
+                  <span style={{ fontSize: 13, color: "#6B7280" }}>Open</span>
+                </label>
+                <input type="time" value={h.start} onChange={e => { const hh = [...(data.hours || defaultHours)]; hh[i] = { ...hh[i], start: e.target.value }; setData(d => ({ ...d, hours: hh })); }} style={{ border: "1px solid #E8E8F0", borderRadius: 6, padding: "4px 8px", fontSize: 13 }} />
+                <span style={{ color: "#9CA3AF" }}>to</span>
+                <input type="time" value={h.end} onChange={e => { const hh = [...(data.hours || defaultHours)]; hh[i] = { ...hh[i], end: e.target.value }; setData(d => ({ ...d, hours: hh })); }} style={{ border: "1px solid #E8E8F0", borderRadius: 6, padding: "4px 8px", fontSize: 13 }} />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+
+      {!isMobile && templateManifest && (
+        <div style={{ position: "sticky", top: 20, animation: "slideIn 0.3s ease" }}>
+          <InteractivePreview
+            manifest={templateManifest}
+            screens={templateScreens}
+            currentScreenId={previewScreenId}
+            setCurrentScreenId={setPreviewScreenId}
+            onAction={handlePreviewAction}
+            branding={data}
+            isMobile={false}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
-function StepIntegrations({ data, setData, isMobile, getTemplateIntegrations }) {
+function StepIntegrations({ data, setData, isMobile, getTemplateIntegrations, templateManifest, templateScreens, previewScreenId, setPreviewScreenId, onPreviewAction }) {
   const toggle = (name) => setData(d => {
     const has = d.selectedIntegrations.includes(name);
     return { ...d, selectedIntegrations: has ? d.selectedIntegrations.filter(x => x !== name) : [...d.selectedIntegrations, name] };
@@ -375,10 +492,10 @@ function StepIntegrations({ data, setData, isMobile, getTemplateIntegrations }) 
     .filter(cat => cat.items.length > 0);
 
   return (
-    <div>
-      <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Supercharge your app</h2>
-      <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 32px" }}>Integrations tailored to your template. Add more anytime.</p>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 300px", gap: 28 }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 420px", gap: isMobile ? 24 : 40 }}>
+      <div>
+        <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Supercharge your app</h2>
+        <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 32px" }}>Integrations tailored to your template. Add more anytime.</p>
         <div>
           {filteredIntegrations.map((cat, ci) => (
             <div key={ci} style={{ marginBottom: 28 }}>
@@ -411,26 +528,20 @@ function StepIntegrations({ data, setData, isMobile, getTemplateIntegrations }) 
             </div>
           ))}
         </div>
-        {!isMobile && (
-          <div style={{ position: "sticky", top: 20 }}>
-            <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #E8E8F0", marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 15, color: NAVY }}>Selected ({data.selectedIntegrations.length})</span>
-                <button onClick={() => setData(d => ({ ...d, selectedIntegrations: [] }))} style={{ background: "none", border: "none", color: AMBER, fontSize: 12, cursor: "pointer" }}>Clear All</button>
-              </div>
-              {data.selectedIntegrations.map((name, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #F3F4F6" }}>
-                  <span style={{ fontSize: 14, color: NAVY, fontWeight: 500 }}>✓ {name}</span>
-                  <button onClick={(e) => { e.stopPropagation(); toggle(name); }} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16 }}>×</button>
-                </div>
-              ))}
-            </div>
-            <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 10, padding: 14 }}>
-              <div style={{ fontSize: 13, color: "#92400E" }}>💡 You can add or remove integrations anytime from your dashboard.</div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {!isMobile && templateManifest && (
+        <div style={{ position: "sticky", top: 20, animation: "slideIn 0.3s ease" }}>
+          <InteractivePreview
+            manifest={templateManifest}
+            screens={templateScreens}
+            currentScreenId={previewScreenId}
+            setCurrentScreenId={setPreviewScreenId}
+            onAction={handlePreviewAction}
+            isMobile={false}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -531,4 +642,228 @@ function Published({ data, onFinish, showToast, isMobile }) {
       </div>
     </div>
   );
+}
+
+function InteractivePreview({ manifest, screens, currentScreenId, setCurrentScreenId, onAction, openCustomize, branding, isMobile }) {
+  const tabs = manifest?.navigation?.tabs || [];
+  const brandColor = manifest?.theme?.primaryColor || branding?.color || AMBER;
+  const storeName = manifest?.branding?.appName || branding?.appName || "Your App";
+  const tagline = manifest?.branding?.tagline || branding?.tagline || "";
+  
+  const isDark = (hex) => {
+    if (!hex) return false;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance < 0.5;
+  };
+  
+  const isDarkMode = isDark(brandColor);
+  const textColor = isDarkMode ? "#fff" : "#0F0F1A";
+  const inactiveColor = isDarkMode ? "rgba(255,255,255,0.5)" : "#6B7280";
+  const activeTextColor = isDarkMode ? "#0F0F1A" : "#fff";
+  const headerBg = `linear-gradient(180deg, ${brandColor} 0%, ${brandColor}DD 100%)`;
+  
+  const getContrastColor = (hex) => {
+    if (!hex) return "#fff";
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance < 0.5 ? "#fff" : "#0F0F1A";
+  };
+  
+  const brandContrastColor = getContrastColor(brandColor);
+  
+  const handleDeliveryPickupClick = (type) => {
+    console.log(`${type} selected`);
+  };
+  
+  const handlePreviewAction = (actionKey, payload) => {
+    console.log("Preview action:", actionKey, payload);
+    if (onAction) onAction(actionKey, payload);
+};
+  
+  return (
+    <div style={{ 
+      width: isMobile ? "calc(100vw - 32px)" : 390, 
+      maxWidth: 390, 
+      background: NAVY, 
+      borderRadius: 44, 
+      padding: "12px", 
+      boxShadow: "0 40px 120px rgba(0,0,0,0.6)", 
+      position: "relative", 
+      margin: "0 auto",
+      minHeight: isMobile ? 500 : 760,
+      display: "flex",
+      flexDirection: "column"
+    }}>
+      <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", width: 120, height: 32, background: NAVY, borderRadius: "0 0 20px 20px", zIndex: 10 }} />
+      <div style={{ background: "#fff", borderRadius: 36, overflow: "hidden", position: "relative", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <div onClick={() => {}} style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}>
+          <div style={{ width: 36, height: 36, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", border: "2px solid rgba(255,255,255,0.6)" }}>
+            <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 16, color: NAVY }}>D</span>
+          </div>
+        </div>
+
+        {manifest?.navigation?.tabs && manifest.navigation.tabs.length > 0 ? (
+          <>
+            <div style={{ background: headerBg, padding: "48px 16px 16px", minHeight: 140, position: "relative" }}>
+              <div style={{ position: "absolute", inset: 0, backgroundImage: "url('data:image/svg+xml,%3Csvg width=%2760%27 height=%2760%27 viewBox=%270 0 60 60%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cg fill=%27none%27 fill-rule=%27evenodd%27%3E%3Cg fill=%27%23ffffff%27 fill-opacity=%270.03%27%3E%3Cpath d=%27M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }} />
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>🟢 Open Now · 4.8 ⭐</div>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: "#fff", marginBottom: 10 }}>{storeName}</div>
+              {tagline && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 10 }}>{tagline}</div>}
+              <div style={{ display: "flex", gap: 8 }}>
+                {["Delivery", "Pickup"].map(t => (
+                  <button 
+                    key={t} 
+                    onClick={() => handleDeliveryPickupClick(t)}
+                    style={{ 
+                      padding: "7px 18px", 
+                      borderRadius: 20, 
+                      border: `1.5px solid ${t === "Delivery" ? "#fff" : "rgba(255,255,255,0.3)"}`, 
+                      background: t === "Delivery" ? "#fff" : "transparent", 
+                      color: t === "Delivery" ? brandColor : "#fff", 
+                      fontSize: 13, 
+                      fontWeight: t === "Delivery" ? 700 : 400, 
+                      cursor: "pointer" 
+                    }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding: "12px 12px 4px", display: "flex", gap: 8, overflowX: "auto", background: "#fff", borderBottom: "1px solid #F3F4F6" }}>
+              {tabs.map((tab, idx) => (
+                <button 
+                  key={tab.screenId}
+                  onClick={() => setCurrentScreenId(tab.screenId)}
+                  style={{ 
+                    padding: "6px 14px", 
+                    borderRadius: 20, 
+                    border: `1.5px solid ${currentScreenId === tab.screenId ? brandColor : "#E5E7EB"}`, 
+                    background: currentScreenId === tab.screenId ? brandColor : "#fff", 
+                    color: currentScreenId === tab.screenId ? (isDarkMode ? activeTextColor : NAVY) : inactiveColor, 
+                    fontSize: 12, 
+                    fontWeight: currentScreenId === tab.screenId ? 600 : 400, 
+                    cursor: "pointer", 
+                    whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4
+                  }}
+                >
+                  {tab.icon && <span>{tab.icon}</span>}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div style={{ padding: "48px 16px", textAlign: "center", color: "#9CA3AF" }}>
+            <div style={{ fontSize: 14 }}>No navigation configured</div>
+          </div>
+        )}
+
+        <div style={{ flex: 1, overflow: "auto", background: "#F9FAFB", padding: 16 }}>
+          {manifest && screens[currentScreenId] ? (
+            <TemplatePreview
+              templateId={`${manifest.category.toLowerCase()}/${manifest.template.toLowerCase().replace(/\s+/g, '-')}`}
+              initialScreenId={currentScreenId}
+              onScreenChange={setCurrentScreenId}
+            />
+          ) : (
+            <FallbackPreview branding={branding || { appName: "Your App", tagline: "", color: AMBER }} screenId={currentScreenId} onAction={handlePreviewAction} />
+          )}
+        </div>
+
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60, background: "#fff", borderTop: "1px solid #E5E7EB", display: "flex", zIndex: 40 }}>
+          {tabs.map(t => (
+            <div 
+              key={t.id} 
+              onClick={() => setCurrentScreenId(t.screenId)} 
+              style={{ 
+                flex: 1, 
+                display: "flex", 
+                flexDirection: "column", 
+                alignItems: "center", 
+                justifyContent: "center", 
+                gap: 2, 
+                cursor: "pointer",
+                padding: "8px 0",
+                color: currentScreenId === t.screenId ? brandColor : inactiveColor
+              }}
+            >
+              <span style={{ fontSize: 20 }}>{t.icon || "📱"}</span>
+              <span style={{ fontSize: 10, fontWeight: currentScreenId === t.screenId ? 700 : 400 }}>{t.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FallbackPreview({ branding, screenId, onAction }) {
+  const brandColor = branding?.color || AMBER;
+  const storeName = branding?.appName || "Your App";
+  const pv = WIZARD_PREVIEW_DATA.Restaurant;
+  
+  if (screenId === "menu") {
+    return (
+      <div>
+        <div style={{ background: `linear-gradient(135deg, ${brandColor}, ${darken(brandColor, 20)})`, padding: "48px 16px 16px", minHeight: 140, position: "relative" }}>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>🟢 Open Now · 4.8 ⭐</div>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: "#fff", marginBottom: 10 }}>{storeName}</div>
+          {branding?.tagline && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 10 }}>{branding.tagline}</div>}
+          <div style={{ display: "flex", gap: 8 }}>
+            {["Delivery", "Pickup"].map(t => (
+              <button key={t} style={{ padding: "7px 18px", borderRadius: 20, border: `1.5px solid rgba(255,255,255,0.3)`, background: "transparent", color: "#fff", fontSize: 13, fontWeight: 400, cursor: "pointer" }}>{t}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ padding: "12px 12px 4px", display: "flex", gap: 8, overflowX: "auto", background: "#fff", borderBottom: "1px solid #F3F4F6" }}>
+          <button style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${brandColor}`, background: brandColor, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>🔥 All</button>
+          {pv.categories.map(c => (
+            <button key={c} style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid #E5E7EB`, background: "#fff", color: "#6B7280", fontSize: 12, fontWeight: 400, cursor: "pointer", whiteSpace: "nowrap" }}>{c}</button>
+          ))}
+        </div>
+        <div style={{ padding: "8px 12px", background: "#F9FAFB" }}>
+          {pv.items.slice(0, 6).map(item => (
+            <div key={item.id} style={{ display: "flex", gap: 10, padding: "12px 10px", background: "#fff", borderRadius: 10, marginBottom: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+              <div style={{ width: 60, height: 60, background: "#F3F4F6", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>{item.emoji}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: NAVY, marginBottom: 3 }}>{item.name}</div>
+                <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6, lineHeight: 1.3 }}>{item.desc}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: brandColor }}>{item.price}</span>
+                  <button onClick={() => onAction?.("add_to_cart", { item })} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 16, padding: "5px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Add +</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ position: "sticky", bottom: 0, background: "#fff", borderTop: "1px solid #E5E7EB", padding: "8px 12px", display: "flex", gap: 8 }}>
+          {[{ id:"menu", icon: "🏠", label: "Menu" }, { id:"orders", icon: "📦", label: "Orders" }, { id:"reserve", icon: "📅", label: "Reserve" }, { id:"info", icon: "ℹ️", label: "Info" }].map(t => (
+            <div key={t.id} onClick={() => {}} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "pointer" }}>
+              <span style={{ fontSize: 16 }}>{t.icon}</span>
+              <span style={{ fontSize: 9, color: t.id === "menu" ? brandColor : "#9CA3AF", fontWeight: t.id === "menu" ? 700 : 400 }}>{t.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+);
+    }
+}
+
+function darken(hex, percent) {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.max(0, (num >> 16) - amt);
+  const G = Math.max(0, ((num >> 8) & 0x00FF) - amt);
+  const B = Math.max(0, (num & 0x0000FF) - amt);
+  return "#" + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
 }

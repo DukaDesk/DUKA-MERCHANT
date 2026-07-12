@@ -1,0 +1,40 @@
+{
+  "screenId": "menu",
+  "title": "Menu",
+  "layout": {
+    "kind": "scroll",
+    "children": [
+      {
+        "type": "hero_banner",
+        "key": "welcome-banner",
+        "props": {
+          "title": "Welcome",
+          "subtitle": "Discover our fresh & bright menu",
+          "image": null
+        }
+      },
+      {
+        "type": "category_pills",
+        "key": "category-pills",
+        "props": {
+          "categories": ["Popular", "Mains", "Drinks", "Desserts"]
+        },
+        "actions": {
+          "selectCategory": { "type": "filter", "payload": { "source": "category" } }
+        }
+      },
+      {
+        "type": "menu_grid",
+        "key": "menu-items",
+        "props": {
+          "columns": 2,
+          "variant": "minimal"
+        },
+        "actions": {
+          "addItem": { "type": "add_to_cart" },
+          "viewDetails": { "type": "navigate", "payload": { "push": "/item-detail" } }
+        }
+      }
+    ]
+  }
+}

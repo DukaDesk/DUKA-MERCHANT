@@ -5,6 +5,9 @@ import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
 import { useIsMobile, useIsTablet } from "./hooks/useMediaQuery";
 import { setToken, getSetupData } from "./services/api";
+import { RuntimeContext } from "./runtime/RuntimeContext";
+import { dispatchEngine, setupActionRouter, clearActionRouter } from "./runtime/ActionEngine";
+import { BrandThemeProvider } from "./runtime/BrandThemeProvider";
 
 const Auth = lazy(() => import("./components/auth/Auth"));
 const Dashboard = lazy(() => import("./components/pages/Dashboard"));
@@ -18,6 +21,7 @@ const IntegrationDetails = lazy(() => import("./components/pages/IntegrationDeta
 const Billing = lazy(() => import("./components/pages/Billing"));
 const Profile = lazy(() => import("./components/pages/Profile"));
 const MiniAppPreview = lazy(() => import("./components/app-builder/MiniAppPreview"));
+const TemplateEditor = lazy(() => import("./components/template/TemplateEditor"));
 
 export const ToastContext = createContext();
 export const AuthContext = createContext();
@@ -99,9 +103,24 @@ export default function App() {
     toRemove.forEach(k => { try { localStorage.removeItem(k); } catch {} });
   }, []);
 
+  const navigate = useNavigate();
+  const dispatchAction = useCallback((action) => {
+    dispatchEngine(action, null);
+  }, []);
+
+  useEffect(() => {
+    setupActionRouter({
+      navigate: (path) => navigate(path),
+      logout: () => { logout(); navigate("/login"); },
+    });
+    return () => clearActionRouter();
+  }, [navigate, logout]);
+
   return (
     <AuthContext.Provider value={{ merchant, logout, handleAuth }}>
     <ToastContext.Provider value={showToast}>
+    <RuntimeContext.Provider value={{ dispatchAction }}>
+    <BrandThemeProvider>
       <ErrorBoundary>
         <div style={{ fontFamily: "var(--font-sans)", minHeight: "100vh", background: "var(--bg)" }}>
           {toasts.length > 0 && (
@@ -116,6 +135,7 @@ export default function App() {
               <Route path="/forgot" element={<PublicRoute><Auth onAuth={handleAuth} /></PublicRoute>} />
               <Route path="/wizard" element={<ProtectedRoute><Wizard /></ProtectedRoute>} />
               <Route path="/miniapp" element={<ProtectedRoute><MiniAppPreview /></ProtectedRoute>} />
+              <Route path="/template-editor/:templateId" element={<ProtectedRoute><TemplateEditor /></ProtectedRoute>} />
               <Route path="/" element={<Navigate to="/signup" replace />} />
               <Route path="/dashboard" element={<ProtectedRoute><ProtectedLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
@@ -133,6 +153,8 @@ export default function App() {
           </Suspense>
         </div>
       </ErrorBoundary>
+    </BrandThemeProvider>
+    </RuntimeContext.Provider>
     </ToastContext.Provider>
     </AuthContext.Provider>
   );
@@ -145,13 +167,18 @@ function ProtectedLayout() {
   const isTablet = useIsTablet();
   const padding = isMobile ? "16px" : isTablet ? "24px" : "32px";
   const { merchant } = useAuth();
-  const hasSetup = useRef(!!getSetupData());
+  const [hasSetup, setHasSetup] = useState(false);
 
   useEffect(() => {
-    if (merchant && !hasSetup.current && location.pathname === "/dashboard") {
+    const setup = getSetupData();
+    setHasSetup(!!setup);
+  }, []);
+
+  useEffect(() => {
+    if (merchant && !hasSetup && location.pathname === "/dashboard") {
       navigate("/wizard", { replace: true });
     }
-  }, [merchant, navigate, location]);
+  }, [merchant, navigate, location, hasSetup]);
 
   return (
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh" }}>

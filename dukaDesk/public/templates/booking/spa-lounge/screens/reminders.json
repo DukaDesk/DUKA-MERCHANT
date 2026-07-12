@@ -1,0 +1,17 @@
+{
+  "screenId": "reminders",
+  "title": "Reminders",
+  "children": [
+    {
+      "type": "hero_banner",
+      "key": "reminders-banner",
+      "props": { "title": "Booking Reminders", "subtitle": "Stay on schedule", "image": null }
+    },
+    {
+      "type": "notification_list",
+      "key": "reminders-list",
+      "props": { "notifications": [] },
+      "actions": { "tap": { "type": "navigate", "payload": { "push": "/reminder-detail" } } }
+    }
+  ]
+}

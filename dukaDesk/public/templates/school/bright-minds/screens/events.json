@@ -1,0 +1,12 @@
+{
+  "screenId": "events",
+  "title": "Events",
+  "children": [
+    {
+      "type": "notification_list",
+      "key": "events-list",
+      "props": { "notifications": [] },
+      "actions": { "tap": { "type": "navigate", "payload": { "push": "/event-detail" } } }
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "templateId": "spa-lounge",
+  "name": "Spa Lounge",
+  "category": "Booking",
+  "tags": ["Elegant", "Relaxed"],
+  "features": ["Services", "Booking", "Reminders", "Reviews"],
+  "preview": "💆",
+  "theme": {
+    "primaryColor": "#1B4332",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#F0FDF4",
+    "cardColor": "#FFFFFF",
+    "textColor": "#0F0F1A",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "services",
+    "tabs": [
+      { "label": "Services", "icon": "grid-outline", "screenId": "services" },
+      { "label": "Booking", "icon": "calendar-outline", "screenId": "booking" },
+      { "label": "Reminders", "icon": "bell-outline", "screenId": "reminders" },
+      { "label": "Reviews", "icon": "star-outline", "screenId": "reviews" }
+    ]
+  },
+  "screens": [
+    { "id": "services", "path": "screens/services.json" },
+    { "id": "booking", "path": "screens/booking.json" },
+    { "id": "reminders", "path": "screens/reminders.json" },
+    { "id": "reviews", "path": "screens/reviews.json" }
+  ]
+}

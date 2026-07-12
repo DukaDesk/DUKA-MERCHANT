@@ -1,0 +1,17 @@
+{
+  "screenId": "pickup",
+  "title": "Quick Pickup",
+  "children": [
+    {
+      "type": "hero_banner",
+      "key": "pickup-banner",
+      "props": { "title": "Ready for Pickup", "subtitle": "Order now, collect in minutes", "image": null }
+    },
+    {
+      "type": "menu_grid",
+      "key": "pickup-items",
+      "props": { "columns": 2 },
+      "actions": { "addItem": { "type": "add_to_cart" } }
+    }
+  ]
+}

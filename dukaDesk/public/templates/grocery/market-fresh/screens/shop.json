@@ -1,0 +1,31 @@
+{
+  "screenId": "shop",
+  "title": "Shop",
+  "layout": {
+    "kind": "scroll",
+    "children": [
+      {
+        "type": "promotion_list",
+        "key": "promo-banner",
+        "props": {
+          "offers": [
+            { "title": "Fresh This Week", "subtitle": "Up to 20% off seasonal produce", "image": null }
+          ]
+        },
+        "actions": { "tap": { "type": "navigate", "payload": { "push": "/products?filter=fresh" } } }
+      },
+      {
+        "type": "category_pills",
+        "key": "category-pills",
+        "props": { "categories": ["All", "Fruits", "Beverages", "Snacks"] },
+        "actions": { "selectCategory": { "type": "filter", "payload": { "source": "category" } } }
+      },
+      {
+        "type": "menu_grid",
+        "key": "products-grid",
+        "props": { "columns": 2 },
+        "actions": { "addItem": { "type": "add_to_cart" }, "viewDetails": { "type": "navigate", "payload": { "push": "/product-detail" } } }
+      }
+    ]
+  }
+}

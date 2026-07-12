@@ -1,0 +1,31 @@
+{
+  "templateId": "home-kitchen",
+  "name": "Home Kitchen",
+  "category": "Food Vendor",
+  "tags": ["Warm", "Homely"],
+  "features": ["Menu", "Cart", "Delivery", "Catering"],
+  "preview": "🍲",
+  "theme": {
+    "primaryColor": "#1B4332",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#FEF8ED",
+    "cardColor": "#FFFFFF",
+    "textColor": "#0F0F1A",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "menu",
+    "tabs": [
+      { "label": "Menu", "icon": "restaurant-outline", "screenId": "menu" },
+      { "label": "Orders", "icon": "receipt-outline", "screenId": "orders" },
+      { "label": "Delivery", "icon": "bike-outline", "screenId": "delivery" },
+      { "label": "Catering", "icon": "calendar-outline", "screenId": "catering" }
+    ]
+  },
+  "screens": [
+    { "id": "menu", "path": "screens/menu.json" },
+    { "id": "orders", "path": "screens/orders.json" },
+    { "id": "delivery", "path": "screens/delivery.json" },
+    { "id": "catering", "path": "screens/catering.json" }
+  ]
+}

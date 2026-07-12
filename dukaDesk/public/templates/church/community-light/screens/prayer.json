@@ -1,0 +1,12 @@
+{
+  "screenId": "prayer",
+  "title": "Prayer Requests",
+  "children": [
+    {
+      "type": "report_action",
+      "key": "prayer-request",
+      "props": { "title": "Submit Prayer Request" },
+      "actions": { "submit": { "type": "submit_form", "payload": { "api_request": { "method": "POST", "path": "/prayer" } } } }
+    }
+  ]
+}

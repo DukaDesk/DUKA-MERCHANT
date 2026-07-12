@@ -1,0 +1,31 @@
+{
+  "templateId": "storefront",
+  "name": "Storefront",
+  "category": "Ecommerce",
+  "tags": ["Clean", "Product-first"],
+  "features": ["Products", "Cart", "Checkout", "Reviews"],
+  "preview": "🛍️",
+  "theme": {
+    "primaryColor": "#0D9488",
+    "secondaryColor": "#0F0F1A",
+    "textColor": "#0F0F1A",
+    "bgColor": "#FAFAFA",
+    "cardColor": "#FFFFFF",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "shop",
+    "tabs": [
+      { "label": "Shop", "icon": "storefront-outline", "screenId": "shop" },
+      { "label": "Cart", "icon": "cart-outline", "screenId": "cart" },
+      { "label": "Orders", "icon": "receipt-outline", "screenId": "orders" },
+      { "label": "Profile", "icon": "person-outline", "screenId": "profile" }
+    ]
+  },
+  "screens": [
+    { "id": "shop", "path": "screens/shop.json" },
+    { "id": "cart", "path": "screens/cart.json" },
+    { "id": "orders", "path": "screens/orders.json" },
+    { "id": "profile", "path": "screens/profile.json" }
+  ]
+}

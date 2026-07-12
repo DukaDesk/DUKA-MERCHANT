@@ -1,0 +1,17 @@
+{
+  "screenId": "delivery",
+  "title": "Delivery",
+  "children": [
+    {
+      "type": "hero_banner",
+      "key": "delivery-banner",
+      "props": { "title": "Delivery", "subtitle": "We bring the warmth to your door", "image": null }
+    },
+    {
+      "type": "menu_grid",
+      "key": "delivery-items",
+      "props": { "columns": 2 },
+      "actions": { "addItem": { "type": "add_to_cart" } }
+    }
+  ]
+}

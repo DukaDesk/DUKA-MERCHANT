@@ -1,0 +1,12 @@
+{
+  "screenId": "payments",
+  "title": "Payments",
+  "children": [
+    {
+      "type": "cart_summary",
+      "key": "payment-summary",
+      "props": {},
+      "actions": { "checkout": { "type": "checkout" } }
+    }
+  ]
+}

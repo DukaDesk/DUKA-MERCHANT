@@ -1,0 +1,12 @@
+{
+  "screenId": "parents",
+  "title": "Parent Comms",
+  "children": [
+    {
+      "type": "notification_list",
+      "key": "parents-list",
+      "props": { "notifications": [] },
+      "actions": { "tap": { "type": "navigate", "payload": { "push": "/message-detail" } } }
+    }
+  ]
+}

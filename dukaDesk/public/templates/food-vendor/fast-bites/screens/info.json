@@ -1,0 +1,20 @@
+{
+  "screenId": "info",
+  "title": "Info",
+  "children": [
+    {
+      "type": "info_list",
+      "key": "contact-info",
+      "props": {
+        "variant": "default",
+        "items": [
+          { "icon": "📞", "label": "Call Us", "value": "+234 800 111 1111", "action": "call" },
+          { "icon": "📍", "label": "Address", "value": "12 Fast Lane, Lagos" },
+          { "icon": "🕐", "label": "Hours", "value": "Mon-Sun: 8AM - 11PM" },
+          { "icon": "📧", "label": "Email", "value": "info@fastbites.com", "action": "email" }
+        ]
+      },
+      "actions": { "call": { "type": "call_phone", "payload": { "phone": "+2348001111111" } }, "email": { "type": "email", "payload": { "to": "info@fastbites.com" } } }
+    }
+  ]
+}

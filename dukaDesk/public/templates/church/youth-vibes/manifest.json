@@ -1,0 +1,31 @@
+{
+  "templateId": "youth-vibes",
+  "name": "Youth Vibes",
+  "category": "Church",
+  "tags": ["Bold", "Modern"],
+  "features": ["Events", "Giving", "Media", "Small Groups"],
+  "preview": "🔥",
+  "theme": {
+    "primaryColor": "#EC4899",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#1A1A2E",
+    "cardColor": "#252540",
+    "textColor": "#FFFFFF",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "events",
+    "tabs": [
+      { "label": "Events", "icon": "calendar-outline", "screenId": "events" },
+      { "label": "Giving", "icon": "heart-outline", "screenId": "giving" },
+      { "label": "Media", "icon": "videocam-outline", "screenId": "media" },
+      { "label": "Groups", "icon": "people-outline", "screenId": "groups" }
+    ]
+  },
+  "screens": [
+    { "id": "events", "path": "screens/events.json" },
+    { "id": "giving", "path": "screens/giving.json" },
+    { "id": "media", "path": "screens/media.json" },
+    { "id": "groups", "path": "screens/groups.json" }
+  ]
+}

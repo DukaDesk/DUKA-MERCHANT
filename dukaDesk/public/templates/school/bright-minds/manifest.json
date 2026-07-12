@@ -1,0 +1,31 @@
+{
+  "templateId": "bright-minds",
+  "name": "Bright Minds",
+  "category": "School",
+  "tags": ["Playful", "Colorful"],
+  "features": ["Timetables", "Fees", "Events", "Parent Comms"],
+  "preview": "🎓",
+  "theme": {
+    "primaryColor": "#EC4899",
+    "secondaryColor": "#F4A026",
+    "backgroundColor": "#FDF2F8",
+    "cardColor": "#FFFFFF",
+    "textColor": "#0F0F1A",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "timetable",
+    "tabs": [
+      { "label": "Timetable", "icon": "calendar-outline", "screenId": "timetable" },
+      { "label": "Fees", "icon": "card-outline", "screenId": "fees" },
+      { "label": "Events", "icon": "calendar-outline", "screenId": "events" },
+      { "label": "Parents", "icon": "people-outline", "screenId": "parents" }
+    ]
+  },
+  "screens": [
+    { "id": "timetable", "path": "screens/timetable.json" },
+    { "id": "fees", "path": "screens/fees.json" },
+    { "id": "events", "path": "screens/events.json" },
+    { "id": "parents", "path": "screens/parents.json" }
+  ]
+}

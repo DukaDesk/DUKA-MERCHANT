@@ -1,0 +1,19 @@
+{
+  "screenId": "timetable",
+  "title": "Timetable",
+  "children": [
+    {
+      "type": "info_list",
+      "key": "timetable-list",
+      "props": {
+        "items": [
+          { "icon": "📅", "label": "Monday", "value": "Math, English, Science" },
+          { "icon": "📅", "label": "Tuesday", "value": "History, Art, PE" },
+          { "icon": "📅", "label": "Wednesday", "value": "Chemistry, Biology, Geography" },
+          { "icon": "📅", "label": "Thursday", "value": "Physics, Literature, Music" },
+          { "icon": "📅", "label": "Friday", "value": "Computer, French, Review" }
+        ]
+      }
+    }
+  ]
+}
