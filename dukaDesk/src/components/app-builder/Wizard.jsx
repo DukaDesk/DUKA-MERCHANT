@@ -776,7 +776,7 @@ function InteractivePreview({ manifest, screens, currentScreenId, setCurrentScre
               onScreenChange={setCurrentScreenId}
             />
           ) : (
-            <FallbackPreview branding={branding || { appName: "Your App", tagline: "", color: AMBER }} screenId={currentScreenId} onAction={handlePreviewAction} />
+            <FallbackPreview branding={branding || { appName: "Your App", tagline: "", color: AMBER }} screenId={currentScreenId} onAction={onAction} />
           )}
         </div>
 
