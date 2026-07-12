@@ -769,7 +769,7 @@ function InteractivePreview({ manifest, screens, currentScreenId, setCurrentScre
         )}
 
         <div style={{ flex: 1, overflow: "auto", background: "#F9FAFB", padding: 16 }}>
-          {manifest && screens[currentScreenId] ? (
+          {manifest && screens[currentScreenId] && manifest.category && manifest.template ? (
             <TemplatePreview
               templateId={`${manifest.category.toLowerCase()}/${manifest.template.toLowerCase().replace(/\s+/g, '-')}`}
               initialScreenId={currentScreenId}

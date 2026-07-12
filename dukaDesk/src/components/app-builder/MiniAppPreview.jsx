@@ -192,7 +192,7 @@ export default function MiniAppPreview() {
 
             {templateManifest && templateScreens[currentScreenId] && app?.category && app?.template ? (
               <TemplatePreview
-                templateId={`${app.category.toLowerCase()}/${app.template.toLowerCase().replace(/\s+/g, '-')}`}
+                templateId={`${(app.category || "").toLowerCase()}/${(app.template || "").toLowerCase().replace(/\s+/g, '-')}`}
                 initialScreenId={currentScreenId}
                 onScreenChange={setCurrentScreenId}
               />
