@@ -1,4 +1,4 @@
-import { DASHBOARD_STATS_BY_CATEGORY, DASHBOARD_REVENUE_BY_CATEGORY, DASHBOARD_ACTIVITY_BY_CATEGORY, MOCK_PRODUCTS, MOCK_ORDERS, MOCK_CONVERSATIONS, MOCK_INTEGRATIONS, MOCK_CURRENT_PLAN, MOCK_PLANS, MOCK_BILLING_HISTORY, ANALYTICS_REVENUE, ANALYTICS_ORDER_STATS, ANALYTICS_SCAN_DATA, ANALYTICS_TOP_PRODUCTS, ANALYTICS_CUSTOMER_SPLIT } from "./mockData";
+import { DASHBOARD_STATS_BY_CATEGORY, DASHBOARD_REVENUE_BY_CATEGORY, DASHBOARD_ACTIVITY_BY_CATEGORY, MOCK_ORDERS, MOCK_CONVERSATIONS, MOCK_INTEGRATIONS, MOCK_CURRENT_PLAN, MOCK_PLANS, MOCK_BILLING_HISTORY, ANALYTICS_REVENUE, ANALYTICS_ORDER_STATS, ANALYTICS_SCAN_DATA, ANALYTICS_TOP_PRODUCTS, ANALYTICS_CUSTOMER_SPLIT } from "./mockData";
 
 function delay(ms = 200) {
   return new Promise(r => setTimeout(r, ms));
@@ -19,7 +19,7 @@ function getMerchant() {
   try { return JSON.parse(localStorage.getItem("dd_merchant")); } catch { return null; }
 }
 function setMerchant(m) {
-  try { localStorage.setItem("dd_merchant", JSON.stringify(m)); } catch {}
+  try { localStorage.setItem("dd_merchant", JSON.stringify(m)); } catch { /* empty */ }
 }
 
 /* ───── Deployed App ───── */
@@ -48,7 +48,8 @@ export async function login(body) {
   const m = merchants.find(x => x.email === body.email);
   if (!m || m.password !== body.password) throw new Error("Invalid email or password");
   const token = "tok_" + Date.now() + "_" + Math.random().toString(36).slice(2);
-  const { password: _, ...safe } = m;
+  const safe = { ...m };
+  delete safe.password;
   localStorage.removeItem("dukadesk_setup");
   setToken(token);
   setMerchant(safe);
@@ -72,7 +73,8 @@ export async function signup(body) {
   merchants.push(merchant);
   localStorage.setItem("dd_merchants", JSON.stringify(merchants));
   const token = "tok_" + Date.now() + "_" + Math.random().toString(36).slice(2);
-  const { password: _, ...safe } = merchant;
+  const safe = { ...merchant };
+  delete safe.password;
   setToken(token);
   setMerchant(safe);
   return { token, merchant: safe };
@@ -191,7 +193,6 @@ const defaultStats = DASHBOARD_STATS_BY_CATEGORY?.Restaurant || { customers: 124
 
 export async function getDashboardStats() {
   await delay();
-  const products = getMerchantProducts();
   const app = getDeployedApp();
   return {
     customers: defaultStats.customers,
@@ -308,7 +309,7 @@ function getIntegrationStates() {
 function setIntegrationState(name, active) {
   const states = getIntegrationStates();
   states[name] = active;
-  try { localStorage.setItem("dd_integration_states", JSON.stringify(states)); } catch {}
+  try { localStorage.setItem("dd_integration_states", JSON.stringify(states)); } catch { /* empty */ }
 }
 
 export async function getIntegrations() {
@@ -393,7 +394,8 @@ export async function getMerchantProfile() {
   await delay();
   const m = getMerchant();
   if (!m) throw new Error("Not authenticated");
-  const { password: _, ...safe } = m;
+  const safe = { ...m };
+  delete safe.password;
   return safe;
 }
 
@@ -403,6 +405,7 @@ export async function updateMerchantProfile(body) {
   if (!m) throw new Error("Not authenticated");
   const updated = { ...m, ...body };
   setMerchant(updated);
-  const { password: _, ...safe } = updated;
+  const safe = { ...updated };
+  delete safe.password;
   return safe;
 }

@@ -62,7 +62,6 @@ const WIZARD_PREVIEW_DATA_LOCAL = {
 
 function generateMenuScreen(config) {
   const preview = WIZARD_PREVIEW_DATA_LOCAL[config.category] || WIZARD_PREVIEW_DATA_LOCAL.Ecommerce;
-  const baseTemplate = getBaseTemplate(config.category, config.template);
   
   return {
     screenId: "menu",
@@ -97,7 +96,7 @@ function generateMenuScreen(config) {
   };
 }
 
-function generateShopScreen(config) {
+function generateShopScreen() {
   return {
     screenId: "shop",
     title: "Shop",
@@ -192,7 +191,7 @@ function generateInfoScreen(config) {
   };
 }
 
-function generateOrdersScreen(config) {
+function generateOrdersScreen() {
   return {
     screenId: "orders",
     title: "My Orders",
@@ -207,7 +206,7 @@ function generateOrdersScreen(config) {
   };
 }
 
-function generateCartScreen(config) {
+function generateCartScreen() {
   return {
     screenId: "cart",
     title: "Cart",
@@ -222,7 +221,7 @@ function generateCartScreen(config) {
   };
 }
 
-function generateProfileScreen(config) {
+function generateProfileScreen() {
   return {
     screenId: "profile",
     title: "Profile",

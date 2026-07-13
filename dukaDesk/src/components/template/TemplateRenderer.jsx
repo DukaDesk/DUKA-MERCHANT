@@ -52,7 +52,7 @@ export function TemplateRenderer({ templateId, screenId, onAction, previewData: 
   }
 
   // Get preview data for this screen (use prop or fetch based on category)
-  const screenPreviewData = useMemo(() => getScreenPreviewData(screenId, "Restaurant", "Classic Dine"), [screenId]);
+  const screenPreviewData = useMemo(() => getScreenPreviewData(screenId, "Restaurant"), [screenId]);
 
   // Merge preview data into screen definition
   const enhancedScreenDef = useMemo(() => {

@@ -3,13 +3,12 @@ import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import { useToast } from "../../App";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
+import { NAVY, AMBER, inputStyle, labelStyle } from "../../theme";
 import { setSetupData, getSetupData, deployApp } from "../../services/api";
-import { WIZARD_STEPS, WIZARD_CATEGORIES, WIZARD_TEMPLATES_BY_CATEGORY, WIZARD_FEATURE_INTEGRATION_MAP, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_PREVIEW_DATA, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, INTEGRATION_BADGE_COLORS, getTemplateIntegrationNames } from "../../services/mockData";
+import { WIZARD_STEPS, WIZARD_CATEGORIES, WIZARD_TEMPLATES_BY_CATEGORY, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, INTEGRATION_BADGE_COLORS, getTemplateIntegrationNames, PREVIEW_CATEGORIES, PREVIEW_MENU_ITEMS } from "../../services/mockData";
 import { TemplatePreview } from "../template/TemplateRenderer";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";
 import { generateShopTemplate } from "../../services/TemplateGenerator";
-import { Palette, Eye, MousePointer, SlidersHorizontal, Sparkles, ArrowRight } from "lucide-react";
 
 const steps = WIZARD_STEPS;
 const categories = WIZARD_CATEGORIES;
@@ -191,7 +190,7 @@ export default function Wizard() {
 
           <div style={{ animation: "fadeIn 0.35s ease" }}>
             {step === 0 && <StepCategory data={data} setData={setData} isMobile={isMobile} />}
-            {step === 1 && <StepTemplate data={data} setData={setData} isMobile={isMobile}
+            {step === 1 && <StepTemplate data={data} setData={setData} setStep={setStep} isMobile={isMobile}
               templatesByCategory={WIZARD_TEMPLATES_BY_CATEGORY}
               getTemplateIntegrations={getTemplateIntegrationNames}
               templateManifest={templateManifest}
@@ -252,7 +251,7 @@ function StepCategory({ data, setData, isMobile }) {
   return (
     <div>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>What type of business are you?</h2>
-      <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 36px" }}>We'll recommend the best templates and integrations for you.</p>
+      <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 36px" }}>We&apos;ll recommend the best templates and integrations for you.</p>
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)", gap: isMobile ? 12 : 16 }}>
         {categories.map((c, i) => {
           const selected = data.category === c.name;
@@ -279,7 +278,7 @@ function StepCategory({ data, setData, isMobile }) {
   );
 }
 
-function StepTemplate({ data, setData, isMobile, templatesByCategory, getTemplateIntegrations, templateManifest, templateScreens, previewScreenId, setPreviewScreenId, onPreviewAction, openCustomize }) {
+function StepTemplate({ data, setData, setStep, isMobile, templatesByCategory, getTemplateIntegrations, templateManifest, templateScreens, previewScreenId, setPreviewScreenId, onPreviewAction, openCustomize }) {
   const templates = templatesByCategory[data.category] || [];
   const [hovered, setHovered] = useState(null);
   
@@ -408,7 +407,7 @@ function StepBranding({ data, setData, errors, setErrors, isMobile, templateMani
             screens={templateScreens}
             currentScreenId={previewScreenId}
             setCurrentScreenId={setPreviewScreenId}
-            onAction={handlePreviewAction}
+            onAction={onPreviewAction}
             openCustomize={openCustomize}
             branding={data}
             isMobile={false}
@@ -470,7 +469,7 @@ function StepBusiness({ data, setData, errors, setErrors, isMobile, templateMani
             screens={templateScreens}
             currentScreenId={previewScreenId}
             setCurrentScreenId={setPreviewScreenId}
-            onAction={handlePreviewAction}
+            onAction={onPreviewAction}
             branding={data}
             isMobile={false}
           />
@@ -537,7 +536,7 @@ function StepIntegrations({ data, setData, isMobile, getTemplateIntegrations, te
             screens={templateScreens}
             currentScreenId={previewScreenId}
             setCurrentScreenId={setPreviewScreenId}
-            onAction={handlePreviewAction}
+            onAction={onPreviewAction}
             isMobile={false}
           />
         </div>
@@ -644,226 +643,269 @@ function Published({ data, onFinish, showToast, isMobile }) {
   );
 }
 
-function InteractivePreview({ manifest, screens, currentScreenId, setCurrentScreenId, onAction, openCustomize, branding, isMobile }) {
+function InteractivePreview({ manifest, screens, currentScreenId, setCurrentScreenId, onAction, branding }) {
   const tabs = manifest?.navigation?.tabs || [];
   const brandColor = manifest?.theme?.primaryColor || branding?.color || AMBER;
   const storeName = manifest?.branding?.appName || branding?.appName || "Your App";
   const tagline = manifest?.branding?.tagline || branding?.tagline || "";
-  
-  const isDark = (hex) => {
-    if (!hex) return false;
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance < 0.5;
+
+  const [deviceSize, setDeviceSize] = useState("phone");
+  const [isDark, setIsDark] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  const [activeCategory, setActiveCategory] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [addingItems, setAddingItems] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { const t = setTimeout(() => setLoading(false), 400); return () => clearTimeout(t); }, []);
+
+  const L = isDark ? {
+    SURFACE: "#1C1B1D", TEXT: "#E5E1E3", TEXT_MUTED: "#9A969C", CARD: "#2B292D",
+    BORDER: "rgba(255,255,255,0.1)", NAV_BG: "#2B292D", PILL_INACTIVE: "#3E3C40",
+    PILL_TEXT: "#C8C5CD", HERO_TEXT: "rgba(255,255,255,0.9)", BADGE_TEXT: "#6B4200",
+  } : {
+    SURFACE: "#FCF8FA", TEXT: "#1C1B1D", TEXT_MUTED: "#47464C", CARD: "#FCF8FA",
+    BORDER: "rgba(200,197,205,0.3)", NAV_BG: "#FCF8FA", PILL_INACTIVE: "#E5E1E3",
+    PILL_TEXT: "#47464C", HERO_TEXT: "rgba(255,255,255,0.75)", BADGE_TEXT: "#6B4200",
   };
-  
-  const isDarkMode = isDark(brandColor);
-  const textColor = isDarkMode ? "#fff" : "#0F0F1A";
-  const inactiveColor = isDarkMode ? "rgba(255,255,255,0.5)" : "#6B7280";
-  const activeTextColor = isDarkMode ? "#0F0F1A" : "#fff";
-  const headerBg = `linear-gradient(180deg, ${brandColor} 0%, ${brandColor}DD 100%)`;
-  
-  const getContrastColor = (hex) => {
-    if (!hex) return "#fff";
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance < 0.5 ? "#fff" : "#0F0F1A";
+  const deviceWidth = deviceSize === "phone" ? 390 : 600;
+
+  const handleDeliveryPickupClick = () => {};
+
+  const handleAddToCart = (item) => {
+    setCartCount(c => c + 1);
+    setAddingItems(p => ({ ...p, [item.id]: true }));
+    setTimeout(() => setAddingItems(p => ({ ...p, [item.id]: false })), 600);
+    if (onAction) onAction("add_to_cart", { item });
   };
-  
-  const brandContrastColor = getContrastColor(brandColor);
-  
-  const handleDeliveryPickupClick = (type) => {
-    console.log(`${type} selected`);
+
+  const handleScreenChange = (id) => {
+    setSearchQuery("");
+    setCurrentScreenId(id);
   };
-  
-  const handlePreviewAction = (actionKey, payload) => {
-    console.log("Preview action:", actionKey, payload);
-    if (onAction) onAction(actionKey, payload);
-};
-  
+
   return (
-    <div style={{ 
-      width: isMobile ? "calc(100vw - 32px)" : 390, 
-      maxWidth: 390, 
-      background: NAVY, 
-      borderRadius: 44, 
-      padding: "12px", 
-      boxShadow: "0 40px 120px rgba(0,0,0,0.6)", 
-      position: "relative", 
-      margin: "0 auto",
-      minHeight: isMobile ? 500 : 760,
-      display: "flex",
-      flexDirection: "column"
-    }}>
-      <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", width: 120, height: 32, background: NAVY, borderRadius: "0 0 20px 20px", zIndex: 10 }} />
-      <div style={{ background: "#fff", borderRadius: 36, overflow: "hidden", position: "relative", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        <div onClick={() => {}} style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}>
-          <div style={{ width: 36, height: 36, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", border: "2px solid rgba(255,255,255,0.6)" }}>
-            <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 16, color: NAVY }}>D</span>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      {/* Toolbar */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+        {[
+          { key: "phone", icon: "📱", label: "Phone" },
+          { key: "tablet", icon: "📲", label: "Tablet" },
+        ].map(d => (
+          <button key={d.key} onClick={() => setDeviceSize(d.key)} style={{ padding: "4px 12px", borderRadius: 16, border: `1.5px solid ${deviceSize === d.key ? AMBER : "#E8E8F0"}`, background: deviceSize === d.key ? "#FFF8ED" : "transparent", color: deviceSize === d.key ? "#1C1B1D" : "#6B7280", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
+            {d.icon} {d.label}
+          </button>
+        ))}
+        <button onClick={() => setIsDark(p => !p)} style={{ padding: "4px 12px", borderRadius: 16, border: `1.5px solid ${isDark ? AMBER : "#E8E8F0"}`, background: isDark ? "#FFF8ED" : "transparent", color: isDark ? "#1C1B1D" : "#6B7280", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
+          {isDark ? "☀️ Light" : "🌙 Dark"}
+        </button>
+      </div>
+
+      {/* Phone Frame */}
+      <div style={{ position: "relative", width: deviceWidth, minHeight: 760, background: L.SURFACE, borderRadius: 32, overflow: "hidden", boxShadow: "0 12px 40px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column", margin: "0 auto", transition: "width 0.3s ease" }}>
+
+        {/* TopAppBar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: 64, background: L.SURFACE, borderBottom: `1px solid ${L.BORDER}`, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 24, cursor: "pointer", opacity: 0.8 }}>&larr;</span>
+            <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: L.TEXT }}>{storeName}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ position: "relative" }}>
+              <span style={{ fontSize: 20, cursor: "pointer", opacity: 0.7 }}>🛒</span>
+              {cartCount > 0 && (
+                <span style={{ position: "absolute", top: -6, right: -8, background: AMBER, color: "#1C1B1D", fontSize: 10, fontWeight: 700, width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", animation: "scaleIn 0.2s ease" }}>
+                  {cartCount}
+                </span>
+              )}
+            </div>
+            <span style={{ fontSize: 20, cursor: "pointer", opacity: 0.5, fontWeight: 700, letterSpacing: 2 }}>⋯</span>
           </div>
         </div>
 
-        {manifest?.navigation?.tabs && manifest.navigation.tabs.length > 0 ? (
-          <>
-            <div style={{ background: headerBg, padding: "48px 16px 16px", minHeight: 140, position: "relative" }}>
-              <div style={{ position: "absolute", inset: 0, backgroundImage: "url('data:image/svg+xml,%3Csvg width=%2760%27 height=%2760%27 viewBox=%270 0 60 60%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cg fill=%27none%27 fill-rule=%27evenodd%27%3E%3Cg fill=%27%23ffffff%27 fill-opacity=%270.03%27%3E%3Cpath d=%27M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }} />
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>🟢 Open Now · 4.8 ⭐</div>
-              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: "#fff", marginBottom: 10 }}>{storeName}</div>
-              {tagline && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 10 }}>{tagline}</div>}
-              <div style={{ display: "flex", gap: 8 }}>
-                {["Delivery", "Pickup"].map(t => (
-                  <button 
-                    key={t} 
-                    onClick={() => handleDeliveryPickupClick(t)}
-                    style={{ 
-                      padding: "7px 18px", 
-                      borderRadius: 20, 
-                      border: `1.5px solid ${t === "Delivery" ? "#fff" : "rgba(255,255,255,0.3)"}`, 
-                      background: t === "Delivery" ? "#fff" : "transparent", 
-                      color: t === "Delivery" ? brandColor : "#fff", 
-                      fontSize: 13, 
-                      fontWeight: t === "Delivery" ? 700 : 400, 
-                      cursor: "pointer" 
-                    }}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
+        {/* Scrollable Content */}
+        <div style={{ flex: 1, overflow: "auto", background: L.SURFACE }}>
 
-            <div style={{ padding: "12px 12px 4px", display: "flex", gap: 8, overflowX: "auto", background: "#fff", borderBottom: "1px solid #F3F4F6" }}>
-              {tabs.map((tab, idx) => (
-                <button 
-                  key={tab.screenId}
-                  onClick={() => setCurrentScreenId(tab.screenId)}
-                  style={{ 
-                    padding: "6px 14px", 
-                    borderRadius: 20, 
-                    border: `1.5px solid ${currentScreenId === tab.screenId ? brandColor : "#E5E7EB"}`, 
-                    background: currentScreenId === tab.screenId ? brandColor : "#fff", 
-                    color: currentScreenId === tab.screenId ? (isDarkMode ? activeTextColor : NAVY) : inactiveColor, 
-                    fontSize: 12, 
-                    fontWeight: currentScreenId === tab.screenId ? 600 : 400, 
-                    cursor: "pointer", 
-                    whiteSpace: "nowrap",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
+          {/* Hero */}
+          <div style={{ background: `linear-gradient(180deg, ${brandColor} 0%, ${brandColor} 60%, ${brandColor}DD 100%)`, padding: "28px 20px 24px", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", inset: 0, backgroundImage: "url('data:image/svg+xml,%3Csvg width=%2760%27 height=%2760%27 viewBox=%270 0 60 60%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cg fill=%27none%27 fill-rule=%27evenodd%27%3E%3Cg fill=%27%23ffffff%27 fill-opacity=%270.03%27%3E%3Cpath d=%27M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%27/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }} />
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 12px", background: AMBER, color: L.BADGE_TEXT, fontSize: 11, fontWeight: 600, borderRadius: 20, marginBottom: 12, letterSpacing: "0.02em", textTransform: "uppercase" }}>&#x1F7E2; Open Now</span>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: "#fff", marginBottom: 4, lineHeight: 1.2 }}>{storeName}</div>
+            {tagline && <div style={{ fontSize: 14, color: L.HERO_TEXT, marginBottom: 16, fontFamily: "'Inter',sans-serif", lineHeight: 1.5 }}>{tagline}</div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              {["Delivery", "Pickup"].map(t => (
+                <button key={t} onClick={() => handleDeliveryPickupClick(t)} style={{ padding: "8px 22px", borderRadius: 24, border: `1.5px solid ${t === "Delivery" ? "#fff" : "rgba(255,255,255,0.3)"}`, background: t === "Delivery" ? "#fff" : "transparent", color: t === "Delivery" ? brandColor : "#fff", fontSize: 14, fontWeight: t === "Delivery" ? 600 : 400, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div style={{ padding: "12px 16px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: isDark ? "#2B292D" : "#F1EDEF", borderRadius: 12, padding: "0 12px", border: `1px solid ${L.BORDER}` }}>
+              <span style={{ fontSize: 14, opacity: 0.4 }}>🔍</span>
+              <input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search menu..."
+                style={{ flex: 1, border: "none", background: "transparent", outline: "none", fontSize: 13, padding: "10px 0", color: L.TEXT, fontFamily: "'Inter',sans-serif" }}
+              />
+              {searchQuery && <span onClick={() => setSearchQuery("")} style={{ cursor: "pointer", fontSize: 14, opacity: 0.4 }}>✕</span>}
+            </div>
+          </div>
+
+          {/* Category Pills */}
+          {tabs.length > 0 && (
+            <div style={{ padding: "12px 16px 4px", display: "flex", gap: 6, overflowX: "auto", background: L.SURFACE }}>
+              {tabs.map((tab) => (
+                <button key={tab.screenId} onClick={() => handleScreenChange(tab.screenId)} style={{ padding: "6px 16px", borderRadius: 20, border: "none", background: currentScreenId === tab.screenId ? "#1A1A2E" : L.PILL_INACTIVE, color: currentScreenId === tab.screenId ? "#fff" : L.PILL_TEXT, fontSize: 13, fontWeight: currentScreenId === tab.screenId ? 600 : 500, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, fontFamily: "'Inter',sans-serif" }}>
                   {tab.icon && <span>{tab.icon}</span>}
                   {tab.label}
                 </button>
               ))}
             </div>
-          </>
-        ) : (
-          <div style={{ padding: "48px 16px", textAlign: "center", color: "#9CA3AF" }}>
-            <div style={{ fontSize: 14 }}>No navigation configured</div>
+          )}
+
+          {/* Main Content */}
+          <div style={{ padding: 12 }}>
+            {loading ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {[1,2,3].map(i => (
+                  <div key={i} style={{ display: "flex", gap: 12, padding: 12, borderRadius: 12, background: isDark ? "#2B292D" : "#F1EDEF" }}>
+                    <div style={{ width: 56, height: 56, borderRadius: 10, background: isDark ? "#3E3C40" : "#E5E1E3", animation: "pulse 1.5s infinite" }} />
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ width: "60%", height: 14, borderRadius: 4, background: isDark ? "#3E3C40" : "#E5E1E3", animation: "pulse 1.5s infinite" }} />
+                      <div style={{ width: "90%", height: 10, borderRadius: 4, background: isDark ? "#3E3C40" : "#E5E1E3", animation: "pulse 1.5s infinite" }} />
+                      <div style={{ width: "30%", height: 10, borderRadius: 4, background: isDark ? "#3E3C40" : "#E5E1E3", animation: "pulse 1.5s infinite" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : manifest && screens[currentScreenId] && manifest.category && manifest.template ? (
+              <div key={currentScreenId} style={{ animation: "fadeSlideIn 0.25s ease" }}>
+                <TemplatePreview
+                  templateId={`${manifest.category.toLowerCase()}/${manifest.template.toLowerCase().replace(/\s+/g, '-')}`}
+                  initialScreenId={currentScreenId}
+                  onScreenChange={setCurrentScreenId}
+                />
+              </div>
+            ) : (
+              <div key={currentScreenId} style={{ animation: "fadeSlideIn 0.25s ease" }}>
+                <FallbackPreview
+                  branding={branding || { appName: "Your App", tagline: "", color: brandColor }}
+                  screenId={currentScreenId}
+                  onAction={handleAddToCart}
+                  activeCategory={activeCategory}
+                  setActiveCategory={setActiveCategory}
+                  searchQuery={searchQuery}
+                  addingItems={addingItems}
+                  isDark={isDark}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Nav */}
+        {tabs.length > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", padding: "6px 16px 12px", background: L.NAV_BG, borderTop: `1px solid ${L.BORDER}`, borderRadius: "16px 16px 0 0", flexShrink: 0 }}>
+            {tabs.map(t => {
+              const isActive = currentScreenId === t.screenId;
+              return (
+                <div key={t.id} onClick={() => handleScreenChange(t.screenId)} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "pointer", padding: "8px 20px", borderRadius: 24, background: isActive ? AMBER : "transparent", color: isActive ? "#6B4200" : L.PILL_TEXT, minWidth: 60, transition: "all 0.2s ease" }}>
+                  <span style={{ fontSize: 14, lineHeight: 1 }}>{t.icon || "○"}</span>
+                  <span style={{ fontSize: 11, fontWeight: isActive ? 700 : 400, letterSpacing: "0.02em", marginTop: 2 }}>{t.label}</span>
+                </div>
+              );
+            })}
           </div>
         )}
-
-        <div style={{ flex: 1, overflow: "auto", background: "#F9FAFB", padding: 16 }}>
-          {manifest && screens[currentScreenId] && manifest.category && manifest.template ? (
-            <TemplatePreview
-              templateId={`${manifest.category.toLowerCase()}/${manifest.template.toLowerCase().replace(/\s+/g, '-')}`}
-              initialScreenId={currentScreenId}
-              onScreenChange={setCurrentScreenId}
-            />
-          ) : (
-            <FallbackPreview branding={branding || { appName: "Your App", tagline: "", color: AMBER }} screenId={currentScreenId} onAction={onAction} />
-          )}
-        </div>
-
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60, background: "#fff", borderTop: "1px solid #E5E7EB", display: "flex", zIndex: 40 }}>
-          {tabs.map(t => (
-            <div 
-              key={t.id} 
-              onClick={() => setCurrentScreenId(t.screenId)} 
-              style={{ 
-                flex: 1, 
-                display: "flex", 
-                flexDirection: "column", 
-                alignItems: "center", 
-                justifyContent: "center", 
-                gap: 2, 
-                cursor: "pointer",
-                padding: "8px 0",
-                color: currentScreenId === t.screenId ? brandColor : inactiveColor
-              }}
-            >
-              <span style={{ fontSize: 20 }}>{t.icon || "📱"}</span>
-              <span style={{ fontSize: 10, fontWeight: currentScreenId === t.screenId ? 700 : 400 }}>{t.label}</span>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
 }
 
-function FallbackPreview({ branding, screenId, onAction }) {
+function FallbackPreview({ branding, screenId, onAction, activeCategory, setActiveCategory, searchQuery, addingItems, isDark }) {
   const brandColor = branding?.color || AMBER;
-  const storeName = branding?.appName || "Your App";
-  const pv = WIZARD_PREVIEW_DATA.Restaurant;
-  
-  if (screenId === "menu") {
-    return (
-      <div>
-        <div style={{ background: `linear-gradient(135deg, ${brandColor}, ${darken(brandColor, 20)})`, padding: "48px 16px 16px", minHeight: 140, position: "relative" }}>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>🟢 Open Now · 4.8 ⭐</div>
-          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: "#fff", marginBottom: 10 }}>{storeName}</div>
-          {branding?.tagline && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 10 }}>{branding.tagline}</div>}
-          <div style={{ display: "flex", gap: 8 }}>
-            {["Delivery", "Pickup"].map(t => (
-              <button key={t} style={{ padding: "7px 18px", borderRadius: 20, border: `1.5px solid rgba(255,255,255,0.3)`, background: "transparent", color: "#fff", fontSize: 13, fontWeight: 400, cursor: "pointer" }}>{t}</button>
-            ))}
-          </div>
+
+  const L = isDark ? {
+    SURFACE: "#1C1B1D", TEXT: "#E5E1E3", TEXT_MUTED: "#9A969C", CARD: "#2B292D",
+    BORDER: "rgba(255,255,255,0.1)", PILL_INACTIVE: "#3E3C40", PILL_TEXT: "#C8C5CD",
+    IMG_BG: "#3E3C40",
+  } : {
+    SURFACE: "#FCF8FA", TEXT: "#1C1B1D", TEXT_MUTED: "#47464C", CARD: "#FCF8FA",
+    BORDER: "rgba(200,197,205,0.3)", PILL_INACTIVE: "#E5E1E3", PILL_TEXT: "#47464C",
+    IMG_BG: "#F1EDEF",
+  };
+
+  const allCategories = ["", ...PREVIEW_CATEGORIES];
+  const activeCat = activeCategory || "";
+
+  const filtered = PREVIEW_MENU_ITEMS.filter(item => {
+    const matchCat = !activeCat || (item.cat === activeCat);
+    const matchSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.desc.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
+  const renderMenu = () => (
+    <div>
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8 }}>
+        {allCategories.map(c => {
+          const label = c || "All";
+          const isActive = activeCat === c;
+          return (
+            <button key={c || "all"} onClick={() => setActiveCategory(c)} style={{ padding: "6px 16px", borderRadius: 20, border: "none", background: isActive ? "#1A1A2E" : L.PILL_INACTIVE, color: isActive ? "#fff" : L.PILL_TEXT, fontSize: 13, fontWeight: isActive ? 600 : 500, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'Inter',sans-serif", transition: "all 0.15s ease" }}>
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "40px 20px", color: L.TEXT_MUTED, fontSize: 14 }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
+          <div style={{ fontWeight: 600, marginBottom: 4, color: L.TEXT }}>No items found</div>
+          <div style={{ fontSize: 12 }}>Try a different category or search term</div>
         </div>
-        <div style={{ padding: "12px 12px 4px", display: "flex", gap: 8, overflowX: "auto", background: "#fff", borderBottom: "1px solid #F3F4F6" }}>
-          <button style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${brandColor}`, background: brandColor, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>🔥 All</button>
-          {pv.categories.map(c => (
-            <button key={c} style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid #E5E7EB`, background: "#fff", color: "#6B7280", fontSize: 12, fontWeight: 400, cursor: "pointer", whiteSpace: "nowrap" }}>{c}</button>
-          ))}
-        </div>
-        <div style={{ padding: "8px 12px", background: "#F9FAFB" }}>
-          {pv.items.slice(0, 6).map(item => (
-            <div key={item.id} style={{ display: "flex", gap: 10, padding: "12px 10px", background: "#fff", borderRadius: 10, marginBottom: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-              <div style={{ width: 60, height: 60, background: "#F3F4F6", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>{item.emoji}</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {filtered.map(item => (
+            <div key={item.id} style={{ display: "flex", gap: 12, padding: "12px 16px", background: L.CARD, borderRadius: 12, boxShadow: "0px 2px 12px rgba(0,0,0,0.08)", border: `1px solid ${L.BORDER}`, transition: "all 0.15s ease" }}>
+              <div style={{ width: 56, height: 56, background: L.IMG_BG, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{item.img}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: NAVY, marginBottom: 3 }}>{item.name}</div>
-                <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6, lineHeight: 1.3 }}>{item.desc}</div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: L.TEXT, marginBottom: 2, fontFamily: "'Inter',sans-serif" }}>{item.name}</div>
+                <div style={{ fontSize: 12, color: L.TEXT_MUTED, marginBottom: 8, lineHeight: 1.4, fontFamily: "'Inter',sans-serif" }}>{item.desc}</div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: brandColor }}>{item.price}</span>
-                  <button onClick={() => onAction?.("add_to_cart", { item })} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 16, padding: "5px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Add +</button>
+                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, color: brandColor }}>₦{item.price.toLocaleString()}</span>
+                  <button
+                    onClick={() => onAction?.(item)}
+                    style={{
+                      background: addingItems?.[item.id] ? "#2ECC71" : AMBER,
+                      color: addingItems?.[item.id] ? "#fff" : "#6B4200",
+                      border: "none", borderRadius: 24, padding: "6px 14px", fontSize: 12, fontWeight: 600,
+                      cursor: "pointer", fontFamily: "'Inter',sans-serif",
+                      transition: "all 0.15s ease", transform: addingItems?.[item.id] ? "scale(0.95)" : "none",
+                    }}
+                  >
+                    {addingItems?.[item.id] ? "✓ Added" : "Add +"}
+                  </button>
                 </div>
               </div>
             </div>
           ))}
         </div>
-        <div style={{ position: "sticky", bottom: 0, background: "#fff", borderTop: "1px solid #E5E7EB", padding: "8px 12px", display: "flex", gap: 8 }}>
-          {[{ id:"menu", icon: "🏠", label: "Menu" }, { id:"orders", icon: "📦", label: "Orders" }, { id:"reserve", icon: "📅", label: "Reserve" }, { id:"info", icon: "ℹ️", label: "Info" }].map(t => (
-            <div key={t.id} onClick={() => {}} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "pointer" }}>
-              <span style={{ fontSize: 16 }}>{t.icon}</span>
-              <span style={{ fontSize: 9, color: t.id === "menu" ? brandColor : "#9CA3AF", fontWeight: t.id === "menu" ? 700 : 400 }}>{t.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-);
-    }
+      )}
+    </div>
+  );
+
+  if (screenId === "menu") return renderMenu();
+  return (
+    <div style={{ textAlign: "center", padding: "40px 20px", color: L.TEXT_MUTED, fontSize: 14 }}>
+      <div style={{ fontSize: 48, marginBottom: 12 }}>{screenId === "orders" ? "📦" : screenId === "info" ? "ℹ️" : "📄"}</div>
+      <div style={{ fontWeight: 600, marginBottom: 4, color: L.TEXT }}>{screenId.charAt(0).toUpperCase() + screenId.slice(1)}</div>
+      <div style={{ fontSize: 12 }}>Content for this screen will appear here</div>
+    </div>
+  );
 }
 
-function darken(hex, percent) {
-  const num = parseInt(hex.replace("#", ""), 16);
-  const amt = Math.round(2.55 * percent);
-  const R = Math.max(0, (num >> 16) - amt);
-  const G = Math.max(0, ((num >> 8) & 0x00FF) - amt);
-  const B = Math.max(0, (num & 0x0000FF) - amt);
-  return "#" + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
-}

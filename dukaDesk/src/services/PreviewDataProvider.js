@@ -8,8 +8,6 @@ import {
   DASHBOARD_REVENUE_BY_CATEGORY,
   DASHBOARD_ACTIVITY_BY_CATEGORY,
   WIZARD_PREVIEW_DATA,
-  WIZARD_CATEGORIES,
-  WIZARD_TEMPLATES_BY_CATEGORY,
   MOCK_CURRENT_PLAN,
   MOCK_PLANS,
   MOCK_BILLING_HISTORY,
@@ -32,7 +30,7 @@ import { generateShopTemplate } from "./TemplateGenerator";
  */
 
 // Get products for a specific category
-export function getProductsForCategory(category, template) {
+export function getProductsForCategory() {
   const products = [...MOCK_PRODUCTS];
   return products;
 }
@@ -93,24 +91,24 @@ export function getBillingData() {
 }
 
 // Get products for a specific category from wizard preview data
-export function getPreviewProducts(_category) {
+export function getPreviewProducts() {
   const preview = WIZARD_PREVIEW_DATA.Restaurant;
   return preview.items || PREVIEW_MENU_ITEMS;
 }
 
 // Get categories for a category type
-export function getPreviewCategories(_category) {
+export function getPreviewCategories() {
   const preview = WIZARD_PREVIEW_DATA.Restaurant;
   return preview.categories || PREVIEW_CATEGORIES;
 }
 
 // Get bottom navigation for a category
-export function getPreviewBottomNav(_category) {
+export function getPreviewBottomNav() {
   return PREVIEW_BOTTOM_NAV;
 }
 
 // Get theme for a template
-export function getThemeForTemplate(_category, template) {
+export function getThemeForTemplate(template) {
   
   const themes = {
     "Classic Dine": { primary: "#1B4332", secondary: "#F4A026", bg: "#FAFAFA", card: "#FFFFFF", text: "#0F0F1A" },
@@ -472,7 +470,7 @@ const CATEGORY_SCREEN_DATA = {
 /**
  * Get screen preview data for a specific screen, category, and template
  */
-export function getScreenPreviewData(screenId, category, template) {
+export function getScreenPreviewData(screenId, category) {
   const categoryData = CATEGORY_SCREEN_DATA[category] || CATEGORY_SCREEN_DATA.Restaurant;
   return categoryData[screenId] || { items: [], categories: [] };
 }
@@ -505,7 +503,6 @@ export function getShopPreviewData(shopData) {
   if (templateConfig.screens) {
     templateConfig.screens.forEach(screen => {
       const screenId = screen.id;
-      const previewData = getScreenPreviewData(screenId, category, template);
       enhancedScreens[screenId] = {
         ...screen,
         data: CATEGORY_SCREEN_DATA[category]?.[screenId] || {},
@@ -527,7 +524,7 @@ export function getShopPreviewData(shopData) {
     activityData: getActivityData(category),
     analytics: getAnalyticsData(),
     billing: getBillingData(),
-    theme: getThemeForTemplate(category, template),
+    theme: getThemeForTemplate(template),
     // Add category-specific data
     categoryData: CATEGORY_SCREEN_DATA[category] || CATEGORY_SCREEN_DATA.Restaurant,
   };

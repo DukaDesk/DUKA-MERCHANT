@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, createContext, useContext, useCallback, useEffect, useRef } from "react";
+import { lazy, Suspense, useState, createContext, useContext, useCallback, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate, Outlet } from "react-router-dom";
 import ErrorBoundary from "./components/layout/ErrorBoundary";
 import Sidebar from "./components/layout/Sidebar";
@@ -87,20 +87,20 @@ export default function App() {
 
   const handleAuth = useCallback((data) => {
     setMerchant(data);
-    try { localStorage.setItem("dd_merchant", JSON.stringify(data)); } catch {}
+    try { localStorage.setItem("dd_merchant", JSON.stringify(data)); } catch { /* ignore */ }
   }, []);
 
   const logout = useCallback(() => {
     setMerchant(null);
     setToken(null);
     const keys = ["dd_merchant", "dd_deployed_app", "dd_products", "dukadesk_setup", "dd_integration_states"];
-    keys.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+    keys.forEach(k => { try { localStorage.removeItem(k); } catch { /* ignore */ } });
     const toRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key?.startsWith("dd_integration_config_")) toRemove.push(key);
     }
-    toRemove.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+    toRemove.forEach(k => { try { localStorage.removeItem(k); } catch { /* ignore */ } });
   }, []);
 
   const navigate = useNavigate();
@@ -167,18 +167,13 @@ function ProtectedLayout() {
   const isTablet = useIsTablet();
   const padding = isMobile ? "16px" : isTablet ? "24px" : "32px";
   const { merchant } = useAuth();
-  const [hasSetup, setHasSetup] = useState(false);
 
   useEffect(() => {
     const setup = getSetupData();
-    setHasSetup(!!setup);
-  }, []);
-
-  useEffect(() => {
-    if (merchant && !hasSetup && location.pathname === "/dashboard") {
+    if (merchant && !setup && location.pathname === "/dashboard") {
       navigate("/wizard", { replace: true });
     }
-  }, [merchant, navigate, location, hasSetup]);
+  }, [merchant, navigate, location]);
 
   return (
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh" }}>
