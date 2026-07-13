@@ -11,7 +11,7 @@ export function setToken(t) {
 }
 
 /* ───── Setup / App Config ───── */
-export function setSetupData(data) { try { localStorage.setItem("dukadesk_setup", JSON.stringify(data)); } catch {} }
+export function setSetupData(data) { try { localStorage.setItem("dukadesk_setup", JSON.stringify(data)); } catch { /* ignore */ } }
 export function getSetupData() { try { return JSON.parse(localStorage.getItem("dukadesk_setup")); } catch { return null; } }
 
 /* ───── Merchant ───── */
@@ -24,18 +24,18 @@ function setMerchant(m) {
 
 /* ───── Deployed App ───── */
 function getDeployedApp() {
-  try { return JSON.parse(localStorage.getItem("dd_deployed_app")); } catch { return null; }
+  try { return JSON.parse(localStorage.getItem("dd_deployed_app")); } catch { /* ignore */ return null; }
 }
 function setDeployedApp(app) {
-  try { localStorage.setItem("dd_deployed_app", JSON.stringify(app)); } catch {}
+  try { localStorage.setItem("dd_deployed_app", JSON.stringify(app)); } catch { /* ignore */ }
 }
 
 /* ───── Merchant Products ───── */
 function getMerchantProducts() {
-  try { return JSON.parse(localStorage.getItem("dd_products")) || []; } catch { return []; }
+  try { return JSON.parse(localStorage.getItem("dd_products")) || []; } catch { /* ignore */ return []; }
 }
 function setMerchantProducts(products) {
-  try { localStorage.setItem("dd_products", JSON.stringify(products)); } catch {}
+  try { localStorage.setItem("dd_products", JSON.stringify(products)); } catch { /* ignore */ }
 }
 
 /* ═══════════════════════════════════════════════════════════════════

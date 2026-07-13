@@ -93,27 +93,24 @@ export function getBillingData() {
 }
 
 // Get products for a specific category from wizard preview data
-export function getPreviewProducts(category) {
-  const preview = WIZARD_PREVIEW_DATA[category] || WIZARD_PREVIEW_DATA.Restaurant;
+export function getPreviewProducts(_category) {
+  const preview = WIZARD_PREVIEW_DATA.Restaurant;
   return preview.items || PREVIEW_MENU_ITEMS;
 }
 
 // Get categories for a category type
-export function getPreviewCategories(category) {
-  const preview = WIZARD_PREVIEW_DATA[category] || WIZARD_PREVIEW_DATA.Restaurant;
+export function getPreviewCategories(_category) {
+  const preview = WIZARD_PREVIEW_DATA.Restaurant;
   return preview.categories || PREVIEW_CATEGORIES;
 }
 
 // Get bottom navigation for a category
-export function getPreviewBottomNav(category) {
+export function getPreviewBottomNav(_category) {
   return PREVIEW_BOTTOM_NAV;
 }
 
 // Get theme for a template
-export function getThemeForTemplate(category, template) {
-  const templates = WIZARD_TEMPLATES_BY_CATEGORY[category] || [];
-  const templateData = templates.find(t => t.name === template);
-  if (!templateData) return null;
+export function getThemeForTemplate(_category, template) {
   
   const themes = {
     "Classic Dine": { primary: "#1B4332", secondary: "#F4A026", bg: "#FAFAFA", card: "#FFFFFF", text: "#0F0F1A" },
@@ -219,12 +216,6 @@ const CATEGORY_SCREEN_DATA = {
         { icon: "📍", label: "Shipping Addresses", value: "2 addresses" },
         { icon: "💳", label: "Payment Methods", value: "Card, Bank Transfer" },
         { icon: "⭐", label: "Wishlist", value: "5 items" },
-      ],
-    },
-    cart: {
-      items: [
-        { id: 1, name: "African Print Dress", price: 15000, img: "👗", qty: 1, cat: "Clothing" },
-        { id: 2, name: "Wireless Earbuds", price: 8500, img: "📱", qty: 2, cat: "Electronics" },
       ],
     },
     categories: ["All", "Clothing", "Electronics", "Accessories", "Footwear"],
@@ -344,18 +335,6 @@ const CATEGORY_SCREEN_DATA = {
         { icon: "📢", label: "Baptism Class", date: "Jul 7", desc: "Register at info desk" },
       ],
     },
-    giving: {
-      items: [
-        { icon: "💰", label: "Tithe", value: "Give 10%", action: "give" },
-        { icon: "💝", label: "Offering", value: "Free will", action: "give" },
-      ],
-    },
-    sermons: {
-      items: [
-        { icon: "📖", name: "Faith That Moves Mountains", date: "Jun 16, 2024", speaker: "Pastor John" },
-        { icon: "📖", name: "Walking in Purpose", date: "Jun 9, 2024", speaker: "Pastor Mary" },
-      ],
-    },
     media: {
       items: [
         { icon: "🎥", name: "Sunday Live Stream", time: "Sun 8:00 AM" },
@@ -406,30 +385,11 @@ const CATEGORY_SCREEN_DATA = {
         { icon: "📊", label: "Biology", value: "A" },
       ],
     },
-    announcements: {
-      items: [
-        { icon: "📢", label: "Mid-term Break", date: "Mar 10-14", desc: "School closes for mid-term" },
-        { icon: "📢", label: "Sports Day", date: "Apr 10", desc: "Annual inter-house sports" },
-      ],
-    },
     events: {
       items: [
         { icon: "🏆", name: "Sports Day", date: "Apr 10", time: "8:00 AM" },
         { icon: "🎭", name: "Cultural Day", date: "May 15", time: "10:00 AM" },
         { icon: "🏆", name: "Prize Giving", date: "Jul 5", time: "10:00 AM" },
-      ],
-    },
-    categories: ["Timetable", "Fees", "Announcements", "Grades"],
-    fees: {
-      items: [
-        { icon: "💳", label: "Term 3 Fees", value: "₦85,000", status: "Paid" },
-        { icon: "💳", label: "Exam Fees", value: "₦15,000", status: "Paid" },
-      ],
-    },
-    announcements: {
-      items: [
-        { icon: "📢", label: "Mid-term Break", date: "Mar 10-14", desc: "School closes for mid-term" },
-        { icon: "📢", label: "Sports Day", date: "Apr 10", desc: "Annual inter-house sports" },
       ],
     },
     parents: {
@@ -499,48 +459,10 @@ const CATEGORY_SCREEN_DATA = {
         { icon: "⭐", name: "Very professional", customer: "Mike", rating: 5, date: "Jun 18" },
       ],
     },
-    services: {
-      items: [
-        { emoji: "💇", name: "Hair Styling", price: "₦8,000", duration: "60 min" },
-        { emoji: "💆", name: "Full Body Massage", price: "₦15,000", duration: "90 min" },
-      ],
-    },
-    calendar: {
-      dates: Array.from({ length: 14 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() + i);
-        return d.toISOString().split('T')[0];
-      }),
-      slots: ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"],
-    },
-    bookings: {
-      bookings: [
-        { id: "BK-001", customer: "Chioma", service: "Hair Styling", time: "Tomorrow 2pm", status: "Confirmed" },
-        { id: "BK-002", customer: "Jane", service: "Full Body Massage", time: "Tomorrow 4pm", status: "Pending" },
-      ],
-    },
-    reminders: {
-      reminders: [
-        { icon: "⏰", label: "24h Before", value: "SMS + Email" },
-        { icon: "⏰", label: "1h Before", value: "Push Notification" },
-      ],
-    },
-    reviews: {
-      reviews: [
-        { icon: "⭐", name: "Excellent service", customer: "Chioma", rating: 5, date: "Jun 20" },
-        { icon: "⭐", name: "Very professional", customer: "Mike", rating: 5, date: "Jun 18" },
-      ],
-    },
     payments: {
       items: [
         { icon: "💳", label: "Paystack", value: "Cards, Transfer, USSD" },
         { icon: "🏦", label: "Bank Transfer", value: "Direct deposit" },
-      ],
-    },
-    services: {
-      items: [
-        { emoji: "💇", name: "Hair Styling", price: "₦8,000", duration: "60 min" },
-        { emoji: "💆", name: "Full Body Massage", price: "₦15,000", duration: "90 min" },
       ],
     },
     categories: ["Services", "Calendar", "Bookings", "Profile"],
@@ -600,8 +522,6 @@ export function getShopPreviewData(shopData) {
     orders: CATEGORY_SCREEN_DATA[category]?.orders || {},
     conversations: getConversations(),
     messages: getMessages,
-    products: getPreviewProducts(category),
-    categories: getPreviewCategories(category),
     dashboardStats: getDashboardStats(category),
     revenueData: getRevenueData(category),
     activityData: getActivityData(category),

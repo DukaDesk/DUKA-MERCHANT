@@ -1,5 +1,3 @@
-import { WIZARD_PREVIEW_DATA, WIZARD_TEMPLATES_BY_CATEGORY } from "./mockData";
-
 const CATEGORY_SCREENS = {
   Restaurant: ["menu", "orders", "reservations", "info"],
   Ecommerce: ["shop", "cart", "orders", "profile"],
@@ -65,7 +63,6 @@ const WIZARD_PREVIEW_DATA_LOCAL = {
 function generateMenuScreen(config) {
   const preview = WIZARD_PREVIEW_DATA_LOCAL[config.category] || WIZARD_PREVIEW_DATA_LOCAL.Ecommerce;
   const baseTemplate = getBaseTemplate(config.category, config.template);
-  const isDark = baseTemplate.style === "dark";
   
   return {
     screenId: "menu",
@@ -101,7 +98,6 @@ function generateMenuScreen(config) {
 }
 
 function generateShopScreen(config) {
-  const preview = WIZARD_PREVIEW_DATA_LOCAL[config.category] || WIZARD_PREVIEW_DATA_LOCAL.Ecommerce;
   return {
     screenId: "shop",
     title: "Shop",
