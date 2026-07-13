@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { LayoutRenderer, ScreenRenderer } from "../../runtime/layouts";
 import { TemplateComponents } from "./TemplateComponents";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";
+import { getScreenPreviewData } from "../../services/PreviewDataProvider";
 
-export function TemplateRenderer({ templateId, screenId, onAction }) {
+export function TemplateRenderer({ templateId, screenId, onAction, previewData: externalPreviewData = {} }) {
   const [screenDef, setScreenDef] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,11 +51,113 @@ export function TemplateRenderer({ templateId, screenId, onAction }) {
     );
   }
 
+  // Get preview data for this screen (use prop or fetch based on category)
+  const screenPreviewData = useMemo(() => getScreenPreviewData(screenId, "Restaurant", "Classic Dine"), [screenId]);
+
+  // Merge preview data into screen definition
+  const enhancedScreenDef = useMemo(() => {
+    if (!screenDef) return screenDef;
+    
+    // Deep clone and enhance the screen definition with preview data
+    const enhanced = JSON.parse(JSON.stringify(screenDef));
+    
+    // Enhance layout children with preview data
+    const enhanceNode = (node) => {
+      if (!node) return node;
+      
+      // If this node has a type that we have preview data for, inject the data
+      const nodeType = node.type;
+      
+      if (nodeType === "menu_grid" && screenPreviewData.items) {
+        return { ...node, props: { ...node.props, items: screenPreviewData.items } };
+      }
+      if (nodeType === "category_pills" && screenPreviewData.categories) {
+        return { ...node, props: { ...node.props, categories: screenPreviewData.categories } };
+      }
+      if (nodeType === "menu_grid" && screenPreviewData.items) {
+        return { ...node, props: { ...node.props, items: screenPreviewData.items } };
+      }
+      if (nodeType === "order_history" && screenPreviewData.orders) {
+        return { ...node, props: { ...node.props, orders: screenPreviewData.orders } };
+      }
+      if (nodeType === "info_list" && screenPreviewData.items) {
+        return { ...node, props: { ...node.props, items: screenPreviewData.items } };
+      }
+      if (nodeType === "notification_list" && screenPreviewData.notifications) {
+        return { ...node, props: { ...node.props, notifications: screenPreviewData.notifications } };
+      }
+      if (nodeType === "cart_summary" && screenPreviewData.items) {
+        return { ...node, props: { ...node.props, items: screenPreviewData.items } };
+      }
+      if (nodeType === "order_history" && screenPreviewData.orders) {
+        return { ...node, props: { ...node.props, orders: screenPreviewData.orders } };
+      }
+      if (nodeType === "promotion_list" && screenPreviewData.offers) {
+        return { ...node, props: { ...node.props, offers: screenPreviewData.offers } };
+      }
+      if (nodeType === "hero_banner" && screenPreviewData.title) {
+        return { ...node, props: { ...node.props, title: screenPreviewData.title, subtitle: screenPreviewData.subtitle } };
+      }
+      if (nodeType === "address_form" && screenPreviewData.items) {
+        return { ...node, props: { ...node.props, items: screenPreviewData.items } };
+      }
+      if (nodeType === "report_action" && screenPreviewData.items) {
+        return { ...node, props: { ...node.props, items: screenPreviewData.items } };
+      }
+      if (nodeType === "notification_list" && screenPreviewData.notifications) {
+        return { ...node, props: { ...node.props, notifications: screenPreviewData.notifications } };
+      }
+      if (nodeType === "primary_button" && screenPreviewData.label) {
+        return { ...node, props: { ...node.props, label: screenPreviewData.label } };
+      }
+      if (nodeType === "calendar_strip" && screenPreviewData.dates) {
+        return { ...node, props: { ...node.props, dates: screenPreviewData.dates } };
+      }
+      if (nodeType === "slot_grid" && screenPreviewData.slots) {
+        return { ...node, props: { ...node.props, slots: screenPreviewData.slots } };
+      }
+      if (nodeType === "booking_summary" && screenPreviewData.booking) {
+        return { ...node, props: { ...node.props, booking: screenPreviewData.booking } };
+      }
+      if (nodeType === "cart_summary" && screenPreviewData.cart) {
+        return { ...node, props: { ...node.props, cart: screenPreviewData.cart } };
+      }
+      if (nodeType === "address_form" && screenPreviewData.items) {
+        return { ...node, props: { ...node.props, items: screenPreviewData.items } };
+      }
+      if (nodeType === "promotion_list" && screenPreviewData.offers) {
+        return { ...node, props: { ...node.props, offers: screenPreviewData.offers } };
+      }
+      if (nodeType === "section_header" && screenPreviewData.title) {
+        return { ...node, props: { ...node.props, children: screenPreviewData.title } };
+      }
+      if (nodeType === "dynamic_card" && screenPreviewData.items) {
+        return { ...node, props: { ...node.props, items: screenPreviewData.items } };
+      }
+      
+      // Recursively enhance children
+      if (node.children && Array.isArray(node.children)) {
+        return { ...node, children: node.children.map(enhanceNode) };
+      }
+      if (node.layout && node.layout.children && Array.isArray(node.layout.children)) {
+        return { ...node, layout: { ...node.layout, children: node.layout.children.map(enhanceNode) } };
+      }
+      
+return node;
+    }
+    
+    return enhanceNode(enhanced);
+  }, [screenDef]);
+
   const mergedProps = {
-    extraProps: { onAction },
+    extraProps: { 
+      onAction,
+      // Pass preview data as context for components that need it
+      previewData: screenPreviewData 
+    },
   };
 
-  return <ScreenRenderer screenDef={screenDef} extraProps={mergedProps} />;
+  return <ScreenRenderer screenDef={enhancedScreenDef} extraProps={mergedProps} />;
 }
 
 export function TemplatePreview({ templateId, initialScreenId, onScreenChange }) {
