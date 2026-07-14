@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, ChevronLeft, ChevronRight, Store, LogOut, Sparkles } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, ChevronLeft, ChevronRight, Store, LogOut, Sparkles, PenTool } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../App";
 import { NAVY, AMBER, cardStyle } from "../../theme";
@@ -38,11 +38,11 @@ export default function Sidebar() {
   if (isMobile) {
     return (
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: NAVY, display: "flex", padding: "4px 0", borderTop: "1px solid rgba(255,255,255,0.06)", justifyContent: "space-around", backdropFilter: "blur(20px)" }}>
-        {navItems.filter(i => ["dashboard","products","orders","analytics","messages","integrations","billing"].includes(i.id)).map(item => {
+        {[...navItems, { id: "canvas-editor", icon: PenTool, label: "Editor" }].filter(i => ["dashboard","products","orders","analytics","messages","integrations","billing","canvas-editor"].includes(i.id)).map(item => {
           const active = currentPage === item.id;
           const Icon = item.icon;
           return (
-            <button key={item.id} onClick={() => navigateTo(item.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "6px 0", background: "none", border: "none", cursor: "pointer", position: "relative" }}>
+            <button key={item.id} onClick={() => item.id === "canvas-editor" ? navigate("/canvas-editor") : navigateTo(item.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "6px 0", background: "none", border: "none", cursor: "pointer", position: "relative" }}>
               {active && <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 20, height: 2, background: AMBER, borderRadius: "0 0 2px 2px" }} />}
               <Icon size={18} color={active ? AMBER : "#6B7280"} />
               <span style={{ fontSize: 10, color: active ? AMBER : "#6B7280", fontWeight: active ? 600 : 400 }}>{item.label}</span>
@@ -107,6 +107,21 @@ export default function Sidebar() {
             </button>
           );
         })}
+
+        {!collapsed && <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "8px 16px" }} />}
+
+        <button onClick={() => navigate("/canvas-editor")} style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 12,
+          padding: collapsed ? "10px 0" : "10px 16px", justifyContent: collapsed ? "center" : "flex-start",
+          background: location.pathname === "/canvas-editor" ? "rgba(244,160,38,0.1)" : "transparent",
+          border: "none", borderLeft: location.pathname === "/canvas-editor" ? `2px solid ${AMBER}` : "2px solid transparent",
+          cursor: "pointer", transition: "all 0.15s",
+        }} title={collapsed ? "Canvas Editor" : ""}>
+          <PenTool size={20} color={location.pathname === "/canvas-editor" ? AMBER : "#6B7280"} />
+          {!collapsed && (
+            <span style={{ color: location.pathname === "/canvas-editor" ? AMBER : "#D1D5DB", fontSize: 14, fontWeight: location.pathname === "/canvas-editor" ? 600 : 400, flex: 1, textAlign: "left" }}>Canvas Editor</span>
+          )}
+        </button>
       </nav>
 
       {!collapsed && (
