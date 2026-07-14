@@ -22,6 +22,7 @@ const Billing = lazy(() => import("./components/pages/Billing"));
 const Profile = lazy(() => import("./components/pages/Profile"));
 const MiniAppPreview = lazy(() => import("./components/app-builder/MiniAppPreview"));
 const TemplateEditor = lazy(() => import("./components/template/TemplateEditor"));
+const CanvasEditor = lazy(() => import("./components/canvas-editor/CanvasEditor"));
 
 export const ToastContext = createContext();
 export const AuthContext = createContext();
@@ -136,6 +137,7 @@ export default function App() {
               <Route path="/wizard" element={<ProtectedRoute><Wizard /></ProtectedRoute>} />
               <Route path="/miniapp" element={<ProtectedRoute><MiniAppPreview /></ProtectedRoute>} />
               <Route path="/template-editor/:templateId" element={<ProtectedRoute><TemplateEditor /></ProtectedRoute>} />
+              <Route path="/canvas-editor" element={<ProtectedRoute><CanvasEditor /></ProtectedRoute>} />
               <Route path="/" element={<Navigate to="/signup" replace />} />
               <Route path="/dashboard" element={<ProtectedRoute><ProtectedLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
