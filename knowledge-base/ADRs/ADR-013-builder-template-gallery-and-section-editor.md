@@ -1,4 +1,4 @@
-# ADR-007: Builder Template Gallery and Section Editor Redesign
+# ADR-013: Builder Template Gallery and Section Editor Redesign
 
 **Status:** ✅ Accepted  
 **Date:** 2026-07-17  

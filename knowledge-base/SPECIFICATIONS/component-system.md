@@ -1,69 +1,32 @@
 # Specification: Component System
 
-**Last Updated:** 2026-07-09
+**Last Updated:** 2026-07-10
+
+## Scope
+
+This document describes the **implementation** of the component system for a specific platform target. For the authoritative architecture specification — registration, resolution, versioning, metadata, and platform-wide contract — see:
+
+➡ **[`ARCHITECTURE/component-registry.md`](../ARCHITECTURE/component-registry.md)** (KB-012 — Component Registry)
+
+KB-012 is the single source of truth for how components are registered, discovered, resolved, and rendered across all DUKADESK surfaces. This document provides platform-specific implementation details that conform to that architecture.
 
 ## Overview
 
-Components are the building blocks of screens. They are registered in the Component Registry by type name and rendered by RegistryRenderer when a RuntimeNode with that type is encountered.
+Components are the building blocks of screens. They are registered in the Component Registry by type name and rendered by RegistryRenderer.
 
 ## Registration
 
-Components are registered via `registerComponent(type, component)`:
-```ts
-registerComponent('category_pills', CategoryPillsSection)
-registerComponent('menu_grid', MenuGridSection)
-```
+Components register via `registerComponent(type, component)` in `src/components/register.ts`. This is a platform-specific implementation of the Registration Manager contract defined in KB-012.
 
-All components are registered in `src/components/register.ts` via `registerLibraryComponents()`.
+## Contract
 
-## Component Contract
+Components receive merged props (node.props + node.actions) and access `dispatchAction` through `useRuntimeContext()`.
 
-Components receive merged props:
-```ts
-type ComponentProps = {
-  // From node.props
-  [key: string]: unknown
-  
-  // From node.actions (merged by RegistryRenderer)
-  actions?: Record<string, ActionDef>
-  
-  // From extraProps (e.g., dispatchAction)
-  dispatchAction?: RuntimeActionHandler
-}
-```
+## Patterns
 
-Components access `dispatchAction` through `useRuntimeContext()`:
-```tsx
-const { dispatchAction } = useRuntimeContext()
-const act = (a: ActionDef) => dispatchAction(a)
-```
-
-## Component Patterns
-
-### Section Components
-Self-contained UI sections. Receive data via `node.props` and actions via `node.actions`. Examples:
-- `CategoryPillsSection` — category filter pills
-- `MenuGridSection` — product grid
-- `OrderHistorySection` — order list
-- `InfoListSection` — contact info
-- `ReportActionSection` — report form
-- `EmptyStateSection` — empty state display
-- `NotificationListSection` — notification items
-
-### Interactive Components
-Components that trigger actions on user interaction:
-- `PrimaryButton` — dispatches `actions.default` on press
-- `DynamicCard` — dispatches `actions.addItem` with item payload on add button press
-- Notification items — dispatch `actions.tap` / `actions.dismiss` on press
+- **Section Components**: CategoryPillsSection, MenuGridSection, OrderHistorySection, InfoListSection, ReportActionSection, EmptyStateSection, NotificationListSection
+- **Interactive Components**: PrimaryButton (dispatches actions.default), DynamicCard (dispatches actions.addItem), Notification items (dispatch actions.tap/dismiss)
 
 ## Brand Context
 
-Components use `useBrand()` to access theme colors and styling:
-```tsx
-const brand = useBrand()
-// brand.secondaryColor, brand.textColor, brand.cardColor, etc.
-```
-
-## Error Handling
-
-Unknown component types render `UnsupportedComponent` which displays a fallback UI with the component type name for debugging.
+Components use `useBrand()` to access theme colors from BrandThemeProvider.
