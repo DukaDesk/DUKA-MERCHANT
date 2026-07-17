@@ -6,6 +6,13 @@ import PropertiesPanel from "./PropertiesPanel";
 import ScreenSwitcher from "./ScreenSwitcher";
 import { NAVY } from "../../theme";
 import { theme, iconBtn, primaryBtn, panelHeader } from "./editorTheme";
+import { publishProject, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
+
+const PREVIEW_SIZES = {
+  mobile: { width: 390, height: 740, label: "Mobile", icon: "M12 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2s2-.9 2-2V4c0-1.1-.9-2-2-2z" },
+  tablet: { width: 768, height: 1024, label: "Tablet", icon: "M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" },
+  desktop: { width: 1280, height: 800, label: "Desktop", icon: "M20 4H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h6l-2 4h8l-2-4h6c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" },
+};
 
 const SECTION_PRESETS = {
   hero: { icon: "\uD83C\uDF1F", type: "hero", name: "Hero Banner", backgroundColor: "#1A1A2E", desc: "Eye-catching banner with title, subtitle and badge", components: [{ type: "hero_banner", props: { title: "Welcome", subtitle: "Your tagline here", badge: "Open Now", color: "#1A1A2E" } }] },
@@ -22,8 +29,12 @@ export default function SectionEditor({ store, onBack }) {
   const [showExport, setShowExport] = useState(false);
   const [showSectionPicker, setShowSectionPicker] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [previewSize, setPreviewSize] = useState("mobile");
   const [previewScreenId, setPreviewScreenId] = useState(null);
   const [hoveredIcon, setHoveredIcon] = useState(null);
+  const [validationErrors, setValidationErrors] = useState(null);
+  const [showReleases, setShowReleases] = useState(false);
+  const [releases, setReleases] = useState([]);
 
   const data = store.data;
   const logo = data.meta?.logo;
@@ -103,15 +114,25 @@ export default function SectionEditor({ store, onBack }) {
 
   const handlePublish = useCallback(() => {
     const design = store.getDesignJSON();
-    try {
-      localStorage.setItem("dukadesk_deployed", JSON.stringify({
-        ...design,
-        publishedAt: new Date().toISOString(),
-        status: "published",
-      }));
-      onBack?.();
-    } catch {}
+    const result = publishProject(design);
+    if (result.success) {
+      setTimeout(() => onBack?.(), 1200);
+    } else {
+      setValidationErrors(result.validation);
+    }
   }, [store, onBack]);
+
+  const handleShowReleases = useCallback(() => {
+    setReleases(getReleaseHistory());
+    setShowReleases(true);
+  }, []);
+
+  const handleRollback = useCallback((releaseId) => {
+    const result = rollbackToRelease(releaseId);
+    if (result.success) {
+      setReleases(getReleaseHistory());
+    }
+  }, []);
 
   const handleExport = useCallback((format) => {
     const json = JSON.stringify(store.getDesignJSON(), null, 2);
@@ -134,24 +155,44 @@ export default function SectionEditor({ store, onBack }) {
 
   if (previewMode) {
     const screen = data.screens[previewCurrentScreen];
+    const ps = PREVIEW_SIZES[previewSize] || PREVIEW_SIZES.mobile;
+    const isMobileDevice = previewSize === "mobile";
     return (
       <div style={{ height: "100vh", background: "#0F0F1A", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Inter',sans-serif" }}>
-        <div style={{ position: "absolute", top: 16, left: 16, display: "flex", gap: 8 }}>
+        <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 6, alignItems: "center" }}>
           <button onClick={() => { setPreviewMode(false); setPreviewScreenId(null); }}
-            style={{ ...iconBtn, background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", padding: "8px 16px", borderRadius: theme.radius.md, gap: 6 }}
+            style={{ ...iconBtn, background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", padding: "8px 14px", borderRadius: theme.radius.md, gap: 6, fontSize: 12 }}
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-            Exit Preview
+            Exit
           </button>
+          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.15)", margin: "0 4px" }} />
+          {Object.entries(PREVIEW_SIZES).map(([key, size]) => (
+            <button key={key} onClick={() => setPreviewSize(key)}
+              style={{
+                background: previewSize === key ? theme.active : "rgba(255,255,255,0.08)", border: "none",
+                color: previewSize === key ? NAVY : "rgba(255,255,255,0.6)", borderRadius: theme.radius.md,
+                padding: "6px 10px", cursor: "pointer", fontSize: 11, fontWeight: 600,
+                fontFamily: "'Inter',sans-serif", transition: `all ${theme.transition}`,
+                display: "flex", alignItems: "center", gap: 5,
+              }}
+              onMouseEnter={e => { if (previewSize !== key) e.currentTarget.style.background = "rgba(255,255,255,0.15)"; }}
+              onMouseLeave={e => { if (previewSize !== key) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={size.icon}/></svg>
+              {size.label}
+            </button>
+          ))}
         </div>
-        <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 6 }}>
+        <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 5 }}>
           {Object.keys(data.screens).map(sid => (
             <button key={sid} onClick={() => setPreviewScreenId(sid)}
               style={{
                 background: previewCurrentScreen === sid ? theme.active : "rgba(255,255,255,0.1)", border: "none",
-                color: previewCurrentScreen === sid ? NAVY : "#fff", borderRadius: theme.radius.md, padding: "6px 14px",
-                cursor: "pointer", fontSize: 12, fontWeight: 600, transition: `all ${theme.transition}`,
+                color: previewCurrentScreen === sid ? NAVY : "#fff", borderRadius: theme.radius.md, padding: "5px 12px",
+                cursor: "pointer", fontSize: 11, fontWeight: 600, fontFamily: "'Inter',sans-serif",
+                transition: `all ${theme.transition}`,
               }}
               onMouseEnter={e => { if (previewCurrentScreen !== sid) e.currentTarget.style.background = "rgba(255,255,255,0.18)"; }}
               onMouseLeave={e => { if (previewCurrentScreen !== sid) e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
@@ -159,9 +200,11 @@ export default function SectionEditor({ store, onBack }) {
           ))}
         </div>
         <div style={{
-          width: 390, height: 740, background: screen?.backgroundColor || "#FCF8FA",
-          borderRadius: 36, overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+          width: ps.width, height: ps.height, background: screen?.backgroundColor || "#FCF8FA",
+          borderRadius: isMobileDevice ? 36 : 12, overflow: "hidden",
+          boxShadow: isMobileDevice ? "0 20px 60px rgba(0,0,0,0.4)" : "0 8px 30px rgba(0,0,0,0.3)",
           display: "flex", flexDirection: "column", position: "relative",
+          transition: "all 0.3s ease",
         }}>
           <div style={{ height: 28, background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", flexShrink: 0, color: "#fff", fontSize: 11, fontWeight: 600 }}>
             <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
@@ -270,6 +313,10 @@ export default function SectionEditor({ store, onBack }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
 
+          <button onClick={handleShowReleases} style={iconBtn} title="Release History">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </button>
+
           <div style={{ position: "relative" }}>
             <button onClick={() => setShowExport(!showExport)} style={iconBtn} title="Export">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -354,6 +401,24 @@ export default function SectionEditor({ store, onBack }) {
         </div>
       </div>
 
+      {/* Validation errors */}
+      {validationErrors && (
+        <ValidationModal
+          errors={validationErrors.errors}
+          warnings={validationErrors.warnings}
+          onClose={() => setValidationErrors(null)}
+        />
+      )}
+
+      {/* Releases panel */}
+      {showReleases && (
+        <ReleasesPanel
+          releases={releases}
+          onRollback={handleRollback}
+          onClose={() => setShowReleases(false)}
+        />
+      )}
+
       {/* Section picker */}
       {showSectionPicker && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setShowSectionPicker(false)}>
@@ -393,6 +458,107 @@ export default function SectionEditor({ store, onBack }) {
       <ScreenSwitcher store={store} />
     </div>
   );
+
+  function ValidationModal({ errors, warnings, onClose }) {
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }} onClick={onClose}>
+        <div onClick={e => e.stopPropagation()} style={{ background: theme.surface, borderRadius: theme.radius["2xl"], boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24, maxWidth: 520, width: "90%", maxHeight: "80vh", overflowY: "auto" }}>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: theme.text, marginBottom: 8 }}>
+            Validation {errors.length > 0 ? "Errors" : "Warnings"}
+          </div>
+          <p style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 16, lineHeight: 1.4 }}>
+            {errors.length > 0
+              ? `Fix the ${errors.length} error${errors.length > 1 ? "s" : ""} below before publishing.`
+              : `${warnings.length} warning${warnings.length !== 1 ? "s" : ""} found — review recommended.`}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+            {[...errors, ...warnings].map((err, i) => (
+              <div key={i} style={{
+                padding: "10px 12px", borderRadius: theme.radius.md,
+                background: err.severity === "error" ? "#FEF2F2" : "#FFFBEB",
+                border: `1px solid ${err.severity === "error" ? "#FECACA" : "#FDE68A"}`,
+                fontSize: 12, lineHeight: 1.4,
+              }}>
+                <div style={{ fontWeight: 600, color: err.severity === "error" ? "#991B1B" : "#92400E", marginBottom: 2 }}>
+                  {err.severity === "error" ? "Error" : "Warning"}: {err.path}
+                </div>
+                <div style={{ color: err.severity === "error" ? "#7F1D1D" : "#78350F" }}>{err.message}</div>
+                {err.fix && <div style={{ color: "#059669", marginTop: 4, fontSize: 11 }}>Fix: {err.fix}</div>}
+              </div>
+            ))}
+          </div>
+          <button onClick={onClose}
+            style={{
+              width: "100%", padding: "10px", borderRadius: theme.radius.md,
+              background: theme.active, color: NAVY, border: "none",
+              fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "'Sora',sans-serif",
+            }}
+          >Close</button>
+        </div>
+      </div>
+    );
+  }
+
+  function ReleasesPanel({ releases, onRollback, onClose }) {
+    const current = getCurrentDeployment();
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }} onClick={onClose}>
+        <div onClick={e => e.stopPropagation()} style={{ background: theme.surface, borderRadius: theme.radius["2xl"], boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24, maxWidth: 480, width: "90%", maxHeight: "70vh", overflowY: "auto" }}>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: theme.text, marginBottom: 4 }}>
+            Release History
+          </div>
+          <p style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 16 }}>
+            {current ? `Currently deployed: v${current.version || "?"}` : "No deployment found"}
+          </p>
+          {releases.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 24, color: "#9CA3AF", fontSize: 13 }}>
+              No releases yet. Publish your app to create the first release.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+              {[...releases].reverse().map((rel, i) => (
+                <div key={rel.id} style={{
+                  padding: "12px 14px", borderRadius: theme.radius.md,
+                  background: rel.status === "published" ? "#F0FDF4" : "#F9FAFB",
+                  border: `1px solid ${rel.status === "published" ? "#BBF7D0" : "#E8E8F0"}`,
+                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1C1B1D" }}>v{rel.version}</div>
+                    <div style={{ fontSize: 11, color: "#6B7280" }}>
+                      {new Date(rel.timestamp).toLocaleDateString()} {new Date(rel.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                    <div style={{ fontSize: 11, color: rel.status === "published" ? "#059669" : "#9CA3AF" }}>
+                      {rel.status === "published" ? "Live" : "Rolled back"}
+                    </div>
+                  </div>
+                  {rel.status === "published" && (
+                    <button onClick={() => onRollback(rel.id)}
+                      style={{
+                        padding: "6px 14px", borderRadius: theme.radius.md,
+                        background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A",
+                        fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+                        fontFamily: "'Inter',sans-serif", transition: `all ${theme.transition}`,
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "#FDE68A"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "#FEF3C7"; }}
+                    >Rollback</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <button onClick={onClose}
+            style={{
+              width: "100%", padding: "10px", borderRadius: theme.radius.md,
+              background: "#F3F4F6", color: "#6B7280", border: "none",
+              fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif",
+            }}
+          >Close</button>
+        </div>
+      </div>
+    );
+  }
 }
 
 function formatTimeAgo(date) {

@@ -59,6 +59,25 @@ const layoutRenderers = {
     ));
   },
 
+  stack(node, index) {
+    return createElement("div", {
+      key: index,
+      style: {
+        position: "relative",
+        ...(node.style || {}),
+      },
+    }, (node.children || []).map((child, i) =>
+      createElement("div", {
+        key: i,
+        style: {
+          position: i > 0 ? "absolute" : "relative",
+          top: 0, left: 0, right: 0, bottom: 0,
+          zIndex: child.zIndex ?? (node.children.length - i),
+        },
+      }, renderNode(child, i))
+    ));
+  },
+
   section(node, index) {
     return createElement("div", {
       key: index,

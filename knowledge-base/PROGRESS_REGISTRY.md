@@ -30,7 +30,7 @@
 | Screen Renderer | ✅ Complete | Layout path + children path working |
 | Component Registry | 🔧 In Progress | 50+ components registered. Some unused, some incomplete |
 | Section Components | 🔧 In Progress | CategoryPills, MenuGrid, etc. wired to actions. AddressForm, CartSummary added |
-| Action Engine | ✅ Complete | All 21 ActionType values have registered handlers |
+| Action Engine | ✅ Complete | 60+ handlers across all 10 KB categories: Navigation, Data, Commerce, Booking, Forms, Auth, Notifications, Device, Runtime, Integration |
 | Cart Flow | 🔧 In Progress | Add/remove works. Checkout screen exists |
 | Orders | 🔧 In Progress | Order history + order detail screens for both tenants |
 | Notifications | 🔧 In Progress | List rendered. Dismiss + markAllRead + tap-to-screen working |
@@ -80,6 +80,7 @@
 3. No backend exists — all data is mocked
 4. (Resolved) Screen & Layout Builder (KB-024) through Publishing Pipeline (KB-031) all completed
 5. No persistence layer for form data across app restarts
+6. (Resolved) Action Engine KB-gap: all 10 categories implemented with 60+ handlers
 
 ## Marketplace
 
