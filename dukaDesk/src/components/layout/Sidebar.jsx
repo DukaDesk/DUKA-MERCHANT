@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, ChevronLeft, ChevronRight, Store, LogOut, Sparkles, PenTool } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { useAuth } from "../../App";
+import { useAuth } from "../../contexts";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import { getOrders, getConversations } from "../../services/api";
 

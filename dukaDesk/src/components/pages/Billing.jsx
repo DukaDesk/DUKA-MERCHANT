@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Download } from "lucide-react";
-import { useToast } from "../../App";
+import { useToast } from "../../contexts";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
 import { getCurrentPlan, getPlans, getBillingHistory, upgradePlan } from "../../services/api";

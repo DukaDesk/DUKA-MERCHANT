@@ -45,39 +45,39 @@ export const WIZARD_CATEGORIES = [
 
 export const WIZARD_TEMPLATES_BY_CATEGORY = {
   Restaurant: [
-    { name: "Classic Dine", tags: ["Elegant", "Warm tones"], features: ["Menu", "Cart", "Orders", "Reservations"], preview: "🍜" },
-    { name: "Modern Bites", tags: ["Dark theme", "Bold type"], features: ["Menu", "Cart", "Orders", "Table Booking"], preview: "🍔" },
-    { name: "Fresh & Bright", tags: ["Minimal", "Photo-forward"], features: ["Menu", "Cart", "Delivery", "Pickup"], preview: "🥗" },
+    { name: "Classic Dine", tags: ["Elegant", "Warm tones"], features: ["Menu", "Cart", "Orders", "Reservations"], category: "Restaurant", primaryColor: "#8B4513", secondaryColor: "#F5DEB3" },
+    { name: "Modern Bites", tags: ["Dark theme", "Bold type"], features: ["Menu", "Cart", "Orders", "Table Booking"], category: "Restaurant", primaryColor: "#1A1A2E", secondaryColor: "#F4A026" },
+    { name: "Fresh & Bright", tags: ["Minimal", "Photo-forward"], features: ["Menu", "Cart", "Delivery", "Pickup"], category: "Restaurant", primaryColor: "#2ECC71", secondaryColor: "#F0FFF0" },
   ],
   Ecommerce: [
-    { name: "Storefront", tags: ["Clean", "Product-first"], features: ["Products", "Cart", "Checkout", "Reviews"], preview: "🛍️" },
-    { name: "Flash Sale", tags: ["Bold", "Urgency-driven"], features: ["Products", "Cart", "Deals", "Countdown"], preview: "⚡" },
-    { name: "Minimal Shop", tags: ["Minimal", "Modern"], features: ["Products", "Cart", "Wishlist", "Checkout"], preview: "🛒" },
+    { name: "Storefront", tags: ["Clean", "Product-first"], features: ["Products", "Cart", "Checkout", "Reviews"], category: "Ecommerce", primaryColor: "#1A1A2E", secondaryColor: "#F4A026" },
+    { name: "Flash Sale", tags: ["Bold", "Urgency-driven"], features: ["Products", "Cart", "Deals", "Countdown"], category: "Ecommerce", primaryColor: "#E74C3C", secondaryColor: "#FFD700" },
+    { name: "Minimal Shop", tags: ["Minimal", "Modern"], features: ["Products", "Cart", "Wishlist", "Checkout"], category: "Ecommerce", primaryColor: "#7C3AED", secondaryColor: "#F3E8FF" },
   ],
   "Food Vendor": [
-    { name: "Street Eats", tags: ["Bold", "Colorful"], features: ["Menu", "Cart", "Orders", "Quick Pickup"], preview: "🌮" },
-    { name: "Home Kitchen", tags: ["Warm", "Homely"], features: ["Menu", "Cart", "Delivery", "Catering"], preview: "🍲" },
-    { name: "Fast Bites", tags: ["Clean", "Speedy"], features: ["Menu", "Cart", "Express Orders", "Pickup"], preview: "🥪" },
+    { name: "Street Kitchen", tags: ["Bold", "Colorful"], features: ["Menu", "Cart", "Orders", "Quick Pickup"], category: "Food Vendor", primaryColor: "#FF6B35", secondaryColor: "#FFE4CA" },
+    { name: "Home Chef", tags: ["Warm", "Homely"], features: ["Menu", "Cart", "Delivery", "Catering"], category: "Food Vendor", primaryColor: "#8B4513", secondaryColor: "#FFF3E0" },
+    { name: "CaterPro", tags: ["Clean", "Professional"], features: ["Menu", "Cart", "Bulk Orders", "Event Booking"], category: "Food Vendor", primaryColor: "#0D9488", secondaryColor: "#E8F5F4" },
   ],
   Grocery: [
-    { name: "Market Fresh", tags: ["Clean", "Fresh"], features: ["Products", "Cart", "Delivery", "Pickup"], preview: "🥬" },
-    { name: "Corner Shop", tags: ["Warm", "Neighborhood"], features: ["Products", "Cart", "Home Delivery", "Loyalty"], preview: "🏪" },
-    { name: "Bulk Buy", tags: ["Bold", "Value"], features: ["Products", "Cart", "Bulk Pricing", "Delivery"], preview: "📦" },
+    { name: "Fresh Market", tags: ["Clean", "Fresh"], features: ["Products", "Cart", "Delivery", "Pickup"], category: "Grocery", primaryColor: "#2ECC71", secondaryColor: "#E8F5E9" },
+    { name: "Quick Shop", tags: ["Bold", "Convenient"], features: ["Products", "Cart", "Express Delivery", "Loyalty"], category: "Grocery", primaryColor: "#FF6B35", secondaryColor: "#FFF3E0" },
+    { name: "Family Mart", tags: ["Warm", "Neighborhood"], features: ["Products", "Cart", "Home Delivery", "Loyalty"], category: "Grocery", primaryColor: "#1565C0", secondaryColor: "#E3F2FD" },
   ],
   Church: [
-    { name: "Cathedral", tags: ["Elegant", "Serene"], features: ["Events", "Giving", "Sermons", "Community"], preview: "⛪" },
-    { name: "Community Light", tags: ["Warm", "Modern"], features: ["Events", "Giving", "Announcements", "Prayer Requests"], preview: "🕯️" },
-    { name: "Youth Vibes", tags: ["Bold", "Modern"], features: ["Events", "Giving", "Media", "Small Groups"], preview: "🔥" },
+    { name: "Grace", tags: ["Elegant", "Serene"], features: ["Events", "Giving", "Sermons", "Community"], category: "Church", primaryColor: "#1A237E", secondaryColor: "#E8EAF6" },
+    { name: "Vibrant", tags: ["Modern", "Energetic"], features: ["Events", "Giving", "Announcements", "Media"], category: "Church", primaryColor: "#E65100", secondaryColor: "#FFF3E0" },
+    { name: "Community", tags: ["Warm", "Inclusive"], features: ["Events", "Giving", "Prayer Requests", "Small Groups"], category: "Church", primaryColor: "#2E7D32", secondaryColor: "#E8F5E9" },
   ],
   School: [
-    { name: "Academy Pro", tags: ["Clean", "Professional"], features: ["Timetables", "Fees", "Announcements", "Grades"], preview: "🏫" },
-    { name: "Bright Minds", tags: ["Playful", "Colorful"], features: ["Timetables", "Fees", "Events", "Parent Comms"], preview: "🎓" },
-    { name: "Smart Campus", tags: ["Modern", "Digital-first"], features: ["Timetables", "Fees", "Assignments", "Live Classes"], preview: "💻" },
+    { name: "Academy", tags: ["Clean", "Professional"], features: ["Timetables", "Fees", "Announcements", "Grades"], category: "School", primaryColor: "#283593", secondaryColor: "#E8EAF6" },
+    { name: "Bright Minds", tags: ["Playful", "Colorful"], features: ["Timetables", "Fees", "Events", "Parent Comms"], category: "School", primaryColor: "#FF6F00", secondaryColor: "#FFF8E1" },
+    { name: "Heritage", tags: ["Traditional", "Trusted"], features: ["Timetables", "Fees", "Assignments", "Library"], category: "School", primaryColor: "#4E342E", secondaryColor: "#EFEBE9" },
   ],
   Booking: [
-    { name: "Scheduler", tags: ["Clean", "Efficient"], features: ["Appointments", "Calendar", "Reminders", "Payments"], preview: "📅" },
-    { name: "Spa Lounge", tags: ["Elegant", "Relaxed"], features: ["Services", "Booking", "Reminders", "Reviews"], preview: "💆" },
-    { name: "Quick Book", tags: ["Minimal", "Fast"], features: ["Services", "Booking", "Calendar Sync", "Payments"], preview: "⚡" },
+    { name: "Appointments", tags: ["Clean", "Efficient"], features: ["Appointments", "Calendar", "Reminders", "Payments"], category: "Booking", primaryColor: "#0D9488", secondaryColor: "#E8F5F4" },
+    { name: "Premium", tags: ["Elegant", "Luxury"], features: ["Services", "Booking", "Reminders", "Reviews"], category: "Booking", primaryColor: "#7C3AED", secondaryColor: "#F3E8FF" },
+    { name: "Express", tags: ["Minimal", "Fast"], features: ["Services", "Booking", "Calendar Sync", "Payments"], category: "Booking", primaryColor: "#EA580C", secondaryColor: "#FFF3E0" },
   ],
 };
 

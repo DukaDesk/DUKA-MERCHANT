@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from "recharts";
 import { Plus, Package, BarChart3, MessageSquare, Store, TrendingUp, Users, DollarSign, Star, ArrowRight } from "lucide-react";
 import QRCode from "qrcode";
-import { useAuth, useToast } from "../../App";
+import { useAuth, useToast } from "../../contexts";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import ApiClient from "../../services/ApiClient";
@@ -73,7 +73,7 @@ export default function Dashboard() {
   }, [dispatchAction]);
 
   if (loading) return <Loading message="Loading dashboard..." />;
-  if (!stats) return <Empty icon="📊" message="No dashboard data yet" sub={setup ? "Setup data saved. Complete your app setup to see stats here." : "Complete your app setup to see stats here"} action={<button onClick={() => navigate("/wizard")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{setup ? "Continue Setup →" : "Setup Your App →"}</button>} />;
+  if (!stats) return <Empty icon="📊" message="No dashboard data yet" sub={setup ? "Setup data saved. Complete your app setup to see stats here." : "Complete your app setup to see stats here"} action={<button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{setup ? "Continue Setup →" : "Setup Your App →"}</button>} />;
 
   const kpiData = [
     { label: "Total Customers", value: stats.customers.toLocaleString(), trend: "+34 this week", trendUp: true, icon: Users, color: "#7C3AED" },
@@ -89,7 +89,7 @@ export default function Dashboard() {
           <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: 0 }}>Dashboard</h2>
           <p style={{ color: "#6B7280", fontSize: 14, marginTop: 4 }}>Your business at a glance</p>
         </div>
-        <button onClick={() => navigate("/wizard")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <Plus size={16} /> Edit App
         </button>
       </div>

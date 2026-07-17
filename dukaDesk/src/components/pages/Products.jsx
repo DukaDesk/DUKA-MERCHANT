@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, Plus, X, Upload, Trash2, Grid, List } from "lucide-react";
-import { useToast } from "../../App";
+import { useToast } from "../../contexts";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, statusBadge } from "../../theme";
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../../services/api";

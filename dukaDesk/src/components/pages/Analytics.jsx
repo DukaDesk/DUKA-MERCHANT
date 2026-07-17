@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
 import { Download, TrendingUp, Users, DollarSign, Smartphone, Star } from "lucide-react";
-import { useToast } from "../../App";
+import { useToast } from "../../contexts";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import { getRevenueData, getOrderStats, getScanData, getTopProducts, getCustomerSplit } from "../../services/api";

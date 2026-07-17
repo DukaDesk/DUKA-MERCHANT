@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, X, Send, Paperclip, ChevronLeft, AlertTriangle } from "lucide-react";
-import { useToast } from "../../App";
+import { useToast } from "../../contexts";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle } from "../../theme";
 import { getConversations, getMessages, sendMessage } from "../../services/api";

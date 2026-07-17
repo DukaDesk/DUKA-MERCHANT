@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Bell, Search, Grid } from "lucide-react";
-import { useAuth, useToast } from "../../App";
+import { useAuth, useToast } from "../../contexts";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { AMBER, NAVY } from "../../theme";
 

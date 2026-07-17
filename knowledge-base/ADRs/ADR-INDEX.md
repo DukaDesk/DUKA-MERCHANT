@@ -1,6 +1,6 @@
 # Architecture Decision Records — Index
 
-**Last Updated:** 2026-07-09
+**Last Updated:** 2026-07-17
 
 | ID | Title | Status | Date |
 |----|-------|--------|------|
@@ -10,3 +10,4 @@
 | ADR-004 | Event Bus for Cross-Component Communication | ✅ Accepted | 2026-06-30 |
 | ADR-005 | Branded Splash Screen | ✅ Accepted | 2026-07-09 |
 | ADR-006 | Knowledge Base Initialization | ✅ Accepted | 2026-07-09 |
+| ADR-007 | Builder Template Gallery and Section Editor Redesign | ✅ Accepted | 2026-07-17 |

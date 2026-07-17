@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft, KeyRound } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft, KeyRound, AlertCircle, CheckCircle } from "lucide-react";
 import PropTypes from "prop-types";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { useToast } from "../../App";
+import { useToast } from "../../contexts";
 import { NAVY, AMBER, GREEN, RED, PURPLE, inputStyle, labelStyle } from "../../theme";
 import { login, signup, forgotPassword, setToken } from "../../services/api";
 
@@ -88,10 +88,30 @@ function LoginForm({ onAuth, setPage }) {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validateEmail = (value) => {
+    if (!value) return "Email is required";
+    if (!value.includes("@")) return "Enter a valid email";
+    return "";
+  };
+
+  const validatePassword = (value) => {
+    if (!value) return "Password is required";
+    return "";
+  };
+
+  const handleEmailBlur = () => setFieldErrors(e => ({ ...e, email: validateEmail(email) }));
+  const handlePasswordBlur = () => setFieldErrors(e => ({ ...e, password: validatePassword(password) }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) { setError("Please fill in all fields."); return; }
+    const emailErr = validateEmail(email);
+    const passErr = validatePassword(password);
+    if (emailErr || passErr) {
+      setFieldErrors({ email: emailErr, password: passErr });
+      return;
+    }
     setLoading(true); setError("");
     try {
       const res = await login({ email, password });
@@ -109,8 +129,8 @@ function LoginForm({ onAuth, setPage }) {
       <p style={{ color: "#6B7280", fontSize: 15, margin: "0 0 32px" }}>Manage your apps, orders, and customers.</p>
       {error && <ErrorBox message={error} />}
       <form onSubmit={handleSubmit}>
-        <Field label="Email address" type="email" value={email} onChange={e => { setEmail(e.target.value); setError(""); }} placeholder="ada@example.com" icon={<Mail size={18} />} />
-        <Field label="Password" type={showPw ? "text" : "password"} value={password} onChange={e => { setPassword(e.target.value); setError(""); }} placeholder="Your password" icon={<Lock size={18} />} suffix={
+        <Field label="Email address" type="email" value={email} onChange={e => { setEmail(e.target.value); setError(""); }} onBlur={handleEmailBlur} placeholder="ada@example.com" icon={<Mail size={18} />} error={fieldErrors.email} />
+        <Field label="Password" type={showPw ? "text" : "password"} value={password} onChange={e => { setPassword(e.target.value); setError(""); }} onBlur={handlePasswordBlur} placeholder="Your password" icon={<Lock size={18} />} error={fieldErrors.password} suffix={
           <button type="button" onClick={() => setShowPw(!showPw)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex", alignItems: "center" }}>
             {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -123,7 +143,7 @@ function LoginForm({ onAuth, setPage }) {
         <PrimaryBtn loading={loading}>{loading ? "Logging in..." : "Log in"}</PrimaryBtn>
       </form>
       <Divider />
-      <SocialBtn icon="G" provider="Google" />
+      <SocialBtn icon="G" provider="Google" disabled />
       <p style={{ textAlign: "center", marginTop: 24, fontSize: 14, color: "#6B7280" }}>
         Don't have an account?{" "}
         <button onClick={() => setPage("/signup")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer" }}>Sign up →</button>
@@ -140,6 +160,10 @@ function SignupForm({ onAuth, setPage }) {
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  const passwordInputRef = useRef(null);
+  const confirmInputRef = useRef(null);
 
   const strength = (pw) => {
     if (!pw) return 0; let s = 0;
@@ -151,32 +175,53 @@ function SignupForm({ onAuth, setPage }) {
   const strLabel = ["", "Weak", "Medium", "Strong"][s];
   const strColor = ["", "#E74C3C", "#F4A026", "#2ECC71"][s];
 
-  const validate = () => {
-    const e = {};
-    if (!form.name) e.name = "Required";
-    if (!form.business) e.business = "Required";
-    if (!form.email.includes("@")) e.email = "Enter a valid email";
-    if (form.password.length < 8) e.password = "Min. 8 characters";
-    if (form.password !== form.confirm) e.confirm = "Passwords do not match";
-    return e;
+  const validators = {
+    name: (v) => !v ? "Full name is required" : v.length < 2 ? "Name too short" : "",
+    business: (v) => !v ? "Business name is required" : v.length < 2 ? "Name too short" : "",
+    email: (v) => !v ? "Email is required" : !v.includes("@") ? "Enter a valid email" : "",
+    phone: (v) => !v ? "Phone number is required" : v.replace(/\s/g, "").length < 10 ? "Enter a valid Nigerian number" : "",
+    password: (v) => !v ? "Password is required" : v.length < 8 ? "Minimum 8 characters" : !/[A-Z]/.test(v) ? "Add an uppercase letter" : !/[0-9!@#$%]/.test(v) ? "Add a number or symbol" : "",
+    confirm: (v) => !v ? "Confirm your password" : v !== form.password ? "Passwords do not match" : "",
+  };
+
+  const validateField = (name, value) => validators[name]?.(value) || "";
+
+  const handleBlur = (name) => {
+    setTouched(t => ({ ...t, [name]: true }));
+    const err = validateField(name, form[name]);
+    setErrors(e => ({ ...e, [name]: err }));
+  };
+
+  const handleChange = (name) => (e) => {
+    const value = e.target.value;
+    setForm(f => ({ ...f, [name]: value }));
+    if (touched[name]) {
+      setErrors(e => ({ ...e, [name]: validateField(name, value) }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const e2 = validate();
-    if (Object.keys(e2).length) { setErrors(e2); return; }
+    const newErrors = {};
+    let hasError = false;
+    Object.keys(validators).forEach(key => {
+      const err = validateField(key, form[key]);
+      if (err) { newErrors[key] = err; hasError = true; }
+    });
+    setTouched(Object.keys(validators).reduce((acc, k) => ({ ...acc, [k]: true }), {}));
+    setErrors(newErrors);
+    if (hasError) return;
+
     setLoading(true);
     try {
       const res = await signup({ fullName: form.name, businessName: form.business, email: form.email, phone: form.phone, password: form.password });
       setToken(res.token);
       onAuth(res.merchant);
-      setPage("/wizard");
+      setPage("/canvas-editor");
     } catch (err) {
       setErrors({ submit: err.message || "Signup failed. Please try again." });
     } finally { setLoading(false); }
   };
-
-  const set = (k) => (e) => { setForm(f => ({ ...f, [k]: e.target.value })); setErrors(er => ({ ...er, [k]: "" })); };
 
   return (
     <>
@@ -184,18 +229,19 @@ function SignupForm({ onAuth, setPage }) {
       <p style={{ color: "#6B7280", fontSize: 15, margin: "0 0 28px" }}>Start free. No credit card required.</p>
       {errors.submit && <ErrorBox message={errors.submit} />}
       <form onSubmit={handleSubmit}>
-        <Field label="Full name" value={form.name} onChange={set("name")} placeholder="Ada Okafor" error={errors.name} icon={<User size={18} />} />
-        <Field label="Business name" value={form.business} onChange={set("business")} placeholder="Ada's Kitchen" error={errors.business} icon={<Store size={18} />} />
-        <Field label="Email address" type="email" value={form.email} onChange={set("email")} placeholder="ada@example.com" error={errors.email} icon={<Mail size={18} />} />
+        <Field label="Full name" value={form.name} onChange={handleChange("name")} onBlur={() => handleBlur("name")} placeholder="Ada Okafor" error={touched.name ? errors.name : undefined} icon={<User size={18} />} />
+        <Field label="Business name" value={form.business} onChange={handleChange("business")} onBlur={() => handleBlur("business")} placeholder="Ada's Kitchen" error={touched.business ? errors.business : undefined} icon={<Store size={18} />} />
+        <Field label="Email address" type="email" value={form.email} onChange={handleChange("email")} onBlur={() => handleBlur("email")} placeholder="ada@example.com" error={touched.email ? errors.email : undefined} icon={<Mail size={18} />} />
         <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>Phone number</label>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Phone size={18} color="#9CA3AF" />
             <div style={{ ...inputStyle, width: 80, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, cursor: "default", flexShrink: 0 }}>🇳🇬 +234</div>
-            <input style={{ ...inputStyle, flex: 1 }} placeholder="801 234 5678" type="tel" onChange={set("phone")} />
+            <input style={{ ...inputStyle, flex: 1 }} placeholder="801 234 5678" type="tel" value={form.phone} onChange={handleChange("phone")} onBlur={() => handleBlur("phone")} />
           </div>
+          {touched.phone && errors.phone && <p style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.phone}</p>}
         </div>
-        <Field label="Password" type={showPw ? "text" : "password"} value={form.password} onChange={set("password")} placeholder="Min. 8 characters" error={errors.password} icon={<Lock size={18} />} suffix={
+        <Field label="Password" type={showPw ? "text" : "password"} value={form.password} onChange={handleChange("password")} onBlur={() => handleBlur("password")} placeholder="Min. 8 characters" error={touched.password ? errors.password : undefined} icon={<Lock size={18} />} ref={passwordInputRef} suffix={
           <button type="button" onClick={() => setShowPw(!showPw)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex", alignItems: "center" }}>
             {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -206,9 +252,10 @@ function SignupForm({ onAuth, setPage }) {
               <div style={{ height: "100%", width: `${(s / 3) * 100}%`, background: strColor, transition: "all 0.3s", borderRadius: 2 }} />
             </div>
             <span style={{ fontSize: 11, color: strColor, fontWeight: 600 }}>{strLabel}</span>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Use 8+ chars, 1 uppercase, 1 number/symbol</div>
           </div>
         )}
-        <Field label="Confirm password" type={showConfirmPw ? "text" : "password"} value={form.confirm} onChange={set("confirm")} placeholder="Repeat password" error={errors.confirm} icon={<Lock size={18} />} suffix={
+        <Field label="Confirm password" type={showConfirmPw ? "text" : "password"} value={form.confirm} onChange={handleChange("confirm")} onBlur={() => handleBlur("confirm")} placeholder="Repeat password" error={touched.confirm ? errors.confirm : undefined} icon={<Lock size={18} />} ref={confirmInputRef} suffix={
           <button type="button" onClick={() => setShowConfirmPw(!showConfirmPw)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex", alignItems: "center" }}>
             {showConfirmPw ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -219,7 +266,7 @@ function SignupForm({ onAuth, setPage }) {
         <PrimaryBtn loading={loading}>{loading ? "Creating account..." : "Create merchant account"}</PrimaryBtn>
       </form>
       <Divider />
-      <SocialBtn icon="G" provider="Google" />
+      <SocialBtn icon="G" provider="Google" disabled />
       <p style={{ textAlign: "center", marginTop: 24, fontSize: 14, color: "#6B7280" }}>
         Already have an account?{" "}
         <button onClick={() => setPage("/login")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer" }}>Log in →</button>
@@ -235,10 +282,18 @@ function ForgotForm({ setPage }) {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [touched, setTouched] = useState(false);
+
+  const validateEmail = (value) => {
+    if (!value) return "Email is required";
+    if (!value.includes("@")) return "Enter a valid email";
+    return "";
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email) return;
+    const err = validateEmail(email);
+    if (err) { setError(err); setTouched(true); return; }
     setLoading(true); setError("");
     try {
       await forgotPassword({ email });
@@ -269,7 +324,7 @@ function ForgotForm({ setPage }) {
       </div>
       {error && <ErrorBox message={error} />}
       <form onSubmit={handleSubmit}>
-        <Field label="Email address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ada@example.com" icon={<Mail size={18} />} />
+        <Field label="Email address" type="email" value={email} onChange={e => { setEmail(e.target.value); if (touched) setError(""); }} onBlur={() => { setTouched(true); const err = validateEmail(email); if (err) setError(err); }} placeholder="ada@example.com" icon={<Mail size={18} />} error={touched ? error || undefined : undefined} />
         <PrimaryBtn loading={loading}>{loading ? "Sending..." : "Send reset link"}</PrimaryBtn>
       </form>
       <button onClick={() => setPage("/login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
@@ -281,22 +336,23 @@ function ForgotForm({ setPage }) {
 
 ForgotForm.propTypes = { setPage: PropTypes.func.isRequired };
 
-function Field({ label, error, icon, suffix, ...props }) {
+function Field({ label, error, icon, suffix, ref, ...props }) {
   const [focused, setFocused] = useState(false);
   return (
     <div style={{ marginBottom: 16 }}>
       <label style={labelStyle}>{label}</label>
       <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
         {icon && <span style={{ position: "absolute", left: 14, color: "#9CA3AF", display: "flex", zIndex: 1 }}>{icon}</span>}
-        <input style={{ ...inputStyle, paddingLeft: icon ? 42 : 14, paddingRight: suffix ? 42 : 14, borderColor: error ? "#E74C3C" : focused ? AMBER : "var(--border)", boxShadow: focused ? `0 0 0 3px rgba(244,160,38,0.1)` : "none" }} {...props} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
+        <input ref={ref} style={{ ...inputStyle, paddingLeft: icon ? 42 : 14, paddingRight: suffix ? 42 : 14, borderColor: error ? "#E74C3C" : focused ? AMBER : "var(--border)", boxShadow: focused ? `0 0 0 3px rgba(244,160,38,0.1)` : "none" }} {...props} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
         {suffix && <span style={{ position: "absolute", right: 14 }}>{suffix}</span>}
+        {error && <span style={{ position: "absolute", right: suffix ? 50 : 14, color: "#E74C3C", fontSize: 16 }}><AlertCircle size={16} /></span>}
       </div>
-      {error && <p style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>⚠ {error}</p>}
+      {error && <p style={{ color: "#E74C3C", fontSize: 12, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><AlertCircle size={12} /> {error}</p>}
     </div>
   );
 }
 
-Field.propTypes = { label: PropTypes.string.isRequired, error: PropTypes.string, icon: PropTypes.node, suffix: PropTypes.node };
+Field.propTypes = { label: PropTypes.string.isRequired, error: PropTypes.string, icon: PropTypes.node, suffix: PropTypes.node, ref: PropTypes.object };
 
 function PrimaryBtn({ children, loading, onClick, type = "submit" }) {
   return (
@@ -308,17 +364,21 @@ function PrimaryBtn({ children, loading, onClick, type = "submit" }) {
 
 PrimaryBtn.propTypes = { children: PropTypes.node.isRequired, loading: PropTypes.bool, onClick: PropTypes.func, type: PropTypes.string };
 
-function SocialBtn({ icon, provider }) {
+function SocialBtn({ icon, provider, disabled }) {
   const showToast = useToast();
+  const handleClick = () => {
+    if (disabled) return;
+    showToast(`${provider} sign-in coming soon`, "info");
+  };
   return (
-    <button onClick={() => showToast(`${provider} sign-in coming soon`, "info")} style={{ width: "100%", height: 50, borderRadius: 10, border: "1.5px solid #E8E8F0", background: "#fff", fontSize: 14, color: NAVY, cursor: "pointer", fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s" }}>
+    <button onClick={handleClick} disabled={disabled} style={{ width: "100%", height: 50, borderRadius: 10, border: disabled ? "1.5px solid #E8E8F0" : "1.5px solid #D1D5DB", background: disabled ? "#fff" : "#F9FAFB", fontSize: 14, color: disabled ? NAVY : "#9CA3AF", cursor: disabled ? "pointer" : "not-allowed", fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s", opacity: disabled ? 1 : 0.6 }}>
       <div style={{ width: 20, height: 20, background: NAVY, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 700 }}>{icon}</div>
       Continue with {provider}
     </button>
   );
 }
 
-SocialBtn.propTypes = { icon: PropTypes.string, provider: PropTypes.string };
+SocialBtn.propTypes = { icon: PropTypes.string, provider: PropTypes.string, disabled: PropTypes.bool };
 
 function Divider() {
   return (
@@ -333,11 +393,9 @@ function Divider() {
 function ErrorBox({ message }) {
   return (
     <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "12px 16px", color: "#991B1B", fontSize: 14, marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ fontSize: 16 }}>⚠️</span> {message}
+      <AlertCircle size={16} /> {message}
     </div>
   );
 }
 
 ErrorBox.propTypes = { message: PropTypes.string };
-
-

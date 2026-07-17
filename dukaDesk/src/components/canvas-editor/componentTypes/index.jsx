@@ -77,7 +77,7 @@ registerComponentType("category_pills", {
   category: "SDUI Components",
   defaultWidth: 358,
   defaultHeight: 48,
-  defaultProps: { categories: ["Popular", "Mains", "Drinks"] },
+  defaultProps: { categories: "Popular, Mains, Drinks" },
   propFields: [
     { key: "categories", label: "Categories (comma-separated)", type: "text" },
   ],
@@ -282,6 +282,36 @@ registerComponentType("divider", {
   ],
   render: (props) => (
     <div style={{ width: "100%", height: props.thickness || 1, background: props.color || "#E5E1E3" }} />
+  ),
+});
+
+registerComponentType("header_bar", {
+  type: "header_bar",
+  label: "Header Bar",
+  icon: "🗂️",
+  category: "SDUI Components",
+  defaultWidth: 390,
+  defaultHeight: 56,
+  defaultProps: { logo: null, appName: "My App" },
+  propFields: [
+    { key: "appName", label: "App Name", type: "text" },
+    { key: "logo", label: "Logo URL", type: "text" },
+  ],
+  render: (props) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", width: "100%", height: "100%" }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+        background: props.logo ? `url(${props.logo}) center/cover no-repeat` : "#F1EDEF",
+        border: props.logo ? "none" : "2px dashed #D1D5DB",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 14, color: "#9CA3AF",
+      }}>
+        {!props.logo && "📷"}
+      </div>
+      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, color: "#1C1B1D" }}>
+        {props.appName || "App Name"}
+      </div>
+    </div>
   ),
 });
 

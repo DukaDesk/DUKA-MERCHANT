@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { useAuth, useToast } from "../../App";
+import { useAuth, useToast } from "../../contexts";
 import { NAVY, AMBER, cardStyle, inputStyle, labelStyle } from "../../theme";
 import { getMerchantProfile, updateMerchantProfile } from "../../services/api";
 import { Loading } from "../layout/States";

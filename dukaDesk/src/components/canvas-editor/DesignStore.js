@@ -1,23 +1,100 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 let nextId = 1;
 function genId() { return `c_${nextId++}`; }
+function genSectionId() { return `sec_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`; }
+function genScreenId() { return `screen_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`; }
 
-export function useDesignStore(initialScreens) {
-  const [data, setData] = useState(() => ({
-    meta: { category: "", appName: "", primaryColor: "#1A1A2E", logo: null },
-    navigation: { initialScreen: "screen_1", tabs: [] },
-    screens: initialScreens || {
-      screen_1: { name: "Home", width: 390, height: 844, backgroundColor: "#FCF8FA", components: [] },
-    },
+function enrichComponents(components) {
+  return components.map((comp, i) => ({
+    ...comp,
+    id: comp.id || genId(),
+    zIndex: comp.zIndex ?? i,
+    fills: comp.fills ?? [{ type: "solid", color: "#E8E5E0", opacity: 100 }],
+    strokes: comp.strokes ?? [],
+    effects: comp.effects ?? [],
+    cornerRadius: comp.cornerRadius ?? 0,
+    opacity: comp.opacity ?? 1,
+    rotation: comp.rotation ?? 0,
+    locked: comp.locked ?? false,
+    visible: comp.visible ?? true,
   }));
+}
+
+function enrichSections(sections) {
+  return (sections || []).map(sec => ({
+    ...sec,
+    id: sec.id || genSectionId(),
+    components: enrichComponents(sec.components || []),
+  }));
+}
+
+export function useDesignStore(initialData) {
+  const [data, setData] = useState(() => {
+    if (initialData) return initialData;
+    try {
+      const saved = localStorage.getItem("dukadesk_design");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.meta && parsed?.screens && parsed?.shared) {
+          const sid = parsed.navigation?.initialScreen || Object.keys(parsed.screens)[0];
+          if (!parsed.screens[sid]) parsed.screens[Object.keys(parsed.screens)[0]] = { name: "Home", backgroundColor: "#FCF8FA", bodySections: [] };
+          return parsed;
+        }
+      }
+    } catch {}
+    return {
+      meta: { category: "", appName: "", primaryColor: "#1A1A2E", logo: null },
+      navigation: { initialScreen: "screen_1", tabs: [] },
+      shared: {
+        header: { id: "section_header", type: "header", name: "Header", backgroundColor: "#FCF8FA", components: [] },
+        footer: { id: "section_footer", type: "footer", name: "Footer", backgroundColor: "#FCF8FA", components: [] },
+      },
+      screens: {
+        screen_1: { name: "Home", backgroundColor: "#FCF8FA", bodySections: [] },
+      },
+    };
+  });
   const [currentScreenId, setCurrentScreenId] = useState(data.navigation.initialScreen);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [clipboard, setClipboard] = useState(null);
+  const [selectedSectionId, setSelectedSectionId] = useState(null);
+  const [selectedComponentId, setSelectedComponentId] = useState(null);
   const [activeTool, setActiveTool] = useState("select");
   const [bumpVal, bumpHistory] = useState(0); void bumpVal;
   const undoStack = useRef([]);
   const redoStack = useRef([]);
+  const [copiedStyles, setCopiedStyles] = useState(null);
+  const [assets, setAssets] = useState([]);
+  const [lastSaved, setLastSaved] = useState(null);
+  const saveTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem("dukadesk_design", JSON.stringify(data));
+        setLastSaved(new Date());
+      } catch {}
+    }, 300);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [data]);
+
+  const clearDesign = useCallback(() => {
+    try { localStorage.removeItem("dukadesk_design"); } catch {}
+    setData({
+      meta: { category: "", appName: "", primaryColor: "#1A1A2E", logo: null },
+      navigation: { initialScreen: "screen_1", tabs: [] },
+      shared: {
+        header: { id: "section_header", type: "header", name: "Header", backgroundColor: "#FCF8FA", components: [] },
+        footer: { id: "section_footer", type: "footer", name: "Footer", backgroundColor: "#FCF8FA", components: [] },
+      },
+      screens: {
+        screen_1: { name: "Home", backgroundColor: "#FCF8FA", bodySections: [] },
+      },
+    });
+    undoStack.current = [];
+    redoStack.current = [];
+  }, []);
 
   const pushUndo = useCallback(() => {
     undoStack.current.push(JSON.parse(JSON.stringify(data)));
@@ -37,10 +114,17 @@ export function useDesignStore(initialScreens) {
 
   const screen = data.screens[currentScreenId] || data.screens[data.navigation.initialScreen];
 
+  const getAllSections = useCallback(() => [
+    data.shared.header,
+    ...(screen?.bodySections || []),
+    data.shared.footer,
+  ], [data.shared.header, data.shared.footer, screen?.bodySections]);
+
+  /* ── Screens ── */
   const addScreen = useCallback((id, name) => {
-    const sid = id || `screen_${Date.now()}`;
+    const sid = id || genScreenId();
     updateData(d => {
-      d.screens[sid] = { name: name || "New Screen", width: 390, height: 844, backgroundColor: "#FCF8FA", components: [] };
+      d.screens[sid] = { name: name || "New Screen", backgroundColor: "#FCF8FA", bodySections: [] };
     });
     return sid;
   }, [updateData]);
@@ -60,112 +144,231 @@ export function useDesignStore(initialScreens) {
     updateData(d => { if (d.screens[id]) d.screens[id].name = name; });
   }, [updateData]);
 
-  const addPrimitive = useCallback((type, x, y, w, h, defaults) => {
-    const id = genId();
+  /* ── Sections ── */
+  const addBodySection = useCallback((screenId, section) => {
+    const sid = screenId || currentScreenId;
     updateData(d => {
-      const comps = d.screens[currentScreenId]?.components;
-      if (!comps) return;
-      comps.push({
-        id, type, x, y, width: w || 120, height: h || 120,
-        props: defaults?.props || {},
-        style: defaults?.style || {},
-        locked: false, visible: true, zIndex: comps.length,
-        rotation: 0,
-        fills: defaults?.fills || [{ type: "solid", color: "#E5E1E3" }],
-        strokes: defaults?.strokes || [],
-        effects: defaults?.effects || [],
-        cornerRadius: defaults?.cornerRadius ?? 0,
-        opacity: defaults?.opacity ?? 1,
+      const s = d.screens[sid];
+      if (!s) return;
+      if (!s.bodySections) s.bodySections = [];
+      s.bodySections.push({
+        id: section.id || genSectionId(),
+        type: section.type || "custom",
+        name: section.name || "New Section",
+        backgroundColor: section.backgroundColor || "#FCF8FA",
+        components: enrichComponents(section.components || []),
       });
     });
-    setSelectedIds([id]);
-    return id;
   }, [updateData, currentScreenId]);
 
-  const addComponent = useCallback((type, x, y, defaults) => {
-    const id = genId();
+  const removeBodySection = useCallback((screenId, sectionId) => {
+    const sid = screenId || currentScreenId;
     updateData(d => {
-      const comps = d.screens[currentScreenId]?.components;
-      if (!comps) return;
-      comps.push({
-        id, type, x, y, width: defaults?.width || 120, height: defaults?.height || 40,
-        props: defaults?.props || {},
-        style: defaults?.style || {},
-        locked: false, visible: true, zIndex: comps.length,
-        rotation: 0,
-        fills: defaults?.fills || [{ type: "solid", color: "#E5E1E3" }],
-        strokes: defaults?.strokes || [],
-        effects: defaults?.effects || [],
-        cornerRadius: defaults?.cornerRadius ?? 0,
-        opacity: defaults?.opacity ?? 1,
-      });
+      const s = d.screens[sid];
+      if (!s || !s.bodySections) return;
+      s.bodySections = s.bodySections.filter(sec => sec.id !== sectionId);
     });
-    setSelectedIds([id]);
-    return id;
+    setSelectedSectionId(prev => prev === sectionId ? null : prev);
+    setSelectedComponentId(null);
   }, [updateData, currentScreenId]);
 
-  const updateComponent = useCallback((id, patch) => {
+  const reorderBodySection = useCallback((screenId, sectionId, direction) => {
+    const sid = screenId || currentScreenId;
     updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === id);
-      if (comp) Object.assign(comp, patch);
-    });
-  }, [updateData, currentScreenId]);
-
-  const removeComponents = useCallback((ids) => {
-    updateData(d => {
-      const comps = d.screens[currentScreenId]?.components;
-      if (!comps) return;
-      d.screens[currentScreenId].components = comps.filter(c => !ids.includes(c.id));
-    });
-    setSelectedIds([]);
-  }, [updateData, currentScreenId]);
-
-  const duplicateComponents = useCallback((ids) => {
-    let newIds = [];
-    updateData(d => {
-      const comps = d.screens[currentScreenId]?.components;
-      if (!comps) return;
-      const newComps = [];
-      ids.forEach(id => {
-        const orig = comps.find(c => c.id === id);
-        if (orig) {
-          const nid = genId();
-          newComps.push({ ...JSON.parse(JSON.stringify(orig)), id: nid, x: orig.x + 20, y: orig.y + 20, zIndex: comps.length + newComps.length });
-          newIds.push(nid);
-        }
-      });
-      comps.push(...newComps);
-    });
-    setSelectedIds(newIds);
-  }, [updateData, currentScreenId]);
-
-  const moveLayer = useCallback((id, direction) => {
-    updateData(d => {
-      const comps = d.screens[currentScreenId]?.components;
-      if (!comps) return;
-      const idx = comps.findIndex(c => c.id === id);
+      const s = d.screens[sid];
+      if (!s || !s.bodySections) return;
+      const idx = s.bodySections.findIndex(sec => sec.id === sectionId);
       if (idx === -1) return;
-      const [item] = comps.splice(idx, 1);
-      const newIdx = direction === "up" ? Math.min(comps.length, idx + 1) : Math.max(0, idx - 1);
-      comps.splice(newIdx, 0, item);
-      comps.forEach((c, i) => c.zIndex = i);
+      const target = direction === "up" ? idx - 1 : idx + 1;
+      if (target < 0 || target >= s.bodySections.length) return;
+      [s.bodySections[idx], s.bodySections[target]] = [s.bodySections[target], s.bodySections[idx]];
     });
   }, [updateData, currentScreenId]);
 
-  const updateProp = useCallback((id, key, value) => {
+  const setSectionColor = useCallback((screenId, sectionId, color) => {
+    const sid = screenId || currentScreenId;
     updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === id);
+      const s = d.screens[sid];
+      if (!s || !s.bodySections) return;
+      const sec = s.bodySections.find(x => x.id === sectionId);
+      if (sec) sec.backgroundColor = color;
+    });
+  }, [updateData, currentScreenId]);
+
+  const renameSection = useCallback((screenId, sectionId, name) => {
+    const sid = screenId || currentScreenId;
+    updateData(d => {
+      const s = d.screens[sid];
+      if (!s || !s.bodySections) return;
+      const sec = s.bodySections.find(x => x.id === sectionId);
+      if (sec) sec.name = name;
+    });
+  }, [updateData, currentScreenId]);
+
+  /* ── Shared sections ── */
+  const updateSharedSection = useCallback((type, patch) => {
+    updateData(d => {
+      if (d.shared[type]) Object.assign(d.shared[type], patch);
+    });
+  }, [updateData]);
+
+  const setSharedSectionColor = useCallback((type, color) => {
+    updateData(d => {
+      if (d.shared[type]) d.shared[type].backgroundColor = color;
+    });
+  }, [updateData]);
+
+  /* ── Components within sections ── */
+  function findSection(data, sectionId) {
+    const shared = data.shared && Object.values(data.shared).find(s => s.id === sectionId);
+    if (shared) return shared;
+    for (const s of Object.values(data.screens)) {
+      const sec = (s.bodySections || []).find(x => x.id === sectionId);
+      if (sec) return sec;
+    }
+    return null;
+  }
+
+  const addComponentToSection = useCallback((sectionId, type, props) => {
+    const id = genId();
+    updateData(d => {
+      const sec = findSection(d, sectionId);
+      if (!sec) return;
+      if (!sec.components) sec.components = [];
+      sec.components.push({
+        id, type, props: props || {},
+        fills: [{ type: "solid", color: "#E8E5E0", opacity: 100 }],
+        strokes: [], effects: [], cornerRadius: 0, opacity: 1, rotation: 0,
+        locked: false, visible: true, zIndex: sec.components.length,
+      });
+    });
+    setSelectedComponentId(id);
+    return id;
+  }, [updateData]);
+
+  const removeComponentFromSection = useCallback((sectionId, compId) => {
+    updateData(d => {
+      const sec = findSection(d, sectionId);
+      if (!sec || !sec.components) return;
+      sec.components = sec.components.filter(c => c.id !== compId);
+    });
+    setSelectedComponentId(prev => prev === compId ? null : prev);
+  }, [updateData]);
+
+  const duplicateComponentInSection = useCallback((sectionId, compId) => {
+    updateData(d => {
+      const sec = findSection(d, sectionId);
+      if (!sec || !sec.components) return;
+      const idx = sec.components.findIndex(c => c.id === compId);
+      if (idx === -1) return;
+      const orig = sec.components[idx];
+      const copy = JSON.parse(JSON.stringify(orig));
+      copy.id = genId();
+      copy.zIndex = sec.components.length;
+      sec.components.splice(idx + 1, 0, copy);
+    });
+  }, [updateData]);
+
+  const reorderComponent = useCallback((sectionId, compId, direction) => {
+    updateData(d => {
+      const sec = findSection(d, sectionId);
+      if (!sec || !sec.components) return;
+      const idx = sec.components.findIndex(c => c.id === compId);
+      if (idx === -1) return;
+      const target = direction === "up" ? idx - 1 : idx + 1;
+      if (target < 0 || target >= sec.components.length) return;
+      [sec.components[idx], sec.components[target]] = [sec.components[target], sec.components[idx]];
+      sec.components.forEach((c, i) => c.zIndex = i);
+    });
+  }, [updateData]);
+
+  const updateComponentInSection = useCallback((sectionId, compId, patch) => {
+    updateData(d => {
+      const sec = findSection(d, sectionId);
+      if (!sec || !sec.components) return;
+      const comp = sec.components.find(c => c.id === compId);
+      if (comp) {
+        Object.assign(comp, patch);
+        if (patch.props) {
+          Object.assign(comp.props, patch.props);
+        }
+      }
+    });
+  }, [updateData]);
+
+  const updateProp = useCallback((sectionId, compId, key, value) => {
+    updateData(d => {
+      const sec = findSection(d, sectionId);
+      if (!sec || !sec.components) return;
+      const comp = sec.components.find(c => c.id === compId);
       if (comp) comp.props[key] = value;
     });
-  }, [updateData, currentScreenId]);
+  }, [updateData]);
 
-  const updateStyle = useCallback((id, key, value) => {
+  /* ── Screen background color ── */
+  const setScreenBackgroundColor = useCallback((screenId, color) => {
     updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === id);
-      if (comp) comp.style[key] = value;
+      if (d.screens[screenId]) d.screens[screenId].backgroundColor = color;
+    });
+  }, [updateData]);
+
+  /* ── Duplicate section ── */
+  const duplicateSection = useCallback((screenId, sectionId) => {
+    const sid = screenId || currentScreenId;
+    updateData(d => {
+      const s = d.screens[sid];
+      if (!s || !s.bodySections) return;
+      const idx = s.bodySections.findIndex(sec => sec.id === sectionId);
+      if (idx === -1) return;
+      const copy = JSON.parse(JSON.stringify(s.bodySections[idx]));
+      copy.id = genSectionId();
+      copy.name = copy.name + " (copy)";
+      copy.components = enrichComponents(copy.components || []);
+      s.bodySections.splice(idx + 1, 0, copy);
     });
   }, [updateData, currentScreenId]);
 
+  /* ── Navigation tabs ── */
+  const addTab = useCallback((tab) => {
+    updateData(d => {
+      if (!d.navigation.tabs) d.navigation.tabs = [];
+      d.navigation.tabs.push({ id: `tab_${Date.now()}`, label: tab.label || "New Tab", icon: tab.icon || "\uD83D\uDCCB", screenId: tab.screenId || "" });
+    });
+  }, [updateData]);
+
+  const removeTab = useCallback((index) => {
+    updateData(d => {
+      if (!d.navigation.tabs) return;
+      d.navigation.tabs = d.navigation.tabs.filter((_, i) => i !== index);
+    });
+  }, [updateData]);
+
+  const updateTab = useCallback((index, patch) => {
+    updateData(d => {
+      if (!d.navigation.tabs || !d.navigation.tabs[index]) return;
+      Object.assign(d.navigation.tabs[index], patch);
+    });
+  }, [updateData]);
+
+  const reorderTab = useCallback((index, direction) => {
+    updateData(d => {
+      if (!d.navigation.tabs) return;
+      const target = direction === "left" ? index - 1 : index + 1;
+      if (target < 0 || target >= d.navigation.tabs.length) return;
+      [d.navigation.tabs[index], d.navigation.tabs[target]] = [d.navigation.tabs[target], d.navigation.tabs[index]];
+    });
+  }, [updateData]);
+
+  /* ── Meta ── */
+  const setMeta = useCallback((patch) => {
+    updateData(d => { Object.assign(d.meta, patch); });
+  }, [updateData]);
+
+  const setNavigation = useCallback((patch) => {
+    updateData(d => { Object.assign(d.navigation, patch); });
+  }, [updateData]);
+
+  /* ── Undo / Redo ── */
   const undo = useCallback(() => {
     const prev = undoStack.current.pop();
     if (!prev) return;
@@ -182,413 +385,42 @@ export function useDesignStore(initialScreens) {
     bumpHistory(v => v + 1);
   }, [data]);
 
-  const select = useCallback((id, multi) => {
-    if (multi) {
-      setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-    } else {
-      setSelectedIds([id]);
-    }
-  }, []);
-
-  const selectAll = useCallback(() => {
-    setSelectedIds(screen?.components.map(c => c.id) || []);
-  }, [screen]);
-
-  const clearSelection = useCallback(() => setSelectedIds([]), []);
-
-  const setMeta = useCallback((patch) => {
-    updateData(d => { Object.assign(d.meta, patch); });
-  }, [updateData]);
-
-  const setNavigation = useCallback((patch) => {
-    updateData(d => { Object.assign(d.navigation, patch); });
-  }, [updateData]);
-
-  const getDesignJSON = useCallback(() => data, [data]);
-
+  /* ── Load Template ── */
   const loadTemplate = useCallback((templateData) => {
     pushUndo();
     const enriched = JSON.parse(JSON.stringify(templateData));
+    // Enrich shared sections
+    if (enriched.shared) {
+      if (enriched.shared.header) {
+        enriched.shared.header.components = enrichComponents(enriched.shared.header.components || []);
+      }
+      if (enriched.shared.footer) {
+        enriched.shared.footer.components = enrichComponents(enriched.shared.footer.components || []);
+      }
+    }
+    // Enrich screen body sections
     Object.keys(enriched.screens).forEach(sid => {
-      const comps = enriched.screens[sid].components;
-      comps.forEach((comp, i) => {
-        comp.id = comp.id || `c_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`;
-        comp.zIndex = comp.zIndex ?? i;
-        comp.fills = comp.fills ?? [{ type: "solid", color: "#E8E5E0", opacity: 100 }];
-        comp.strokes = comp.strokes ?? [];
-        comp.effects = comp.effects ?? [];
-        comp.cornerRadius = comp.cornerRadius ?? 0;
-        comp.opacity = comp.opacity ?? 100;
-        comp.rotation = comp.rotation ?? 0;
-        comp.locked = comp.locked ?? false;
-        comp.visible = comp.visible ?? true;
-      });
+      const s = enriched.screens[sid];
+      if (s.bodySections) {
+        s.bodySections = enrichSections(s.bodySections);
+      } else {
+        s.bodySections = [];
+      }
     });
     setData(enriched);
     setCurrentScreenId(templateData.navigation?.initialScreen || Object.keys(templateData.screens)[0]);
+    setSelectedSectionId(null);
+    setSelectedComponentId(null);
     setSelectedIds([]);
   }, [pushUndo]);
 
-  const updateFills = useCallback((id, fills) => {
-    updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === id);
-      if (comp) comp.fills = fills;
-    });
-  }, [updateData, currentScreenId]);
-
-  const updateStrokes = useCallback((id, strokes) => {
-    updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === id);
-      if (comp) comp.strokes = strokes;
-    });
-  }, [updateData, currentScreenId]);
-
-  const updateEffects = useCallback((id, effects) => {
-    updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === id);
-      if (comp) comp.effects = effects;
-    });
-  }, [updateData, currentScreenId]);
-
-  const updateRotation = useCallback((id, rotation) => {
-    updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === id);
-      if (comp) comp.rotation = rotation;
-    });
-  }, [updateData, currentScreenId]);
-
-  const updateOpacity = useCallback((id, opacity) => {
-    updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === id);
-      if (comp) comp.opacity = Math.max(0, Math.min(1, opacity));
-    });
-  }, [updateData, currentScreenId]);
-
-  const alignLeft = useCallback(() => {
-    const comps = screen?.components || [];
-    const ids = selectedIds.length > 0 ? selectedIds : [];
-    if (ids.length < 2) return;
-    const target = Math.min(...ids.map(id => comps.find(c => c.id === id)?.x ?? Infinity));
-    updateData(d => {
-      const cs = d.screens[currentScreenId]?.components;
-      if (!cs) return;
-      ids.forEach(id => {
-        const c = cs.find(x => x.id === id);
-        if (c) c.x = target;
-      });
-    });
-  }, [screen, selectedIds, updateData, currentScreenId]);
-
-  const alignCenter = useCallback(() => {
-    const comps = screen?.components || [];
-    const ids = selectedIds.length > 0 ? selectedIds : [];
-    if (ids.length < 2) return;
-    const min = Math.min(...ids.map(id => comps.find(c => c.id === id)?.x ?? Infinity));
-    const max = Math.max(...ids.map(id => (comps.find(c => c.id === id)?.x ?? 0) + (comps.find(c => c.id === id)?.width ?? 0)));
-    const center = (min + max) / 2;
-    updateData(d => {
-      const cs = d.screens[currentScreenId]?.components;
-      if (!cs) return;
-      ids.forEach(id => {
-        const c = cs.find(x => x.id === id);
-        if (c) c.x = center - c.width / 2;
-      });
-    });
-  }, [screen, selectedIds, updateData, currentScreenId]);
-
-  const alignRight = useCallback(() => {
-    const comps = screen?.components || [];
-    const ids = selectedIds.length > 0 ? selectedIds : [];
-    if (ids.length < 2) return;
-    const target = Math.max(...ids.map(id => (comps.find(c => c.id === id)?.x ?? 0) + (comps.find(c => c.id === id)?.width ?? 0)));
-    updateData(d => {
-      const cs = d.screens[currentScreenId]?.components;
-      if (!cs) return;
-      ids.forEach(id => {
-        const c = cs.find(x => x.id === id);
-        if (c) c.x = target - c.width;
-      });
-    });
-  }, [screen, selectedIds, updateData, currentScreenId]);
-
-  const alignTop = useCallback(() => {
-    const comps = screen?.components || [];
-    const ids = selectedIds.length > 0 ? selectedIds : [];
-    if (ids.length < 2) return;
-    const target = Math.min(...ids.map(id => comps.find(c => c.id === id)?.y ?? Infinity));
-    updateData(d => {
-      const cs = d.screens[currentScreenId]?.components;
-      if (!cs) return;
-      ids.forEach(id => {
-        const c = cs.find(x => x.id === id);
-        if (c) c.y = target;
-      });
-    });
-  }, [screen, selectedIds, updateData, currentScreenId]);
-
-  const alignMiddle = useCallback(() => {
-    const comps = screen?.components || [];
-    const ids = selectedIds.length > 0 ? selectedIds : [];
-    if (ids.length < 2) return;
-    const min = Math.min(...ids.map(id => comps.find(c => c.id === id)?.y ?? Infinity));
-    const max = Math.max(...ids.map(id => (comps.find(c => c.id === id)?.y ?? 0) + (comps.find(c => c.id === id)?.height ?? 0)));
-    const mid = (min + max) / 2;
-    updateData(d => {
-      const cs = d.screens[currentScreenId]?.components;
-      if (!cs) return;
-      ids.forEach(id => {
-        const c = cs.find(x => x.id === id);
-        if (c) c.y = mid - c.height / 2;
-      });
-    });
-  }, [screen, selectedIds, updateData, currentScreenId]);
-
-  const alignBottom = useCallback(() => {
-    const comps = screen?.components || [];
-    const ids = selectedIds.length > 0 ? selectedIds : [];
-    if (ids.length < 2) return;
-    const target = Math.max(...ids.map(id => (comps.find(c => c.id === id)?.y ?? 0) + (comps.find(c => c.id === id)?.height ?? 0)));
-    updateData(d => {
-      const cs = d.screens[currentScreenId]?.components;
-      if (!cs) return;
-      ids.forEach(id => {
-        const c = cs.find(x => x.id === id);
-        if (c) c.y = target - c.height;
-      });
-    });
-  }, [screen, selectedIds, updateData, currentScreenId]);
-
-  const distributeH = useCallback(() => {
-    const comps = screen?.components || [];
-    const ids = selectedIds.length > 0 ? selectedIds : [];
-    if (ids.length < 3) return;
-    const sorted = ids.map(id => comps.find(c => c.id === id)).filter(Boolean).sort((a, b) => a.x - b.x);
-    const totalW = sorted.reduce((s, c) => s + c.width, 0);
-    const startX = sorted[0].x;
-    const endX = sorted[sorted.length - 1].x + sorted[sorted.length - 1].width;
-    const gap = (endX - startX - totalW) / (sorted.length - 1);
-    updateData(d => {
-      const cs = d.screens[currentScreenId]?.components;
-      if (!cs) return;
-      let cx = startX;
-      sorted.forEach(c => {
-        const comp = cs.find(x => x.id === c.id);
-        if (comp) { comp.x = cx; cx += comp.width + gap; }
-      });
-    });
-  }, [screen, selectedIds, updateData, currentScreenId]);
-
-  const distributeV = useCallback(() => {
-    const comps = screen?.components || [];
-    const ids = selectedIds.length > 0 ? selectedIds : [];
-    if (ids.length < 3) return;
-    const sorted = ids.map(id => comps.find(c => c.id === id)).filter(Boolean).sort((a, b) => a.y - b.y);
-    const totalH = sorted.reduce((s, c) => s + c.height, 0);
-    const startY = sorted[0].y;
-    const endY = sorted[sorted.length - 1].y + sorted[sorted.length - 1].height;
-    const gap = (endY - startY - totalH) / (sorted.length - 1);
-    updateData(d => {
-      const cs = d.screens[currentScreenId]?.components;
-      if (!cs) return;
-      let cy = startY;
-      sorted.forEach(c => {
-        const comp = cs.find(x => x.id === c.id);
-        if (comp) { comp.y = cy; cy += comp.height + gap; }
-      });
-    });
-  }, [screen, selectedIds, updateData, currentScreenId]);
-
-  const nudge = useCallback((dx, dy) => {
-    if (selectedIds.length === 0) return;
-    updateData(d => {
-      const cs = d.screens[currentScreenId]?.components;
-      if (!cs) return;
-      selectedIds.forEach(id => {
-        const c = cs.find(x => x.id === id);
-        if (c) { c.x = Math.max(0, c.x + dx); c.y = Math.max(0, c.y + dy); }
-      });
-    });
-  }, [selectedIds, updateData, currentScreenId]);
-
-  const toggleVisible = useCallback((id) => {
-    updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === id);
-      if (comp) comp.visible = !comp.visible;
-    });
-  }, [updateData, currentScreenId]);
-
-  const toggleLocked = useCallback((id) => {
-    updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === id);
-      if (comp) comp.locked = !comp.locked;
-    });
-  }, [updateData, currentScreenId]);
-
-  const groupComponents = useCallback((ids) => {
-    if (ids.length < 2) return;
-    updateData(d => {
-      const comps = d.screens[currentScreenId]?.components;
-      if (!comps) return;
-      const groupId = genId();
-      const minX = Math.min(...ids.map(id => comps.find(c => c.id === id)?.x ?? 0));
-      const minY = Math.min(...ids.map(id => comps.find(c => c.id === id)?.y ?? 0));
-      const maxX = Math.max(...ids.map(id => (comps.find(c => c.id === id)?.x ?? 0) + (comps.find(c => c.id === id)?.width ?? 0)));
-      const maxY = Math.max(...ids.map(id => (comps.find(c => c.id === id)?.y ?? 0) + (comps.find(c => c.id === id)?.height ?? 0)));
-      ids.forEach(id => {
-        const c = comps.find(x => x.id === id);
-        if (c) c.groupId = groupId;
-      });
-      comps.push({
-        id: groupId, type: "rectangle", x: minX, y: minY,
-        width: maxX - minX, height: maxY - minY,
-        props: {}, style: {}, locked: false, visible: true,
-        zIndex: comps.length, isGroup: true, groupChildIds: ids,
-        fills: [{ type: "solid", color: "rgba(96,165,250,0.08)" }],
-        strokes: [{ color: "#60A5FA", width: 1 }],
-        opacity: 1,
-      });
-    });
-    setSelectedIds([]);
-  }, [updateData, currentScreenId]);
-
-  const ungroupComponents = useCallback((id) => {
-    updateData(d => {
-      const comps = d.screens[currentScreenId]?.components;
-      if (!comps) return;
-      const group = comps.find(c => c.id === id);
-      if (!group || !group.isGroup) return;
-      comps.forEach(c => {
-        if (group.groupChildIds?.includes(c.id)) c.groupId = undefined;
-      });
-      d.screens[currentScreenId].components = comps.filter(c => c.id !== id);
-    });
-  }, [updateData, currentScreenId]);
-
-  const [copiedStyles, setCopiedStyles] = useState(null);
-  const [assets, setAssets] = useState([]);
-
-  const addToken = useCallback((type, value) => {
-    updateData(d => {
-      if (!d.tokens) d.tokens = { colors: [], textStyles: [], effects: [] };
-      const token = {
-        id: `token_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        type, value, name: value.name || `Style ${(d.tokens[type]?.length || 0) + 1}`,
-        createdAt: Date.now(),
-      };
-      if (!d.tokens[type]) d.tokens[type] = [];
-      d.tokens[type].push(token);
-    });
-  }, [updateData]);
-
-  const removeToken = useCallback((type, tokenId) => {
-    updateData(d => {
-      if (!d.tokens?.[type]) return;
-      d.tokens[type] = d.tokens[type].filter(t => t.id !== tokenId);
-    });
-  }, [updateData]);
-
-  const applyToken = useCallback((compId, tokenType, tokenId) => {
-    updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === compId);
-      if (!comp || !d.tokens?.[tokenType]) return;
-      const token = d.tokens[tokenType].find(t => t.id === tokenId);
-      if (!token) return;
-      if (tokenType === "colors") {
-        comp.fills = [{ type: "solid", color: token.value.color, opacity: token.value.opacity ?? 100 }];
-      }
-    });
-  }, [updateData, currentScreenId]);
-
-  const setLayout = useCallback((id, layout) => {
-    updateData(d => {
-      const comp = d.screens[currentScreenId]?.components.find(c => c.id === id);
-      if (!comp) return;
-      Object.assign(comp, layout);
-      // Auto-layout children
-      if (layout.layoutMode && layout.layoutMode !== "none") {
-        const children = (d.screens[currentScreenId]?.components || []).filter(c => c.groupId === id).sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-        const gap = layout.layoutGap ?? 8;
-        const pad = layout.layoutPadding ?? 0;
-        let cx = pad, cy = pad;
-        children.forEach(child => {
-          if (layout.layoutDirection === "horizontal") {
-            child.x = comp.x + cx;
-            child.y = comp.y + pad;
-            cx += child.width + gap;
-          } else {
-            child.x = comp.x + pad;
-            child.y = comp.y + cy;
-            cy += child.height + gap;
-          }
-        });
-      }
-    });
-  }, [updateData, currentScreenId]);
-
-  const saveToLibrary = useCallback((id) => {
-    const comp = screen?.components.find(c => c.id === id);
-    if (!comp) return;
-    updateData(d => {
-      if (!d.componentLibrary) d.componentLibrary = [];
-      d.componentLibrary.push({
-        id: `lib_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        name: comp.name || comp.type,
-        type: comp.type,
-        savedAt: Date.now(),
-        component: JSON.parse(JSON.stringify(comp)),
-      });
-    });
-  }, [screen, updateData]);
-
-  const removeFromLibrary = useCallback((libId) => {
-    updateData(d => {
-      if (!d.componentLibrary) return;
-      d.componentLibrary = d.componentLibrary.filter(item => item.id !== libId);
-    });
-  }, [updateData]);
-
-  const copyStyles = useCallback((ids) => {
-    const comps = screen?.components || [];
-    const first = comps.find(c => c.id === ids[0]);
-    if (!first) return;
-    setCopiedStyles({
-      fills: JSON.parse(JSON.stringify(first.fills)),
-      strokes: JSON.parse(JSON.stringify(first.strokes)),
-      effects: JSON.parse(JSON.stringify(first.effects)),
-      cornerRadius: first.cornerRadius,
-      opacity: first.opacity,
-    });
-  }, [screen]);
-
-  const pasteStyles = useCallback((ids) => {
-    if (!copiedStyles) return;
-    updateData(d => {
-      const comps = d.screens[currentScreenId]?.components;
-      if (!comps) return;
-      ids.forEach(id => {
-        const c = comps.find(x => x.id === id);
-        if (c) {
-          c.fills = JSON.parse(JSON.stringify(copiedStyles.fills));
-          c.strokes = JSON.parse(JSON.stringify(copiedStyles.strokes));
-          c.effects = JSON.parse(JSON.stringify(copiedStyles.effects));
-          c.cornerRadius = copiedStyles.cornerRadius;
-          c.opacity = copiedStyles.opacity;
-        }
-      });
-    });
-  }, [copiedStyles, updateData, currentScreenId]);
+  const getDesignJSON = useCallback(() => data, [data]);
 
   const addAsset = useCallback((file) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const asset = {
-          id: `asset_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          name: file.name,
-          url: reader.result,
-          type: file.type,
-          size: file.size,
-        };
+        const asset = { id: `asset_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, name: file.name, url: reader.result, type: file.type, size: file.size };
         setAssets(prev => [...prev, asset]);
         resolve(asset);
       };
@@ -600,36 +432,48 @@ export function useDesignStore(initialScreens) {
     setAssets(prev => prev.filter(a => a.id !== id));
   }, []);
 
-  const getDrawingCursor = useCallback(() => {
-    switch (activeTool) {
-      case "rectangle": return "crosshair";
-      case "ellipse": return "crosshair";
-      case "text": return "text";
-      case "line": return "crosshair";
-      case "arrow": return "crosshair";
-      case "hand": return "grab";
-      default: return "default";
-    }
-  }, [activeTool]);
-
   return {
     data, currentScreenId, setCurrentScreenId,
-    screen, selectedIds, select, selectAll, clearSelection,
+    screen,
+    selectedSectionId, setSelectedSectionId,
+    selectedComponentId, setSelectedComponentId,
+    selectedIds, setSelectedIds,
+
+    // Screens
     addScreen, removeScreen, renameScreen,
-    addComponent, addPrimitive, updateComponent, removeComponents, duplicateComponents,
-    moveLayer, updateProp, updateStyle,
-    updateFills, updateStrokes, updateEffects, updateRotation, updateOpacity,
+    setScreenBackgroundColor,
+
+    // Sections
+    getAllSections,
+    addBodySection, removeBodySection, reorderBodySection,
+    setSectionColor, renameSection, duplicateSection,
+
+    // Shared sections
+    updateSharedSection, setSharedSectionColor,
+
+    // Components
+    addComponentToSection, removeComponentFromSection,
+    duplicateComponentInSection,
+    reorderComponent, updateComponentInSection, updateProp,
+
+    // Navigation tabs
+    addTab, removeTab, updateTab, reorderTab,
+
+    // Meta / Navigation
     setMeta, setNavigation,
-    undo, redo, canUndo: undoStack.current.length > 0, canRedo: redoStack.current.length > 0,
-    clipboard, setClipboard, activeTool, setActiveTool, getDrawingCursor,
-    getDesignJSON, loadTemplate,
-    alignLeft, alignCenter, alignRight, alignTop, alignMiddle, alignBottom,
-    distributeH, distributeV, nudge,
-    toggleVisible, toggleLocked, groupComponents, ungroupComponents,
-    setLayout,
-    addToken, removeToken, applyToken,
-    saveToLibrary, removeFromLibrary,
-    copyStyles, pasteStyles, copiedStyles,
+
+    // Undo / Redo
+    undo, redo,
+    canUndo: undoStack.current.length > 0,
+    canRedo: redoStack.current.length > 0,
+
+    // Template
+    loadTemplate, getDesignJSON,
+
+    // Persistence
+    lastSaved, clearDesign,
+
+    // Assets
     assets, addAsset, removeAsset,
   };
 }

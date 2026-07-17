@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Palette, SlidersHorizontal, MousePointer } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { useAuth } from "../../App";
+import { useAuth } from "../../contexts";
 import { getMyApp, getSetupData, getProducts, updateApp } from "../../services/api";
 import { TemplatePreview } from "../template/TemplateRenderer";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";

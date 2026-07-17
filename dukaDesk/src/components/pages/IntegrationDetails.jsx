@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Settings, Check, Plus, Shield, Zap, Smartphone, MessageSquare, Star, Clock, Gift, Bell, Mail, HelpCircle, Headphones } from "lucide-react";
-import { useToast } from "../../App";
+import { useToast } from "../../contexts";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import { INTEGRATION_BADGE_COLORS, INTEGRATION_DETAILS } from "../../services/mockData";

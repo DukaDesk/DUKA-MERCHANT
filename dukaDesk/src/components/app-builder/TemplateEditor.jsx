@@ -244,7 +244,7 @@ export default function TemplateEditor({ templateId }) {
   return (
     <div style={{ minHeight: "100vh", background: "#1a1a2e", display: "flex", flexDirection: "column" }}>
       <div style={{ background: "#252547", padding: "12px 24px", display: "flex", gap: 12, alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <button onClick={() => navigate("/wizard")} style={{ background: "none", border: "1px solid #6B7280", color: "#D1D5DB", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+        <button onClick={() => navigate("/canvas-editor")} style={{ background: "none", border: "1px solid #6B7280", color: "#D1D5DB", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
           <ArrowLeft size={16} /> Back
         </button>
         <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 12 }}>

@@ -1,17 +1,17 @@
-import { lazy, Suspense, useState, createContext, useContext, useCallback, useEffect } from "react";
+import { lazy, Suspense, useState, useCallback, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate, Outlet } from "react-router-dom";
 import ErrorBoundary from "./components/layout/ErrorBoundary";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
 import { useIsMobile, useIsTablet } from "./hooks/useMediaQuery";
-import { setToken, getSetupData } from "./services/api";
+import { setToken } from "./services/api";
 import { RuntimeContext } from "./runtime/RuntimeContext";
 import { dispatchEngine, setupActionRouter, clearActionRouter } from "./runtime/ActionEngine";
 import { BrandThemeProvider } from "./runtime/BrandThemeProvider";
+import { AuthContext, ToastContext, useAuth } from "./contexts";
 
 const Auth = lazy(() => import("./components/auth/Auth"));
 const Dashboard = lazy(() => import("./components/pages/Dashboard"));
-const Wizard = lazy(() => import("./components/app-builder/Wizard"));
 const Products = lazy(() => import("./components/pages/Products"));
 const Orders = lazy(() => import("./components/pages/Orders"));
 const Analytics = lazy(() => import("./components/pages/Analytics"));
@@ -23,11 +23,6 @@ const Profile = lazy(() => import("./components/pages/Profile"));
 const MiniAppPreview = lazy(() => import("./components/app-builder/MiniAppPreview"));
 const TemplateEditor = lazy(() => import("./components/template/TemplateEditor"));
 const CanvasEditor = lazy(() => import("./components/canvas-editor/CanvasEditor"));
-
-export const ToastContext = createContext();
-export const AuthContext = createContext();
-export const useToast = () => useContext(ToastContext);
-export const useAuth = () => useContext(AuthContext);
 
 function ToastItem({ toast, onRemove }) {
   const colors = {
@@ -134,7 +129,6 @@ export default function App() {
               <Route path="/login" element={<PublicRoute><Auth onAuth={handleAuth} /></PublicRoute>} />
               <Route path="/signup" element={<PublicRoute><Auth onAuth={handleAuth} /></PublicRoute>} />
               <Route path="/forgot" element={<PublicRoute><Auth onAuth={handleAuth} /></PublicRoute>} />
-              <Route path="/wizard" element={<ProtectedRoute><Wizard /></ProtectedRoute>} />
               <Route path="/miniapp" element={<ProtectedRoute><MiniAppPreview /></ProtectedRoute>} />
               <Route path="/template-editor/:templateId" element={<ProtectedRoute><TemplateEditor /></ProtectedRoute>} />
               <Route path="/canvas-editor" element={<ProtectedRoute><CanvasEditor /></ProtectedRoute>} />
@@ -168,14 +162,6 @@ function ProtectedLayout() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const padding = isMobile ? "16px" : isTablet ? "24px" : "32px";
-  const { merchant } = useAuth();
-
-  useEffect(() => {
-    const setup = getSetupData();
-    if (merchant && !setup && location.pathname === "/dashboard") {
-      navigate("/wizard", { replace: true });
-    }
-  }, [merchant, navigate, location]);
 
   return (
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh" }}>
