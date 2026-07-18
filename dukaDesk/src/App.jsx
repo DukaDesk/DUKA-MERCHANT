@@ -4,7 +4,7 @@ import ErrorBoundary from "./components/layout/ErrorBoundary";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
 import { useIsMobile, useIsTablet } from "./hooks/useMediaQuery";
-import { setToken } from "./services/api";
+import { setToken, logout as apiLogout } from "./services/api";
 import { RuntimeContext } from "./runtime/RuntimeContext";
 import { dispatchEngine, setupActionRouter, clearActionRouter } from "./runtime/ActionEngine";
 import { BrandThemeProvider } from "./runtime/BrandThemeProvider";
@@ -87,8 +87,8 @@ export default function App() {
   }, []);
 
   const logout = useCallback(() => {
+    apiLogout();
     setMerchant(null);
-    setToken(null);
     const keys = ["dd_merchant", "dd_deployed_app", "dd_products", "dukadesk_setup", "dd_integration_states"];
     keys.forEach(k => { try { localStorage.removeItem(k); } catch { /* ignore */ } });
     const toRemove = [];

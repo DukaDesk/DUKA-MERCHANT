@@ -1,3 +1,4 @@
+import httpClient from "./httpClient";
 import { DASHBOARD_STATS_BY_CATEGORY, DASHBOARD_REVENUE_BY_CATEGORY, DASHBOARD_ACTIVITY_BY_CATEGORY, MOCK_ORDERS, MOCK_CONVERSATIONS, MOCK_INTEGRATIONS, MOCK_CURRENT_PLAN, MOCK_PLANS, MOCK_BILLING_HISTORY, ANALYTICS_REVENUE, ANALYTICS_ORDER_STATS, ANALYTICS_SCAN_DATA, ANALYTICS_TOP_PRODUCTS, ANALYTICS_CUSTOMER_SPLIT } from "./mockData";
 
 function delay(ms = 200) {
@@ -10,16 +11,43 @@ export function setToken(t) {
   else localStorage.removeItem("dukadesk_token");
 }
 
+function setRefreshToken(t) {
+  if (t) localStorage.setItem("dukadesk_refresh_token", t);
+  else localStorage.removeItem("dukadesk_refresh_token");
+}
+
 /* ───── Setup / App Config ───── */
 export function setSetupData(data) { try { localStorage.setItem("dukadesk_setup", JSON.stringify(data)); } catch { /* ignore */ } }
 export function getSetupData() { try { return JSON.parse(localStorage.getItem("dukadesk_setup")); } catch { return null; } }
 
 /* ───── Merchant ───── */
-function getMerchant() {
+export function getMerchant() {
   try { return JSON.parse(localStorage.getItem("dd_merchant")); } catch { return null; }
 }
-function setMerchant(m) {
+export function setMerchant(m) {
   try { localStorage.setItem("dd_merchant", JSON.stringify(m)); } catch { /* empty */ }
+}
+
+function buildMerchant(user, tenant = null) {
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
+  return {
+    id: user.id,
+    name,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    business: tenant?.name || "",
+    email: user.email,
+    phone: user.phoneNumber || "",
+    avatar: name.split(" ").map(n => n[0]).join("").toUpperCase(),
+    createdAt: user.createdAt,
+    tenantId: tenant?.id || null,
+    tenantSlug: tenant?.slug || null,
+    status: user.status,
+  };
+}
+
+function slugify(text) {
+  return text.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
 }
 
 /* ───── Deployed App ───── */
@@ -43,46 +71,71 @@ function setMerchantProducts(products) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function login(body) {
-  await delay();
-  const merchants = (() => { try { return JSON.parse(localStorage.getItem("dd_merchants")) || []; } catch { return []; } })();
-  const m = merchants.find(x => x.email === body.email);
-  if (!m || m.password !== body.password) throw new Error("Invalid email or password");
-  const token = "tok_" + Date.now() + "_" + Math.random().toString(36).slice(2);
-  const safe = { ...m };
-  delete safe.password;
-  localStorage.removeItem("dukadesk_setup");
-  setToken(token);
-  setMerchant(safe);
-  return { token, merchant: safe };
+  const res = await httpClient.post("/api/v1/auth/login", {
+    email: body.email,
+    password: body.password,
+  });
+
+  const { user, accessToken, refreshToken } = res.data;
+
+  let tenant = null;
+  try {
+    const tenantsRes = await httpClient.get("/api/v1/tenants/my");
+    const tenants = tenantsRes.data || [];
+    if (tenants.length > 0) tenant = tenants[0];
+  } catch { /* no tenant yet */ }
+
+  const merchant = buildMerchant(user, tenant);
+  setToken(accessToken);
+  setRefreshToken(refreshToken);
+  setMerchant(merchant);
+  return { token: accessToken, merchant };
 }
 
 export async function signup(body) {
-  await delay();
-  const merchants = (() => { try { return JSON.parse(localStorage.getItem("dd_merchants")) || []; } catch { return []; } })();
-  if (merchants.find(x => x.email === body.email)) throw new Error("An account with this email already exists");
-  const merchant = {
-    id: "m_" + Date.now(),
-    name: body.fullName,
-    business: body.businessName,
+  const nameParts = (body.fullName || "").trim().split(" ");
+  const firstName = nameParts[0] || "";
+  const lastName = nameParts.slice(1).join(" ") || "";
+
+  const res = await httpClient.post("/api/v1/auth/register", {
     email: body.email,
-    phone: body.phone || "",
+    phoneNumber: body.phone || "",
+    firstName,
+    lastName,
     password: body.password,
-    avatar: body.fullName.split(" ").map(n => n[0]).join("").toUpperCase(),
-    createdAt: new Date().toISOString(),
-  };
-  merchants.push(merchant);
-  localStorage.setItem("dd_merchants", JSON.stringify(merchants));
-  const token = "tok_" + Date.now() + "_" + Math.random().toString(36).slice(2);
-  const safe = { ...merchant };
-  delete safe.password;
-  setToken(token);
-  setMerchant(safe);
-  return { token, merchant: safe };
+  });
+
+  const { user, accessToken, refreshToken } = res.data;
+
+  let tenant = null;
+  try {
+    const tenantRes = await httpClient.post("/api/v1/tenants", {
+      name: body.businessName || body.fullName,
+      slug: slugify(body.businessName || body.fullName),
+    });
+    tenant = tenantRes.data;
+  } catch { /* tenant creation failed, proceed without */ }
+
+  const merchant = buildMerchant(user, tenant);
+  setToken(accessToken);
+  setRefreshToken(refreshToken);
+  setMerchant(merchant);
+  return { token: accessToken, merchant };
 }
 
 export async function forgotPassword(body) {
-  await delay();
-  return { message: "Password reset link sent to " + body.email };
+  const res = await httpClient.post("/api/v1/auth/send-otp", {
+    email: body.email,
+  });
+  return { message: res.data?.message || "Password reset link sent to " + body.email };
+}
+
+export async function logout() {
+  try {
+    await httpClient.post("/api/v1/auth/logout");
+  } catch { /* server logout best-effort */ }
+  setToken(null);
+  setRefreshToken(null);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
