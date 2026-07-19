@@ -1,0 +1,63 @@
+name: Repository Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check required files exist
+        run: |
+          required_files=(
+            "README.md"
+            "AGENT_CONTEXT.md"
+            "ARCHITECTURE_ALIGNMENT.md"
+            "PROGRESS.md"
+            "CONTRIBUTING.md"
+            "CHANGELOG.md"
+            "CODEOWNERS"
+            "LICENSE"
+          )
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Missing required file: $file"
+              exit 1
+            fi
+          done
+          echo "All required files present."
+
+      - name: Check required directories exist
+        run: |
+          required_dirs=(
+            "docs"
+            "tests"
+            "scripts"
+            ".github/workflows"
+            ".github/ISSUE_TEMPLATE"
+          )
+          for dir in "${required_dirs[@]}"; do
+            if [ ! -d "$dir" ]; then
+              echo "Missing required directory: $dir"
+              exit 1
+            fi
+          done
+          echo "All required directories present."
+
+      - name: Check for secrets placeholders
+        run: |
+          # Placeholder: integrate secret scanning or truffleHog in production
+          echo "Secret scan placeholder — integrate scanning tool."
+
+      - name: Run documentation lint
+        run: |
+          # Placeholder: integrate markdown linting in production
+          echo "Documentation lint placeholder — integrate markdown linting tool."

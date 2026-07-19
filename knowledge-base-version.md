@@ -1,3 +1,3 @@
-Version: 0.2.1
-Verified Commit: f8c9cba
+Version: 0.2.0
+Verified Commit: 4c38d4d
 Status: Compatible
