@@ -31,6 +31,9 @@ export const font = {
   mono: "'JetBrains Mono', monospace",
 };
 
+export const transition = "0.25s cubic-bezier(0.4, 0, 0.2, 1)";
+export const transitionFast = "0.15s cubic-bezier(0.4, 0, 0.2, 1)";
+
 export const inputStyle = {
   width: "100%",
   height: 48,
@@ -43,6 +46,7 @@ export const inputStyle = {
   fontFamily: "inherit",
   background: "#fff",
   transition: "border-color 0.2s, box-shadow 0.2s",
+  boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
 };
 
 export const labelStyle = {
@@ -57,8 +61,36 @@ export const cardStyle = {
   background: "#fff",
   borderRadius: 14,
   padding: 24,
-  boxShadow: "0 1px 3px rgba(15,15,26,0.06), 0 1px 2px rgba(15,15,26,0.04)",
+  boxShadow: "0 1px 3px rgba(15,15,26,0.04), 0 4px 12px rgba(15,15,26,0.03), 0 0 0 1px rgba(15,15,26,0.02)",
+  transition,
+};
+
+export const cardHover = {
+  ...cardStyle,
+  cursor: "pointer",
+};
+
+export const statCard = {
+  background: "#fff",
+  borderRadius: 12,
+  padding: 20,
+  boxShadow: "0 1px 2px rgba(15,15,26,0.04), 0 2px 6px rgba(15,15,26,0.03)",
   border: "1px solid var(--border, #E8E8F0)",
+  transition,
+};
+
+export const pageHeading = {
+  fontFamily: font.display,
+  fontWeight: 700,
+  fontSize: 28,
+  color: NAVY,
+  margin: "0 0 4px",
+};
+
+export const pageSubtitle = {
+  fontSize: 14,
+  color: "#6B7280",
+  margin: "0 0 24px",
 };
 
 export const statusBadge = {
@@ -91,7 +123,7 @@ export const btnPrimary = {
   fontWeight: 700,
   cursor: "pointer",
   fontFamily: font.display,
-  transition: "all 0.2s",
+  transition,
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -108,10 +140,42 @@ export const btnSecondary = {
   fontSize: 14,
   fontWeight: 600,
   cursor: "pointer",
-  fontFamily: "inherit",
-  transition: "all 0.2s",
+  fontFamily: font.sans,
+  transition,
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
   gap: 8,
+};
+
+export const tabPill = (active) => ({
+  padding: "6px 16px",
+  borderRadius: 8,
+  border: `1.5px solid ${active ? AMBER : "var(--border, #E8E8F0)"}`,
+  background: active ? "#FFF8ED" : "#fff",
+  color: active ? "#92400E" : "#6B7280",
+  fontSize: 13,
+  fontWeight: active ? 600 : 400,
+  cursor: "pointer",
+  transition,
+});
+
+export const rowHover = {
+  transition,
+  cursor: "pointer",
+};
+
+export const glidePanel = {
+  position: "fixed",
+  top: 0,
+  right: 0,
+  width: 420,
+  maxWidth: "100vw",
+  height: "100vh",
+  background: "#fff",
+  boxShadow: "-8px 0 40px rgba(15,15,26,0.12)",
+  zIndex: 200,
+  display: "flex",
+  flexDirection: "column",
+  animation: "slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
 };

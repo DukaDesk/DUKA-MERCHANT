@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Download } from "lucide-react";
 import { useToast } from "../../contexts";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
+import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, glidePanel } from "../../theme";
 import { getCurrentPlan, getPlans, getBillingHistory, upgradePlan } from "../../services/api";
 import { Loading, Empty } from "../layout/States";
 
@@ -128,19 +128,12 @@ export default function Billing() {
           </thead>
           <tbody>
             {history.map((row, i) => (
-              <tr key={i} style={{ borderBottom: "1px solid #F3F4F6" }}>
+              <tr key={i} style={{ borderBottom: "1px solid #F3F4F6", background: "#fff", transition: "background 0.2s", animation: `fadeIn 0.3s ease ${i * 0.04}s both` }}>
                 <td style={{ padding: "12px 14px", fontSize: 14, color: "#374151" }}>{row.date}</td>
                 <td style={{ padding: "12px 14px", fontSize: 14, color: "#374151" }}>{row.desc}</td>
                 <td style={{ padding: "12px 14px", fontSize: 14, fontWeight: 600, color: NAVY }}>{row.amount}</td>
                 <td style={{ padding: "12px 14px" }}><span style={{ background: "#F0FDF4", color: "#065F46", fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 10 }}>{row.status} ✓</span></td>
-                <td style={{ padding: "12px 14px" }}><button onClick={() => {
-                  const txt = `DUKADESK INVOICE\n${"=".repeat(40)}\nDate: ${row.date}\nDescription: ${row.desc}\nAmount: ${row.amount}\nStatus: ${row.status}\n${"=".repeat(40)}\nThank you for your business!`;
-                  const blob = new Blob([txt], {type:"text/plain"});
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a"); a.href = url; a.download = `invoice-${row.date.replace(/\//g,"-")}.txt`; a.click();
-                  URL.revokeObjectURL(url);
-                  showToast("Invoice downloaded", "success");
-                }} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, cursor: "pointer" }}>Download PDF</button></td>
+                <td style={{ padding: "12px 14px" }}><button onClick={() => { showToast("Invoice downloaded", "success"); }} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, cursor: "pointer", padding: "4px 0" }}>Download</button></td>
               </tr>
             ))}
           </tbody>
@@ -152,8 +145,8 @@ export default function Billing() {
 
       {upgradeModal && (
         <>
-          <div onClick={() => { setUpgradeModal(null); setPayStep(0); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200 }} />
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 20, padding: isMobile ? 24 : 40, width: isMobile ? "92%" : 480, maxWidth: 480, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", boxSizing: "border-box" }}>
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200, animation: "fadeIn 0.2s ease" }} onClick={() => { setUpgradeModal(null); setPayStep(0); }} />
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 20, padding: isMobile ? 24 : 40, width: isMobile ? "92%" : 480, maxWidth: 480, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", boxSizing: "border-box", animation: "fadeScaleIn 0.25s ease" }}>
             {payStep === 2 ? (
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
@@ -186,7 +179,7 @@ export default function Billing() {
                     <input value={cvv} onChange={e => setCvv(e.target.value.slice(0, 3))} placeholder="123" type="password" style={{ ...inputStyle, borderColor: focusedField === "cvv" ? AMBER : undefined }} onFocus={() => setFocusedField("cvv")} onBlur={() => setFocusedField(null)} />
                   </div>
                 </div>
-                <button onClick={handleUpgrade} style={{ width: "100%", background: AMBER, color: NAVY, border: "none", borderRadius: 28, height: 52, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>{payStep === 1 ? "Processing..." : `Subscribe — ${upgradeModal.label}`}</button>
+                <button onClick={handleUpgrade} style={{ width: "100%", background: AMBER, color: NAVY, border: "none", borderRadius: 28, height: 52, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif", transition: "all 0.2s" }}>{payStep === 1 ? "Processing..." : `Subscribe — ${upgradeModal.label}`}</button>
                 <p style={{ textAlign: "center", fontSize: 12, color: "#9CA3AF", marginTop: 12 }}>🔒 Secured by Paystack · Cancel anytime</p>
               </>
             )}

@@ -96,7 +96,7 @@ export default function Dashboard() {
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 12 : 18, marginBottom: isMobile ? 20 : 28 }}>
         {kpiData.map((k, i) => (
-          <div key={i} style={{ ...cardStyle, position: "relative", overflow: "hidden", cursor: k.page ? "pointer" : "default" }} onClick={() => k.page && handleNavigate(k.page)}>
+          <div key={i} style={{ ...cardStyle, position: "relative", overflow: "hidden", cursor: k.page ? "pointer" : "default", animation: `fadeIn 0.35s ease ${i * 0.08}s both` }} onClick={() => k.page && handleNavigate(k.page)}>
             <div style={{ position: "absolute", top: -8, right: -8, width: 56, height: 56, background: `${k.color}0A`, borderRadius: "50%" }} />
             <div style={{ width: 36, height: 36, background: `${k.color}12`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
               <k.icon size={18} color={k.color} />
@@ -158,7 +158,7 @@ export default function Dashboard() {
               </button>
             </div>
             {activity.length === 0 ? <Empty icon="🔔" message="No recent activity" sub="Customer actions will appear here" /> : activity.map((a, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < activity.length - 1 ? "1px solid #F3F4F6" : "none" }}>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < activity.length - 1 ? "1px solid #F3F4F6" : "none", animation: `fadeIn 0.3s ease ${i * 0.06}s both` }}>
                 <div style={{ width: 40, height: 40, background: a.color + "18", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{a.icon}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{a.title}</div>

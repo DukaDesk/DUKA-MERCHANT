@@ -72,7 +72,7 @@ export default function Analytics() {
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(3,1fr)" : "repeat(5,1fr)", gap: isMobile ? 10 : 14, marginBottom: 24 }}>
         {metrics.map((m, i) => (
-          <div key={i} style={{ background: "#fff", borderRadius: 12, padding: 18, border: "1px solid #E8E8F0", boxShadow: "0 1px 3px rgba(15,15,26,0.06)" }}>
+          <div key={i} style={{ ...cardStyle, animation: `fadeIn 0.35s ease ${i * 0.07}s both` }}>
             <div style={{ width: 32, height: 32, background: `${m.color}12`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
               <m.icon size={16} color={m.color} />
             </div>
@@ -158,7 +158,7 @@ export default function Analytics() {
               <th key={h} style={{ padding:"10px 14px", textAlign:"left", fontSize:12, fontWeight:600, color:"#6B7280", textTransform:"uppercase", letterSpacing:0.5, borderBottom:"1px solid #E8E8F0" }}>{h}</th>
             ))}</tr></thead>
             <tbody>{products.map((p,i)=>(
-              <tr key={i} style={{ borderBottom:"1px solid #F3F4F6", background: i%2===0?"#fff":"#FAFAFA" }}>
+              <tr key={i} style={{ borderBottom:"1px solid #F3F4F6", background:"#fff", transition:"background 0.2s", animation:`fadeIn 0.3s ease ${i*0.05}s both` }}>
                 <td style={{ padding:"12px 14px", fontSize:14, fontWeight:700, color:AMBER, fontFamily:"'JetBrains Mono',monospace" }}>#{i+1}</td>
                 <td style={{ padding:"12px 14px", fontSize:14, fontWeight:600, color:NAVY }}>{p.name}</td>
                 <td style={{ padding:"12px 14px", fontSize:14, color:"#6B7280" }}>{p.views}</td>

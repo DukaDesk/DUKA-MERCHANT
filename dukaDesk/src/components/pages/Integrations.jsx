@@ -102,7 +102,7 @@ export default function Integrations() {
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {activeItems.map((item, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "#F9FAFB", borderRadius: 10, borderLeft: `4px solid ${AMBER}` }}>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "#F9FAFB", borderRadius: 10, borderLeft: `4px solid ${AMBER}`, transition: "all 0.2s", animation: `fadeIn 0.3s ease ${i * 0.04}s both` }}>
               <span style={{ fontSize: 28 }}>{item.icon}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>{item.name}</div>
@@ -120,7 +120,7 @@ export default function Integrations() {
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
           {cats.map(c => (
-            <button key={c} onClick={() => setCatFilter(c)} style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${catFilter === c ? AMBER : "#E5E7EB"}`, background: catFilter === c ? "#FFF8ED" : "#fff", color: catFilter === c ? "#92400E" : "#6B7280", fontSize: 13, fontWeight: catFilter === c ? 600 : 400, cursor: "pointer" }}>{c}</button>
+            <button key={c} onClick={() => setCatFilter(c)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", background: catFilter === c ? AMBER : "#F3F4F6", color: catFilter === c ? NAVY : "#6B7280", fontSize: 13, fontWeight: catFilter === c ? 700 : 500, cursor: "pointer", transition: "all 0.2s" }}>{c}</button>
           ))}
         </div>
 
@@ -134,7 +134,7 @@ export default function Integrations() {
                   const itemIdx = integrations[catIdx].items.findIndex(x => x.name === item.name);
                   const bc = badgeStyle[item.badge] || badgeStyle.Free;
                   return (
-                    <div onClick={() => navigate(`/dashboard/integrations/${encodeURIComponent(item.name)}`)} style={{ border: `2px solid ${item.active ? AMBER : item.locked ? "#E5E7EB" : "#E5E7EB"}`, background: item.active ? "#FFF8ED" : item.locked ? "#F9FAFB" : "#fff", borderRadius: 10, padding: 16, opacity: item.locked ? 0.75 : 1, position: "relative", transition: "all 0.15s", cursor: "pointer" }}>
+                    <div onClick={() => navigate(`/dashboard/integrations/${encodeURIComponent(item.name)}`)} style={{ border: `2px solid ${item.active ? AMBER : item.locked ? "#E5E7EB" : "#E5E7EB"}`, background: item.active ? "#FFF8ED" : item.locked ? "#F9FAFB" : "#fff", borderRadius: 10, padding: 16, opacity: item.locked ? 0.75 : 1, position: "relative", transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)", cursor: "pointer", animation: `fadeIn 0.3s ease ${(ci * 3 + ii) * 0.04}s both` }}>
                       {item.locked && <div style={{ position: "absolute", top: 10, right: 10 }}><Lock size={14} color="#9CA3AF" /></div>}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                         <span style={{ fontSize: 28 }}>{item.icon}</span>
@@ -178,8 +178,8 @@ export default function Integrations() {
 
       {removeConfirm && (
         <>
-          <div onClick={() => setRemoveConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200 }} />
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 16, padding: 32, width: isMobile ? "92%" : 400, maxWidth: 400, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", textAlign: "center", boxSizing: "border-box" }}>
+          <div onClick={() => setRemoveConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200, animation: "fadeIn 0.2s ease" }} />
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 16, padding: 32, width: isMobile ? "92%" : 400, maxWidth: 400, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", textAlign: "center", boxSizing: "border-box", animation: "fadeScaleIn 0.25s ease" }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>{removeConfirm.icon}</div>
             <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 20, color: NAVY, margin: "0 0 8px" }}>Remove {removeConfirm.name}?</h3>
             <p style={{ color: "#6B7280", fontSize: 14, margin: "0 0 24px" }}>This will remove {removeConfirm.name} from your app. You can re-add it anytime.</p>

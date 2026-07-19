@@ -356,7 +356,14 @@ Field.propTypes = { label: PropTypes.string.isRequired, error: PropTypes.string,
 
 function PrimaryBtn({ children, loading, onClick, type = "submit" }) {
   return (
-    <button type={type} onClick={onClick} disabled={loading} style={{ width: "100%", height: 50, borderRadius: 10, border: "none", fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, cursor: loading ? "wait" : "pointer", background: loading ? "#D1D5DB" : AMBER, color: NAVY, transition: "all 0.2s", opacity: loading ? 0.7 : 1 }}>
+    <button type={type} onClick={onClick} disabled={loading} style={{
+      width: "100%", height: 50, borderRadius: 10, border: "none",
+      fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15,
+      cursor: loading ? "wait" : "pointer",
+      background: loading ? "#D1D5DB" : AMBER, color: NAVY,
+      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+      opacity: loading ? 0.7 : 1,
+    }}>
       {children}
     </button>
   );

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Search, X, Download, Eye, ChevronRight, Package } from "lucide-react";
+import { Search, X, Download, Eye, Package } from "lucide-react";
 import { useToast } from "../../contexts";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { NAVY, AMBER, cardStyle, statusBadge } from "../../theme";
+import { NAVY, AMBER, cardStyle, statusBadge, glidePanel } from "../../theme";
 import { getOrders, updateOrderStatus } from "../../services/api";
 import { Loading, Empty } from "../layout/States";
 
@@ -58,7 +58,7 @@ export default function Orders() {
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 10 : 14, marginBottom: 24 }}>
         {orderStats.map((k, i) => (
-          <div key={i} style={{ background: "#fff", borderRadius: 10, padding: 18, boxShadow: "0 1px 3px rgba(15,15,26,0.06)", border: "1px solid #E8E8F0" }}>
+          <div key={i} style={{ ...cardStyle, animation: `fadeIn 0.35s ease ${i * 0.08}s both` }}>
             <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 6 }}>{k.label}</div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: k.color }}>{typeof k.value === "number" ? k.value : k.value}</div>
             <div style={{ fontSize: 12, color: "#9CA3AF" }}>{k.sub}</div>
@@ -66,20 +66,20 @@ export default function Orders() {
         ))}
       </div>
 
-      <div style={{ background: "#fff", borderRadius: 12, padding: "16px 20px", boxShadow: "0 1px 3px rgba(15,15,26,0.06)", border: "1px solid #E8E8F0", marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+      <div style={{ ...cardStyle, padding: "16px 20px", marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
           {tabs.map(t => {
             const count = t === "All" ? orders.length : orders.filter(o => o.status === t).length;
             return <button key={t} onClick={() => setTab(t)} style={{
-              padding: "6px 16px", borderRadius: 8,
-              border: `1.5px solid ${tab === t ? AMBER : "#E8E8F0"}`,
-              background: tab === t ? "#FFF8ED" : "#fff",
-              color: tab === t ? "#92400E" : "#6B7280",
-              fontSize: 13, fontWeight: tab === t ? 600 : 400, cursor: "pointer",
+              padding: "6px 16px", borderRadius: 8, border: "none",
+              background: tab === t ? AMBER : "#F3F4F6",
+              color: tab === t ? NAVY : "#6B7280",
+              fontSize: 13, fontWeight: tab === t ? 700 : 500, cursor: "pointer",
+              transition: "all 0.2s",
             }}>{t} {count > 0 && `(${count})`}</button>;
           })}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F3F4F6", borderRadius: 10, padding: "8px 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F3F4F6", borderRadius: 10, padding: "8px 12px", transition: "border 0.2s, box-shadow 0.2s", border: "2px solid transparent" }}>
           <Search size={16} color="#9CA3AF" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search order ID or customer name..." style={{ background: "none", border: "none", outline: "none", fontSize: 14, color: NAVY, flex: 1, fontFamily: "inherit" }} />
         </div>
@@ -99,7 +99,7 @@ export default function Orders() {
               {filtered.map((o, i) => {
                 const ss = statusBadge[o.status] || statusBadge.Pending;
                 return (
-                  <tr key={o.id} style={{ borderBottom: "1px solid #F3F4F6", background: i % 2 === 0 ? "#fff" : "#FAFAFA" }}>
+                  <tr key={o.id} style={{ borderBottom: "1px solid #F3F4F6", background: "#fff", transition: "background 0.2s", animation: `fadeIn 0.3s ease ${i * 0.04}s both` }}>
                     <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: NAVY, fontFamily: "'JetBrains Mono', monospace" }}>{o.id}</td>
                     <td style={{ padding: "14px 16px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -131,7 +131,7 @@ export default function Orders() {
       {detail && (
         <>
           <div onClick={() => setDetail(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 100 }} />
-          <div style={{ position: "fixed", right: 0, top: 0, width: 520, maxWidth: "100vw", height: "100vh", background: "#fff", zIndex: 101, boxShadow: "-8px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column" }}>
+          <div style={{ ...glidePanel, width: 520, maxWidth: "100vw" }}>
             <div style={{ padding: 24, borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: NAVY }}>Order #{detail.id}</div>
@@ -172,10 +172,12 @@ export default function Orders() {
               {["Order placed", "Accepted", "Preparing", "Ready", "Delivered"].map((step, i) => {
                 const doneSteps = { Pending: 0, Processing: 1, Completed: 4, Cancelled: 0 };
                 const done = i <= (doneSteps[detail.status] || 0);
+                const isLast = i === 4;
                 return (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? "#2ECC71" : "#E8E8F0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: done ? "#fff" : "#9CA3AF", marginTop: 2 }}>{done ? "✓" : "○"}</div>
-                    <span style={{ fontSize: 13, color: done ? NAVY : "#9CA3AF", fontWeight: done ? 500 : 400 }}>{step}</span>
+                  <div key={i} style={{ display: "flex", gap: 12, position: "relative", paddingBottom: 12 }}>
+                    {!isLast && <div style={{ position: "absolute", left: 10, top: 22, width: 2, height: "calc(100% - 12px)", background: done ? "#2ECC71" : "#E8E8F0" }} />}
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? "#2ECC71" : "#E8E8F0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: done ? "#fff" : "#9CA3AF", marginTop: 0, zIndex: 1 }}>{done ? "✓" : "○"}</div>
+                    <div style={{ fontSize: 13, color: done ? NAVY : "#9CA3AF", fontWeight: done ? 500 : 400, paddingTop: 2 }}>{step}</div>
                   </div>
                 );
               })}

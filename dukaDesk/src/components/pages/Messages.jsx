@@ -72,23 +72,25 @@ export default function Messages() {
           <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
             {["All", "Unread"].map(t => (
               <button key={t} onClick={() => setTab(t)} style={{
-                padding: "5px 12px", borderRadius: 8,
-                border: `1.5px solid ${tab===t?AMBER:"#E8E8F0"}`,
-                background: tab===t?"#FFF8ED":"#fff",
-                color: tab===t?"#92400E":"#6B7280",
-                fontSize: 12, fontWeight: tab===t?600:400, cursor: "pointer",
+                padding: "5px 12px", borderRadius: 8, border: "none",
+                background: tab===t?AMBER:"#F3F4F6",
+                color: tab===t?NAVY:"#6B7280",
+                fontSize: 12, fontWeight: tab===t?700:500, cursor: "pointer",
+                transition: "all 0.2s",
               }}>{t}{t==="Unread"?" (3)":""}</button>
             ))}
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {filtered.map(c => (
+          {filtered.map((c, i) => (
             <div key={c.id} onClick={() => setActive(c)} style={{
               padding: "14px 16px", cursor: "pointer",
-              background: active?.id === c.id ? "#FFF8ED" : c.unread ? "#fff" : "#FAFAFA",
+              background: active?.id === c.id ? "#FFF8ED" : "#fff",
               borderLeft: active?.id === c.id ? `3px solid ${AMBER}` : "3px solid transparent",
               borderBottom: "1px solid #F3F4F6",
               display: "flex", gap: 10,
+              transition: "background 0.2s",
+              animation: `fadeIn 0.3s ease ${i * 0.04}s both`,
             }}>
               <div style={{ width: 44, height: 44, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: NAVY, flexShrink: 0, fontSize: 16 }}>{(c.name || "?")[0]}</div>
               <div style={{ flex: 1, overflow: "hidden" }}>
@@ -181,8 +183,8 @@ export default function Messages() {
 
       {reportOpen && (
         <>
-          <div onClick={() => setReportOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200 }} />
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 16, padding: 32, width: isMobile ? "92%" : 420, maxWidth: 420, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", boxSizing: "border-box" }}>
+          <div onClick={() => setReportOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200, animation: "fadeIn 0.2s ease" }} />
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 16, padding: 32, width: isMobile ? "92%" : 420, maxWidth: 420, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", boxSizing: "border-box", animation: "fadeScaleIn 0.25s ease" }}>
             <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 20, color: NAVY, margin: "0 0 20px" }}>Report this conversation</h3>
             {MESSAGE_REPORT_REASONS.map(r => (
               <label key={r} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #F3F4F6", cursor: "pointer" }}>

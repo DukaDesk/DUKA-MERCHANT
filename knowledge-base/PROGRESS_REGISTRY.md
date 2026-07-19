@@ -1,6 +1,6 @@
 # DUKADESK Progress Registry
 
-**Last Updated:** 2026-07-17
+**Last Updated:** 2026-07-19
 
 ## Status Key
 - ✅ Complete — Production ready
@@ -236,6 +236,22 @@
 | Platform Automation Architecture | ⏳ Planned | KB-138 — Platform Automation Architecture |
 | Platform Resilience Coordination Architecture | ⏳ Planned | KB-139 — Platform Resilience Coordination Architecture |
 | Enterprise Platform Services Reference Architecture | ⏳ Planned | KB-140 — Enterprise Platform Services Reference Architecture |
+
+## Merchant Portal (React / Vite)
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Auth Pages | ✅ Complete | Login/signup/forgot-password forms with real endpoint integration. Animated form transitions, button press effects, focused field borders |
+| Dashboard | ✅ Complete | KPI cards with staggered entrance animation, activity feed with line-by-line fadeIn, revenue area chart with gradient, quick action buttons |
+| Products | ✅ Complete | Product grid with hover lift shadow effect, filter pills (solid amber active), search bar focus glow, glide-panel slide-over for add/edit, CSV import, multi-select delete |
+| Orders | ✅ Complete | Unified stat cards with `cardStyle`, tab pills with solid fill, table rows with `fadeIn` stagger, detail panel with connecting timeline dots, Accept/Reject actions |
+| Billing | ✅ Complete | Gradient plan banner, comparison table, billing history export, upgrade modal with `fadeScaleIn` animation, card payment form with focus borders |
+| Profile | ✅ Complete | Avatar with gradient + shadow glow, icon inputs with unified spacing, save button transition |
+| Messages | ✅ Complete | Conversation sidebar with staggered entries, solid tab pills, chat bubbles with proper border radius, customer detail panel, report modal with `fadeScaleIn` |
+| Analytics | ✅ Complete | 5-metric grid with staggered entrance, revenue/orders/pie/bar charts using Recharts, top products table with `fadeIn` rows, CSV export |
+| Integrations | ✅ Complete | Active list with staggered animation, integration cards with hover lift + staggered entrance, category filter pills (solid), remove-confirm modal with `fadeScaleIn` |
+| Shared Design System | ✅ Complete | `theme.js` — cardStyle, inputStyle, btnPrimary, btnSecondary, tabPill, statCard, pageHeading, pageSubtitle, rowHover, glidePanel, planColors, transition constants. `index.css` — fadeScaleIn, badgePop, liftHover, skeletonPulse, focus glow, scroll-behavior, responsive breakpoints, print styles |
+| Shared Components | ✅ Complete | `States.jsx` — Loading with shimmer skeleton bars + spinner, Empty with fadeScaleIn icon, ErrorState with retry button. `Sidebar.jsx` — cubic-bezier collapse transition, navBtn/navLabel style functions, mobile bottom nav with 48px touch targets, badge pop animation, store status dot pulse. `Topbar.jsx` — search expand on focus, notification badge pop, avatar ring |
 
 ## ADR Registry
 

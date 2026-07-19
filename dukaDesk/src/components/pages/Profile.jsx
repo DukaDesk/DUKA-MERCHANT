@@ -50,7 +50,7 @@ export default function Profile() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ width: 64, height: 64, background: `linear-gradient(135deg, ${AMBER}, #E8910A)`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800, color: NAVY, flexShrink: 0 }}>
+          <div style={{ width: 64, height: 64, background: `linear-gradient(135deg, ${AMBER}, #E8910A)`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800, color: NAVY, flexShrink: 0, boxShadow: `0 4px 12px ${AMBER}40` }}>
             {profile?.avatar?.[0] || profile?.name?.[0] || "M"}
           </div>
           <div>
@@ -94,7 +94,7 @@ export default function Profile() {
               </div>
             </div>
           </div>
-          <button onClick={handleSave} disabled={saving} style={{ marginTop: 20, background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 28px", fontSize: 14, fontWeight: 700, cursor: saving ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={handleSave} disabled={saving} style={{ marginTop: 20, background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 28px", fontSize: 14, fontWeight: 700, cursor: saving ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s" }}>
             <Save size={16} /> {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>

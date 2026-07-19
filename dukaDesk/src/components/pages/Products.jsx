@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, Plus, X, Upload, Trash2, Grid, List } from "lucide-react";
+import { Search, Plus, X, Upload, Trash2 } from "lucide-react";
 import { useToast } from "../../contexts";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
-import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, statusBadge } from "../../theme";
+import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, statusBadge, glidePanel, rowHover } from "../../theme";
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../../services/api";
 import { Loading, Empty } from "../layout/States";
 
@@ -132,7 +132,7 @@ export default function Products() {
       )}
 
       <div style={{ ...cardStyle, padding: "14px 16px", marginBottom: 20, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F3F4F6", borderRadius: 10, padding: "8px 12px", flex: 1, minWidth: 200 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F3F4F6", borderRadius: 10, padding: "8px 12px", flex: 1, minWidth: 200, transition: "border 0.2s, box-shadow 0.2s", border: "2px solid transparent" }}>
           <Search size={16} color="#9CA3AF" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..." style={{ background: "none", border: "none", outline: "none", fontSize: 14, color: NAVY, flex: 1, fontFamily: "inherit" }} />
         </div>
@@ -140,10 +140,11 @@ export default function Products() {
           {["All", "In Stock", "Low Stock", "Out of Stock"].map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{
               padding: "6px 14px", borderRadius: 8,
-              border: `1.5px solid ${filter === f ? AMBER : "#E8E8F0"}`,
-              background: filter === f ? "#FFF8ED" : "#fff",
-              color: filter === f ? "#92400E" : "#6B7280",
-              fontSize: 13, fontWeight: filter === f ? 600 : 400, cursor: "pointer",
+              border: "none",
+              background: filter === f ? AMBER : "#F3F4F6",
+              color: filter === f ? NAVY : "#6B7280",
+              fontSize: 13, fontWeight: filter === f ? 700 : 500, cursor: "pointer",
+              transition: "all 0.2s",
             }}>{f}</button>
           ))}
         </div>
@@ -160,7 +161,7 @@ export default function Products() {
             const ss = statusBadge[p.status] || statusBadge["In Stock"];
             const isSel = selected.includes(p.id);
             return (
-              <div key={p.id} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(15,15,26,0.06)", border: isSel ? `2px solid ${AMBER}` : "1px solid #E8E8F0", transition: "all 0.15s" }}>
+              <div key={p.id} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(15,15,26,0.06)", border: isSel ? `2px solid ${AMBER}` : "1px solid #E8E8F0", transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)", animation: `fadeIn 0.3s ease ${i * 0.05}s both` }}>
                 <div style={{ height: 160, background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, position: "relative", borderBottom: "1px solid #F3F4F6" }}>
                   {p.img}
                   <span style={{ position: "absolute", top: 10, left: 10, background: ss.bg, color: ss.color, fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 8 }}>{p.status}</span>
@@ -176,13 +177,13 @@ export default function Products() {
                   <div style={{ fontSize: 12, color: "#6B7280" }}>📦 {p.stock} in stock</div>
                 </div>
                 <div style={{ padding: "10px 16px", borderTop: "1px solid #F3F4F6", display: "flex", gap: 12 }}>
-                  <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Edit</button>
-                  <button onClick={async () => { try { await deleteProduct(p.id); setProducts(pr => pr.filter(x => x.id !== p.id)); showToast("Product deleted", "info"); } catch { showToast("Failed to delete", "error"); } }} style={{ background: "none", border: "none", color: "#E74C3C", fontSize: 13, cursor: "pointer" }}>Delete</button>
+                  <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "4px 0" }}>Edit</button>
+                  <button onClick={async () => { try { await deleteProduct(p.id); setProducts(pr => pr.filter(x => x.id !== p.id)); showToast("Product deleted", "info"); } catch { showToast("Failed to delete", "error"); } }} style={{ background: "none", border: "none", color: "#E74C3C", fontSize: 13, cursor: "pointer", padding: "4px 0" }}>Delete</button>
                 </div>
               </div>
             );
           })}
-          <div onClick={openAdd} style={{ border: "2px dashed #E8E8F0", borderRadius: 12, minHeight: 240, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", background: "#FAFAFA" }}>
+          <div onClick={openAdd} style={{ border: "2px dashed #E8E8F0", borderRadius: 12, minHeight: 240, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", background: "#FAFAFA", transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)" }}>
             <div style={{ width: 48, height: 48, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Plus size={24} color={AMBER} />
             </div>
@@ -194,7 +195,7 @@ export default function Products() {
       {panel && (
         <>
           <div onClick={() => setPanel(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 100 }} />
-          <div style={{ position: "fixed", right: 0, top: 0, width: 520, maxWidth: "100vw", height: "100vh", background: "#fff", zIndex: 101, boxShadow: "-8px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column" }}>
+          <div style={{ ...glidePanel, width: 520, maxWidth: "100vw" }}>
             <div style={{ padding: "24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 20, color: NAVY, margin: 0 }}>{panel === "add" ? "Add New Product" : "Edit Product"}</h3>
               <button onClick={() => setPanel(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}><X size={22} /></button>
@@ -221,6 +222,7 @@ export default function Products() {
                       border: `2px solid ${form.img === e ? AMBER : "transparent"}`,
                       borderRadius: 8, display: "flex", alignItems: "center",
                       justifyContent: "center", fontSize: 22, cursor: "pointer",
+                      transition: "all 0.15s",
                     }}>{e}</div>
                   ))}
                 </div>
