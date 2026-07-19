@@ -4,7 +4,7 @@ import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth, useToast } from "../../contexts";
 import { NAVY, AMBER, cardStyle, inputStyle, labelStyle } from "../../theme";
 import { getMerchantProfile, updateMerchantProfile } from "../../services/api";
-import { Loading } from "../layout/States";
+import { Loading, ErrorState } from "../layout/States";
 import { Store, Mail, Phone, User, Save, ArrowLeft } from "lucide-react";
 
 export default function Profile() {
@@ -16,14 +16,18 @@ export default function Profile() {
   const [form, setForm] = useState({ name: "", business: "", email: "", phone: "" });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const loadProfile = () => {
+    setError(null);
+    setLoading(true);
     getMerchantProfile().then(m => {
       setProfile(m);
       setForm({ name: m.name || "", business: m.business || "", email: m.email || "", phone: m.phone || "" });
-    }).catch(() => showToast("Failed to load profile", "error"))
+    }).catch(() => setError("Failed to load profile"))
     .finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(loadProfile, []);
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.business.trim()) { showToast("Name and business name are required", "error"); return; }
@@ -39,6 +43,7 @@ export default function Profile() {
   };
 
   if (loading) return <Loading message="Loading profile..." />;
+  if (error) return <ErrorState message={error} onRetry={loadProfile} />;
 
   return (
     <div style={{ animation: "fadeIn 0.35s ease", maxWidth: 720 }}>
@@ -66,31 +71,31 @@ export default function Profile() {
           <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 20 }}>Account Details</div>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
             <div>
-              <label style={labelStyle}>Full Name</label>
+              <label htmlFor="profile-full-name" style={labelStyle}>Full Name</label>
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <User size={16} style={{ position: "absolute", left: 12, color: "#9CA3AF" }} />
-                <input style={{ ...inputStyle, paddingLeft: 36 }} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Your name" />
+                <input id="profile-full-name" name="profile-full-name" style={{ ...inputStyle, paddingLeft: 36 }} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Your name" />
               </div>
             </div>
             <div>
-              <label style={labelStyle}>Business Name</label>
+              <label htmlFor="profile-business-name" style={labelStyle}>Business Name</label>
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <Store size={16} style={{ position: "absolute", left: 12, color: "#9CA3AF" }} />
-                <input style={{ ...inputStyle, paddingLeft: 36 }} value={form.business} onChange={e => setForm(f => ({ ...f, business: e.target.value }))} placeholder="Business name" />
+                <input id="profile-business-name" name="profile-business-name" style={{ ...inputStyle, paddingLeft: 36 }} value={form.business} onChange={e => setForm(f => ({ ...f, business: e.target.value }))} placeholder="Business name" />
               </div>
             </div>
             <div>
-              <label style={labelStyle}>Email</label>
+              <label htmlFor="profile-email" style={labelStyle}>Email</label>
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <Mail size={16} style={{ position: "absolute", left: 12, color: "#9CA3AF" }} />
-                <input style={{ ...inputStyle, paddingLeft: 36 }} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email address" />
+                <input id="profile-email" name="profile-email" style={{ ...inputStyle, paddingLeft: 36 }} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email address" />
               </div>
             </div>
             <div>
-              <label style={labelStyle}>Phone</label>
+              <label htmlFor="profile-phone" style={labelStyle}>Phone</label>
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <Phone size={16} style={{ position: "absolute", left: 12, color: "#9CA3AF" }} />
-                <input style={{ ...inputStyle, paddingLeft: 36 }} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone number" />
+                <input id="profile-phone" name="profile-phone" style={{ ...inputStyle, paddingLeft: 36 }} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone number" />
               </div>
             </div>
           </div>

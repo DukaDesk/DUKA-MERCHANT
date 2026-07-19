@@ -43,6 +43,7 @@ function buildMerchant(user, tenant = null) {
     tenantId: tenant?.id || null,
     tenantSlug: tenant?.slug || null,
     status: user.status,
+    role: user.role || "tenant_owner",
   };
 }
 
@@ -71,19 +72,29 @@ function setMerchantProducts(products) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function login(body) {
+  console.log("[login] sending request", { email: body.email });
   const res = await httpClient.post("/api/v1/auth/login", {
     email: body.email,
     password: body.password,
   });
+  console.log("[login] raw response", res);
 
-  const { user, accessToken, refreshToken } = res.data;
+  const payload = res.data || res;
+  console.log("[login] payload", payload);
+  const { user, accessToken, refreshToken } = payload || {};
+  console.log("[login] extracted", { user, accessToken, refreshToken });
+
+  if (!accessToken) {
+    console.warn("[login] no accessToken in response, payload keys:", Object.keys(payload || {}));
+    throw new Error(payload?.message || payload?.msg || "Invalid server response — missing token");
+  }
 
   let tenant = null;
   try {
-    const tenantsRes = await httpClient.get("/api/v1/tenants/my");
+    const tenantsRes = await httpClient.get("/api/v1/tenants");
     const tenants = tenantsRes.data || [];
     if (tenants.length > 0) tenant = tenants[0];
-  } catch { /* no tenant yet */ }
+  } catch (e) { console.warn("[login] tenant fetch failed", e?.message); }
 
   const merchant = buildMerchant(user, tenant);
   setToken(accessToken);
@@ -105,7 +116,8 @@ export async function signup(body) {
     password: body.password,
   });
 
-  const { user, accessToken, refreshToken } = res.data;
+  const payload = res.data || res;
+  const { user, accessToken, refreshToken } = payload;
 
   let tenant = null;
   try {
@@ -124,10 +136,21 @@ export async function signup(body) {
 }
 
 export async function forgotPassword(body) {
-  const res = await httpClient.post("/api/v1/auth/send-otp", {
+  const res = await httpClient.post("/api/v1/auth/password-reset-request", {
     email: body.email,
   });
-  return { message: res.data?.message || "Password reset link sent to " + body.email };
+  const payload = res.data || res;
+  return { message: payload.message || payload.data?.message || "Password reset link sent to " + body.email };
+}
+
+export async function confirmPasswordReset(body) {
+  const res = await httpClient.post("/api/v1/auth/password-reset-confirm", {
+    token: body.token,
+    password: body.password,
+    otp: body.otp,
+  });
+  const payload = res.data || res;
+  return payload;
 }
 
 export async function logout() {
@@ -275,45 +298,68 @@ export async function getActivity() {
    PRODUCTS
    ═══════════════════════════════════════════════════════════════════ */
 
+function tenantPath(tenantId) {
+  return tenantId ? `/api/v1/tenants/${tenantId}` : "";
+}
+
 export async function getProducts() {
-  await delay();
-  return getMerchantProducts();
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) {
+    const local = getMerchantProducts();
+    return local;
+  }
+  const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
+  return res.data || res;
 }
 
 export async function createProduct(body) {
-  await delay();
-  const products = getMerchantProducts();
-  const product = {
-    id: "p_" + Date.now(),
-    merchantId: getMerchant()?.id,
-    name: body.name,
-    cat: body.cat || "",
-    price: Number(body.price),
-    oldPrice: body.oldPrice || null,
-    stock: Number(body.stock) || 0,
-    status: body.status || "In Stock",
-    img: body.img || "🍛",
-    createdAt: new Date().toISOString(),
-  };
-  products.push(product);
-  setMerchantProducts(products);
-  return product;
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) {
+    const products = getMerchantProducts();
+    const product = {
+      id: "p_" + Date.now(),
+      merchantId: merchant?.id,
+      name: body.name,
+      cat: body.cat || "",
+      price: Number(body.price),
+      oldPrice: body.oldPrice || null,
+      stock: Number(body.stock) || 0,
+      status: body.status || "In Stock",
+      img: body.img || "🍛",
+      createdAt: new Date().toISOString(),
+    };
+    products.push(product);
+    setMerchantProducts(products);
+    return product;
+  }
+  const res = await httpClient.post(`${tenantPath(tenantId)}/products`, body);
+  return res.data || res;
 }
 
 export async function updateProduct(id, body) {
-  await delay();
-  const products = getMerchantProducts();
-  const idx = products.findIndex(p => p.id === id);
-  if (idx === -1) throw new Error("Product not found");
-  products[idx] = { ...products[idx], ...body };
-  setMerchantProducts(products);
-  return products[idx];
+  const merchant = getMerchant();
+  if (!merchant?.tenantId) {
+    const products = getMerchantProducts();
+    const idx = products.findIndex(p => p.id === id);
+    if (idx === -1) throw new Error("Product not found");
+    products[idx] = { ...products[idx], ...body };
+    setMerchantProducts(products);
+    return products[idx];
+  }
+  const res = await httpClient.put(`/api/v1/products/${id}`, body);
+  return res.data || res;
 }
 
 export async function deleteProduct(id) {
-  await delay();
-  setMerchantProducts(getMerchantProducts().filter(p => p.id !== id));
-  return { message: "Product deleted" };
+  const merchant = getMerchant();
+  if (!merchant?.tenantId) {
+    setMerchantProducts(getMerchantProducts().filter(p => p.id !== id));
+    return { message: "Product deleted" };
+  }
+  const res = await httpClient.delete(`/api/v1/products/${id}`);
+  return res.data || res;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -321,20 +367,44 @@ export async function deleteProduct(id) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getOrders() {
-  await delay();
-  return MOCK_ORDERS;
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) {
+    await delay();
+    return MOCK_ORDERS;
+  }
+  const res = await httpClient.get(`${tenantPath(tenantId)}/orders`);
+  return res.data || res;
 }
 
 export async function updateOrderStatus(id, status) {
-  await delay();
-  return { id, status, message: "Status updated" };
+  const merchant = getMerchant();
+  if (!merchant?.tenantId) {
+    await delay();
+    return { id, status, message: "Status updated" };
+  }
+  const res = await httpClient.post(`/api/v1/orders/${id}/status`, { status });
+  return res.data || res;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   MESSAGES
+   MESSAGES / NOTIFICATIONS
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getConversations() {
+  try {
+    const res = await httpClient.get("/api/v1/notifications");
+    const list = res.data || res;
+    if (Array.isArray(list) && list.length > 0) {
+      return list.map(n => ({
+        id: n.id,
+        name: n.from || "System",
+        last: n.message || n.title,
+        time: n.createdAt ? new Date(n.createdAt).toLocaleTimeString() : "",
+        unread: n.read ? 0 : 1,
+      }));
+    }
+  } catch { /* fall through */ }
   await delay();
   return MOCK_CONVERSATIONS;
 }
@@ -352,38 +422,73 @@ export async function sendMessage(conversationId, text) {
   return { id: "msg_" + Date.now(), conversationId, from: "merchant", text, time: "Just now" };
 }
 
+export async function getUnreadCount() {
+  try {
+    const res = await httpClient.get("/api/v1/notifications/unread-count");
+    return res.data || res;
+  } catch {
+    return { count: 0 };
+  }
+}
+
+export async function getNotifications() {
+  try {
+    const res = await httpClient.get("/api/v1/notifications");
+    const list = res.data || res;
+    if (Array.isArray(list)) return list;
+    return [];
+  } catch {
+    await delay();
+    return [];
+  }
+}
+
+export async function markNotificationRead(id) {
+  try {
+    const res = await httpClient.post(`/api/v1/notifications/${id}/read`);
+    return res.data || res;
+  } catch {
+    return { message: "Marked as read" };
+  }
+}
+
+export async function dismissNotification(id) {
+  try {
+    const res = await httpClient.delete(`/api/v1/notifications/${id}`);
+    return res.data || res;
+  } catch {
+    return { message: "Dismissed" };
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    INTEGRATIONS
    ═══════════════════════════════════════════════════════════════════ */
 
-function getIntegrationStates() {
-  try { return JSON.parse(localStorage.getItem("dd_integration_states")) || {}; } catch { return {}; }
-}
-function setIntegrationState(name, active) {
-  const states = getIntegrationStates();
-  states[name] = active;
-  try { localStorage.setItem("dd_integration_states", JSON.stringify(states)); } catch { /* empty */ }
-}
-
 export async function getIntegrations() {
-  await delay();
-  const states = getIntegrationStates();
-  return MOCK_INTEGRATIONS.map(cat => ({
-    ...cat,
-    items: cat.items.map(item => ({
-      ...item,
-      active: item.name in states ? states[item.name] : item.active,
-    })),
-  }));
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) {
+    await delay();
+    return MOCK_INTEGRATIONS;
+  }
+  const res = await httpClient.get(`${tenantPath(tenantId)}/integrations`);
+  return res.data || res;
 }
 
-export async function toggleIntegration(name) {
-  await delay();
-  const states = getIntegrationStates();
-  const current = name in states ? states[name] : MOCK_INTEGRATIONS.flatMap(c => c.items).find(i => i.name === name)?.active || false;
-  const next = !current;
-  setIntegrationState(name, next);
-  return { name, active: next };
+export async function toggleIntegration(name, active) {
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) {
+    await delay();
+    return { name, active: true };
+  }
+  if (active === false) {
+    await httpClient.post(`${tenantPath(tenantId)}/integrations/${name}/disconnect`);
+  } else {
+    await httpClient.post(`${tenantPath(tenantId)}/integrations/connect`, { provider: name });
+  }
+  return { name, active: active !== false };
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -391,13 +496,24 @@ export async function toggleIntegration(name) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getCurrentPlan() {
-  await delay();
-  return MOCK_CURRENT_PLAN;
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) {
+    await delay();
+    return MOCK_CURRENT_PLAN;
+  }
+  const res = await httpClient.get(`${tenantPath(tenantId)}/subscription`);
+  return res.data || res;
 }
 
 export async function getPlans() {
-  await delay();
-  return MOCK_PLANS;
+  try {
+    const res = await httpClient.get("/api/v1/bff/website/pricing");
+    return res.data || res;
+  } catch {
+    await delay();
+    return MOCK_PLANS;
+  }
 }
 
 export async function getBillingHistory() {
@@ -406,8 +522,14 @@ export async function getBillingHistory() {
 }
 
 export async function upgradePlan(body) {
-  await delay();
-  return { message: `Upgraded to ${body.planName} plan! 🎉`, plan: body.planName };
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) {
+    await delay();
+    return { message: `Upgraded to ${body.planName} plan! 🎉`, plan: body.planName };
+  }
+  const res = await httpClient.post(`${tenantPath(tenantId)}/subscribe`, body);
+  return res.data || res;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -415,13 +537,25 @@ export async function upgradePlan(body) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getRevenueData() {
-  await delay();
-  return ANALYTICS_REVENUE;
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) {
+    await delay();
+    return ANALYTICS_REVENUE;
+  }
+  const res = await httpClient.get(`/api/v1/analytics/reports/revenue`, { params: { tenantId } });
+  return res.data || res;
 }
 
 export async function getOrderStats() {
-  await delay();
-  return ANALYTICS_ORDER_STATS;
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) {
+    await delay();
+    return ANALYTICS_ORDER_STATS;
+  }
+  const res = await httpClient.get(`${tenantPath(tenantId)}/orders`);
+  return res.data || res;
 }
 
 export async function getScanData() {
@@ -430,8 +564,14 @@ export async function getScanData() {
 }
 
 export async function getTopProducts() {
-  await delay();
-  return ANALYTICS_TOP_PRODUCTS;
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) {
+    await delay();
+    return ANALYTICS_TOP_PRODUCTS;
+  }
+  const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
+  return res.data || res;
 }
 
 export async function getCustomerSplit() {
@@ -439,26 +579,137 @@ export async function getCustomerSplit() {
   return ANALYTICS_CUSTOMER_SPLIT;
 }
 
+export async function getUsageMetrics() {
+  await delay();
+  return {
+    apiCalls: { total: 12843, thisMonth: 3402, avgDaily: 113 },
+    storageUsed: { total: "2.4 GB", files: 847, images: 312 },
+    activeUsers: [
+      { day: "Mon", users: 187 }, { day: "Tue", users: 203 },
+      { day: "Wed", users: 219 }, { day: "Thu", users: 195 },
+      { day: "Fri", users: 241 }, { day: "Sat", users: 156 },
+      { day: "Sun", users: 98 },
+    ],
+  };
+}
+
+export async function getAnalyticsSummary() {
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) {
+    await delay();
+    return { revenue: ANALYTICS_REVENUE, orders: ANALYTICS_ORDER_STATS };
+  }
+  const res = await httpClient.get(`/api/v1/analytics/summary`, { params: { tenantId } });
+  return res.data || res;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TENANT
+   ═══════════════════════════════════════════════════════════════════ */
+
+export async function createTenant(body) {
+  const res = await httpClient.post("/api/v1/tenants", body);
+  return res.data || res;
+}
+
+export async function getTenant(id) {
+  const res = await httpClient.get(`/api/v1/tenants/${id}`);
+  return res.data || res;
+}
+
+export async function suspendTenant(id) {
+  const res = await httpClient.post(`/api/v1/tenants/${id}/suspend`);
+  return res.data || res;
+}
+
+export async function updateTenant(id, body) {
+  const res = await httpClient.put(`/api/v1/tenants/${id}`, body);
+  const data = res.data || res;
+  const m = getMerchant();
+  if (m && data) {
+    const updated = { ...m, business: data.name || m.business };
+    setMerchant(updated);
+  }
+  return data;
+}
+
+export async function getTenantConfig(id) {
+  const res = await httpClient.get(`/api/v1/tenants/${id}/config`);
+  return res.data || res;
+}
+
+export async function updateTenantConfig(id, body) {
+  const res = await httpClient.put(`/api/v1/tenants/${id}/config`, body);
+  return res.data || res;
+}
+
+export async function publishTenant(id) {
+  const res = await httpClient.post(`/api/v1/tenants/${id}/publish`);
+  return res.data || res;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    MERCHANT PROFILE
    ═══════════════════════════════════════════════════════════════════ */
 
+export async function getAuthMe() {
+  try {
+    const res = await httpClient.get("/api/v1/auth/me");
+    const profile = res.data || res;
+    const m = getMerchant();
+    if (m) {
+      const merged = { ...m, ...profile, name: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || m.name };
+      setMerchant(merged);
+    }
+    return profile;
+  } catch {
+    return getMerchantProfile();
+  }
+}
+
 export async function getMerchantProfile() {
-  await delay();
-  const m = getMerchant();
-  if (!m) throw new Error("Not authenticated");
-  const safe = { ...m };
-  delete safe.password;
-  return safe;
+  try {
+    const res = await httpClient.get("/api/v1/profile");
+    const profile = res.data || res;
+    const m = getMerchant();
+    if (m) {
+      const merged = { ...m, ...profile, name: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || m.name };
+      setMerchant(merged);
+    }
+    return profile;
+  } catch {
+    const m = getMerchant();
+    if (!m) throw new Error("Not authenticated");
+    const safe = { ...m };
+    delete safe.password;
+    return safe;
+  }
 }
 
 export async function updateMerchantProfile(body) {
-  await delay();
-  const m = getMerchant();
-  if (!m) throw new Error("Not authenticated");
-  const updated = { ...m, ...body };
-  setMerchant(updated);
-  const safe = { ...updated };
-  delete safe.password;
-  return safe;
+  try {
+    const res = await httpClient.put("/api/v1/profile", body);
+    const profile = res.data || res;
+    const m = getMerchant();
+    if (m) {
+      const updated = { ...m, ...profile, name: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || body.name || m.name };
+      setMerchant(updated);
+      if (body.business && m.tenantId) {
+        updateTenant(m.tenantId, { name: body.business }).catch(() => {});
+      }
+    }
+    return profile;
+  } catch {
+    const m = getMerchant();
+    if (!m) throw new Error("Not authenticated");
+    const updated = { ...m, ...body };
+    setMerchant(updated);
+    if (body.business && m.tenantId) {
+      updateTenant(m.tenantId, { name: body.business }).catch(() => {});
+    }
+    const safe = { ...updated };
+    delete safe.password;
+    return safe;
+  }
 }

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Search, X, Download, Eye, Package } from "lucide-react";
+import { Search, X, Download, Eye, Package, Printer } from "lucide-react";
 import { useToast } from "../../contexts";
 import { useIsMobile } from "../../hooks/useMediaQuery";
+import { usePermission } from "../../hooks/usePermission";
 import { NAVY, AMBER, cardStyle, statusBadge, glidePanel } from "../../theme";
 import { getOrders, updateOrderStatus } from "../../services/api";
-import { Loading, Empty } from "../layout/States";
+import { Loading, Empty, ErrorState } from "../layout/States";
 
 const nextStatus = { Pending: "Processing", Processing: "Completed" };
 const tabs = ["All", "Pending", "Processing", "Completed", "Cancelled"];
@@ -12,13 +13,20 @@ const tabs = ["All", "Pending", "Processing", "Completed", "Cancelled"];
 export default function Orders() {
   const showToast = useToast();
   const isMobile = useIsMobile();
+  const { can } = usePermission();
   const [orders, setOrders] = useState([]);
   const [tab, setTab] = useState("All");
   const [detail, setDetail] = useState(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => { getOrders().then(setOrders).catch(() => showToast("Failed to load orders", "error")).finally(() => setLoading(false)); }, []);
+  const loadOrders = () => {
+    setError(null);
+    setLoading(true);
+    getOrders().then(setOrders).catch(() => setError("Failed to load orders")).finally(() => setLoading(false));
+  };
+  useEffect(loadOrders, []);
 
   const filtered = orders.filter(o => {
     if (tab !== "All" && o.status !== tab) return false;
@@ -35,7 +43,53 @@ export default function Orders() {
     } catch { showToast("Failed to update order", "error"); }
   };
 
+  const printInvoice = (order) => {
+    const win = window.open("", "_blank");
+    const total = order.total || 0;
+    const subtotal = total - 500;
+    win.document.write(`
+      <html><head><title>Invoice #${order.id}</title>
+      <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 40px; color: #1F2937; }
+        .header { text-align: center; margin-bottom: 32px; }
+        .header h1 { color: #1B4332; margin: 0; font-size: 24px; }
+        .header p { color: #6B7280; margin: 4px 0; }
+        .divider { border: none; border-top: 2px solid #F4A026; margin: 24px 0; }
+        .row { display: flex; justify-content: space-between; padding: 8px 0; }
+        .row.total { font-size: 18px; font-weight: 700; border-top: 2px solid #1F2937; padding-top: 12px; margin-top: 12px; }
+        .label { color: #6B7280; }
+        .footer { text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 40px; border-top: 1px solid #E5E7EB; padding-top: 16px; }
+        .badge { background: #FFF8ED; color: #92400E; padding: 4px 12px; border-radius: 20px; font-size: 13px; display: inline-block; }
+        @media print { body { margin: 20px; } }
+      </style></head><body>
+        <div class="header">
+          <h1>INVOICE</h1>
+          <p>DukaDesk Merchant</p>
+          <p style="font-size: 12px;">${new Date().toLocaleDateString()}</p>
+        </div>
+        <div class="badge">${order.status}</div>
+        <hr class="divider" />
+        <div class="row"><span class="label">Order ID</span><span>${order.id}</span></div>
+        <div class="row"><span class="label">Customer</span><span>${order.customer}</span></div>
+        <div class="row"><span class="label">Payment</span><span>${order.payment}</span></div>
+        <div class="row"><span class="label">Date</span><span>${order.date}</span></div>
+        <hr class="divider" />
+        <div class="row"><span class="label">Items</span><span>${order.items}</span></div>
+        <div class="row"><span class="label">Subtotal</span><span>₦${subtotal.toLocaleString()}</span></div>
+        <div class="row"><span class="label">Delivery</span><span>₦500</span></div>
+        <div class="row total"><span>Total</span><span>₦${total.toLocaleString()}</span></div>
+        <div class="footer">
+          <p>DukaDesk — https://dukadesk.app</p>
+          <p>Thank you for your order!</p>
+        </div>
+        <script>window.print();window.close();</script>
+      </body></html>
+    `);
+    win.document.close();
+  };
+
   if (loading) return <Loading message="Loading orders..." />;
+  if (error) return <ErrorState message={error} onRetry={loadOrders} />;
 
   const orderStats = [
     { label: "Today", value: `${orders.length} orders`, sub: `₦${orders.reduce((a,o) => a+o.total,0).toLocaleString()}`, color: NAVY },
@@ -183,8 +237,13 @@ export default function Orders() {
               })}
             </div>
             <div style={{ padding: 24, borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
-              {nextStatus[detail.status] && <button onClick={() => updateStatus(detail.id, nextStatus[detail.status])} style={{ background: "#2ECC71", color: "#fff", border: "none", borderRadius: 10, height: 48, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Accept Order →</button>}
-              {detail.status === "Pending" && <button onClick={() => { updateStatus(detail.id, "Cancelled"); setDetail(null); }} style={{ background: "none", border: "1.5px solid #E74C3C", borderRadius: 10, height: 44, fontSize: 14, cursor: "pointer", color: "#E74C3C" }}>Reject Order</button>}
+              <div style={{ display: "flex", gap: 10 }}>
+                {can("order:update") && nextStatus[detail.status] && <button onClick={() => updateStatus(detail.id, nextStatus[detail.status])} style={{ flex: 1, background: "#2ECC71", color: "#fff", border: "none", borderRadius: 10, height: 48, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Accept Order →</button>}
+                <button onClick={() => printInvoice(detail)} style={{ background: "none", border: "1.5px solid var(--border)", borderRadius: 10, height: 48, padding: "0 16px", fontSize: 14, cursor: "pointer", color: "#6B7280", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <Printer size={16} /> Print
+                </button>
+              </div>
+              {can("order:update") && detail.status === "Pending" && <button onClick={() => { updateStatus(detail.id, "Cancelled"); setDetail(null); }} style={{ background: "none", border: "1.5px solid #E74C3C", borderRadius: 10, height: 44, fontSize: 14, cursor: "pointer", color: "#E74C3C" }}>Reject Order</button>}
             </div>
           </div>
         </>

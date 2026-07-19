@@ -6,7 +6,7 @@ import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import { getIntegrations, toggleIntegration, getMyApp } from "../../services/api";
 import { INTEGRATION_BADGE_COLORS, getTemplateIntegrationNames } from "../../services/mockData";
-import { Loading, Empty } from "../layout/States";
+import { Loading, Empty, ErrorState } from "../layout/States";
 import IntegrationConfigPanel from "./IntegrationConfigPanel";
 
 const badgeStyle = INTEGRATION_BADGE_COLORS;
@@ -22,8 +22,11 @@ export default function Integrations() {
   const [configPanel, setConfigPanel] = useState(null);
   const [removeConfirm, setRemoveConfirm] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const loadIntegrations = () => {
+    setError(null);
+    setLoading(true);
     Promise.all([
       getIntegrations(),
       getMyApp().catch(() => null),
@@ -41,9 +44,10 @@ export default function Integrations() {
       } else {
         setIntegrations(intData);
       }
-    }).catch(() => showToast("Failed to load integrations", "error"))
+    }).catch(() => setError("Failed to load integrations"))
     .finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(loadIntegrations, []);
 
   const toggle = async (catIdx, itemIdx) => {
     const item = integrations[catIdx].items[itemIdx];
@@ -67,6 +71,7 @@ export default function Integrations() {
   const filtered = catFilter === "All" ? integrations : integrations.filter(c => c.cat === catFilter);
 
   if (loading) return <Loading message="Loading integrations..." />;
+  if (error) return <ErrorState message={error} onRetry={loadIntegrations} />;
   if (integrations.length === 0) return <Empty icon="🔌" message="No integrations available" sub="Integration categories will appear here" />;
 
   return (

@@ -5,7 +5,7 @@ import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle } from "../../theme";
 import { getConversations, getMessages, sendMessage } from "../../services/api";
 import { MESSAGE_REPORT_REASONS } from "../../services/mockData";
-import { Loading, Empty } from "../layout/States";
+import { Loading, Empty, ErrorState } from "../layout/States";
 
 export default function Messages() {
   const showToast = useToast();
@@ -18,16 +18,20 @@ export default function Messages() {
   const [reportReason, setReportReason] = useState("");
   const [tab, setTab] = useState("All");
   const [convLoading, setConvLoading] = useState(true);
+  const [convError, setConvError] = useState(null);
   const [search, setSearch] = useState("");
   const [reportDetails, setReportDetails] = useState("");
   const fileRef = useRef(null);
 
-  useEffect(() => {
+  const loadConversations = () => {
+    setConvError(null);
+    setConvLoading(true);
     getConversations().then(list => {
       setConversations(list);
       if (list.length > 0) setActive(list[0]);
-    }).catch(() => showToast("Failed to load conversations", "error")).finally(() => setConvLoading(false));
-  }, []);
+    }).catch(() => setConvError("Failed to load conversations")).finally(() => setConvLoading(false));
+  };
+  useEffect(loadConversations, []);
 
   useEffect(() => {
     if (!active) return;
@@ -58,6 +62,7 @@ export default function Messages() {
     .filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.last.toLowerCase().includes(search.toLowerCase()));
 
   if (convLoading) return <Loading message="Loading messages..." />;
+  if (convError) return <ErrorState message={convError} onRetry={loadConversations} />;
   if (conversations.length === 0) return <Empty icon="💬" message="No conversations yet" sub="Messages from customers will appear here" />;
 
   return (

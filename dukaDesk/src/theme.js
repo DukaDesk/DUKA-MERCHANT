@@ -148,6 +148,42 @@ export const btnSecondary = {
   gap: 8,
 };
 
+export const btnDanger = {
+  background: "#E74C3C",
+  color: "#fff",
+  border: "none",
+  borderRadius: 10,
+  height: 48,
+  padding: "0 24px",
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: "pointer",
+  fontFamily: font.sans,
+  transition,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+};
+
+export const btnGhost = {
+  background: "transparent",
+  color: "#6B7280",
+  border: "none",
+  borderRadius: 10,
+  height: 48,
+  padding: "0 24px",
+  fontSize: 14,
+  fontWeight: 500,
+  cursor: "pointer",
+  fontFamily: font.sans,
+  transition,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+};
+
 export const tabPill = (active) => ({
   padding: "6px 16px",
   borderRadius: 8,

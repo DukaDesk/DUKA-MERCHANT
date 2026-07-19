@@ -1,20 +1,43 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, ChevronLeft, ChevronRight, Store, LogOut, Sparkles, PenTool } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, Settings as SettingsIcon, Users, ChevronLeft, ChevronRight, Store, LogOut, Sparkles, PenTool, Contact, ClipboardList, Megaphone } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../contexts";
 import { NAVY, AMBER, transition } from "../../theme";
 import { getOrders, getConversations } from "../../services/api";
 
+const roleAccess = {
+  super_admin: ["dashboard", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team", "settings"],
+  platform_operator: ["dashboard", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team"],
+  support_agent: ["dashboard", "orders", "customers", "messages", "analytics"],
+  tenant_owner: ["dashboard", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team", "settings"],
+  business_manager: ["dashboard", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing"],
+  store_manager: ["dashboard", "products", "orders", "customers", "inventory", "messages", "integrations"],
+  sales_staff: ["dashboard", "orders", "customers", "messages"],
+  content_manager: ["dashboard", "products", "messages", "marketing"],
+  customer: ["dashboard"],
+  member: ["dashboard"],
+};
+
 const navItems = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { id: "products", icon: Package, label: "Products" },
   { id: "orders", icon: ShoppingCart, label: "Orders" },
+  { id: "customers", icon: Contact, label: "Customers" },
+  { id: "inventory", icon: ClipboardList, label: "Inventory" },
   { id: "analytics", icon: BarChart3, label: "Analytics" },
   { id: "messages", icon: MessageSquare, label: "Messages" },
+  { id: "marketing", icon: Megaphone, label: "Marketing" },
   { id: "integrations", icon: Link2, label: "Integrations" },
   { id: "billing", icon: CreditCard, label: "Billing" },
+  { id: "team", icon: Users, label: "Team" },
+  { id: "settings", icon: SettingsIcon, label: "Settings" },
 ];
+
+function getVisibleNav(role) {
+  const allowed = roleAccess[role] || roleAccess.member;
+  return navItems.filter(item => allowed.includes(item.id));
+}
 
 export default function Sidebar() {
   const isMobile = useIsMobile();
@@ -26,6 +49,7 @@ export default function Sidebar() {
   const navigateTo = (path) => navigate(path === "dashboard" ? "/dashboard" : `/dashboard/${path}`);
   const { merchant, logout } = useAuth();
   const handleLogout = () => { logout(); };
+  const visibleNav = getVisibleNav(merchant?.role || "member");
 
   useEffect(() => {
     getOrders().then(data => setBadges(b => ({ ...b, orders: data.length || 0 }))).catch(() => {});
@@ -38,7 +62,7 @@ export default function Sidebar() {
   if (isMobile) {
     return (
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: NAVY, display: "flex", padding: "2px 0", paddingBottom: "env(safe-area-inset-bottom, 2px)", borderTop: "1px solid rgba(255,255,255,0.06)", justifyContent: "space-around", backdropFilter: "blur(20px)" }}>
-        {[...navItems, { id: "canvas-editor", icon: PenTool, label: "Editor" }].filter(i => ["dashboard","products","orders","analytics","messages","integrations","billing","canvas-editor"].includes(i.id)).map(item => {
+        {[...visibleNav, { id: "canvas-editor", icon: PenTool, label: "Editor" }].filter(i => ["dashboard","products","orders","customers","inventory","analytics","messages","marketing","integrations","billing","team","settings","canvas-editor"].includes(i.id)).map(item => {
           const active = currentPage === item.id;
           const Icon = item.icon;
           return (
@@ -121,7 +145,7 @@ export default function Sidebar() {
       )}
 
       <nav style={{ flex: 1, padding: "8px 0", overflowY: "auto", overflowX: "hidden" }}>
-        {navItems.map(item => {
+        {visibleNav.map(item => {
           const active = currentPage === item.id;
           const Icon = item.icon;
           return (
@@ -142,6 +166,11 @@ export default function Sidebar() {
         <button onClick={() => navigate("/canvas-editor")} style={navBtn(location.pathname === "/canvas-editor")} title={collapsed ? "Canvas Editor" : ""}>
           <PenTool size={20} color={location.pathname === "/canvas-editor" ? AMBER : "#6B7280"} />
           {!collapsed && <span style={navLabel(location.pathname === "/canvas-editor")}>Canvas Editor</span>}
+        </button>
+
+        <button onClick={() => navigate("/dashboard/profile")} style={navBtn(location.pathname === "/dashboard/profile")} title={collapsed ? "Profile" : ""}>
+          <Store size={20} color={location.pathname === "/dashboard/profile" ? AMBER : "#6B7280"} />
+          {!collapsed && <span style={navLabel(location.pathname === "/dashboard/profile")}>Profile</span>}
         </button>
       </nav>
 

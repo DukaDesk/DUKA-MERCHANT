@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { Search, Plus, X, Upload, Trash2 } from "lucide-react";
 import { useToast } from "../../contexts";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
+import { usePermission } from "../../hooks/usePermission";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, statusBadge, glidePanel, rowHover } from "../../theme";
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../../services/api";
-import { Loading, Empty } from "../layout/States";
+import { Loading, Empty, ErrorState } from "../layout/States";
 
 const EMOJI_GRID = ["🍛", "🍗", "🐟", "🥣", "🥤", "🍩", "🍕", "🥗", "🍔", "🍜", "🍦", "🥘"];
 const STATUS_OPTS = ["In Stock", "Low Stock", "Out of Stock"];
@@ -13,6 +14,7 @@ export default function Products() {
   const showToast = useToast();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
+  const { can } = usePermission();
   const [products, setProducts] = useState([]);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -20,9 +22,15 @@ export default function Products() {
   const [form, setForm] = useState({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "🍛" });
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState("grid");
 
-  useEffect(() => { getProducts().then(setProducts).catch(() => showToast("Failed to load products", "error")).finally(() => setLoading(false)); }, []);
+  const loadProducts = () => {
+    setError(null);
+    setLoading(true);
+    getProducts().then(setProducts).catch(() => setError("Failed to load products")).finally(() => setLoading(false));
+  };
+  useEffect(loadProducts, []);
 
   const filtered = products.filter(p => {
     if (filter !== "All" && p.status !== filter) return false;
@@ -100,6 +108,7 @@ export default function Products() {
   };
 
   if (loading) return <Loading message="Loading products..." />;
+  if (error) return <ErrorState message={error} onRetry={loadProducts} />;
 
   return (
     <div style={{ position: "relative", animation: "fadeIn 0.35s ease" }}>
@@ -109,17 +118,19 @@ export default function Products() {
           <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>{products.length} total · {products.filter(p => p.status === "Low Stock").length} low stock · {products.filter(p => p.status === "Out of Stock").length} out of stock</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <input type="file" ref={fileRef} accept=".csv" onChange={handleCSVImport} style={{ display: "none" }} />
-          <button onClick={() => fileRef.current?.click()} style={{ border: "1.5px solid var(--border)", background: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
-            <Upload size={16} /> {isMobile ? "" : "Import CSV"}
-          </button>
-          <button onClick={openAdd} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-            <Plus size={18} /> {isMobile ? "Add" : "Add Product"}
-          </button>
+          {can("product:create") && <>
+            <input type="file" ref={fileRef} accept=".csv" onChange={handleCSVImport} style={{ display: "none" }} />
+            <button onClick={() => fileRef.current?.click()} style={{ border: "1.5px solid var(--border)", background: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
+              <Upload size={16} /> {isMobile ? "" : "Import CSV"}
+            </button>
+            <button onClick={openAdd} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              <Plus size={18} /> {isMobile ? "Add" : "Add Product"}
+            </button>
+          </>}
         </div>
       </div>
 
-      {selected.length > 0 && (
+      {can("product:delete") && selected.length > 0 && (
         <div style={{ background: NAVY, color: "#fff", borderRadius: 10, padding: "12px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 16 }}>
           <span style={{ fontSize: 14, fontWeight: 500 }}>{selected.length} selected</span>
           <button onClick={deleteSelected} style={{ background: "#E74C3C", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
@@ -177,8 +188,8 @@ export default function Products() {
                   <div style={{ fontSize: 12, color: "#6B7280" }}>📦 {p.stock} in stock</div>
                 </div>
                 <div style={{ padding: "10px 16px", borderTop: "1px solid #F3F4F6", display: "flex", gap: 12 }}>
-                  <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "4px 0" }}>Edit</button>
-                  <button onClick={async () => { try { await deleteProduct(p.id); setProducts(pr => pr.filter(x => x.id !== p.id)); showToast("Product deleted", "info"); } catch { showToast("Failed to delete", "error"); } }} style={{ background: "none", border: "none", color: "#E74C3C", fontSize: 13, cursor: "pointer", padding: "4px 0" }}>Delete</button>
+                  {can("product:update") && <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "4px 0" }}>Edit</button>}
+                  {can("product:delete") && <button onClick={async () => { try { await deleteProduct(p.id); setProducts(pr => pr.filter(x => x.id !== p.id)); showToast("Product deleted", "info"); } catch { showToast("Failed to delete", "error"); } }} style={{ background: "none", border: "none", color: "#E74C3C", fontSize: 13, cursor: "pointer", padding: "4px 0" }}>Delete</button>}
                 </div>
               </div>
             );

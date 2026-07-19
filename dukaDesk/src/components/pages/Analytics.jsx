@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
-import { Download, TrendingUp, Users, DollarSign, Smartphone, Star } from "lucide-react";
+import { Download, TrendingUp, Users, DollarSign, Smartphone, Star, Activity, Database, BarChart3 } from "lucide-react";
 import { useToast } from "../../contexts";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
-import { getRevenueData, getOrderStats, getScanData, getTopProducts, getCustomerSplit } from "../../services/api";
-import { Loading, Empty } from "../layout/States";
+import { getRevenueData, getOrderStats, getScanData, getTopProducts, getCustomerSplit, getUsageMetrics } from "../../services/api";
+import { Loading, Empty, ErrorState } from "../layout/States";
 
 const PIE_COLORS = [AMBER, NAVY, "#E74C3C"];
 const CHART_COLORS = ["#3B82F6", "#2ECC71", "#F4A026", "#E74C3C", "#7C3AED"];
@@ -19,20 +19,26 @@ export default function Analytics() {
   const [scans, setScans] = useState([]);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([{ name: "New", value: 34 }, { name: "Returning", value: 66 }]);
+  const [usage, setUsage] = useState({ apiCalls: {}, storageUsed: {}, activeUsers: [] });
   const [dateRange, setDateRange] = useState("Last 30 Days");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    Promise.all([getRevenueData(), getOrderStats(), getScanData(), getTopProducts(), getCustomerSplit()])
-      .then(([r, o, s, p, c]) => { setRev(r); setOrders(o); setScans(s); setProducts(p); setCustomers(c); })
-      .catch(() => showToast("Failed to load analytics", "error"))
+  const loadAnalytics = () => {
+    setError(null);
+    setLoading(true);
+    Promise.all([getRevenueData(), getOrderStats(), getScanData(), getTopProducts(), getCustomerSplit(), getUsageMetrics()])
+      .then(([r, o, s, p, c, u]) => { setRev(r); setOrders(o); setScans(s); setProducts(p); setCustomers(c); setUsage(u); })
+      .catch(() => setError("Failed to load analytics"))
       .finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(loadAnalytics, []);
 
   const totalScans = scans.reduce((a, s) => a + s.scans, 0);
   const totalRevenue = rev.length > 0 ? rev[rev.length - 1].v : 0;
 
   if (loading) return <Loading message="Loading analytics..." />;
+  if (error) return <ErrorState message={error} onRetry={loadAnalytics} />;
 
   const metrics = [
     { icon: DollarSign, label: "Revenue", value: `₦${totalRevenue.toLocaleString()}`, trend: "+18%", up: true, color: AMBER },
@@ -169,6 +175,53 @@ export default function Analytics() {
             ))}</tbody>
           </table>
         </div>
+        )}
+      </div>
+
+      <div style={{ ...cardStyle, marginTop: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+          <Activity size={20} color={NAVY} />
+          <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Usage Metrics</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 16, marginBottom: 24 }}>
+          <div style={{ background: "#F9FAFB", borderRadius: 12, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <BarChart3 size={16} color="#3B82F6" />
+              <span style={{ fontSize: 13, color: "#6B7280" }}>API Calls</span>
+            </div>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: NAVY }}>{(usage.apiCalls?.total || 0).toLocaleString()}</div>
+            <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>{usage.apiCalls?.thisMonth || 0} this month · {usage.apiCalls?.avgDaily || 0}/day avg</div>
+          </div>
+          <div style={{ background: "#F9FAFB", borderRadius: 12, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <Database size={16} color="#2ECC71" />
+              <span style={{ fontSize: 13, color: "#6B7280" }}>Storage Used</span>
+            </div>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: NAVY }}>{usage.storageUsed?.total || "0 B"}</div>
+            <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>{usage.storageUsed?.files || 0} files · {usage.storageUsed?.images || 0} images</div>
+          </div>
+          <div style={{ background: "#F9FAFB", borderRadius: 12, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <Users size={16} color="#7C3AED" />
+              <span style={{ fontSize: 13, color: "#6B7280" }}>Active Users (7d)</span>
+            </div>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: NAVY }}>{(usage.activeUsers || []).reduce((a, d) => a + d.users, 0).toLocaleString()}</div>
+            <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>
+              {(usage.activeUsers || []).filter(d => d.users > 200).length} days above 200
+            </div>
+          </div>
+        </div>
+        {(usage.activeUsers || []).length > 0 && (
+          <ResponsiveContainer width="100%" height={160}>
+            <AreaChart data={usage.activeUsers}>
+              <defs><linearGradient id="usersGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7C3AED" stopOpacity={0.25}/><stop offset="100%" stopColor="#7C3AED" stopOpacity={0}/></linearGradient></defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6"/>
+              <XAxis dataKey="day" tick={{fontSize:12,fill:"#9CA3AF"}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fontSize:12,fill:"#9CA3AF"}} axisLine={false} tickLine={false}/>
+              <Tooltip contentStyle={{borderRadius:10,border:"1px solid #E8E8F0",boxShadow:"0 8px 24px rgba(0,0,0,0.1)"}}/>
+              <Area type="monotone" dataKey="users" stroke="#7C3AED" strokeWidth={2} fill="url(#usersGrad)" dot={{fill:"#7C3AED",r:3,strokeWidth:2,stroke:"#fff"}}/>
+            </AreaChart>
+          </ResponsiveContainer>
         )}
       </div>
     </div>

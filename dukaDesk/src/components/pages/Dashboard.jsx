@@ -7,7 +7,7 @@ import { useAuth, useToast } from "../../contexts";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import ApiClient from "../../services/ApiClient";
-import { Loading, Empty } from "../layout/States";
+import { Loading, Empty, ErrorState } from "../layout/States";
 import { useDispatchAction } from "../../runtime/RuntimeContext";
 import { EventBus } from "../../runtime/EventBus";
 
@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [revenueData, setRevenueData] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [deployedApp, setDeployedApp] = useState(null);
   const [filterChanged, setFilterChanged] = useState(null);
 
@@ -49,12 +50,15 @@ export default function Dashboard() {
     } catch { showToast("Failed to generate QR code", "error"); }
   };
 
-  useEffect(() => {
+  const loadDashboard = () => {
+    setError(null);
+    setLoading(true);
     Promise.all([ApiClient.getDashboardStats(), ApiClient.getRevenue(), ApiClient.getActivity()])
       .then(([s, r, a]) => { setStats(s); setRevenueData(r); setActivity(a); })
-      .catch(() => showToast("Failed to load dashboard data", "error"))
+      .catch(() => setError("Failed to load dashboard data"))
       .finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(loadDashboard, []);
 
   const setup = ApiClient.getSetupData();
   const statusItems = [
@@ -73,6 +77,7 @@ export default function Dashboard() {
   }, [dispatchAction]);
 
   if (loading) return <Loading message="Loading dashboard..." />;
+  if (error) return <ErrorState message={error} onRetry={loadDashboard} />;
   if (!stats) return <Empty icon="📊" message="No dashboard data yet" sub={setup ? "Setup data saved. Complete your app setup to see stats here." : "Complete your app setup to see stats here"} action={<button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{setup ? "Continue Setup →" : "Setup Your App →"}</button>} />;
 
   const kpiData = [

@@ -1,17 +1,19 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft, KeyRound, AlertCircle, CheckCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft, KeyRound, AlertCircle, AlertTriangle, CheckCircle } from "lucide-react";
 import PropTypes from "prop-types";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useToast } from "../../contexts";
 import { NAVY, AMBER, GREEN, RED, PURPLE, inputStyle, labelStyle } from "../../theme";
-import { login, signup, forgotPassword, setToken } from "../../services/api";
+import { login, signup, forgotPassword, confirmPasswordReset, setToken } from "../../services/api";
 
 export default function Auth({ onAuth }) {
   const isMobile = useIsMobile();
   const location = useLocation();
   const page = location.pathname.replace("/", "") || "login";
   const navigate = useNavigate();
+  const params = new URLSearchParams(location.search);
+  const resetToken = params.get("token");
 
   return (
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh" }}>
@@ -21,6 +23,7 @@ export default function Auth({ onAuth }) {
           {page === "login" && <LoginForm onAuth={onAuth} setPage={navigate} />}
           {page === "signup" && <SignupForm onAuth={onAuth} setPage={navigate} />}
           {page === "forgot" && <ForgotForm setPage={navigate} />}
+          {(page === "reset-password" || page === "reset-password-confirm") && <ResetPasswordForm token={resetToken} setPage={navigate} />}
         </div>
       </div>
     </div>
@@ -34,6 +37,7 @@ function LeftPanel({ page, isMobile }) {
     login: { headline: "Welcome back.", sub: "Your apps, orders, and customers are waiting.", stats: ["2,000+ Merchants", "10,000+ Consumers", "500+ Apps Live"] },
     signup: { headline: "Launch your mobile app in days.", sub: "No developers. No agencies. Just build, scan, and go live.", props: [{ icon: "📱", text: "Your business gets a real mobile app" }, { icon: "📲", text: "Customers scan your QR code to access it" }, { icon: "📊", text: "Manage everything from this dashboard" }] },
     forgot: { headline: "We've got you.", sub: "Password resets are quick and secure." },
+    "reset-password": { headline: "Almost there.", sub: "Enter the OTP and your new password." },
   };
   const c = copy[page] || copy.login;
   return (
@@ -112,22 +116,24 @@ function LoginForm({ onAuth, setPage }) {
       setFieldErrors({ email: emailErr, password: passErr });
       return;
     }
-    setLoading(true); setError("");
-    try {
-      const res = await login({ email, password });
-      setToken(res.token);
-      onAuth(res.merchant);
-      setPage("/dashboard");
-    } catch (err) {
-      setError(err.message || "Login failed. Please try again.");
-    } finally { setLoading(false); }
+      setLoading(true); setError("");
+      try {
+        const res = await login({ email, password });
+        console.log("[LoginForm] login result", res);
+        setToken(res.token);
+        onAuth(res.merchant);
+        setPage("/dashboard");
+      } catch (err) {
+        console.error("[LoginForm] login error", err);
+        setError(err.message || "Login failed. Please try again.");
+      } finally { setLoading(false); }
   };
 
   return (
     <>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 30, color: NAVY, margin: "0 0 6px" }}>Log in to your dashboard</h2>
       <p style={{ color: "#6B7280", fontSize: 15, margin: "0 0 32px" }}>Manage your apps, orders, and customers.</p>
-      {error && <ErrorBox message={error} />}
+      <ErrorModal message={error} onClose={() => setError("")} />
       <form onSubmit={handleSubmit}>
         <Field label="Email address" type="email" value={email} onChange={e => { setEmail(e.target.value); setError(""); }} onBlur={handleEmailBlur} placeholder="ada@example.com" icon={<Mail size={18} />} error={fieldErrors.email} />
         <Field label="Password" type={showPw ? "text" : "password"} value={password} onChange={e => { setPassword(e.target.value); setError(""); }} onBlur={handlePasswordBlur} placeholder="Your password" icon={<Lock size={18} />} error={fieldErrors.password} suffix={
@@ -215,10 +221,12 @@ function SignupForm({ onAuth, setPage }) {
     setLoading(true);
     try {
       const res = await signup({ fullName: form.name, businessName: form.business, email: form.email, phone: form.phone, password: form.password });
+      console.log("[SignupForm] signup result", res);
       setToken(res.token);
       onAuth(res.merchant);
       setPage("/canvas-editor");
     } catch (err) {
+      console.error("[SignupForm] signup error", err);
       setErrors({ submit: err.message || "Signup failed. Please try again." });
     } finally { setLoading(false); }
   };
@@ -227,17 +235,17 @@ function SignupForm({ onAuth, setPage }) {
     <>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 30, color: NAVY, margin: "0 0 6px" }}>Create your merchant account</h2>
       <p style={{ color: "#6B7280", fontSize: 15, margin: "0 0 28px" }}>Start free. No credit card required.</p>
-      {errors.submit && <ErrorBox message={errors.submit} />}
+      <ErrorModal message={errors.submit} onClose={() => setErrors(e => ({ ...e, submit: "" }))} />
       <form onSubmit={handleSubmit}>
         <Field label="Full name" value={form.name} onChange={handleChange("name")} onBlur={() => handleBlur("name")} placeholder="Ada Okafor" error={touched.name ? errors.name : undefined} icon={<User size={18} />} />
         <Field label="Business name" value={form.business} onChange={handleChange("business")} onBlur={() => handleBlur("business")} placeholder="Ada's Kitchen" error={touched.business ? errors.business : undefined} icon={<Store size={18} />} />
         <Field label="Email address" type="email" value={form.email} onChange={handleChange("email")} onBlur={() => handleBlur("email")} placeholder="ada@example.com" error={touched.email ? errors.email : undefined} icon={<Mail size={18} />} />
         <div style={{ marginBottom: 16 }}>
-          <label style={labelStyle}>Phone number</label>
+          <label htmlFor="phone" style={labelStyle}>Phone number</label>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Phone size={18} color="#9CA3AF" />
             <div style={{ ...inputStyle, width: 80, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, cursor: "default", flexShrink: 0 }}>🇳🇬 +234</div>
-            <input style={{ ...inputStyle, flex: 1 }} placeholder="801 234 5678" type="tel" value={form.phone} onChange={handleChange("phone")} onBlur={() => handleBlur("phone")} />
+            <input id="phone" name="phone" style={{ ...inputStyle, flex: 1 }} placeholder="801 234 5678" type="tel" value={form.phone} onChange={handleChange("phone")} onBlur={() => handleBlur("phone")} />
           </div>
           {touched.phone && errors.phone && <p style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.phone}</p>}
         </div>
@@ -322,7 +330,7 @@ function ForgotForm({ setPage }) {
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 6 }}>Reset your password</h2>
         <p style={{ color: "#6B7280", fontSize: 15 }}>Enter your email and we'll send a reset link.</p>
       </div>
-      {error && <ErrorBox message={error} />}
+      <ErrorModal message={error} onClose={() => setError("")} />
       <form onSubmit={handleSubmit}>
         <Field label="Email address" type="email" value={email} onChange={e => { setEmail(e.target.value); if (touched) setError(""); }} onBlur={() => { setTouched(true); const err = validateEmail(email); if (err) setError(err); }} placeholder="ada@example.com" icon={<Mail size={18} />} error={touched ? error || undefined : undefined} />
         <PrimaryBtn loading={loading}>{loading ? "Sending..." : "Send reset link"}</PrimaryBtn>
@@ -336,14 +344,103 @@ function ForgotForm({ setPage }) {
 
 ForgotForm.propTypes = { setPage: PropTypes.func.isRequired };
 
+function ResetPasswordForm({ token, setPage }) {
+  const [step, setStep] = useState(token ? "password" : "otp");
+  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const showToast = useToast();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (step === "otp") {
+      if (!otp.trim()) { setError("Please enter the OTP from your email"); return; }
+      setStep("password");
+      setError("");
+      return;
+    }
+    if (!password || password.length < 8) { setError("Password must be at least 8 characters"); return; }
+    if (password !== confirm) { setError("Passwords do not match"); return; }
+    setLoading(true); setError("");
+    try {
+      await confirmPasswordReset({ token: token || "", otp, password });
+      setSuccess(true);
+      showToast("Password reset successful!", "success");
+    } catch (err) {
+      setError(err.message || "Reset failed. The link may have expired.");
+    } finally { setLoading(false); }
+  };
+
+  if (success) return (
+    <div style={{ textAlign: "center", animation: "fadeIn 0.4s ease" }}>
+      <div style={{ width: 80, height: 80, background: "#F0FDF4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: 36 }}>✓</div>
+      <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 8 }}>Password reset!</h2>
+      <p style={{ color: "#6B7280", marginBottom: 28, fontSize: 15 }}>Your password has been updated successfully.</p>
+      <button onClick={() => setPage("/login")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "12px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Log in →</button>
+    </div>
+  );
+
+  return (
+    <div style={{ animation: "fadeIn 0.4s ease" }}>
+      <div style={{ textAlign: "center", marginBottom: 28 }}>
+        <div style={{ width: 72, height: 72, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 32 }}>{step === "otp" ? "🔑" : "🔒"}</div>
+        <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 6 }}>
+          {step === "otp" ? "Enter reset code" : "Choose new password"}
+        </h2>
+        <p style={{ color: "#6B7280", fontSize: 15 }}>
+          {step === "otp" ? "Enter the 6-digit code sent to your email" : "Must be at least 8 characters"}
+        </p>
+      </div>
+      <ErrorModal message={error} onClose={() => setError("")} />
+      <form onSubmit={handleSubmit}>
+        {step === "otp" ? (
+          <div style={{ marginBottom: 20 }}>
+            <label htmlFor="otp" style={labelStyle}>OTP Code</label>
+            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <KeyRound size={18} style={{ position: "absolute", left: 14, color: "#9CA3AF", zIndex: 1 }} />
+              <input id="otp" name="otp"
+                value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                style={{ ...inputStyle, paddingLeft: 42, textAlign: "center", fontSize: 20, letterSpacing: 8, fontFamily: "'JetBrains Mono', monospace" }}
+                maxLength={6} autoFocus
+              />
+            </div>
+            <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 8 }}>Check your inbox for the 6-digit code</p>
+          </div>
+        ) : (
+          <>
+            <Field label="New password" type={showPw ? "text" : "password"} value={password} onChange={e => { setPassword(e.target.value); setError(""); }} placeholder="Min. 8 characters" icon={<Lock size={18} />} suffix={
+              <button type="button" onClick={() => setShowPw(!showPw)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}>
+                {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            } />
+            <Field label="Confirm password" type={showPw ? "text" : "password"} value={confirm} onChange={e => { setConfirm(e.target.value); setError(""); }} placeholder="Repeat password" icon={<Lock size={18} />} />
+          </>
+        )}
+        <PrimaryBtn loading={loading}>{loading ? "Processing..." : step === "otp" ? "Continue →" : "Reset password"}</PrimaryBtn>
+      </form>
+      <button onClick={() => setPage("/login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+        <ArrowLeft size={14} style={{ verticalAlign: "middle", marginRight: 4 }} /> Back to login
+      </button>
+    </div>
+  );
+}
+
+ResetPasswordForm.propTypes = { token: PropTypes.string, setPage: PropTypes.func.isRequired };
+
 function Field({ label, error, icon, suffix, ref, ...props }) {
   const [focused, setFocused] = useState(false);
+  const id = label?.toLowerCase().replace(/\s+/g, "-");
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={labelStyle}>{label}</label>
+      <label htmlFor={id} style={labelStyle}>{label}</label>
       <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
         {icon && <span style={{ position: "absolute", left: 14, color: "#9CA3AF", display: "flex", zIndex: 1 }}>{icon}</span>}
-        <input ref={ref} style={{ ...inputStyle, paddingLeft: icon ? 42 : 14, paddingRight: suffix ? 42 : 14, borderColor: error ? "#E74C3C" : focused ? AMBER : "var(--border)", boxShadow: focused ? `0 0 0 3px rgba(244,160,38,0.1)` : "none" }} {...props} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
+        <input ref={ref} id={id} name={id} style={{ ...inputStyle, paddingLeft: icon ? 42 : 14, paddingRight: suffix ? 42 : 14, borderColor: error ? "#E74C3C" : focused ? AMBER : "var(--border)", boxShadow: focused ? `0 0 0 3px rgba(244,160,38,0.1)` : "none" }} {...props} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
         {suffix && <span style={{ position: "absolute", right: 14 }}>{suffix}</span>}
         {error && <span style={{ position: "absolute", right: suffix ? 50 : 14, color: "#E74C3C", fontSize: 16 }}><AlertCircle size={16} /></span>}
       </div>
@@ -397,12 +494,53 @@ function Divider() {
   );
 }
 
-function ErrorBox({ message }) {
+const MODAL_CONFIG = {
+  error: { icon: AlertCircle, bg: "#FEF2F2", color: "#DC2626", title: "Error", btnBg: "#DC2626", btnColor: "#fff" },
+  warning: { icon: AlertTriangle, bg: "#FFF8ED", color: "#D97706", title: "Warning", btnBg: AMBER, btnColor: NAVY },
+  success: { icon: CheckCircle, bg: "#F0FDF4", color: "#16A34A", title: "Success", btnBg: "#16A34A", btnColor: "#fff" },
+};
+
+function ErrorModal({ message, onClose, type = "error" }) {
+  useEffect(() => {
+    if (!message) return;
+    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [message, onClose]);
+
+  if (!message) return null;
+
+  const cfg = MODAL_CONFIG[type] || MODAL_CONFIG.error;
+  const Icon = cfg.icon;
+
   return (
-    <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "12px 16px", color: "#991B1B", fontSize: 14, marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
-      <AlertCircle size={16} /> {message}
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 99999,
+      background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      animation: "fadeIn 0.2s ease", padding: 20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "#fff", borderRadius: 16, maxWidth: 420, width: "100%",
+        padding: 32, textAlign: "center", animation: "scaleIn 0.25s ease",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+      }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: "50%",
+          background: cfg.bg, display: "flex", alignItems: "center",
+          justifyContent: "center", margin: "0 auto 16px",
+        }}>
+          <Icon size={28} color={cfg.color} />
+        </div>
+        <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY, margin: "0 0 8px" }}>{cfg.title}</h3>
+        <p style={{ color: "#6B7280", fontSize: 14, margin: "0 0 24px", lineHeight: 1.5 }}>{message}</p>
+        <button onClick={onClose} style={{
+          background: cfg.btnBg, color: cfg.btnColor, border: "none", borderRadius: 10,
+          padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer",
+        }}>Got it</button>
+      </div>
     </div>
   );
 }
 
-ErrorBox.propTypes = { message: PropTypes.string };
+ErrorModal.propTypes = { message: PropTypes.string, onClose: PropTypes.func.isRequired, type: PropTypes.oneOf(["error", "warning", "success"]) };

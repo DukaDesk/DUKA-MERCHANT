@@ -27,6 +27,8 @@ httpClient.interceptors.response.use(
   async error => {
     const originalRequest = error.config;
 
+    console.error(`[Network Error] ${error.response?.status || 'No response'} ${originalRequest?.method?.toUpperCase() || '?'} ${originalRequest?.url || '?'}`, error.response?.data || error.message);
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {

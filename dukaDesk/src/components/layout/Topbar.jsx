@@ -90,7 +90,7 @@ export default function Topbar() {
         {!isMobile && <span>Preview App</span>}
       </button>
 
-      <button onClick={() => showToast("No new notifications", "info")} style={{
+      <button onClick={() => navigate("/dashboard/notifications")} style={{
         position: "relative", background: "none", border: "none",
         cursor: "pointer", display: "flex", alignItems: "center", padding: 8, transition,
       }}>

@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { X, Download } from "lucide-react";
 import { useToast } from "../../contexts";
 import { useIsMobile } from "../../hooks/useMediaQuery";
+import { usePermission } from "../../hooks/usePermission";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, glidePanel } from "../../theme";
 import { getCurrentPlan, getPlans, getBillingHistory, upgradePlan } from "../../services/api";
-import { Loading, Empty } from "../layout/States";
+import { Loading, Empty, ErrorState } from "../layout/States";
 
 export default function Billing() {
   const showToast = useToast();
   const isMobile = useIsMobile();
+  const { can } = usePermission();
   const [currentPlan, setCurrentPlan] = useState(null);
   const [plans, setPlans] = useState([]);
   const [history, setHistory] = useState([]);
@@ -18,14 +20,18 @@ export default function Billing() {
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [focusedField, setFocusedField] = useState(null);
 
-  useEffect(() => {
+  const loadBilling = () => {
+    setError(null);
+    setLoading(true);
     Promise.all([getCurrentPlan(), getPlans(), getBillingHistory()])
       .then(([cp, p, h]) => { setCurrentPlan(cp); setPlans(p); setHistory(h); })
-      .catch(() => showToast("Failed to load billing info", "error"))
+      .catch(() => setError("Failed to load billing info"))
       .finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(loadBilling, []);
 
   const handleUpgrade = async () => {
     if (!cardNum || !expiry || !cvv) { showToast("Please fill in all card details", "error"); return; }
@@ -37,6 +43,7 @@ export default function Billing() {
   };
 
   if (loading) return <Loading message="Loading billing info..." />;
+  if (error) return <ErrorState message={error} onRetry={loadBilling} />;
   if (!currentPlan && plans.length === 0) return <Empty icon="💳" message="No billing data available" sub="Your subscription information will appear here" />;
 
   return (
@@ -56,7 +63,7 @@ export default function Billing() {
           </div>
           <div style={{ textAlign: isMobile ? "left" : "right" }}>
             <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, marginBottom: 8 }}>Renews: {currentPlan.renews}</div>
-            <button onClick={() => setUpgradeModal(plans.find(p => !p.current) || plans[0])} style={{ background: "#fff", color: AMBER, border: "none", borderRadius: 24, padding: "12px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Upgrade Plan →</button>
+            {can("billing:update") && <button onClick={() => setUpgradeModal(plans.find(p => !p.current) || plans[0])} style={{ background: "#fff", color: AMBER, border: "none", borderRadius: 24, padding: "12px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Upgrade Plan →</button>}
           </div>
         </div>
       )}
@@ -94,7 +101,7 @@ export default function Billing() {
                 <td key={p.name} style={{ padding: "16px", textAlign: "center" }}>
                   {p.current
                     ? <div style={{ background: "#F3F4F6", color: "#9CA3AF", borderRadius: 24, padding: "10px 0", fontSize: 14, fontWeight: 600 }}>Current Plan</div>
-                    : <button onClick={() => setUpgradeModal(p)} style={{ width: "100%", background: p.name === "Business" ? NAVY : AMBER, color: p.name === "Business" ? "#fff" : NAVY, border: "none", borderRadius: 24, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Upgrade to {p.name}</button>}
+                    : can("billing:update") && <button onClick={() => setUpgradeModal(p)} style={{ width: "100%", background: p.name === "Business" ? NAVY : AMBER, color: p.name === "Business" ? "#fff" : NAVY, border: "none", borderRadius: 24, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Upgrade to {p.name}</button>}
                 </td>
               ))}
             </tr>
