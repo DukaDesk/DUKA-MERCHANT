@@ -224,7 +224,7 @@ function SignupForm({ onAuth, setPage }) {
       console.log("[SignupForm] signup result", res);
       setToken(res.token);
       onAuth(res.merchant);
-      setPage("/canvas-editor");
+      setPage("/dashboard");
     } catch (err) {
       console.error("[SignupForm] signup error", err);
       setErrors({ submit: err.message || "Signup failed. Please try again." });

@@ -7,6 +7,7 @@ import { RuntimeContext } from "./runtime/RuntimeContext";
 import { dispatchEngine, setupActionRouter, clearActionRouter } from "./runtime/ActionEngine";
 import { BrandThemeProvider } from "./runtime/BrandThemeProvider";
 import { AuthContext, ToastContext, useAuth } from "./contexts";
+import { on as onNotify } from "./services/notifier";
 
 const Auth = lazy(() => import("./components/auth/Auth"));
 const Dashboard = lazy(() => import("./components/pages/Dashboard"));
@@ -24,6 +25,8 @@ const Customers = lazy(() => import("./components/pages/Customers"));
 const Inventory = lazy(() => import("./components/pages/Inventory"));
 const Marketing = lazy(() => import("./components/pages/Marketing"));
 const Notifications = lazy(() => import("./components/pages/Notifications"));
+const CompliancePage = lazy(() => import("./components/pages/Compliance"));
+const DeskDesignPage = lazy(() => import("./components/pages/DeskDesign"));
 const MiniAppPreview = lazy(() => import("./components/app-builder/MiniAppPreview"));
 const TemplateEditor = lazy(() => import("./components/template/TemplateEditor"));
 const CanvasEditor = lazy(() => import("./components/canvas-editor/CanvasEditor"));
@@ -116,6 +119,14 @@ export default function App() {
     return () => clearActionRouter();
   }, [navigate, logout]);
 
+  useEffect(() => {
+    const unsubs = [
+      onNotify('error', msg => showToast(msg, 'error')),
+      onNotify('success', msg => showToast(msg, 'success')),
+    ];
+    return () => unsubs.forEach(fn => fn());
+  }, [showToast]);
+
   return (
     <AuthContext.Provider value={{ merchant, logout, handleAuth }}>
     <ToastContext.Provider value={showToast}>
@@ -138,6 +149,8 @@ export default function App() {
               <Route path="/miniapp" element={<ProtectedRoute><MiniAppPreview /></ProtectedRoute>} />
               <Route path="/template-editor/:templateId" element={<ProtectedRoute><TemplateEditor /></ProtectedRoute>} />
               <Route path="/canvas-editor" element={<ProtectedRoute><CanvasEditor /></ProtectedRoute>} />
+              <Route path="/compliance" element={<ProtectedRoute><CompliancePage /></ProtectedRoute>} />
+              <Route path="/desk-design" element={<ProtectedRoute><DeskDesignPage /></ProtectedRoute>} />
               <Route path="/" element={<Navigate to="/signup" replace />} />
               <Route path="/dashboard" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />

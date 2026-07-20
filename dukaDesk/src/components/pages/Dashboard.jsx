@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from "recharts";
-import { Plus, Package, BarChart3, MessageSquare, Store, TrendingUp, Users, DollarSign, Star, ArrowRight } from "lucide-react";
+import { Plus, Package, BarChart3, MessageSquare, Store, TrendingUp, Users, DollarSign, Star, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import QRCode from "qrcode";
 import { useAuth, useToast } from "../../contexts";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import ApiClient from "../../services/ApiClient";
+import { isComplianceDone, getCurrentPlan } from "../../services/api";
 import { Loading, Empty, ErrorState } from "../layout/States";
 import { useDispatchAction } from "../../runtime/RuntimeContext";
 import { EventBus } from "../../runtime/EventBus";
@@ -26,6 +27,13 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [deployedApp, setDeployedApp] = useState(null);
   const [filterChanged, setFilterChanged] = useState(null);
+  const [complianceDone, setComplianceDone] = useState(true);
+  const [currentPlan, setCurrentPlan] = useState(null);
+
+  useEffect(() => {
+    setComplianceDone(isComplianceDone());
+    getCurrentPlan().then(p => setCurrentPlan(p)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     ApiClient.getMyApp().then(setDeployedApp).catch(() => {});
@@ -98,6 +106,40 @@ export default function Dashboard() {
           <Plus size={16} /> Edit App
         </button>
       </div>
+
+      {!complianceDone && (
+        <div style={{ ...cardStyle, marginBottom: 20, background: "linear-gradient(135deg, #FFF8ED, #FFFBEB)", border: "1px solid rgba(244,160,38,0.3)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 40, height: 40, background: `${AMBER}20`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ShieldCheck size={20} color={AMBER} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>Complete business verification</div>
+              <div style={{ fontSize: 13, color: "#6B7280" }}>Verify your business to unlock Desk Design and go live.</div>
+            </div>
+          </div>
+          <button onClick={() => navigate("/compliance")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            Start Verification →
+          </button>
+        </div>
+      )}
+
+      {currentPlan && currentPlan.plan === "Starter Plan" && (
+        <div style={{ ...cardStyle, marginBottom: 20, background: "linear-gradient(135deg, rgba(244,160,38,0.08), rgba(244,160,38,0.02))", border: "1px solid rgba(244,160,38,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 40, height: 40, background: `${AMBER}20`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Sparkles size={20} color={AMBER} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>You're on the {currentPlan.plan}</div>
+              <div style={{ fontSize: 13, color: "#6B7280" }}>{currentPlan.label} — Upgrade to unlock more features.</div>
+            </div>
+          </div>
+          <button onClick={() => navigate("/dashboard/billing")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            Upgrade Plan ↑
+          </button>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 12 : 18, marginBottom: isMobile ? 20 : 28 }}>
         {kpiData.map((k, i) => (

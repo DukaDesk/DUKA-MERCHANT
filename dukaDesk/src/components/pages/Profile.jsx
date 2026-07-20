@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth, useToast } from "../../contexts";
 import { NAVY, AMBER, cardStyle, inputStyle, labelStyle } from "../../theme";
-import { getMerchantProfile, updateMerchantProfile } from "../../services/api";
+import { getMerchantProfile, updateMerchantProfile, getCurrentPlan } from "../../services/api";
 import { Loading, ErrorState } from "../layout/States";
-import { Store, Mail, Phone, User, Save, ArrowLeft } from "lucide-react";
+import { Store, Mail, Phone, User, Save, ArrowLeft, Sparkles } from "lucide-react";
 
 export default function Profile() {
   const isMobile = useIsMobile();
@@ -17,6 +17,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentPlan, setCurrentPlan] = useState(null);
 
   const loadProfile = () => {
     setError(null);
@@ -26,6 +27,7 @@ export default function Profile() {
       setForm({ name: m.name || "", business: m.business || "", email: m.email || "", phone: m.phone || "" });
     }).catch(() => setError("Failed to load profile"))
     .finally(() => setLoading(false));
+    getCurrentPlan().then(p => setCurrentPlan(p)).catch(() => {});
   };
   useEffect(loadProfile, []);
 
@@ -66,6 +68,23 @@ export default function Profile() {
             </div>
           </div>
         </div>
+
+        {currentPlan && currentPlan.plan === "Starter Plan" && (
+          <div style={{ ...cardStyle, background: "linear-gradient(135deg, rgba(244,160,38,0.08), rgba(244,160,38,0.02))", border: "1px solid rgba(244,160,38,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 40, height: 40, background: `${AMBER}20`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Sparkles size={20} color={AMBER} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>{currentPlan.plan}</div>
+                <div style={{ fontSize: 13, color: "#6B7280" }}>{currentPlan.label}</div>
+              </div>
+            </div>
+            <button onClick={() => navigate("/dashboard/billing")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+              Upgrade ↑
+            </button>
+          </div>
+        )}
 
         <div style={{ ...cardStyle }}>
           <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 20 }}>Account Details</div>

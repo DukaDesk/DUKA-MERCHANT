@@ -20,6 +20,15 @@ function setRefreshToken(t) {
 export function setSetupData(data) { try { localStorage.setItem("dukadesk_setup", JSON.stringify(data)); } catch { /* ignore */ } }
 export function getSetupData() { try { return JSON.parse(localStorage.getItem("dukadesk_setup")); } catch { return null; } }
 
+/* ───── Compliance ───── */
+export function setComplianceDone() {
+  const data = getSetupData() || {};
+  setSetupData({ ...data, complianceDone: true });
+}
+export function isComplianceDone() {
+  return !!(getSetupData()?.complianceDone);
+}
+
 /* ───── Merchant ───── */
 export function getMerchant() {
   try { return JSON.parse(localStorage.getItem("dd_merchant")); } catch { return null; }

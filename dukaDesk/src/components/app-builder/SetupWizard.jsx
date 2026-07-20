@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../../theme";
 import {
-  WIZARD_TEMPLATES_BY_CATEGORY,
   WIZARD_ALWAYS_INCLUDED,
   WIZARD_INTEGRATIONS,
   WIZARD_COLORS,
@@ -11,13 +10,11 @@ import {
   INTEGRATION_BADGE_COLORS,
   getTemplateIntegrationNames,
 } from "../../services/mockData";
+import TemplateGallery from "./TemplateGallery";
 
 const SETUP_STEPS = ["Gallery", "Branding", "Business Info", "Integrations"];
 const STEP_LABELS = ["Choose template", "Brand your app", "Business info", "Integrations"];
 const defaultHours = () => WIZARD_DAYS.map((d, i) => ({ day: d, open: i < 5, start: "09:00", end: "22:00" }));
-
-const ALL_TEMPLATES = Object.values(WIZARD_TEMPLATES_BY_CATEGORY).flat();
-const CATEGORIES = Object.keys(WIZARD_TEMPLATES_BY_CATEGORY);
 
 export function SetupWizard({
   initialData,
@@ -310,7 +307,7 @@ export function SetupWizard({
 
   function renderStep() {
     switch (step) {
-      case 0: return <TemplateGallery value={data.template} onChange={handleTemplateSelect} onSkipToEditor={onSkipToEditor} isMobile={isMobile} />;
+      case 0: return <TemplateGallery value={data.template} onChange={handleTemplateSelect} onSkip={onSkipToEditor} isMobile={isMobile} />;
       case 1: return <SetupBranding data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} />;
       case 2: return <SetupBusiness data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} />;
       case 3: return <SetupIntegrations data={data} setData={setData} isMobile={isMobile} />;
@@ -318,101 +315,6 @@ export function SetupWizard({
     }
   }
 }
-
-function TemplateGallery({ value, onChange, onSkipToEditor, isMobile }) {
-  const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [hovered, setHovered] = useState(null);
-
-  const filtered = ALL_TEMPLATES.filter(t => {
-    const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase())) || t.category.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = activeCategory === "All" || t.category === activeCategory;
-    return matchSearch && matchCategory;
-  });
-
-  const getInitials = (name) => name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
-
-  return (
-    <div>
-      <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Choose your template</h2>
-      <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 28px" }}>Pick a pre-made template to get started quickly, or build your own from scratch.</p>
-
-      <div style={{ marginBottom: 24, display: "flex", gap: 12, flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center" }}>
-        <div style={{ flex: 1, position: "relative" }}>
-          <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9CA3AF", pointerEvents: "none" }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates..." style={{ width: "100%", padding: "10px 14px 10px 40px", border: "1.5px solid #E8E8F0", borderRadius: 10, fontSize: 14, outline: "none", boxSizing: "border-box", background: "#fff" }} />
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 28 }}>
-        <button onClick={() => setActiveCategory("All")} style={chipStyle(activeCategory === "All")}>All</button>
-        {CATEGORIES.map(cat => (
-          <button key={cat} onClick={() => setActiveCategory(cat)} style={chipStyle(activeCategory === cat)}>{cat}</button>
-        ))}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 20 }}>
-        <div onClick={() => onSkipToEditor?.({ category: "Custom" })} onMouseEnter={() => setHovered("custom")} onMouseLeave={() => setHovered(null)}
-          style={{
-            background: hovered === "custom" ? "#FFF8ED" : "#fff",
-            border: `2px dashed ${hovered === "custom" ? AMBER : "#E8E8F0"}`,
-            borderRadius: 12, cursor: "pointer", transition: "all 0.15s",
-            transform: hovered === "custom" ? "translateY(-2px)" : "none",
-            boxShadow: hovered === "custom" ? "0 4px 16px rgba(0,0,0,0.06)" : "none",
-            display: "flex", flexDirection: "column", alignItems: "center",
-            justifyContent: "center", padding: isMobile ? 24 : 40, minHeight: isMobile ? 200 : 300,
-          }}>
-          <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </div>
-          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 16 : 18, color: NAVY, marginBottom: 8 }}>Create your own</div>
-          <div style={{ fontSize: isMobile ? 13 : 14, color: "#6B7280", textAlign: "center", lineHeight: 1.5 }}>Start with a blank canvas<br />and build from scratch</div>
-        </div>
-        {filtered.map((t, i) => {
-          const selected = value === t.name;
-          return (
-            <div key={t.name} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
-              style={{
-                background: "#fff", border: `1.5px solid ${selected ? AMBER : hovered === i ? "#D1D5DB" : "#E8E8F0"}`,
-                borderRadius: 12, overflow: "hidden", cursor: "pointer", transition: "all 0.15s",
-                position: "relative", transform: hovered === i && !selected ? "translateY(-2px)" : "none",
-                boxShadow: hovered === i && !selected ? "0 4px 16px rgba(0,0,0,0.06)" : "none",
-              }}
-              onClick={() => onChange(t.name)}>
-              {selected && <div style={{ position: "absolute", top: 8, left: 8, background: AMBER, color: NAVY, fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 8, zIndex: 2 }}>Selected</div>}
-              <div style={{ height: isMobile ? 100 : 140, background: `linear-gradient(135deg, ${t.primaryColor}, ${t.secondaryColor})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: isMobile ? 28 : 36, fontWeight: 800, color: "#fff", fontFamily: "'Sora',sans-serif", textShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>{getInitials(t.name)}</span>
-              </div>
-              <div style={{ padding: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, color: NAVY }}>{t.name}</div>
-                  <span style={{ fontSize: 11, color: "#9CA3AF" }}>{t.category}</span>
-                </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {t.tags.map((tag, j) => <span key={j} style={{ background: "#F3F4F6", color: "#6B7280", fontSize: 11, padding: "3px 8px", borderRadius: 8 }}>{tag}</span>)}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 40, color: "#9CA3AF" }}>
-            No templates match your search. Try a different term.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-const chipStyle = (active) => ({
-  padding: "7px 18px", borderRadius: 20, border: "none",
-  background: active ? AMBER : "#F3F4F6",
-  color: active ? NAVY : "#6B7280",
-  fontWeight: active ? 700 : 500,
-  fontSize: 13, cursor: "pointer", fontFamily: "inherit",
-  transition: "all 0.12s",
-});
 
 function SetupBranding({ data, setData, errors, setErrors, isMobile }) {
   const logoInputRef = useRef(null);
