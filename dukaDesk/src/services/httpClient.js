@@ -18,6 +18,7 @@ const processQueue = (error, token = null) => {
 };
 
 const mutMethods = ['post', 'put', 'patch', 'delete'];
+const mutLabels = { post: 'Created', put: 'Updated', patch: 'Updated', delete: 'Deleted' };
 
 httpClient.interceptors.response.use(
   response => {
@@ -26,8 +27,8 @@ httpClient.interceptors.response.use(
       return Promise.reject(new Error(body.errors?.[0] || body.message || 'Request failed'));
     }
     const method = response.config?.method;
-    if (mutMethods.includes(method) && body?.message) {
-      emit('success', body.message);
+    if (mutMethods.includes(method)) {
+      emit('success', body?.message || `${mutLabels[method] || 'Action completed'} successfully`);
     }
     return body;
   },

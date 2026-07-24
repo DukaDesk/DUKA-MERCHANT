@@ -1,5 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import ErrorBoundary from "./components/layout/ErrorBoundary";
 import DashboardShell from "./components/layout/DashboardShell";
 import { setToken, logout as apiLogout } from "./services/api";
@@ -31,29 +33,6 @@ const MiniAppPreview = lazy(() => import("./components/app-builder/MiniAppPrevie
 const TemplateEditor = lazy(() => import("./components/template/TemplateEditor"));
 const CanvasEditor = lazy(() => import("./components/canvas-editor/CanvasEditor"));
 
-function ToastItem({ toast, onRemove }) {
-  const colors = {
-    success: { bg: "#F0FDF4", border: "#2ECC71", text: "#065F46", icon: "✓" },
-    error: { bg: "#FEF2F2", border: "#E74C3C", text: "#991B1B", icon: "✕" },
-    info: { bg: "#FFF8ED", border: "#F4A026", text: "#92400E", icon: "ℹ" },
-  };
-  const c = colors[toast.type] || colors.info;
-  return (
-    <div onClick={onRemove} style={{
-      animation: "slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s forwards",
-      background: c.bg, border: `1px solid ${c.border}`,
-      borderLeft: `4px solid ${c.border}`,
-      borderRadius: 12, padding: "12px 16px",
-      display: "flex", alignItems: "center", gap: 10,
-      boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-      maxWidth: 380, cursor: "pointer",
-    }}>
-      <span style={{ width: 22, height: 22, borderRadius: "50%", background: c.border, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{c.icon}</span>
-      <span style={{ fontSize: 14, color: c.text, fontWeight: 500, lineHeight: 1.4 }}>{toast.msg}</span>
-    </div>
-  );
-}
-
 function Loader() {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 16 }}>
@@ -80,12 +59,10 @@ export default function App() {
   const [merchant, setMerchant] = useState(() => {
     try { const m = localStorage.getItem("dd_merchant"); return m ? JSON.parse(m) : null; } catch { return null; }
   });
-  const [toasts, setToasts] = useState([]);
 
   const showToast = useCallback((msg, type = "success") => {
-    const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, msg, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+    const types = { success: toast.success, error: toast.error, info: toast.info };
+    (types[type] || toast.success)(msg, { autoClose: 3000 });
   }, []);
 
   const handleAuth = useCallback((data) => {
@@ -134,11 +111,7 @@ export default function App() {
     <BrandThemeProvider>
       <ErrorBoundary>
         <div style={{ fontFamily: "var(--font-sans)", minHeight: "100vh", background: "var(--bg)" }}>
-          {toasts.length > 0 && (
-            <div style={{ position: "fixed", top: 20, right: 20, zIndex: 9999, display: "flex", flexDirection: "column", gap: 8, maxWidth: 380 }}>
-              {toasts.map(t => <ToastItem key={t.id} toast={t} onRemove={() => setToasts(prev => prev.filter(x => x.id !== t.id))} />)}
-            </div>
-          )}
+          <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover theme="light" />
           <Suspense fallback={<Loader />}>
             <Routes>
               <Route path="/login" element={<PublicRoute><Auth onAuth={handleAuth} /></PublicRoute>} />
