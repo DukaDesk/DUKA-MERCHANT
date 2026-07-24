@@ -2,41 +2,22 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X, Mail, Phone, MapPin, ShoppingBag, ArrowLeft, Calendar, MoreHorizontal } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { useToast } from "../../contexts";
 import { NAVY, AMBER, GREEN, cardStyle, inputStyle, glidePanel, transition } from "../../theme";
-
-const MOCK_CUSTOMERS = [
-  { id: 1, name: "Tunde Adeyemi", email: "tunde@example.com", phone: "+234 801 234 5678", orders: 12, spent: 84500, lastOrder: "2026-07-18", status: "Active", city: "Lekki", avatar: "T" },
-  { id: 2, name: "Chika Obi", email: "chika@example.com", phone: "+234 802 345 6789", orders: 8, spent: 42300, lastOrder: "2026-07-17", status: "Active", city: "Ikeja", avatar: "C" },
-  { id: 3, name: "Fatima Bello", email: "fatima@example.com", phone: "+234 803 456 7890", orders: 5, spent: 21200, lastOrder: "2026-07-15", status: "Active", city: "Abuja", avatar: "F" },
-  { id: 4, name: "Ibrahim Musa", email: "ibrahim@example.com", phone: "+234 804 567 8901", orders: 3, spent: 9600, lastOrder: "2026-07-10", status: "Active", city: "Kano", avatar: "I" },
-  { id: 5, name: "Grace Eze", email: "grace@example.com", phone: "+234 805 678 9012", orders: 15, spent: 124000, lastOrder: "2026-07-19", status: "Active", city: "Port Harcourt", avatar: "G" },
-  { id: 6, name: "Amina Suleiman", email: "amina@example.com", phone: "+234 806 789 0123", orders: 1, spent: 3200, lastOrder: "2026-06-28", status: "Inactive", city: "Kaduna", avatar: "A" },
-];
-
-const MOCK_ORDERS_BY_CUSTOMER = {
-  1: [
-    { id: "DD-2041", date: "Jul 18", items: "Jollof Rice ×2", total: 7000, status: "Delivered" },
-    { id: "DD-2032", date: "Jul 10", items: "Grilled Tilapia ×1", total: 4500, status: "Delivered" },
-    { id: "DD-2018", date: "Jun 28", items: "Peppered Gizzard ×2", total: 3600, status: "Delivered" },
-  ],
-};
 
 export default function Customers() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const showToast = useToast();
+  const [customers, setCustomers] = useState([]);
+  const [customerOrders, setCustomerOrders] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState(null);
 
-  const filtered = MOCK_CUSTOMERS.filter(c => {
+  const filtered = customers.filter(c => {
     if (statusFilter !== "All" && c.status !== statusFilter) return false;
     if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.email.toLowerCase().includes(search.toLowerCase()) && !c.phone.includes(search)) return false;
     return true;
   });
-
-  const customerOrders = selected ? MOCK_ORDERS_BY_CUSTOMER[selected.id] || [] : [];
 
   return (
     <div style={{ animation: "fadeIn 0.35s ease" }}>
@@ -46,7 +27,7 @@ export default function Customers() {
             <ArrowLeft size={16} /> Back to Dashboard
           </button>
           <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: 0 }}>Customers</h2>
-          <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>{MOCK_CUSTOMERS.length} total · {MOCK_CUSTOMERS.filter(c => c.status === "Active").length} active</div>
+          <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>{customers.length} total · {customers.filter(c => c.status === "Active").length} active</div>
         </div>
       </div>
 

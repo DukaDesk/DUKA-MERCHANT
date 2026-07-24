@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Download } from "lucide-react";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { usePermission } from "../../hooks/usePermission";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, glidePanel } from "../../theme";
@@ -8,7 +8,6 @@ import { getCurrentPlan, getPlans, getBillingHistory, upgradePlan } from "../../
 import { Loading, Empty, ErrorState } from "../layout/States";
 
 export default function Billing() {
-  const showToast = useToast();
   const isMobile = useIsMobile();
   const { can } = usePermission();
   const [currentPlan, setCurrentPlan] = useState(null);
@@ -34,17 +33,17 @@ export default function Billing() {
   useEffect(loadBilling, []);
 
   const handleUpgrade = async () => {
-    if (!cardNum || !expiry || !cvv) { showToast("Please fill in all card details", "error"); return; }
+    if (!cardNum || !expiry || !cvv) { toast.error("Please fill in all card details"); return; }
     setPayStep(2);
     try {
       await upgradePlan({ planName: upgradeModal.name, cardNumber: cardNum, expiry, cvv });
-      setTimeout(() => { setUpgradeModal(null); setPayStep(0); showToast(`Upgraded to ${upgradeModal.name} plan! 🎉`, "success"); }, 1500);
-    } catch { showToast("Upgrade failed. Please try again.", "error"); setPayStep(0); }
+      setTimeout(() => { setUpgradeModal(null); setPayStep(0); toast.success(`Upgraded to ${upgradeModal.name} plan! ðŸŽ‰`); }, 1500);
+    } catch { toast.error("Upgrade failed. Please try again."); setPayStep(0); }
   };
 
   if (loading) return <Loading message="Loading billing info..." />;
   if (error) return <ErrorState message={error} onRetry={loadBilling} />;
-  if (!currentPlan && plans.length === 0) return <Empty icon="💳" message="No billing data available" sub="Your subscription information will appear here" />;
+  if (!currentPlan && plans.length === 0) return <Empty icon="ðŸ’³" message="No billing data available" sub="Your subscription information will appear here" />;
 
   return (
     <div>
@@ -57,13 +56,13 @@ export default function Billing() {
             <div style={{ color: "rgba(255,255,255,0.85)", fontSize: isMobile ? 16 : 18, marginBottom: 8 }}>{currentPlan.label}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {currentPlan.features.map((f, i) => (
-                <div key={i} style={{ color: "rgba(255,255,255,0.9)", fontSize: 14 }}>✓ {f}</div>
+                <div key={i} style={{ color: "rgba(255,255,255,0.9)", fontSize: 14 }}>âœ“ {f}</div>
               ))}
             </div>
           </div>
           <div style={{ textAlign: isMobile ? "left" : "right" }}>
             <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, marginBottom: 8 }}>Renews: {currentPlan.renews}</div>
-            {can("billing:update") && <button onClick={() => setUpgradeModal(plans.find(p => !p.current) || plans[0])} style={{ background: "#fff", color: AMBER, border: "none", borderRadius: 24, padding: "12px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Upgrade Plan →</button>}
+            {can("billing:update") && <button onClick={() => setUpgradeModal(plans.find(p => !p.current) || plans[0])} style={{ background: "#fff", color: AMBER, border: "none", borderRadius: 24, padding: "12px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Upgrade Plan â†’</button>}
           </div>
         </div>
       )}
@@ -89,7 +88,7 @@ export default function Billing() {
                 {plans.map(p => (
                   <td key={p.name} style={{ padding: "12px 16px", textAlign: "center", background: p.current ? "#FFF8ED" : "transparent" }}>
                     {typeof p.features[feat] === "boolean"
-                      ? <span style={{ fontSize: 18, color: p.features[feat] ? "#2ECC71" : "#D1D5DB" }}>{p.features[feat] ? "✓" : "✗"}</span>
+                      ? <span style={{ fontSize: 18, color: p.features[feat] ? "#2ECC71" : "#D1D5DB" }}>{p.features[feat] ? "âœ“" : "âœ—"}</span>
                       : <span style={{ fontSize: 14, color: NAVY, fontWeight: 500 }}>{p.features[feat]}</span>}
                   </td>
                 ))}
@@ -120,7 +119,7 @@ export default function Billing() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a"); a.href = url; a.download = "billing-history.csv"; a.click();
             URL.revokeObjectURL(url);
-            showToast("All invoices downloaded!", "success");
+            toast.success("All invoices downloaded!");
           }} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             <Download size={14} /> Download All
           </button>
@@ -139,14 +138,14 @@ export default function Billing() {
                 <td style={{ padding: "12px 14px", fontSize: 14, color: "#374151" }}>{row.date}</td>
                 <td style={{ padding: "12px 14px", fontSize: 14, color: "#374151" }}>{row.desc}</td>
                 <td style={{ padding: "12px 14px", fontSize: 14, fontWeight: 600, color: NAVY }}>{row.amount}</td>
-                <td style={{ padding: "12px 14px" }}><span style={{ background: "#F0FDF4", color: "#065F46", fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 10 }}>{row.status} ✓</span></td>
-                <td style={{ padding: "12px 14px" }}><button onClick={() => { showToast("Invoice downloaded", "success"); }} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, cursor: "pointer", padding: "4px 0" }}>Download</button></td>
+                <td style={{ padding: "12px 14px" }}><span style={{ background: "#F0FDF4", color: "#065F46", fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 10 }}>{row.status} âœ“</span></td>
+                <td style={{ padding: "12px 14px" }}><button onClick={() => { toast.success("Invoice downloaded"); }} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, cursor: "pointer", padding: "4px 0" }}>Download</button></td>
               </tr>
             ))}
           </tbody>
         </table>
         <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 8, padding: 14, marginTop: 16 }}>
-          <div style={{ fontSize: 13, color: "#92400E" }}>ℹ Invoices will appear here once you upgrade to a paid plan.</div>
+          <div style={{ fontSize: 13, color: "#92400E" }}>â„¹ Invoices will appear here once you upgrade to a paid plan.</div>
         </div>
       </div>
 
@@ -156,7 +155,7 @@ export default function Billing() {
           <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "#fff", borderRadius: 20, padding: isMobile ? 24 : 40, width: isMobile ? "92%" : 480, maxWidth: 480, zIndex: 201, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", boxSizing: "border-box", animation: "fadeScaleIn 0.25s ease" }}>
             {payStep === 2 ? (
               <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
+                <div style={{ fontSize: 64, marginBottom: 16 }}>ðŸŽ‰</div>
                 <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24, color: NAVY, marginBottom: 8 }}>Welcome to {upgradeModal.name}!</h3>
                 <p style={{ color: "#6B7280" }}>Your plan has been upgraded. New features are now active.</p>
               </div>
@@ -170,7 +169,7 @@ export default function Billing() {
                 </div>
                 <div style={{ background: "#FFF8ED", borderRadius: 10, padding: 16, marginBottom: 24 }}>
                   <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24, color: AMBER }}>{upgradeModal.label}</div>
-                  <div style={{ fontSize: 13, color: "#92400E", marginTop: 4 }}>Billed monthly · Cancel anytime</div>
+                  <div style={{ fontSize: 13, color: "#92400E", marginTop: 4 }}>Billed monthly Â· Cancel anytime</div>
                 </div>
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>Card Number</label>
@@ -186,8 +185,8 @@ export default function Billing() {
                     <input value={cvv} onChange={e => setCvv(e.target.value.slice(0, 3))} placeholder="123" type="password" style={{ ...inputStyle, borderColor: focusedField === "cvv" ? AMBER : undefined }} onFocus={() => setFocusedField("cvv")} onBlur={() => setFocusedField(null)} />
                   </div>
                 </div>
-                <button onClick={handleUpgrade} style={{ width: "100%", background: AMBER, color: NAVY, border: "none", borderRadius: 28, height: 52, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif", transition: "all 0.2s" }}>{payStep === 1 ? "Processing..." : `Subscribe — ${upgradeModal.label}`}</button>
-                <p style={{ textAlign: "center", fontSize: 12, color: "#9CA3AF", marginTop: 12 }}>🔒 Secured by Paystack · Cancel anytime</p>
+                <button onClick={handleUpgrade} style={{ width: "100%", background: AMBER, color: NAVY, border: "none", borderRadius: 28, height: 52, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif", transition: "all 0.2s" }}>{payStep === 1 ? "Processing..." : `Subscribe â€” ${upgradeModal.label}`}</button>
+                <p style={{ textAlign: "center", fontSize: 12, color: "#9CA3AF", marginTop: 12 }}>ðŸ”’ Secured by Paystack Â· Cancel anytime</p>
               </>
             )}
           </div>

@@ -2,16 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { usePermission } from "../../hooks/usePermission";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, RED, PURPLE, TEAL, cardStyle, inputStyle, labelStyle, btnPrimary, btnSecondary, pageHeading, pageSubtitle, statusBadge, transition } from "../../theme";
 import { Users, Plus, Mail, X, User, Shield, MoreHorizontal, Check, Search, ArrowLeft } from "lucide-react";
-
-const MOCK_TEAM = [
-  { id: 1, name: "You", email: "merchant@example.com", role: "tenant_owner", status: "Active", joined: "Jun 2025", avatar: "Y" },
-  { id: 2, name: "Amina Bello", email: "amina@example.com", role: "business_manager", status: "Active", joined: "Jul 2025", avatar: "A" },
-  { id: 3, name: "Chidi Okafor", email: "chidi@example.com", role: "store_manager", status: "Active", joined: "Aug 2025", avatar: "C" },
-  { id: 4, name: "Fatima Usman", email: "fatima@example.com", role: "sales_staff", status: "Inactive", joined: "Aug 2025", avatar: "F" },
-];
 
 const ROLE_OPTIONS = [
   { value: "tenant_owner", label: "Tenant Owner", color: AMBER },
@@ -35,9 +28,8 @@ function getRoleColor(role) {
 export default function Team() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const showToast = useToast();
   const { can } = usePermission();
-  const [members, setMembers] = useState(MOCK_TEAM);
+  const [members, setMembers] = useState([]);
   const [showInvite, setShowInvite] = useState(false);
   const [search, setSearch] = useState("");
   const [inviteForm, setInviteForm] = useState({ email: "", role: "store_manager" });
@@ -49,7 +41,7 @@ export default function Team() {
   );
 
   const handleInvite = async () => {
-    if (!inviteForm.email.trim()) { showToast("Email is required", "error"); return; }
+    if (!inviteForm.email.trim()) { toast.error("Email is required"); return; }
     setSending(true);
     await new Promise(r => setTimeout(r, 600));
     const newMember = {
@@ -65,18 +57,17 @@ export default function Team() {
     setSending(false);
     setShowInvite(false);
     setInviteForm({ email: "", role: "store_manager" });
-    showToast(`Invitation sent to ${inviteForm.email}`, "success");
+    toast.success(`Invitation sent to ${inviteForm.email}`);
   };
 
   const handleRoleChange = (id, newRole) => {
     setMembers(prev => prev.map(m => m.id === id ? { ...m, role: newRole } : m));
-    showToast("Role updated", "success");
+    toast.success("Role updated");
   };
 
   const handleRemove = (id) => {
-    if (id === 1) { showToast("Cannot remove yourself", "error"); return; }
     setMembers(prev => prev.filter(m => m.id !== id));
-    showToast("Member removed", "success");
+    toast.success("Member removed");
   };
 
   return (

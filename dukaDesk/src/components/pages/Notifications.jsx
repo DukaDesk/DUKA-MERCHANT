@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Check, X, ArrowLeft, AlertCircle, Package, MessageSquare, CreditCard, TrendingUp, Megaphone } from "lucide-react";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import { getNotifications, markNotificationRead, dismissNotification } from "../../services/api";
@@ -22,7 +22,6 @@ function getIcon(type) {
 export default function Notifications() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const showToast = useToast();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
@@ -32,7 +31,7 @@ export default function Notifications() {
     getNotifications().then(list => {
       const sorted = list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       setNotifications(sorted);
-    }).catch(() => showToast("Failed to load notifications", "error"))
+    }).catch(() => toast.error("Failed to load notifications"))
     .finally(() => setLoading(false));
   };
   useEffect(loadNotifications, []);
@@ -45,7 +44,7 @@ export default function Notifications() {
   const handleDismiss = async (id) => {
     await dismissNotification(id);
     setNotifications(prev => prev.filter(n => n.id !== id));
-    showToast("Notification dismissed", "info");
+    toast.info("Notification dismissed");
   };
 
   const filtered = filter === "All" ? notifications : filter === "Unread" ? notifications.filter(n => !n.read) : notifications;
@@ -81,7 +80,7 @@ export default function Notifications() {
       </div>
 
       {filtered.length === 0 ? (
-        <Empty icon="🔔" message={filter === "Unread" ? "No unread notifications" : "No notifications yet"} sub="Important alerts and updates will appear here" />
+        <Empty icon="ðŸ””" message={filter === "Unread" ? "No unread notifications" : "No notifications yet"} sub="Important alerts and updates will appear here" />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {filtered.map((n, i) => {

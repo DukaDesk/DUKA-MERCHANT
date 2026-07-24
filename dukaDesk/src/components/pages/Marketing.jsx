@@ -2,34 +2,23 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, X, ArrowLeft, Tag, Percent, Calendar, Users, Bell, Edit3 } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, RED, PURPLE, TEAL, cardStyle, inputStyle, labelStyle, btnPrimary, btnSecondary, statCard, pageHeading, pageSubtitle, transition } from "../../theme";
-
-const MOCK_COUPONS = [
-  { id: 1, code: "WELCOME10", type: "percentage", value: 10, usage: 45, maxUsage: 100, minOrder: 2000, expires: "2026-09-30", status: "Active" },
-  { id: 2, code: "FREESHIP", type: "fixed", value: 500, usage: 23, maxUsage: 50, minOrder: 3000, expires: "2026-08-15", status: "Active" },
-  { id: 3, code: "SUMMER25", type: "percentage", value: 25, usage: 12, maxUsage: 200, minOrder: 5000, expires: "2026-07-25", status: "Active" },
-  { id: 4, code: "HALFPRICE", type: "percentage", value: 50, usage: 0, maxUsage: 10, minOrder: 10000, expires: "2026-07-01", status: "Expired" },
-];
-
-const MOCK_CAMPAIGNS = [
-  { id: 1, name: "Weekend Special", type: "push", audience: "All Customers", sent: 1240, opened: 380, status: "Sent", date: "Jul 18" },
-  { id: 2, name: "New Menu Launch", type: "push", audience: "Active Customers", sent: 860, opened: 290, status: "Scheduled", date: "Jul 25" },
-  { id: 3, name: "Loyalty Rewards", type: "sms", audience: "VIP Customers", sent: 120, opened: 85, status: "Draft", date: "-" },
-];
 
 export default function Marketing() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const showToast = useToast();
   const [tab, setTab] = useState("coupons");
+  const [coupons, setCoupons] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ code: "", type: "percentage", value: "", minOrder: "", maxUsage: "", expires: "" });
 
   const handleCreate = async () => {
-    if (!form.code || !form.value) { showToast("Code and value are required", "error"); return; }
+    if (!form.code || !form.value) { toast.error("Code and value are required"); return; }
     await new Promise(r => setTimeout(r, 400));
-    showToast(`Coupon "${form.code}" created!`, "success");
+    setCoupons(prev => [...prev, { id: Date.now(), code: form.code, type: form.type, value: Number(form.value), usage: 0, maxUsage: Number(form.maxUsage) || 100, minOrder: Number(form.minOrder) || 0, expires: form.expires || "2026-12-31", status: "Active" }]);
+    toast.success(`Coupon "${form.code}" created!`);
     setShowCreate(false);
     setForm({ code: "", type: "percentage", value: "", minOrder: "", maxUsage: "", expires: "" });
   };
@@ -66,7 +55,7 @@ export default function Marketing() {
           </div>
 
           <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
-            {MOCK_COUPONS.length === 0 ? (
+            {coupons.length === 0 ? (
               <div style={{ padding: 60, textAlign: "center", color: "#9CA3AF" }}>
                 <Tag size={32} style={{ marginBottom: 8, opacity: 0.5 }} />
                 <div style={{ fontSize: 14 }}>No coupons yet</div>
@@ -82,7 +71,7 @@ export default function Marketing() {
                     </tr>
                   </thead>
                   <tbody>
-                    {MOCK_COUPONS.map((c, i) => (
+                    {coupons.map((c, i) => (
                       <tr key={c.id} style={{ borderBottom: "1px solid #F3F4F6", animation: `fadeIn 0.2s ease ${i * 0.05}s both` }}>
                         <td style={{ padding: "12px 16px" }}>
                           <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 13, color: NAVY, background: "#FFF8ED", padding: "3px 8px", borderRadius: 4 }}>{c.code}</span>
@@ -123,7 +112,7 @@ export default function Marketing() {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_CAMPAIGNS.map((c, i) => (
+                {campaigns.map((c, i) => (
                   <tr key={c.id} style={{ borderBottom: "1px solid #F3F4F6", animation: `fadeIn 0.2s ease ${i * 0.05}s both` }}>
                     <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: NAVY }}>{c.name}</td>
                     <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280", textTransform: "capitalize" }}>{c.type}</td>

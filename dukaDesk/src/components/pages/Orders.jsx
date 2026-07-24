@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, X, Download, Eye, Package, Printer } from "lucide-react";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { usePermission } from "../../hooks/usePermission";
 import { NAVY, AMBER, cardStyle, statusBadge, glidePanel } from "../../theme";
@@ -11,7 +11,6 @@ const nextStatus = { Pending: "Processing", Processing: "Completed" };
 const tabs = ["All", "Pending", "Processing", "Completed", "Cancelled"];
 
 export default function Orders() {
-  const showToast = useToast();
   const isMobile = useIsMobile();
   const { can } = usePermission();
   const [orders, setOrders] = useState([]);
@@ -38,9 +37,9 @@ export default function Orders() {
     try {
       await updateOrderStatus(id, status);
       setOrders(o => o.map(x => x.id === id ? { ...x, status } : x));
-      showToast(`Order ${id} updated to ${status}`, "success");
+      toast.success(`Order ${id} updated to ${status}`);
       if (detail?.id === id) setDetail(d => ({ ...d, status }));
-    } catch { showToast("Failed to update order", "error"); }
+    } catch { toast.error("Failed to update order"); }
   };
 
   const printInvoice = (order) => {
@@ -75,11 +74,11 @@ export default function Orders() {
         <div class="row"><span class="label">Date</span><span>${order.date}</span></div>
         <hr class="divider" />
         <div class="row"><span class="label">Items</span><span>${order.items}</span></div>
-        <div class="row"><span class="label">Subtotal</span><span>₦${subtotal.toLocaleString()}</span></div>
-        <div class="row"><span class="label">Delivery</span><span>₦500</span></div>
-        <div class="row total"><span>Total</span><span>₦${total.toLocaleString()}</span></div>
+        <div class="row"><span class="label">Subtotal</span><span>â‚¦${subtotal.toLocaleString()}</span></div>
+        <div class="row"><span class="label">Delivery</span><span>â‚¦500</span></div>
+        <div class="row total"><span>Total</span><span>â‚¦${total.toLocaleString()}</span></div>
         <div class="footer">
-          <p>DukaDesk — https://dukadesk.app</p>
+          <p>DukaDesk â€” https://dukadesk.app</p>
           <p>Thank you for your order!</p>
         </div>
         <script>window.print();window.close();</script>
@@ -92,7 +91,7 @@ export default function Orders() {
   if (error) return <ErrorState message={error} onRetry={loadOrders} />;
 
   const orderStats = [
-    { label: "Today", value: `${orders.length} orders`, sub: `₦${orders.reduce((a,o) => a+o.total,0).toLocaleString()}`, color: NAVY },
+    { label: "Today", value: `${orders.length} orders`, sub: `â‚¦${orders.reduce((a,o) => a+o.total,0).toLocaleString()}`, color: NAVY },
     { label: "Pending", value: orders.filter(o=>o.status==="Pending").length, sub: "Needs action", color: AMBER },
     { label: "Processing", value: orders.filter(o=>o.status==="Processing").length, sub: "In progress", color: "#3B82F6" },
     { label: "Completed", value: orders.filter(o=>o.status==="Completed").length, sub: "This month", color: "#2ECC71" },
@@ -105,7 +104,7 @@ export default function Orders() {
           <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: NAVY, margin: 0 }}>Orders</h2>
           <div style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>Track and manage customer orders</div>
         </div>
-        <button onClick={() => showToast("Export started", "success")} style={{ border: "1.5px solid var(--border)", background: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={() => toast.success("Export started")} style={{ border: "1.5px solid var(--border)", background: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
           <Download size={16} /> Export
         </button>
       </div>
@@ -162,7 +161,7 @@ export default function Orders() {
                       </div>
                     </td>
                     <td style={{ padding: "14px 16px", fontSize: 13, color: "#6B7280", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.items}</td>
-                    <td style={{ padding: "14px 16px", fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: AMBER }}>₦{o.total.toLocaleString()}</td>
+                    <td style={{ padding: "14px 16px", fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: AMBER }}>â‚¦{o.total.toLocaleString()}</td>
                     <td style={{ padding: "14px 16px", fontSize: 13, color: "#6B7280" }}>{o.payment}</td>
                     <td style={{ padding: "14px 16px" }}>
                       <span style={{ background: ss.bg, color: ss.color, fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8 }}>{o.status}</span>
@@ -199,7 +198,7 @@ export default function Orders() {
                   <div style={{ width: 44, height: 44, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: NAVY, fontSize: 16 }}>{(detail.customer || "?")[0]}</div>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 15, color: NAVY }}>{detail.customer}</div>
-                    <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>📍 {detail.address}</div>
+                    <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>ðŸ“ {detail.address}</div>
                   </div>
                 </div>
               </div>
@@ -210,18 +209,18 @@ export default function Orders() {
               <div style={{ background: "#FFF8ED", borderRadius: 12, padding: 16, marginBottom: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <span style={{ color: "#6B7280", fontSize: 13 }}>Subtotal</span>
-                  <span style={{ fontSize: 13 }}>₦{(detail.total - 500).toLocaleString()}</span>
+                  <span style={{ fontSize: 13 }}>â‚¦{(detail.total - 500).toLocaleString()}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #E8E8F0" }}>
                   <span style={{ color: "#6B7280", fontSize: 13 }}>Delivery</span>
-                  <span style={{ fontSize: 13 }}>₦500</span>
+                  <span style={{ fontSize: 13 }}>â‚¦500</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontWeight: 700, color: NAVY }}>Total</span>
-                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>₦{detail.total.toLocaleString()}</span>
+                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>â‚¦{detail.total.toLocaleString()}</span>
                 </div>
               </div>
-              <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Paid via {detail.payment} · {detail.date}</div>
+              <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Paid via {detail.payment} Â· {detail.date}</div>
               <div style={{ fontWeight: 600, fontSize: 14, color: NAVY, marginBottom: 12 }}>Order Timeline</div>
               {["Order placed", "Accepted", "Preparing", "Ready", "Delivered"].map((step, i) => {
                 const doneSteps = { Pending: 0, Processing: 1, Completed: 4, Cancelled: 0 };
@@ -230,7 +229,7 @@ export default function Orders() {
                 return (
                   <div key={i} style={{ display: "flex", gap: 12, position: "relative", paddingBottom: 12 }}>
                     {!isLast && <div style={{ position: "absolute", left: 10, top: 22, width: 2, height: "calc(100% - 12px)", background: done ? "#2ECC71" : "#E8E8F0" }} />}
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? "#2ECC71" : "#E8E8F0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: done ? "#fff" : "#9CA3AF", marginTop: 0, zIndex: 1 }}>{done ? "✓" : "○"}</div>
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? "#2ECC71" : "#E8E8F0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: done ? "#fff" : "#9CA3AF", marginTop: 0, zIndex: 1 }}>{done ? "âœ“" : "â—‹"}</div>
                     <div style={{ fontSize: 13, color: done ? NAVY : "#9CA3AF", fontWeight: done ? 500 : 400, paddingTop: 2 }}>{step}</div>
                   </div>
                 );
@@ -238,7 +237,7 @@ export default function Orders() {
             </div>
             <div style={{ padding: 24, borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", gap: 10 }}>
-                {can("order:update") && nextStatus[detail.status] && <button onClick={() => updateStatus(detail.id, nextStatus[detail.status])} style={{ flex: 1, background: "#2ECC71", color: "#fff", border: "none", borderRadius: 10, height: 48, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Accept Order →</button>}
+                {can("order:update") && nextStatus[detail.status] && <button onClick={() => updateStatus(detail.id, nextStatus[detail.status])} style={{ flex: 1, background: "#2ECC71", color: "#fff", border: "none", borderRadius: 10, height: 48, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Accept Order â†’</button>}
                 <button onClick={() => printInvoice(detail)} style={{ background: "none", border: "1.5px solid var(--border)", borderRadius: 10, height: 48, padding: "0 16px", fontSize: 14, cursor: "pointer", color: "#6B7280", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                   <Printer size={16} /> Print
                 </button>

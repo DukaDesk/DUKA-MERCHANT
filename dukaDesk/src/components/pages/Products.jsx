@@ -1,17 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, Plus, X, Upload, Trash2 } from "lucide-react";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { usePermission } from "../../hooks/usePermission";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, statusBadge, glidePanel, rowHover } from "../../theme";
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../../services/api";
 import { Loading, Empty, ErrorState } from "../layout/States";
 
-const EMOJI_GRID = ["🍛", "🍗", "🐟", "🥣", "🥤", "🍩", "🍕", "🥗", "🍔", "🍜", "🍦", "🥘"];
+const EMOJI_GRID = ["ðŸ›", "ðŸ—", "ðŸŸ", "ðŸ¥£", "ðŸ¥¤", "ðŸ©", "ðŸ•", "ðŸ¥—", "ðŸ”", "ðŸœ", "ðŸ¦", "ðŸ¥˜"];
 const STATUS_OPTS = ["In Stock", "Low Stock", "Out of Stock"];
 
 export default function Products() {
-  const showToast = useToast();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { can } = usePermission();
@@ -19,7 +18,7 @@ export default function Products() {
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [panel, setPanel] = useState(null);
-  const [form, setForm] = useState({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "🍛" });
+  const [form, setForm] = useState({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "ðŸ›" });
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,25 +39,25 @@ export default function Products() {
 
   const toggleSelect = (id) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
   const deleteSelected = async () => {
-    await Promise.all(selected.map(id => deleteProduct(id).catch(() => showToast("Failed to delete some products", "error"))));
+    await Promise.all(selected.map(id => deleteProduct(id).catch(() => toast.error("Failed to delete some products"))));
     setProducts(p => p.filter(x => !selected.includes(x.id)));
     setSelected([]);
-    showToast(`${selected.length} product(s) deleted`, "info");
+    toast.info(`${selected.length} product(s) deleted`);
   };
 
   const saveProduct = async () => {
-    if (!form.name || !form.price) { showToast("Name and price are required", "error"); return; }
+    if (!form.name || !form.price) { toast.error("Name and price are required"); return; }
     try {
       if (panel?.id) {
         await updateProduct(panel.id, { ...form, price: Number(form.price), stock: Number(form.stock) || 0 });
         setProducts(p => p.map(x => x.id === panel.id ? { ...x, ...form, price: Number(form.price), stock: Number(form.stock) || 0 } : x));
-        showToast("Product updated!", "success");
+        toast.success("Product updated!");
       } else {
         const created = await createProduct({ ...form, price: Number(form.price), stock: Number(form.stock) || 0 });
         setProducts(p => [...p, created]);
-        showToast("Product added!", "success");
+        toast.success("Product added!");
       }
-    } catch { showToast("Failed to save product", "error"); }
+    } catch { toast.error("Failed to save product"); }
     setPanel(null);
   };
 
@@ -70,11 +69,11 @@ export default function Products() {
     reader.onload = async (evt) => {
       const text = evt.target.result;
       const lines = text.split("\n").filter(Boolean);
-      if (lines.length < 2) { showToast("CSV must have a header row and at least one product", "error"); return; }
+      if (lines.length < 2) { toast.error("CSV must have a header row and at least one product"); return; }
       const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
       const nameIdx = headers.indexOf("name");
       const priceIdx = headers.indexOf("price");
-      if (nameIdx < 0 || priceIdx < 0) { showToast("CSV must have 'name' and 'price' columns", "error"); return; }
+      if (nameIdx < 0 || priceIdx < 0) { toast.error("CSV must have 'name' and 'price' columns"); return; }
       let imported = 0;
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
@@ -84,7 +83,7 @@ export default function Products() {
           cat: cols[headers.indexOf("category")] || "",
           stock: Number(cols[headers.indexOf("stock")]) || 0,
           status: cols[headers.indexOf("status")] || "In Stock",
-          img: cols[headers.indexOf("emoji")] || "🍛",
+          img: cols[headers.indexOf("emoji")] || "ðŸ›",
         };
         try {
           const created = await createProduct(p);
@@ -92,7 +91,7 @@ export default function Products() {
           imported++;
         } catch { /* skip row */ }
       }
-      showToast(`${imported} product(s) imported from CSV`, "success");
+      toast.success(`${imported} product(s) imported from CSV`);
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -103,7 +102,7 @@ export default function Products() {
     setPanel(p);
   };
   const openAdd = () => {
-    setForm({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "🍛" });
+    setForm({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "ðŸ›" });
     setPanel("add");
   };
 
@@ -115,7 +114,7 @@ export default function Products() {
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", gap: 12, marginBottom: 20 }}>
         <div>
           <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: 0 }}>Products</h2>
-          <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>{products.length} total · {products.filter(p => p.status === "Low Stock").length} low stock · {products.filter(p => p.status === "Out of Stock").length} out of stock</div>
+          <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>{products.length} total Â· {products.filter(p => p.status === "Low Stock").length} low stock Â· {products.filter(p => p.status === "Out of Stock").length} out of stock</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           {can("product:create") && <>
@@ -162,7 +161,7 @@ export default function Products() {
       </div>
 
       {filtered.length === 0 ? (
-        <Empty icon={products.length === 0 ? "📦" : "🔍"} message={products.length === 0 ? "No products yet" : "No products match your filter"}
+        <Empty icon={products.length === 0 ? "ðŸ“¦" : "ðŸ”"} message={products.length === 0 ? "No products yet" : "No products match your filter"}
           sub={products.length === 0 ? "Click 'Add Product' to get started" : "Try a different filter or search term"}
           action={products.length === 0 ? <button onClick={openAdd} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Add Product</button> : null}
         />
@@ -182,14 +181,14 @@ export default function Products() {
                   <div style={{ fontWeight: 600, fontSize: 15, color: NAVY, marginBottom: 4 }}>{p.name}</div>
                   <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 8 }}>{p.cat}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>₦{p.price.toLocaleString()}</span>
-                    {p.oldPrice && <span style={{ fontSize: 13, color: "#9CA3AF", textDecoration: "line-through" }}>₦{p.oldPrice.toLocaleString()}</span>}
+                    <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>â‚¦{p.price.toLocaleString()}</span>
+                    {p.oldPrice && <span style={{ fontSize: 13, color: "#9CA3AF", textDecoration: "line-through" }}>â‚¦{p.oldPrice.toLocaleString()}</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: "#6B7280" }}>📦 {p.stock} in stock</div>
+                  <div style={{ fontSize: 12, color: "#6B7280" }}>ðŸ“¦ {p.stock} in stock</div>
                 </div>
                 <div style={{ padding: "10px 16px", borderTop: "1px solid #F3F4F6", display: "flex", gap: 12 }}>
                   {can("product:update") && <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "4px 0" }}>Edit</button>}
-                  {can("product:delete") && <button onClick={async () => { try { await deleteProduct(p.id); setProducts(pr => pr.filter(x => x.id !== p.id)); showToast("Product deleted", "info"); } catch { showToast("Failed to delete", "error"); } }} style={{ background: "none", border: "none", color: "#E74C3C", fontSize: 13, cursor: "pointer", padding: "4px 0" }}>Delete</button>}
+                  {can("product:delete") && <button onClick={async () => { try { await deleteProduct(p.id); setProducts(pr => pr.filter(x => x.id !== p.id)); toast.info("Product deleted"); } catch { toast.error("Failed to delete"); } }} style={{ background: "none", border: "none", color: "#E74C3C", fontSize: 13, cursor: "pointer", padding: "4px 0" }}>Delete</button>}
                 </div>
               </div>
             );
@@ -212,7 +211,7 @@ export default function Products() {
               <button onClick={() => setPanel(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}><X size={22} /></button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
-              {[["Product Name *", "name", "text", "Jollof Rice & Chicken"], ["Category", "cat", "text", "Mains"], ["Price (₦) *", "price", "number", "2500"], ["Stock Quantity", "stock", "number", "10"]].map(([label, key, type, ph]) => (
+              {[["Product Name *", "name", "text", "Jollof Rice & Chicken"], ["Category", "cat", "text", "Mains"], ["Price (â‚¦) *", "price", "number", "2500"], ["Stock Quantity", "stock", "number", "10"]].map(([label, key, type, ph]) => (
                 <div key={key} style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>{label}</label>
                   <input type={type} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={ph} style={inputStyle} />

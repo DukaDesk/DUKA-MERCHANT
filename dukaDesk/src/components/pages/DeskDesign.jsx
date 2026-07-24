@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { setSetupData, getSetupData, deployApp, getMerchant } from "../../services/api";
 import { Store, ArrowRight, CheckCircle, Sparkles } from "lucide-react";
 import TemplateGallery from "../app-builder/TemplateGallery";
@@ -10,7 +10,6 @@ import TemplateGallery from "../app-builder/TemplateGallery";
 export default function DeskDesign() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const showToast = useToast();
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
@@ -20,7 +19,7 @@ export default function DeskDesign() {
   const handleSelect = (templateName) => setSelected(templateName);
 
   const handleApply = async () => {
-    if (!selected) { showToast("Please select a template first", "error"); return; }
+    if (!selected) { toast.error("Please select a template first"); return; }
     setSaving(true);
     try {
       const merchant = getMerchant();
@@ -40,9 +39,9 @@ export default function DeskDesign() {
       await deployApp(appData);
       setSetupData({ ...saved, template: tmpl, category: appData.category });
       setDone(true);
-      showToast("Template applied! Your app is live.", "success");
+      toast.success("Template applied! Your app is live.");
     } catch {
-      showToast("Failed to apply template", "error");
+      toast.error("Failed to apply template");
     } finally {
       setSaving(false);
     }
@@ -58,7 +57,7 @@ export default function DeskDesign() {
         <p style={{ color: "#6B7280", fontSize: 15, marginBottom: 28 }}>Your app is live. Customize it further in Canvas Editor or manage it from your dashboard.</p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            Open Canvas Editor →
+            Open Canvas Editor â†’
           </button>
           <button onClick={() => navigate("/dashboard")} style={{ background: "#fff", color: NAVY, border: "1.5px solid #E8E8F0", borderRadius: 10, padding: "12px 28px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
             Go to Dashboard
@@ -93,7 +92,7 @@ export default function DeskDesign() {
             cursor: saving ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 6,
             fontFamily: "'Sora',sans-serif",
           }}>
-            <Store size={16} /> {saving ? "Applying..." : "Apply Template →"}
+            <Store size={16} /> {saving ? "Applying..." : "Apply Template â†’"}
           </button>
         </div>
       )}

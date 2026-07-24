@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, X, Send, Paperclip, ChevronLeft, AlertTriangle } from "lucide-react";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle } from "../../theme";
 import { getConversations, getMessages, sendMessage } from "../../services/api";
-import { MESSAGE_REPORT_REASONS } from "../../services/mockData";
+import { MESSAGE_REPORT_REASONS } from "../../config/messages";
 import { Loading, Empty, ErrorState } from "../layout/States";
 
 export default function Messages() {
-  const showToast = useToast();
   const isMobile = useIsMobile();
   const [conversations, setConversations] = useState([]);
   const [active, setActive] = useState(null);
@@ -36,7 +35,7 @@ export default function Messages() {
   useEffect(() => {
     if (!active) return;
     if (!messages[active.id]) {
-      getMessages(active.id).then(msgs => setMessages(m => ({ ...m, [active.id]: msgs }))).catch(() => showToast("Failed to load messages", "error"));
+      getMessages(active.id).then(msgs => setMessages(m => ({ ...m, [active.id]: msgs }))).catch(() => toast.error("Failed to load messages"));
     }
   }, [active?.id]);
 
@@ -47,13 +46,13 @@ export default function Messages() {
     setText("");
     try {
       await sendMessage(active.id, text);
-    } catch { showToast("Failed to send message", "error"); }
+    } catch { toast.error("Failed to send message"); }
   };
 
   const submitReport = () => {
-    if (!reportReason) { showToast("Please select a reason", "error"); return; }
+    if (!reportReason) { toast.error("Please select a reason"); return; }
     setReportOpen(false);
-    showToast("Report submitted. Our team will review within 24 hours.", "success");
+    toast.success("Report submitted. Our team will review within 24 hours.");
     setReportReason("");
     setReportDetails("");
   };
@@ -63,7 +62,7 @@ export default function Messages() {
 
   if (convLoading) return <Loading message="Loading messages..." />;
   if (convError) return <ErrorState message={convError} onRetry={loadConversations} />;
-  if (conversations.length === 0) return <Empty icon="💬" message="No conversations yet" sub="Messages from customers will appear here" />;
+  if (conversations.length === 0) return <Empty icon="ðŸ’¬" message="No conversations yet" sub="Messages from customers will appear here" />;
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "300px 1fr 280px", height: isMobile ? "calc(100vh - 120px)" : "calc(100vh - 128px)", background: "#fff", borderRadius: 12, overflow: "hidden", border: "1px solid #E8E8F0", boxShadow: "0 1px 3px rgba(15,15,26,0.06)" }}>
@@ -119,7 +118,7 @@ export default function Messages() {
               <div style={{ width: 40, height: 40, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: NAVY }}>{(active.name || "?")[0]}</div>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 15, color: NAVY }}>{active.name}</div>
-                <div style={{ fontSize: 12, color: "#6B7280" }}>Customer · {active.orders} orders</div>
+                <div style={{ fontSize: 12, color: "#6B7280" }}>Customer Â· {active.orders} orders</div>
               </div>
               <button onClick={() => setReportOpen(true)} style={{ marginLeft: "auto", background: "#FEE2E2", color: "#E74C3C", border: "1px solid #FECACA", borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                 <AlertTriangle size={12} /> Report
@@ -140,7 +139,7 @@ export default function Messages() {
             </div>
 
             <div style={{ padding: "12px 20px", borderTop: "1px solid #E8E8F0", display: "flex", gap: 10, alignItems: "center" }}>
-              <input type="file" ref={fileRef} accept="image/*,.pdf,.doc,.docx" onChange={() => showToast("File attached!", "success")} style={{ display: "none" }} />
+              <input type="file" ref={fileRef} accept="image/*,.pdf,.doc,.docx" onChange={() => toast.success("File attached!")} style={{ display: "none" }} />
               <button onClick={() => fileRef.current?.click()} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", display: "flex", padding: 4 }}>
                 <Paperclip size={20} />
               </button>
@@ -161,7 +160,7 @@ export default function Messages() {
               </div>
               <div style={{ background: "#F9FAFB", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                 {[
-                  { label: "Total Spent", value: `₦${active.spent.toLocaleString()}` },
+                  { label: "Total Spent", value: `â‚¦${active.spent.toLocaleString()}` },
                   { label: "Orders", value: active.orders },
                   { label: "Customer Since", value: "May 2025" },
                 ].map((r, i) => (
@@ -172,11 +171,11 @@ export default function Messages() {
                 ))}
               </div>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Recent Orders</div>
-              {[{ id: "DD-2041", total: "₦7,000", status: "Completed" }, { id: "DD-2038", total: "₦3,500", status: "Completed" }].map((o, i) => (
+              {[{ id: "DD-2041", total: "â‚¦7,000", status: "Completed" }, { id: "DD-2038", total: "â‚¦3,500", status: "Completed" }].map((o, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #F3F4F6", fontSize: 13 }}>
                   <span style={{ color: AMBER, fontWeight: 600, fontFamily: "'JetBrains Mono',monospace" }}>{o.id}</span>
                   <span style={{ color: "#6B7280" }}>{o.total}</span>
-                  <span style={{ color: "#2ECC71" }}>✓</span>
+                  <span style={{ color: "#2ECC71" }}>âœ“</span>
                 </div>
               ))}
             </div>

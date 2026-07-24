@@ -7,9 +7,9 @@ import {
   WIZARD_INTEGRATIONS,
   WIZARD_COLORS,
   WIZARD_DAYS,
-  INTEGRATION_BADGE_COLORS,
   getTemplateIntegrationNames,
-} from "../../services/mockData";
+} from "../../config/wizard";
+import { INTEGRATION_BADGE_COLORS } from "../../config/integrations";
 import TemplateGallery from "./TemplateGallery";
 
 const SETUP_STEPS = ["Gallery", "Branding", "Business Info", "Integrations"];

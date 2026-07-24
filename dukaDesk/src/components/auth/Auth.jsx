@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft, KeyRound, AlertCircle, AlertTriangle, CheckCircle } from "lucide-react";
 import PropTypes from "prop-types";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, RED, PURPLE, inputStyle, labelStyle } from "../../theme";
 import { login, signup, forgotPassword, confirmPasswordReset, setToken } from "../../services/api";
 
@@ -353,7 +353,6 @@ function ResetPasswordForm({ token, setPage }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const showToast = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -369,7 +368,7 @@ function ResetPasswordForm({ token, setPage }) {
     try {
       await confirmPasswordReset({ token: token || "", otp, password });
       setSuccess(true);
-      showToast("Password reset successful!", "success");
+      toast.success("Password reset successful!");
     } catch (err) {
       setError(err.message || "Reset failed. The link may have expired.");
     } finally { setLoading(false); }
@@ -469,10 +468,9 @@ function PrimaryBtn({ children, loading, onClick, type = "submit" }) {
 PrimaryBtn.propTypes = { children: PropTypes.node.isRequired, loading: PropTypes.bool, onClick: PropTypes.func, type: PropTypes.string };
 
 function SocialBtn({ icon, provider, disabled }) {
-  const showToast = useToast();
   const handleClick = () => {
     if (disabled) return;
-    showToast(`${provider} sign-in coming soon`, "info");
+    toast.info(`${provider} sign-in coming soon`);
   };
   return (
     <button onClick={handleClick} disabled={disabled} style={{ width: "100%", height: 50, borderRadius: 10, border: disabled ? "1.5px solid #E8E8F0" : "1.5px solid #D1D5DB", background: disabled ? "#fff" : "#F9FAFB", fontSize: 14, color: disabled ? NAVY : "#9CA3AF", cursor: disabled ? "pointer" : "not-allowed", fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s", opacity: disabled ? 1 : 0.6 }}>

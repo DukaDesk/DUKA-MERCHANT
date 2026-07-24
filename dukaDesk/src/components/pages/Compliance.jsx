@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
-import { useToast } from "../../contexts";
-import { getMerchant, setSetupData, getSetupData, updateTenant } from "../../services/api";
+import { toast } from "react-toastify";
+import { getMerchant, submitCompliance, getComplianceStatus } from "../../services/api";
 import { Store, Building2, FileText, CheckCircle, ArrowLeft, ArrowRight, Upload, X, ShieldCheck } from "lucide-react";
 
 const STEPS = [
@@ -15,32 +15,37 @@ const STEPS = [
 export default function Compliance() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const showToast = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const saved = getSetupData() || {};
   const [form, setForm] = useState({
-    businessName: saved.businessName || "",
-    regNumber: saved.regNumber || "",
-    taxId: saved.taxId || "",
-    address: saved.address || "",
-    city: saved.city || "",
-    state: saved.state || "",
-    country: saved.country || "Nigeria",
-    phone: saved.phone || "",
-    website: saved.website || "",
-    businessType: saved.businessType || "",
-    idDoc: saved.idDoc || null,
-    bizDoc: saved.bizDoc || null,
-    utrDoc: saved.utrDoc || null,
+    businessName: "",
+    regNumber: "",
+    taxId: "",
+    address: "",
+    city: "",
+    state: "",
+    country: "Nigeria",
+    phone: "",
+    website: "",
+    businessType: "",
+    idDoc: null,
+    bizDoc: null,
+    utrDoc: null,
   });
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (getSetupData()?.complianceDone) {
-      setDone(true);
+    const merchant = getMerchant();
+    if (merchant?.tenantId) {
+      getComplianceStatus(merchant.tenantId).then(status => {
+        setDone(status);
+        setLoading(false);
+      }).catch(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
   }, []);
 
@@ -76,18 +81,15 @@ export default function Compliance() {
     setSaving(true);
     try {
       const merchant = getMerchant();
-      if (merchant?.tenantId) {
-        await updateTenant(merchant.tenantId, {
-          name: form.businessName,
-          phone: form.phone,
-          address: `${form.address}, ${form.city}, ${form.state}, ${form.country}`,
-        }).catch(() => {});
+      if (!merchant?.tenantId) {
+        toast.error("No tenant found. Please sign up first.");
+        return;
       }
-      setSetupData({ ...form, complianceDone: true });
-      showToast("Compliance submitted! Now pick a template.", "success");
+      await submitCompliance(merchant.tenantId, form);
+      toast.success("Compliance submitted! Now pick a template.");
       navigate("/desk-design");
     } catch {
-      showToast("Failed to save compliance data", "error");
+      toast.error("Failed to save compliance data");
     } finally {
       setSaving(false);
     }
@@ -97,7 +99,7 @@ export default function Compliance() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      showToast("File too large. Max 5MB.", "error");
+      toast.error("File too large. Max 5MB.");
       return;
     }
     const reader = new FileReader();

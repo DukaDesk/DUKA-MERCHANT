@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Lock, Store } from "lucide-react";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import { getIntegrations, toggleIntegration, getMyApp } from "../../services/api";
-import { INTEGRATION_BADGE_COLORS, getTemplateIntegrationNames } from "../../services/mockData";
+import { INTEGRATION_BADGE_COLORS } from "../../config/integrations";
+import { getTemplateIntegrationNames } from "../../config/wizard";
 import { Loading, Empty, ErrorState } from "../layout/States";
 import IntegrationConfigPanel from "./IntegrationConfigPanel";
 
 const badgeStyle = INTEGRATION_BADGE_COLORS;
 
 export default function Integrations() {
-  const showToast = useToast();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [integrations, setIntegrations] = useState([]);
@@ -51,7 +51,7 @@ export default function Integrations() {
 
   const toggle = async (catIdx, itemIdx) => {
     const item = integrations[catIdx].items[itemIdx];
-    if (item.locked) { showToast("Upgrade to Growth plan to unlock Premium integrations", "info"); return; }
+    if (item.locked) { toast.info("Upgrade to Growth plan to unlock Premium integrations"); return; }
     try {
       await toggleIntegration(item.name);
       setIntegrations(prev => prev.map((cat, ci) =>
@@ -62,8 +62,8 @@ export default function Integrations() {
           ),
         }
       ));
-      showToast(item.active ? `${item.name} removed` : `${item.name} added to your app!`, item.active ? "info" : "success");
-    } catch { showToast("Failed to toggle integration", "error"); }
+      item.active ? toast.info(`${item.name} removed`) : toast.success(`${item.name} added to your app!`);
+    } catch { toast.error("Failed to toggle integration"); }
   };
 
   const activeItems = integrations.flatMap(cat => cat.items.filter(i => i.active));
@@ -72,7 +72,7 @@ export default function Integrations() {
 
   if (loading) return <Loading message="Loading integrations..." />;
   if (error) return <ErrorState message={error} onRetry={loadIntegrations} />;
-  if (integrations.length === 0) return <Empty icon="🔌" message="No integrations available" sub="Integration categories will appear here" />;
+  if (integrations.length === 0) return <Empty icon="ðŸ”Œ" message="No integrations available" sub="Integration categories will appear here" />;
 
   return (
     <div style={{ position: "relative" }}>
@@ -111,7 +111,7 @@ export default function Integrations() {
               <span style={{ fontSize: 28 }}>{item.icon}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>{item.name}</div>
-                <div style={{ fontSize: 12, color: "#2ECC71", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Connected ✓ {item.stat ? `— ${item.stat}` : ""}</div>
+                <div style={{ fontSize: 12, color: "#2ECC71", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Connected âœ“ {item.stat ? `â€” ${item.stat}` : ""}</div>
               </div>
               <button onClick={() => setConfigPanel(item)} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", marginRight: 8, flexShrink: 0 }}>Configure</button>
               <button onClick={() => setRemoveConfirm(item)} style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: 13, cursor: "pointer", flexShrink: 0 }}>Remove</button>
@@ -148,12 +148,12 @@ export default function Integrations() {
                       <div style={{ fontWeight: 600, fontSize: 14, color: NAVY, marginBottom: 4 }}>{item.name}</div>
                       <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 12, lineHeight: 1.4 }}>{item.desc}</div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); item.locked ? showToast("Upgrade to Growth plan to unlock", "info") : toggle(catIdx, itemIdx); }}
+                        onClick={(e) => { e.stopPropagation(); item.locked ? toast.info("Upgrade to Growth plan to unlock") : toggle(catIdx, itemIdx); }}
                         style={{ width: "100%", background: item.active ? "#2ECC71" : item.locked ? "#E5E7EB" : AMBER, color: item.active ? "#fff" : item.locked ? "#9CA3AF" : NAVY, border: "none", borderRadius: 20, padding: "8px 0", fontSize: 13, fontWeight: 600, cursor: item.locked ? "not-allowed" : "pointer" }}
                       >
-                        {item.active ? "✓ Added" : item.locked ? "🔒 Upgrade to Unlock" : "Add to App →"}
+                        {item.active ? "âœ“ Added" : item.locked ? "ðŸ”’ Upgrade to Unlock" : "Add to App â†’"}
                       </button>
-                      {item.active && <div style={{ fontSize: 11, color: AMBER, fontWeight: 600, marginTop: 8, textAlign: "center" }}>Click card for details →</div>}
+                      {item.active && <div style={{ fontSize: 11, color: AMBER, fontWeight: 600, marginTop: 8, textAlign: "center" }}>Click card for details â†’</div>}
                     </div>
                   );
                 })}
@@ -163,7 +163,7 @@ export default function Integrations() {
         })}
 
         <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 10, padding: 16, marginTop: 8 }}>
-          <div style={{ fontSize: 13, color: "#92400E" }}>💡 You can add or remove integrations anytime. Changes go live within seconds.</div>
+          <div style={{ fontSize: 13, color: "#92400E" }}>ðŸ’¡ You can add or remove integrations anytime. Changes go live within seconds.</div>
         </div>
       </div>
 
@@ -175,7 +175,7 @@ export default function Integrations() {
           onSave={(cfg) => {
             if (cfg) localStorage.setItem(`dd_integration_config_${configPanel.name}`, JSON.stringify(cfg));
             setConfigPanel(null);
-            showToast(`${configPanel.name} settings saved!`, "success");
+            toast.success(`${configPanel.name} settings saved!`);
           }}
           onRemove={(item) => setRemoveConfirm(item)}
         />

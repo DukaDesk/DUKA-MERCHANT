@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NAVY, AMBER } from "../../theme";
 import {
   WIZARD_TEMPLATES_BY_CATEGORY,
-} from "../../services/mockData";
+} from "../../config/wizard";
 
 const ALL_TEMPLATES = Object.values(WIZARD_TEMPLATES_BY_CATEGORY).flat();
 const CATEGORIES = Object.keys(WIZARD_TEMPLATES_BY_CATEGORY);

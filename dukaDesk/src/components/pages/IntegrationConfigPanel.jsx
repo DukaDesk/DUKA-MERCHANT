@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
-import { useAuth, useToast } from "../../contexts";
+import { useAuth } from "../../contexts";
+import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../../theme";
 
@@ -13,7 +14,6 @@ const badge = { fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius:
 
 export default function IntegrationConfigPanel({ integration, config, onConfig, onSave, onRemove }) {
   const isMobile = useIsMobile();
-  const showToast = useToast();
   const { merchant } = useAuth();
   const setVal = (key, val) => onConfig(integration.name, { ...config, [key]: val });
   const getVal = (key, def) => config?.[key] ?? def;

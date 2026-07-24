@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { useAuth, useToast } from "../../contexts";
+import { useAuth } from "../../contexts";
+import { toast } from "react-toastify";
 import { NAVY, AMBER, cardStyle, inputStyle, labelStyle } from "../../theme";
 import { getMerchantProfile, updateMerchantProfile, getCurrentPlan } from "../../services/api";
 import { Loading, ErrorState } from "../layout/States";
@@ -10,7 +11,6 @@ import { Store, Mail, Phone, User, Save, ArrowLeft, Sparkles } from "lucide-reac
 export default function Profile() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const showToast = useToast();
   const { merchant: contextMerchant, handleAuth } = useAuth();
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({ name: "", business: "", email: "", phone: "" });
@@ -32,15 +32,15 @@ export default function Profile() {
   useEffect(loadProfile, []);
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.business.trim()) { showToast("Name and business name are required", "error"); return; }
+    if (!form.name.trim() || !form.business.trim()) { toast.error("Name and business name are required"); return; }
     setSaving(true);
     try {
       const updated = await updateMerchantProfile({ name: form.name, business: form.business, email: form.email, phone: form.phone });
       setProfile(updated);
       handleAuth(updated);
-      showToast("Profile updated!", "success");
+      toast.success("Profile updated!");
     } catch {
-      showToast("Failed to update profile", "error");
+      toast.error("Failed to update profile");
     } finally { setSaving(false); }
   };
 
@@ -81,7 +81,7 @@ export default function Profile() {
               </div>
             </div>
             <button onClick={() => navigate("/dashboard/billing")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-              Upgrade ↑
+              Upgrade â†‘
             </button>
           </div>
         )}

@@ -1,9 +1,4 @@
 import httpClient from "./httpClient";
-import { DASHBOARD_STATS_BY_CATEGORY, DASHBOARD_REVENUE_BY_CATEGORY, DASHBOARD_ACTIVITY_BY_CATEGORY, MOCK_ORDERS, MOCK_CONVERSATIONS, MOCK_INTEGRATIONS, MOCK_CURRENT_PLAN, MOCK_PLANS, MOCK_BILLING_HISTORY, ANALYTICS_REVENUE, ANALYTICS_ORDER_STATS, ANALYTICS_SCAN_DATA, ANALYTICS_TOP_PRODUCTS, ANALYTICS_CUSTOMER_SPLIT } from "./mockData";
-
-function delay(ms = 200) {
-  return new Promise(r => setTimeout(r, ms));
-}
 
 /* ───── Token ───── */
 export function setToken(t) {
@@ -21,12 +16,46 @@ export function setSetupData(data) { try { localStorage.setItem("dukadesk_setup"
 export function getSetupData() { try { return JSON.parse(localStorage.getItem("dukadesk_setup")); } catch { return null; } }
 
 /* ───── Compliance ───── */
-export function setComplianceDone() {
-  const data = getSetupData() || {};
-  setSetupData({ ...data, complianceDone: true });
+export async function submitCompliance(tenantId, formData) {
+  const { idDoc, bizDoc, utrDoc, ...info } = formData;
+  await updateTenant(tenantId, {
+    name: info.businessName,
+    phone: info.phone,
+    address: `${info.address}, ${info.city || ""}, ${info.state || ""}, ${info.country || ""}`,
+  });
+  const config = await getTenantConfig(tenantId).catch(() => ({}));
+  const existing = config.data || config;
+  await updateTenantConfig(tenantId, {
+    ...existing,
+    compliance: {
+      businessName: info.businessName,
+      businessType: info.businessType || "",
+      regNumber: info.regNumber || "",
+      taxId: info.taxId || "",
+      phone: info.phone,
+      website: info.website || "",
+      address: info.address,
+      city: info.city || "",
+      state: info.state || "",
+      country: info.country || "Nigeria",
+      idDoc: idDoc ? { name: idDoc.name } : null,
+      bizDoc: bizDoc ? { name: bizDoc.name } : null,
+      utrDoc: utrDoc ? { name: utrDoc.name } : null,
+      complianceDone: true,
+      submittedAt: new Date().toISOString(),
+    },
+  });
+  return { success: true };
 }
-export function isComplianceDone() {
-  return !!(getSetupData()?.complianceDone);
+
+export async function getComplianceStatus(tenantId) {
+  try {
+    const config = await getTenantConfig(tenantId);
+    const data = config.data || config;
+    return !!(data?.compliance?.complianceDone);
+  } catch {
+    return false;
+  }
 }
 
 /* ───── Merchant ───── */
@@ -58,22 +87,6 @@ function buildMerchant(user, tenant = null) {
 
 function slugify(text) {
   return text.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
-}
-
-/* ───── Deployed App ───── */
-function getDeployedApp() {
-  try { return JSON.parse(localStorage.getItem("dd_deployed_app")); } catch { /* ignore */ return null; }
-}
-function setDeployedApp(app) {
-  try { localStorage.setItem("dd_deployed_app", JSON.stringify(app)); } catch { /* ignore */ }
-}
-
-/* ───── Merchant Products ───── */
-function getMerchantProducts() {
-  try { return JSON.parse(localStorage.getItem("dd_products")) || []; } catch { /* ignore */ return []; }
-}
-function setMerchantProducts(products) {
-  try { localStorage.setItem("dd_products", JSON.stringify(products)); } catch { /* ignore */ }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -174,133 +187,116 @@ export async function logout() {
    APP DEPLOYMENT
    ═══════════════════════════════════════════════════════════════════ */
 
-import { generateShopTemplate } from "./TemplateGenerator";
-
 export async function deployApp(appData) {
-  await delay();
   const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) throw new Error("No tenant — signup required");
+
   const slug = (appData.appName || "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  
-  // Generate unique template configuration for this shop
-  const templateConfig = generateShopTemplate({
-    category: appData.category || "Restaurant",
-    template: appData.template || "Classic Dine",
-    appName: appData.appName,
-    tagline: appData.tagline || "",
-    color: appData.color || "#1B4332",
-    logo: appData.logo || null,
-    businessName: merchant?.business || appData.appName,
-    bizDesc: appData.bizDesc || "",
-    phone: appData.phone || "",
-    address: appData.address || "",
-    hours: appData.hours || [],
-    selectedIntegrations: appData.selectedIntegrations || [],
+  const storeUrl = `dukadesk.app/${slug}`;
+
+  const config = await getTenantConfig(tenantId).catch(() => ({}));
+  const existing = config.data || config;
+
+  await updateTenantConfig(tenantId, {
+    ...existing,
+    app: {
+      appName: appData.appName,
+      slug,
+      storeUrl,
+      category: appData.category || "Restaurant",
+      template: appData.template || "Classic Dine",
+      tagline: appData.tagline || "",
+      color: appData.color || "#1B4332",
+      logo: appData.logo || null,
+      selectedIntegrations: appData.selectedIntegrations || [],
+      bizDesc: appData.bizDesc || "",
+      phone: appData.phone || "",
+      address: appData.address || "",
+      hours: appData.hours || [],
+      status: "live",
+      updatedAt: new Date().toISOString(),
+    },
   });
 
-  const deployed = {
-    id: "app_" + Date.now(),
-    merchantId: merchant?.id || "unknown",
-    businessName: merchant?.business || appData.appName,
-    category: appData.category || "Restaurant",
-    template: appData.template || "Classic Dine",
-    appName: appData.appName,
-    tagline: appData.tagline || "",
-    color: appData.color || "#1B4332",
-    logo: appData.logo || null,
-    selectedIntegrations: appData.selectedIntegrations || [],
-    bizDesc: appData.bizDesc || "",
-    phone: appData.phone || "",
-    address: appData.address || "",
-    hours: appData.hours || [],
-    slug,
-    storeUrl: `dukadesk.app/${slug}`,
-    status: "live",
-    templateConfig, // Full customizable template per shop
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  setDeployedApp(deployed);
-  return { app: deployed, message: "App deployed successfully! 🚀" };
+  await publishTenant(tenantId);
+  return { app: { appName: appData.appName, slug, storeUrl }, message: "App deployed successfully!" };
 }
 
 export async function updateApp(appData) {
-  await delay();
-  const deployed = getDeployedApp();
-  if (!deployed) throw new Error("No app deployed");
-  
-  // Regenerate template config if category/template/color changed
-  let templateConfig = deployed.templateConfig;
-  if (appData.category || appData.template || appData.color || appData.appName) {
-    templateConfig = generateShopTemplate({
-      category: appData.category || deployed.category,
-      template: appData.template || deployed.template,
-      appName: appData.appName || deployed.appName,
-      tagline: appData.tagline !== undefined ? appData.tagline : deployed.tagline,
-      color: appData.color || deployed.color,
-      logo: appData.logo !== undefined ? appData.logo : deployed.logo,
-      businessName: deployed.businessName,
-      bizDesc: appData.bizDesc !== undefined ? appData.bizDesc : deployed.bizDesc,
-      phone: appData.phone !== undefined ? appData.phone : deployed.phone,
-      address: appData.address !== undefined ? appData.address : deployed.address,
-      hours: appData.hours !== undefined ? appData.hours : deployed.hours,
-      selectedIntegrations: appData.selectedIntegrations || deployed.selectedIntegrations,
-    });
-  }
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) throw new Error("No tenant");
 
-  const updated = {
-    ...deployed,
-    ...appData,
-    templateConfig,
-    updatedAt: new Date().toISOString(),
-  };
-  setDeployedApp(updated);
-  return { app: updated, message: "App updated successfully! 🚀" };
+  const config = await getTenantConfig(tenantId);
+  const existing = config.data || config;
+  const app = existing.app || {};
+
+  await updateTenantConfig(tenantId, {
+    ...existing,
+    app: { ...app, ...appData, updatedAt: new Date().toISOString() },
+  });
+
+  return { app: { ...app, ...appData }, message: "App updated successfully!" };
 }
 
 export async function getMyApp() {
-  await delay(100);
-  return getDeployedApp();
-}
-
-export async function getPublicApp(slug) {
-  await delay(100);
-  const app = getDeployedApp();
-  if (!app || app.slug !== slug) throw new Error("App not found");
-  const products = getMerchantProducts();
-  return { app, products };
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) return null;
+  const config = await getTenantConfig(tenantId);
+  const data = config.data || config;
+  return data?.app || null;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
    DASHBOARD
    ═══════════════════════════════════════════════════════════════════ */
 
-const defaultStats = DASHBOARD_STATS_BY_CATEGORY?.Restaurant || { customers: 1246, revenue: 48200, unreadMessages: 3, avgRating: 4.8, reviewsCount: 234 };
-
 export async function getDashboardStats() {
-  await delay();
-  const app = getDeployedApp();
-  return {
-    customers: defaultStats.customers,
-    revenue: defaultStats.revenue,
-    unreadMessages: defaultStats.unreadMessages,
-    avgRating: defaultStats.avgRating,
-    reviewsCount: defaultStats.reviewsCount,
-    appStatus: app ? "live" : "not_deployed",
-  };
+  try {
+    const summary = await getAnalyticsSummary();
+    return {
+      customers: summary?.customers || 0,
+      revenue: summary?.revenue || 0,
+      unreadMessages: summary?.unreadMessages || 0,
+      avgRating: summary?.avgRating || 0,
+      reviewsCount: summary?.reviewsCount || 0,
+      appStatus: "live",
+    };
+  } catch {
+    return { customers: 0, revenue: 0, unreadMessages: 0, avgRating: 0, reviewsCount: 0, appStatus: "unknown" };
+  }
 }
-
-const defaultRevenue = DASHBOARD_REVENUE_BY_CATEGORY?.Restaurant || [{ week: "W1", revenue: 12000 }, { week: "W2", revenue: 28000 }, { week: "W3", revenue: 22000 }, { week: "W4", revenue: 48200 }];
 
 export async function getRevenue() {
-  await delay();
-  return defaultRevenue;
+  try {
+    return await getRevenueData();
+  } catch {
+    return [];
+  }
 }
 
-const defaultActivity = DASHBOARD_ACTIVITY_BY_CATEGORY?.Restaurant || [{ icon: "🛒", title: "New order received", sub: "₦3,500 · 2 items", time: "10 min ago", color: "#F4A026" }];
-
 export async function getActivity() {
-  await delay();
-  return defaultActivity;
+  try {
+    const merchant = getMerchant();
+    const tenantId = merchant?.tenantId;
+    if (!tenantId) return [];
+    const res = await httpClient.get(`${tenantPath(tenantId)}/orders`, { params: { limit: 5 } });
+    const orders = res.data || res;
+    if (Array.isArray(orders)) {
+      return orders.map(o => ({
+        icon: "🛒",
+        title: `New order from ${o.customer || "customer"}`,
+        sub: `₦${(o.total || 0).toLocaleString()}`,
+        time: o.date || "recent",
+        color: "#F4A026",
+      }));
+    }
+    return [];
+  } catch {
+    return [];
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -314,10 +310,6 @@ function tenantPath(tenantId) {
 export async function getProducts() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
-  if (!tenantId) {
-    const local = getMerchantProducts();
-    return local;
-  }
   const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
   return res.data || res;
 }
@@ -325,48 +317,16 @@ export async function getProducts() {
 export async function createProduct(body) {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
-  if (!tenantId) {
-    const products = getMerchantProducts();
-    const product = {
-      id: "p_" + Date.now(),
-      merchantId: merchant?.id,
-      name: body.name,
-      cat: body.cat || "",
-      price: Number(body.price),
-      oldPrice: body.oldPrice || null,
-      stock: Number(body.stock) || 0,
-      status: body.status || "In Stock",
-      img: body.img || "🍛",
-      createdAt: new Date().toISOString(),
-    };
-    products.push(product);
-    setMerchantProducts(products);
-    return product;
-  }
   const res = await httpClient.post(`${tenantPath(tenantId)}/products`, body);
   return res.data || res;
 }
 
 export async function updateProduct(id, body) {
-  const merchant = getMerchant();
-  if (!merchant?.tenantId) {
-    const products = getMerchantProducts();
-    const idx = products.findIndex(p => p.id === id);
-    if (idx === -1) throw new Error("Product not found");
-    products[idx] = { ...products[idx], ...body };
-    setMerchantProducts(products);
-    return products[idx];
-  }
   const res = await httpClient.put(`/api/v1/products/${id}`, body);
   return res.data || res;
 }
 
 export async function deleteProduct(id) {
-  const merchant = getMerchant();
-  if (!merchant?.tenantId) {
-    setMerchantProducts(getMerchantProducts().filter(p => p.id !== id));
-    return { message: "Product deleted" };
-  }
   const res = await httpClient.delete(`/api/v1/products/${id}`);
   return res.data || res;
 }
@@ -378,20 +338,11 @@ export async function deleteProduct(id) {
 export async function getOrders() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
-  if (!tenantId) {
-    await delay();
-    return MOCK_ORDERS;
-  }
   const res = await httpClient.get(`${tenantPath(tenantId)}/orders`);
   return res.data || res;
 }
 
 export async function updateOrderStatus(id, status) {
-  const merchant = getMerchant();
-  if (!merchant?.tenantId) {
-    await delay();
-    return { id, status, message: "Status updated" };
-  }
   const res = await httpClient.post(`/api/v1/orders/${id}/status`, { status });
   return res.data || res;
 }
@@ -401,34 +352,28 @@ export async function updateOrderStatus(id, status) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getConversations() {
-  try {
-    const res = await httpClient.get("/api/v1/notifications");
-    const list = res.data || res;
-    if (Array.isArray(list) && list.length > 0) {
-      return list.map(n => ({
-        id: n.id,
-        name: n.from || "System",
-        last: n.message || n.title,
-        time: n.createdAt ? new Date(n.createdAt).toLocaleTimeString() : "",
-        unread: n.read ? 0 : 1,
-      }));
-    }
-  } catch { /* fall through */ }
-  await delay();
-  return MOCK_CONVERSATIONS;
+  const res = await httpClient.get("/api/v1/notifications");
+  const list = res.data || res;
+  if (Array.isArray(list)) {
+    return list.map(n => ({
+      id: n.id,
+      name: n.from || "System",
+      last: n.message || n.title,
+      time: n.createdAt ? new Date(n.createdAt).toLocaleTimeString() : "",
+      unread: n.read ? 0 : 1,
+    }));
+  }
+  return [];
 }
 
 export async function getMessages(conversationId) {
-  await delay();
-  return [
-    { id: "msg_1", conversationId, from: "customer", text: "Hi! Is this item available?", time: "10:00 AM" },
-    { id: "msg_2", conversationId, from: "merchant", text: "Yes, it's in stock!", time: "10:05 AM" },
-  ];
+  const res = await httpClient.get(`/api/v1/notifications/${conversationId}/messages`);
+  return res.data || res;
 }
 
 export async function sendMessage(conversationId, text) {
-  await delay();
-  return { id: "msg_" + Date.now(), conversationId, from: "merchant", text, time: "Just now" };
+  const res = await httpClient.post(`/api/v1/notifications/${conversationId}/messages`, { text });
+  return res.data || res;
 }
 
 export async function getUnreadCount() {
@@ -447,7 +392,6 @@ export async function getNotifications() {
     if (Array.isArray(list)) return list;
     return [];
   } catch {
-    await delay();
     return [];
   }
 }
@@ -477,10 +421,6 @@ export async function dismissNotification(id) {
 export async function getIntegrations() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
-  if (!tenantId) {
-    await delay();
-    return MOCK_INTEGRATIONS;
-  }
   const res = await httpClient.get(`${tenantPath(tenantId)}/integrations`);
   return res.data || res;
 }
@@ -488,10 +428,6 @@ export async function getIntegrations() {
 export async function toggleIntegration(name, active) {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
-  if (!tenantId) {
-    await delay();
-    return { name, active: true };
-  }
   if (active === false) {
     await httpClient.post(`${tenantPath(tenantId)}/integrations/${name}/disconnect`);
   } else {
@@ -507,36 +443,25 @@ export async function toggleIntegration(name, active) {
 export async function getCurrentPlan() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
-  if (!tenantId) {
-    await delay();
-    return MOCK_CURRENT_PLAN;
-  }
   const res = await httpClient.get(`${tenantPath(tenantId)}/subscription`);
   return res.data || res;
 }
 
 export async function getPlans() {
-  try {
-    const res = await httpClient.get("/api/v1/bff/website/pricing");
-    return res.data || res;
-  } catch {
-    await delay();
-    return MOCK_PLANS;
-  }
+  const res = await httpClient.get("/api/v1/bff/website/pricing");
+  return res.data || res;
 }
 
 export async function getBillingHistory() {
-  await delay();
-  return MOCK_BILLING_HISTORY;
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  const res = await httpClient.get(`${tenantPath(tenantId)}/billing-history`);
+  return res.data || res;
 }
 
 export async function upgradePlan(body) {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
-  if (!tenantId) {
-    await delay();
-    return { message: `Upgraded to ${body.planName} plan! 🎉`, plan: body.planName };
-  }
   const res = await httpClient.post(`${tenantPath(tenantId)}/subscribe`, body);
   return res.data || res;
 }
@@ -548,10 +473,6 @@ export async function upgradePlan(body) {
 export async function getRevenueData() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
-  if (!tenantId) {
-    await delay();
-    return ANALYTICS_REVENUE;
-  }
   const res = await httpClient.get(`/api/v1/analytics/reports/revenue`, { params: { tenantId } });
   return res.data || res;
 }
@@ -559,56 +480,20 @@ export async function getRevenueData() {
 export async function getOrderStats() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
-  if (!tenantId) {
-    await delay();
-    return ANALYTICS_ORDER_STATS;
-  }
   const res = await httpClient.get(`${tenantPath(tenantId)}/orders`);
   return res.data || res;
-}
-
-export async function getScanData() {
-  await delay();
-  return ANALYTICS_SCAN_DATA;
 }
 
 export async function getTopProducts() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
-  if (!tenantId) {
-    await delay();
-    return ANALYTICS_TOP_PRODUCTS;
-  }
   const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
   return res.data || res;
-}
-
-export async function getCustomerSplit() {
-  await delay();
-  return ANALYTICS_CUSTOMER_SPLIT;
-}
-
-export async function getUsageMetrics() {
-  await delay();
-  return {
-    apiCalls: { total: 12843, thisMonth: 3402, avgDaily: 113 },
-    storageUsed: { total: "2.4 GB", files: 847, images: 312 },
-    activeUsers: [
-      { day: "Mon", users: 187 }, { day: "Tue", users: 203 },
-      { day: "Wed", users: 219 }, { day: "Thu", users: 195 },
-      { day: "Fri", users: 241 }, { day: "Sat", users: 156 },
-      { day: "Sun", users: 98 },
-    ],
-  };
 }
 
 export async function getAnalyticsSummary() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
-  if (!tenantId) {
-    await delay();
-    return { revenue: ANALYTICS_REVENUE, orders: ANALYTICS_ORDER_STATS };
-  }
   const res = await httpClient.get(`/api/v1/analytics/summary`, { params: { tenantId } });
   return res.data || res;
 }

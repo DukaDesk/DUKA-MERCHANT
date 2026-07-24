@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Settings, Check, Plus, Shield, Zap, Smartphone, MessageSquare, Star, Clock, Gift, Bell, Mail, HelpCircle, Headphones } from "lucide-react";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
-import { INTEGRATION_BADGE_COLORS, INTEGRATION_DETAILS } from "../../services/mockData";
+import { INTEGRATION_BADGE_COLORS, INTEGRATION_DETAILS } from "../../config/integrations";
 import { getIntegrations, toggleIntegration } from "../../services/api";
 import { Loading, Empty } from "../layout/States";
 import IntegrationConfigPanel from "./IntegrationConfigPanel";
@@ -14,7 +14,6 @@ import IntegrationConfigPanel from "./IntegrationConfigPanel";
 export default function IntegrationDetails() {
   const { name } = useParams();
   const navigate = useNavigate();
-  const showToast = useToast();
   const isMobile = useIsMobile();
   const [integration, setIntegration] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -34,12 +33,12 @@ export default function IntegrationDetails() {
           return;
         }
       }
-    }).catch(() => showToast("Failed to load integration", "error"))
+    }).catch(() => toast.error("Failed to load integration"))
     .finally(() => setLoading(false));
   }, [name]);
 
   if (loading) return <Loading message={`Loading ${name}...`} />;
-  if (!integration) return <Empty icon="🔌" message="Integration not found" sub="This integration doesn't exist or has been removed" action={<button onClick={() => navigate("/dashboard/integrations")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Back to Integrations</button>} />;
+  if (!integration) return <Empty icon="ðŸ”Œ" message="Integration not found" sub="This integration doesn't exist or has been removed" action={<button onClick={() => navigate("/dashboard/integrations")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Back to Integrations</button>} />;
 
   const bc = INTEGRATION_BADGE_COLORS[integration.badge] || INTEGRATION_BADGE_COLORS.Free;
 
@@ -71,8 +70,8 @@ export default function IntegrationDetails() {
                 try {
                   await toggleIntegration(integration.name);
                   setActive(!active);
-                  showToast(active ? `${integration.name} disabled` : `${integration.name} enabled!`, active ? "info" : "success");
-                } catch { showToast("Failed to toggle integration", "error"); }
+                  active ? toast.info(`${integration.name} disabled`) : toast.success(`${integration.name} enabled!`);
+                } catch { toast.error("Failed to toggle integration"); }
               }} style={{
                 background: active ? "#2ECC71" : AMBER, color: active ? "#fff" : NAVY, border: "none",
                 borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer",
@@ -106,11 +105,11 @@ export default function IntegrationDetails() {
                   borderRadius: 12, padding: 16, cursor: "pointer", transition: "all 0.15s",
                   position: "relative",
                 }}>
-                  {selected && <div style={{ position: "absolute", top: 8, right: 8, background: AMBER, color: NAVY, borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>✓</div>}
+                  {selected && <div style={{ position: "absolute", top: 8, right: 8, background: AMBER, color: NAVY, borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>âœ“</div>}
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{t.icon}</div>
                   <div style={{ fontWeight: 600, fontSize: 14, color: NAVY, marginBottom: 4 }}>{t.name}</div>
                   <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.4 }}>{t.desc}</div>
-                  {t.popular && <span style={{ display: "inline-block", background: "#FFF8ED", color: "#92400E", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, marginTop: 8 }}>✦ Popular</span>}
+                  {t.popular && <span style={{ display: "inline-block", background: "#FFF8ED", color: "#92400E", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, marginTop: 8 }}>âœ¦ Popular</span>}
                 </div>
               );
             })}
@@ -127,14 +126,14 @@ export default function IntegrationDetails() {
             try {
               await toggleIntegration(integration.name);
               setActive(!active);
-              showToast(active ? `${integration.name} disabled` : `${integration.name} enabled!`, active ? "info" : "success");
-            } catch { showToast("Failed to toggle integration", "error"); }
+              active ? toast.info(`${integration.name} disabled`) : toast.success(`${integration.name} enabled!`);
+            } catch { toast.error("Failed to toggle integration"); }
           }} style={{
             marginTop: 16, background: active ? "#2ECC71" : AMBER, color: active ? "#fff" : NAVY,
             border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700,
             cursor: "pointer",
           }}>
-            {active ? "✓ Enabled" : "Enable Integration"}
+            {active ? "âœ“ Enabled" : "Enable Integration"}
           </button>
         </div>
       </div>
@@ -147,7 +146,7 @@ export default function IntegrationDetails() {
           onSave={(cfg) => {
             if (cfg) localStorage.setItem(`dd_integration_config_${configPanel.name}`, JSON.stringify(cfg));
             setConfigPanel(null);
-            showToast(`${configPanel.name} settings saved!`, "success");
+            toast.success(`${configPanel.name} settings saved!`);
           }}
           onRemove={async (item) => {
             try {
@@ -155,8 +154,8 @@ export default function IntegrationDetails() {
               await toggleIntegration(item.name);
               setActive(false);
               setConfigPanel(null);
-              showToast(`${item.name} disconnected`, "info");
-            } catch { showToast("Failed to disconnect", "error"); }
+              toast.info(`${item.name} disconnected`);
+            } catch { toast.error("Failed to disconnect"); }
           }}
         />
       )}

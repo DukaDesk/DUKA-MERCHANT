@@ -3,18 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from "recharts";
 import { Plus, Package, BarChart3, MessageSquare, Store, TrendingUp, Users, DollarSign, Star, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import QRCode from "qrcode";
-import { useAuth, useToast } from "../../contexts";
+import { useAuth } from "../../contexts";
+import { toast } from "react-toastify";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import ApiClient from "../../services/ApiClient";
-import { isComplianceDone, getCurrentPlan } from "../../services/api";
+import { getComplianceStatus, getCurrentPlan, getMerchant } from "../../services/api";
 import { Loading, Empty, ErrorState } from "../layout/States";
 import { useDispatchAction } from "../../runtime/RuntimeContext";
 import { EventBus } from "../../runtime/EventBus";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const showToast = useToast();
   const dispatchAction = useDispatchAction();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
@@ -31,7 +31,10 @@ export default function Dashboard() {
   const [currentPlan, setCurrentPlan] = useState(null);
 
   useEffect(() => {
-    setComplianceDone(isComplianceDone());
+    const merchant = getMerchant();
+    if (merchant?.tenantId) {
+      getComplianceStatus(merchant.tenantId).then(setComplianceDone).catch(() => {});
+    }
     getCurrentPlan().then(p => setCurrentPlan(p)).catch(() => {});
   }, []);
 
@@ -42,7 +45,7 @@ export default function Dashboard() {
   useEffect(() => {
     const unsub = EventBus.on("filter:changed", (data) => {
       setFilterChanged(data);
-      showToast(`Filter applied: ${JSON.stringify(data)}`, "info");
+      toast.info(`Filter applied: ${JSON.stringify(data)}`);
     });
     return unsub;
   }, [showToast]);
@@ -54,8 +57,8 @@ export default function Dashboard() {
     try {
       const url = await QRCode.toDataURL(`https://${storeUrl}`, { width: 400, margin: 1 });
       const a = document.createElement("a"); a.href = url; a.download = `${storeSlug}-qr.png`; a.click();
-      showToast("QR code downloaded!", "success");
-    } catch { showToast("Failed to generate QR code", "error"); }
+      toast.success("QR code downloaded!");
+    } catch { toast.error("Failed to generate QR code"); }
   };
 
   const loadDashboard = () => {
@@ -78,7 +81,7 @@ export default function Dashboard() {
     { dot: AMBER, label: `${stats?.reviewsCount || 0} reviews received`, sub: `${Math.ceil((stats?.reviewsCount || 0) * 0.15)} need response` },
   ];
 
-  const copyLink = () => { navigator.clipboard.writeText(storeUrl); setQrCopied(true); showToast("Store link copied!", "success"); setTimeout(() => setQrCopied(false), 2000); };
+  const copyLink = () => { navigator.clipboard.writeText(storeUrl); setQrCopied(true); toast.success("Store link copied!"); setTimeout(() => setQrCopied(false), 2000); };
 
   const handleNavigate = useCallback((page) => {
     dispatchAction({ type: "navigate", payload: { push: `/dashboard/${page}` } });
@@ -86,13 +89,13 @@ export default function Dashboard() {
 
   if (loading) return <Loading message="Loading dashboard..." />;
   if (error) return <ErrorState message={error} onRetry={loadDashboard} />;
-  if (!stats) return <Empty icon="📊" message="No dashboard data yet" sub={setup ? "Setup data saved. Complete your app setup to see stats here." : "Complete your app setup to see stats here"} action={<button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{setup ? "Continue Setup →" : "Setup Your App →"}</button>} />;
+  if (!stats) return <Empty icon="ðŸ“Š" message="No dashboard data yet" sub={setup ? "Setup data saved. Complete your app setup to see stats here." : "Complete your app setup to see stats here"} action={<button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{setup ? "Continue Setup â†’" : "Setup Your App â†’"}</button>} />;
 
   const kpiData = [
     { label: "Total Customers", value: stats.customers.toLocaleString(), trend: "+34 this week", trendUp: true, icon: Users, color: "#7C3AED" },
-    { label: "Revenue (This Month)", value: `₦${stats.revenue.toLocaleString()}`, trend: "+18% vs last month", trendUp: true, icon: DollarSign, color: AMBER },
-    { label: "Unread Messages", value: stats.unreadMessages, trend: "Reply now →", trendUp: null, icon: MessageSquare, color: "#0D9488", page: "messages" },
-    { label: "Avg Rating", value: `${stats.avgRating} ⭐`, trend: `(${stats.reviewsCount} reviews)`, trendUp: null, icon: Star, color: "#EC4899" },
+    { label: "Revenue (This Month)", value: `â‚¦${stats.revenue.toLocaleString()}`, trend: "+18% vs last month", trendUp: true, icon: DollarSign, color: AMBER },
+    { label: "Unread Messages", value: stats.unreadMessages, trend: "Reply now â†’", trendUp: null, icon: MessageSquare, color: "#0D9488", page: "messages" },
+    { label: "Avg Rating", value: `${stats.avgRating} â­`, trend: `(${stats.reviewsCount} reviews)`, trendUp: null, icon: Star, color: "#EC4899" },
   ];
 
   return (
@@ -119,7 +122,7 @@ export default function Dashboard() {
             </div>
           </div>
           <button onClick={() => navigate("/compliance")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-            Start Verification →
+            Start Verification â†’
           </button>
         </div>
       )}
@@ -132,11 +135,11 @@ export default function Dashboard() {
             </div>
             <div>
               <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>You're on the {currentPlan.plan}</div>
-              <div style={{ fontSize: 13, color: "#6B7280" }}>{currentPlan.label} — Upgrade to unlock more features.</div>
+              <div style={{ fontSize: 13, color: "#6B7280" }}>{currentPlan.label} â€” Upgrade to unlock more features.</div>
             </div>
           </div>
           <button onClick={() => navigate("/dashboard/billing")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-            Upgrade Plan ↑
+            Upgrade Plan â†‘
           </button>
         </div>
       )}
@@ -150,7 +153,7 @@ export default function Dashboard() {
             </div>
             <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 500, marginBottom: 4 }}>{k.label}</div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 28, color: NAVY, marginBottom: 4 }}>{k.value}</div>
-            <div style={{ fontSize: 13, color: k.trendUp === true ? "#2ECC71" : k.trendUp === false ? "#E74C3C" : AMBER, fontWeight: 500 }}>{k.trendUp === true ? "↑ " : ""}{k.trend}</div>
+            <div style={{ fontSize: 13, color: k.trendUp === true ? "#2ECC71" : k.trendUp === false ? "#E74C3C" : AMBER, fontWeight: 500 }}>{k.trendUp === true ? "â†‘ " : ""}{k.trend}</div>
           </div>
         ))}
       </div>
@@ -158,19 +161,19 @@ export default function Dashboard() {
       <div style={{ ...cardStyle, marginBottom: 20, display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 12 }}>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Merchant</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.name || "—"}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.name || "â€”"}</div>
         </div>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Business</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.business || "—"}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.business || "â€”"}</div>
         </div>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Email</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.email || "—"}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.email || "â€”"}</div>
         </div>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Phone</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.phone || "—"}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.phone || "â€”"}</div>
         </div>
         {deployedApp?.appName && <>
           <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
@@ -179,11 +182,11 @@ export default function Dashboard() {
           </div>
           <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
             <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Category</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.category || setup?.category || "—"}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.category || setup?.category || "â€”"}</div>
           </div>
           <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
             <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Template</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.template || setup?.template || "—"}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.template || setup?.template || "â€”"}</div>
           </div>
           <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
             <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Integrations</div>
@@ -204,7 +207,7 @@ export default function Dashboard() {
                 View All <ArrowRight size={14} />
               </button>
             </div>
-            {activity.length === 0 ? <Empty icon="🔔" message="No recent activity" sub="Customer actions will appear here" /> : activity.map((a, i) => (
+            {activity.length === 0 ? <Empty icon="ðŸ””" message="No recent activity" sub="Customer actions will appear here" /> : activity.map((a, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < activity.length - 1 ? "1px solid #F3F4F6" : "none", animation: `fadeIn 0.3s ease ${i * 0.06}s both` }}>
                 <div style={{ width: 40, height: 40, background: a.color + "18", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{a.icon}</div>
                 <div style={{ flex: 1 }}>
@@ -226,14 +229,14 @@ export default function Dashboard() {
                 <TrendingUp size={14} /> +18%
               </span>
             </div>
-            {revenueData.length === 0 ? <Empty icon="📈" message="No revenue data yet" sub="Revenue will appear once you start receiving orders" /> : (
+            {revenueData.length === 0 ? <Empty icon="ðŸ“ˆ" message="No revenue data yet" sub="Revenue will appear once you start receiving orders" /> : (
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={revenueData}>
                 <defs><linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={AMBER} stopOpacity={0.25}/><stop offset="100%" stopColor={AMBER} stopOpacity={0}/></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                 <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={v => `₦${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={v => [`₦${v.toLocaleString()}`, "Revenue"]} contentStyle={{ borderRadius: 10, border: "1px solid #E8E8F0", boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }} />
+                <YAxis tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={v => `â‚¦${(v/1000).toFixed(0)}k`} />
+                <Tooltip formatter={v => [`â‚¦${v.toLocaleString()}`, "Revenue"]} contentStyle={{ borderRadius: 10, border: "1px solid #E8E8F0", boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }} />
                 <Area type="monotone" dataKey="revenue" stroke={AMBER} strokeWidth={3} fill="url(#revGrad)" dot={{ fill: AMBER, r: 4, strokeWidth: 2, stroke: "#fff" }} activeDot={{ r: 6 }} />
               </AreaChart>
             </ResponsiveContainer>
@@ -287,7 +290,7 @@ export default function Dashboard() {
 
           <div style={{ ...cardStyle, textAlign: "center" }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Your QR Code</div>
-            <div style={{ width: 100, height: 100, background: "#F3F4F6", borderRadius: 10, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, border: "1px solid #E8E8F0" }}>▣</div>
+            <div style={{ width: 100, height: 100, background: "#F3F4F6", borderRadius: 10, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, border: "1px solid #E8E8F0" }}>â–£</div>
             <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 12, wordBreak: "break-all" }}>{storeUrl}</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={copyLink} style={{
@@ -295,7 +298,7 @@ export default function Dashboard() {
                 color: qrCopied ? "#fff" : NAVY, border: "none",
                 borderRadius: 10, padding: "9px 0", fontSize: 13,
                 fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif",
-              }}>{qrCopied ? "Copied! ✓" : "Copy Link"}</button>
+              }}>{qrCopied ? "Copied! âœ“" : "Copy Link"}</button>
               <button onClick={downloadQr} style={{
                 flex: 1, background: "none",
                 border: `1.5px solid var(--border)`, color: NAVY,

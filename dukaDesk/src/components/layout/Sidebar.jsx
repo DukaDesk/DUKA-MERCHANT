@@ -4,7 +4,7 @@ import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../contexts";
 import { NAVY, AMBER, transition } from "../../theme";
-import { getOrders, getConversations, isComplianceDone } from "../../services/api";
+import { getOrders, getConversations, getComplianceStatus, getMerchant } from "../../services/api";
 
 const roleAccess = {
   super_admin: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team", "settings"],
@@ -39,16 +39,6 @@ const secondaryNavItems = [
   { id: "settings", icon: SettingsIcon, label: "Settings" },
 ];
 
-function getVisibleNav(role) {
-  const allowed = roleAccess[role] || roleAccess.member;
-  const compliance = isComplianceDone();
-  return mainNavItems.filter(item => {
-    if (!allowed.includes(item.id)) return false;
-    if (item.requiresCompliance && !compliance) return false;
-    return true;
-  });
-}
-
 export default function Sidebar() {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
@@ -60,10 +50,19 @@ export default function Sidebar() {
   const navigateTo = (path) => navigate(path === "dashboard" ? "/dashboard" : `/dashboard/${path}`);
   const { merchant, logout } = useAuth();
   const handleLogout = () => { logout(); };
-  const visibleNav = getVisibleNav(merchant?.role || "member");
+  const role = merchant?.role || "member";
+  const allowed = roleAccess[role] || roleAccess.member;
+  const visibleNav = mainNavItems.filter(item => {
+    if (!allowed.includes(item.id)) return false;
+    if (item.requiresCompliance && !compliance) return false;
+    return true;
+  });
 
   useEffect(() => {
-    setCompliance(isComplianceDone());
+    const m = getMerchant();
+    if (m?.tenantId) {
+      getComplianceStatus(m.tenantId).then(setCompliance).catch(() => setCompliance(false));
+    }
   }, []);
 
   useEffect(() => {

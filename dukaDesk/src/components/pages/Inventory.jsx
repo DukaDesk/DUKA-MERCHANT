@@ -2,24 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X, ArrowLeft, Package, AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, RED, cardStyle, inputStyle, statCard, transition } from "../../theme";
-
-const MOCK_INVENTORY = [
-  { id: 1, name: "Jollof Rice & Chicken", sku: "JR-001", category: "Mains", stock: 34, minStock: 10, cost: 1500, price: 2500, unit: "portions", status: "In Stock" },
-  { id: 2, name: "Peppered Gizzard", sku: "PG-002", category: "Sides", stock: 12, minStock: 10, cost: 800, price: 1800, unit: "portions", status: "Low Stock" },
-  { id: 3, name: "Grilled Tilapia", sku: "GT-003", category: "Mains", stock: 4, minStock: 8, cost: 2000, price: 4500, unit: "portions", status: "Low Stock" },
-  { id: 4, name: "Egusi Soup", sku: "ES-004", category: "Mains", stock: 0, minStock: 5, cost: 1200, price: 3200, unit: "portions", status: "Out of Stock" },
-  { id: 5, name: "Zobo Drink", sku: "ZD-005", category: "Drinks", stock: 50, minStock: 15, cost: 200, price: 500, unit: "cups", status: "In Stock" },
-  { id: 6, name: "Puff Puff (10 pcs)", sku: "PP-006", category: "Snacks", stock: 20, minStock: 10, cost: 350, price: 800, unit: "packs", status: "In Stock" },
-  { id: 7, name: "Chapman Drink", sku: "CD-007", category: "Drinks", stock: 8, minStock: 5, cost: 300, price: 800, unit: "cups", status: "Low Stock" },
-];
 
 export default function Inventory() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const showToast = useToast();
-  const [items, setItems] = useState(MOCK_INVENTORY);
+  const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [editItem, setEditItem] = useState(null);
@@ -37,14 +26,14 @@ export default function Inventory() {
   const handleAdjust = () => {
     if (!editItem || !adjustQty) return;
     const qty = parseInt(adjustQty);
-    if (isNaN(qty)) { showToast("Enter a valid number", "error"); return; }
+    if (isNaN(qty)) { toast.error("Enter a valid number"); return; }
     setItems(prev => prev.map(i => {
       if (i.id !== editItem.id) return i;
       const newStock = Math.max(0, i.stock + qty);
       const newStatus = newStock === 0 ? "Out of Stock" : newStock <= i.minStock ? "Low Stock" : "In Stock";
       return { ...i, stock: newStock, status: newStatus };
     }));
-    showToast(`${editItem.name} stock ${qty >= 0 ? "increased" : "decreased"} by ${Math.abs(qty)}`, "success");
+    toast.success(`${editItem.name} stock ${qty >= 0 ? "increased" : "decreased"} by ${Math.abs(qty)}`);
     setEditItem(null);
     setAdjustQty("");
   };
@@ -65,7 +54,7 @@ export default function Inventory() {
         {[
           { label: "Total Items", value: items.length, icon: Package, color: NAVY },
           { label: "Low Stock Alerts", value: lowStockCount, icon: AlertTriangle, color: lowStockCount > 0 ? RED : GREEN },
-          { label: "Stock Value", value: `₦${totalValue.toLocaleString()}`, icon: TrendingUp, color: AMBER },
+          { label: "Stock Value", value: `â‚¦${totalValue.toLocaleString()}`, icon: TrendingUp, color: AMBER },
           { label: "Categories", value: [...new Set(items.map(i => i.category))].length, icon: Package, color: "#3B82F6" },
         ].map((k, i) => (
           <div key={k.label} style={{ ...statCard, animation: `fadeIn 0.3s ease ${i * 0.1}s both` }}>
@@ -98,7 +87,7 @@ export default function Inventory() {
       <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
         {filtered.length === 0 ? (
           <div style={{ padding: 60, textAlign: "center", color: "#9CA3AF" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>ðŸ“¦</div>
             <div style={{ fontSize: 14, fontWeight: 500 }}>No inventory items match your filter</div>
           </div>
         ) : (
@@ -129,8 +118,8 @@ export default function Inventory() {
                         <span style={{ fontSize: 11, color: "#9CA3AF", marginLeft: 4 }}>{item.unit}</span>
                       </td>
                       <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>{item.minStock}</td>
-                      <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>₦{item.cost.toLocaleString()}</td>
-                      <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: NAVY }}>₦{item.price.toLocaleString()}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>â‚¦{item.cost.toLocaleString()}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: NAVY }}>â‚¦{item.price.toLocaleString()}</td>
                       <td style={{ padding: "12px 16px" }}>
                         <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: sc.bg, color: sc.color }}>{item.status}</span>
                       </td>
@@ -157,7 +146,7 @@ export default function Inventory() {
             </div>
             <div style={{ background: "#F9FAFB", borderRadius: 10, padding: 12, marginBottom: 16 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{editItem.name}</div>
-              <div style={{ fontSize: 12, color: "#6B7280" }}>Current stock: <strong>{editItem.stock} {editItem.unit}</strong> · Min: {editItem.minStock}</div>
+              <div style={{ fontSize: 12, color: "#6B7280" }}>Current stock: <strong>{editItem.stock} {editItem.unit}</strong> Â· Min: {editItem.minStock}</div>
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: NAVY, marginBottom: 6 }}>Quantity Change</label>

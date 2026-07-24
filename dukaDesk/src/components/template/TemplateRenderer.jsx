@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { LayoutRenderer, ScreenRenderer } from "../../runtime/layouts";
 import { TemplateComponents } from "./TemplateComponents";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";
-import { getScreenPreviewData } from "../../services/PreviewDataProvider";
+function getScreenPreviewData() {
+  return {};
+}
 
 export function TemplateRenderer({ templateId, screenId, onAction, previewData: externalPreviewData = {} }) {
   const [screenDef, setScreenDef] = useState(null);

@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
-import { useToast } from "../../contexts";
+import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER } from "../../theme";
 import { setSetupData, getSetupData, deployApp } from "../../services/api";
-import { WIZARD_CATEGORIES, WIZARD_TEMPLATES_BY_CATEGORY, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, INTEGRATION_BADGE_COLORS, getTemplateIntegrationNames } from "../../services/mockData";
+import { WIZARD_CATEGORIES, WIZARD_TEMPLATES_BY_CATEGORY, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, getTemplateIntegrationNames } from "../../config/wizard";
+import { INTEGRATION_BADGE_COLORS } from "../../config/integrations";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";
 import { generateShopTemplate } from "../../services/TemplateGenerator";
 import { SetupWizard } from "./SetupWizard";
@@ -23,7 +24,6 @@ const CATEGORY_TO_TEMPLATE = {
 };
 
 export default function Wizard() {
-  const showToast = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const saved = getSetupData();
@@ -99,9 +99,9 @@ export default function Wizard() {
       });
       setPublished(true);
     } catch (err) {
-      showToast(err.message || "Failed to deploy app", "error");
+      toast.error(err.message || "Failed to deploy app");
     }
-  }, [showToast]);
+  }, []);
 
   const renderPreview = useCallback((props) => (
     <InteractivePreview
@@ -161,7 +161,7 @@ function Published({ data, showToast, isMobile, navigate }) {
     setShareSupported(navigator.share !== undefined);
   }, [fullUrl, qrSize]);
 
-  const copy = () => { navigator.clipboard.writeText(fullUrl); setCopied(true); showToast("Store link copied!", "success"); setTimeout(() => setCopied(false), 2000); };
+  const copy = () => { navigator.clipboard.writeText(fullUrl); setCopied(true); toast.success("Store link copied!"); setTimeout(() => setCopied(false), 2000); };
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -174,26 +174,26 @@ function Published({ data, showToast, isMobile, navigate }) {
   };
 
   const downloadQR = () => {
-    if (!qrDataUrl) { showToast("QR code not ready", "error"); return; }
+    if (!qrDataUrl) { toast.error("QR code not ready"); return; }
     const a = document.createElement("a"); a.href = qrDataUrl; a.download = `${slug}-qr.png`; a.click();
-    showToast("QR code downloaded!", "success");
+    toast.success("QR code downloaded!");
   };
 
   return (
     <div style={{ minHeight: "100vh", background: "#F7F8FA", display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 16 : 40 }}>
       <div style={{ textAlign: "center", maxWidth: 780, animation: "slideUp 0.5s ease" }}>
-        <div style={{ width: 80, height: 80, background: "#F0FDF4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 40 }}>🎉</div>
+        <div style={{ width: 80, height: 80, background: "#F0FDF4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 40 }}>ðŸŽ‰</div>
         <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: isMobile ? 32 : 44, color: NAVY, marginBottom: 8 }}>Your App is Ready!</h1>
-        <p style={{ color: "#6B7280", fontSize: isMobile ? 16 : 18, marginBottom: 32 }}>{appName} has been built and saved. 🚀</p>
+        <p style={{ color: "#6B7280", fontSize: isMobile ? 16 : 18, marginBottom: 32 }}>{appName} has been built and saved. ðŸš€</p>
 
         <div style={{ background: "#fff", borderRadius: 16, padding: isMobile ? 24 : 36, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", marginBottom: 24, border: "1px solid #E8E8F0", textAlign: "left" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-            <div style={{ width: 48, height: 48, background: (data?.color || AMBER) + "15", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{data?.logo || "📱"}</div>
+            <div style={{ width: 48, height: 48, background: (data?.color || AMBER) + "15", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{data?.logo || "ðŸ“±"}</div>
             <div>
               <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY }}>{appName}</div>
-              <div style={{ color: "#9CA3AF", fontSize: 13 }}>{data?.tagline || data?.category} · {data?.template}</div>
+              <div style={{ color: "#9CA3AF", fontSize: 13 }}>{data?.tagline || data?.category} Â· {data?.template}</div>
             </div>
-            <span style={{ marginLeft: "auto", background: "#F0FDF4", color: "#065F46", fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 20 }}>● Built</span>
+            <span style={{ marginLeft: "auto", background: "#F0FDF4", color: "#065F46", fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 20 }}>â— Built</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 16 }}>
             {[
@@ -224,7 +224,7 @@ function Published({ data, showToast, isMobile, navigate }) {
         <div style={{ background: "#fff", borderRadius: 16, padding: isMobile ? 24 : 36, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 24 : 40, textAlign: "left", marginBottom: 32, border: "1px solid #E8E8F0" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Your QR Code</div>
-            {qrDataUrl ? <img src={qrDataUrl} alt="QR code" style={{ width: qrSize, height: qrSize, borderRadius: 12, margin: "0 auto 16px", display: "block" }} /> : <div style={{ width: qrSize, height: qrSize, background: "#F3F4F6", borderRadius: 12, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 60 : 80 }}>▣</div>}
+            {qrDataUrl ? <img src={qrDataUrl} alt="QR code" style={{ width: qrSize, height: qrSize, borderRadius: 12, margin: "0 auto 16px", display: "block" }} /> : <div style={{ width: qrSize, height: qrSize, background: "#F3F4F6", borderRadius: 12, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 60 : 80 }}>â–£</div>}
             <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 16, wordBreak: "break-all" }}>{fullUrl}</div>
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
               <button onClick={downloadQR} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -246,7 +246,7 @@ function Published({ data, showToast, isMobile, navigate }) {
           </div>
         </div>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={() => navigate("/dashboard")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "14px 40px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Go to My Dashboard →</button>
+          <button onClick={() => navigate("/dashboard")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "14px 40px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Go to My Dashboard â†’</button>
           <button onClick={() => navigate("/canvas-editor")} style={{ background: "none", color: NAVY, border: "2px solid #E8E8F0", borderRadius: 10, padding: "14px 40px", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: "'Sora',sans-serif", display: "inline-flex", alignItems: "center", gap: 8 }}>
             <Edit2 size={18} /> Open in Canvas Editor
           </button>

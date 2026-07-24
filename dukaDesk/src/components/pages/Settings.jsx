@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { useAuth, useToast } from "../../contexts";
+import { useAuth } from "../../contexts";
+import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, PURPLE, cardStyle, inputStyle, labelStyle, btnPrimary, btnSecondary, pageHeading, pageSubtitle, transition } from "../../theme";
 import { Store, Mail, Phone, MapPin, Globe, Clock, Save, ArrowLeft, Building, Palette, RefreshCw } from "lucide-react";
 import { getMerchant, updateTenant, getTenantConfig, updateTenantConfig } from "../../services/api";
@@ -11,7 +12,6 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 export default function Settings() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const showToast = useToast();
   const { merchant } = useAuth();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -80,10 +80,10 @@ export default function Settings() {
         });
       }
       localStorage.setItem("dd_settings", JSON.stringify(form));
-      showToast("Settings saved successfully!", "success");
+      toast.success("Settings saved successfully!");
     } catch {
       localStorage.setItem("dd_settings", JSON.stringify(form));
-      showToast("Settings saved locally!", "success");
+      toast.success("Settings saved locally!");
     }
     setSaving(false);
   };

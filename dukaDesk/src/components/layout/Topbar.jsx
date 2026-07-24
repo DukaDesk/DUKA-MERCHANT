@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Bell, Search, Grid } from "lucide-react";
-import { useAuth, useToast } from "../../contexts";
+import { useAuth } from "../../contexts";
+import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { AMBER, NAVY, transition } from "../../theme";
 
@@ -9,7 +10,6 @@ export default function Topbar() {
   const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
-  const showToast = useToast();
   const { merchant } = useAuth();
   const page = location.pathname.split("/")[2] || "dashboard";
   const greetingName = merchant?.name?.split(" ")[0] || "there";
@@ -74,7 +74,7 @@ export default function Topbar() {
             onChange={e => setSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
-            onKeyDown={e => e.key === "Enter" && showToast(`Searching for "${search}"...`, "info")}
+            onKeyDown={e => e.key === "Enter" && toast.info(`Searching for "${search}"...`)}
             placeholder="Search orders, products..."
             style={{ background: "none", border: "none", outline: "none", fontSize: 13, color: NAVY, width: "100%", fontFamily: "inherit" }}
           />
