@@ -8,7 +8,7 @@ import { setToken, logout as apiLogout } from "./services/api";
 import { RuntimeContext } from "./runtime/RuntimeContext";
 import { dispatchEngine, setupActionRouter, clearActionRouter } from "./runtime/ActionEngine";
 import { BrandThemeProvider } from "./runtime/BrandThemeProvider";
-import { AuthContext, ToastContext, useAuth } from "./contexts";
+import { AuthContext, useAuth } from "./contexts";
 import { on as onNotify } from "./services/notifier";
 
 const Auth = lazy(() => import("./components/auth/Auth"));
@@ -60,11 +60,6 @@ export default function App() {
     try { const m = localStorage.getItem("dd_merchant"); return m ? JSON.parse(m) : null; } catch { return null; }
   });
 
-  const showToast = useCallback((msg, type = "success") => {
-    const types = { success: toast.success, error: toast.error, info: toast.info };
-    (types[type] || toast.success)(msg, { autoClose: 3000 });
-  }, []);
-
   const handleAuth = useCallback((data) => {
     setMerchant(data);
     try { localStorage.setItem("dd_merchant", JSON.stringify(data)); } catch { /* ignore */ }
@@ -98,15 +93,14 @@ export default function App() {
 
   useEffect(() => {
     const unsubs = [
-      onNotify('error', msg => showToast(msg, 'error')),
-      onNotify('success', msg => showToast(msg, 'success')),
+      onNotify('error', msg => toast.error(msg)),
+      onNotify('success', msg => toast.success(msg)),
     ];
     return () => unsubs.forEach(fn => fn());
-  }, [showToast]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ merchant, logout, handleAuth }}>
-    <ToastContext.Provider value={showToast}>
     <RuntimeContext.Provider value={{ dispatchAction }}>
     <BrandThemeProvider>
       <ErrorBoundary>
@@ -149,7 +143,6 @@ export default function App() {
       </ErrorBoundary>
     </BrandThemeProvider>
     </RuntimeContext.Provider>
-    </ToastContext.Provider>
     </AuthContext.Provider>
   );
 }
