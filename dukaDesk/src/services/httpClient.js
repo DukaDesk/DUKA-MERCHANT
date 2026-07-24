@@ -27,8 +27,8 @@ httpClient.interceptors.response.use(
       return Promise.reject(new Error(body.errors?.[0] || body.message || 'Request failed'));
     }
     const method = response.config?.method;
-    if (mutMethods.includes(method)) {
-      emit('success', body?.message || `${mutLabels[method] || 'Action completed'} successfully`);
+    if (mutMethods.includes(method) && body?.message) {
+      emit('success', body.message);
     }
     return body;
   },
@@ -84,8 +84,9 @@ httpClient.interceptors.response.use(
 
     const body = error.response?.data;
     if (body && body.errors?.length) {
-      if (!isAuthUrl) emit('error', body.errors[0]);
-      return Promise.reject(new Error(body.errors[0]));
+      const errMsg = typeof body.errors[0] === 'string' ? body.errors[0] : (body.errors[0]?.message || 'Request failed');
+      if (!isAuthUrl) emit('error', errMsg);
+      return Promise.reject(new Error(errMsg));
     }
     const msg = body?.message || error.message || 'Network request failed';
     if (!isAuthUrl) emit('error', msg);

@@ -48,7 +48,7 @@ export default function Dashboard() {
       toast.info(`Filter applied: ${JSON.stringify(data)}`);
     });
     return unsub;
-  }, [showToast]);
+  }, []);
 
   const storeSlug = deployedApp?.slug || ((merchant?.business || "my-store") || "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   const storeUrl = deployedApp?.storeUrl || `dukadesk.app/${storeSlug}`;

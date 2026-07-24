@@ -116,7 +116,7 @@ export default function Wizard() {
     />
   ), [previewData, previewScreenId, handlePreviewAction, openCustomize]);
 
-  if (published) return <Published data={initialData} showToast={showToast} isMobile={isMobile} navigate={navigate} />;
+  if (published) return <Published data={initialData} isMobile={isMobile} navigate={navigate} />;
 
   if (showCustomize && customizeTemplateId) {
     return (
@@ -146,7 +146,7 @@ export default function Wizard() {
   );
 }
 
-function Published({ data, showToast, isMobile, navigate }) {
+function Published({ data, isMobile, navigate }) {
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const [shareSupported, setShareSupported] = useState(false);
