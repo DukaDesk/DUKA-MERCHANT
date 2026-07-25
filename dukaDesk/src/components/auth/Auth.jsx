@@ -13,7 +13,7 @@ export default function Auth({ onAuth }) {
   const page = location.pathname.replace("/", "") || "login";
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
-  const resetToken = params.get("token");
+  const resetToken = params.get("token") || location.pathname.split("/").filter(Boolean).slice(1).find(s => s.length > 10) || "";
 
   return (
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh" }}>
@@ -291,6 +291,13 @@ function ForgotForm({ setPage }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [touched, setTouched] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   const validateEmail = (value) => {
     if (!value) return "Email is required";
@@ -306,6 +313,18 @@ function ForgotForm({ setPage }) {
     try {
       await forgotPassword({ email });
       setSent(true);
+      setResendCooldown(30);
+    } catch (err) {
+      setError(err.message || "Request failed. Please try again.");
+    } finally { setLoading(false); }
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0 || loading) return;
+    setLoading(true);
+    try {
+      await forgotPassword({ email });
+      setResendCooldown(30);
     } catch (err) {
       setError(err.message || "Request failed. Please try again.");
     } finally { setLoading(false); }
@@ -316,7 +335,9 @@ function ForgotForm({ setPage }) {
       <div style={{ width: 80, height: 80, background: "#F0FDF4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: 36 }}>✉️</div>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 8 }}>Check your inbox</h2>
       <p style={{ color: "#6B7280", marginBottom: 28, fontSize: 15 }}>We sent a reset link to <strong>{email}</strong>. It expires in 15 minutes.</p>
-      <button onClick={() => { setSent(false); setEmail(""); }} style={{ background: "none", border: "1px solid #E8E8F0", borderRadius: 10, padding: "12px 28px", fontSize: 14, cursor: "pointer", color: NAVY, fontWeight: 600 }}>Resend link</button>
+      <button onClick={handleResend} disabled={resendCooldown > 0} style={{ background: "none", border: "1px solid #E8E8F0", borderRadius: 10, padding: "12px 28px", fontSize: 14, cursor: resendCooldown > 0 ? "not-allowed" : "pointer", color: resendCooldown > 0 ? "#9CA3AF" : NAVY, fontWeight: 600 }}>
+        {loading ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend link"}
+      </button>
       <button onClick={() => setPage("/login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
         <ArrowLeft size={14} style={{ verticalAlign: "middle", marginRight: 4 }} /> Back to login
       </button>
@@ -353,6 +374,39 @@ function ResetPasswordForm({ token, setPage }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpError, setOtpError] = useState(false);
+
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const t = setTimeout(() => setOtpCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [otpCooldown]);
+
+  if (!token) {
+    return (
+      <div style={{ textAlign: "center", animation: "fadeIn 0.4s ease" }}>
+        <div style={{ width: 80, height: 80, background: "#FEF2F2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: 36 }}>🔗</div>
+        <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 8 }}>Invalid reset link</h2>
+        <p style={{ color: "#6B7280", marginBottom: 28, fontSize: 15 }}>This password reset link is invalid or expired. Request a new one.</p>
+        <button onClick={() => setPage("/forgot")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "12px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Request new link →</button>
+        <button onClick={() => setPage("/login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+          <ArrowLeft size={14} style={{ verticalAlign: "middle", marginRight: 4 }} /> Back to login
+        </button>
+      </div>
+    );
+  }
+
+  const handleResendOtp = async () => {
+    if (otpCooldown > 0 || loading) return;
+    setLoading(true);
+    try {
+      await forgotPassword({ email: "" });
+      setOtpCooldown(30);
+    } catch {
+      // OTP re-sent silently
+    } finally { setLoading(false); }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -360,17 +414,24 @@ function ResetPasswordForm({ token, setPage }) {
       if (!otp.trim()) { setError("Please enter the OTP from your email"); return; }
       setStep("password");
       setError("");
+      setOtpError(false);
       return;
     }
     if (!password || password.length < 8) { setError("Password must be at least 8 characters"); return; }
     if (password !== confirm) { setError("Passwords do not match"); return; }
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setOtpError(false);
     try {
-      await confirmPasswordReset({ token: token || "", otp, password });
+      await confirmPasswordReset({ token, otp, password });
       setSuccess(true);
       toast.success("Password reset successful!");
     } catch (err) {
-      setError(err.message || "Reset failed. The link may have expired.");
+      const msg = err.message || "";
+      if (/otp|code|invalid|expired/i.test(msg) && !/password/i.test(msg)) {
+        setOtpError(true);
+        setError("The OTP you entered is invalid or has expired. Go back to re-enter it.");
+      } else {
+        setError(msg || "Reset failed. The link may have expired.");
+      }
     } finally { setLoading(false); }
   };
 
@@ -388,10 +449,10 @@ function ResetPasswordForm({ token, setPage }) {
       <div style={{ textAlign: "center", marginBottom: 28 }}>
         <div style={{ width: 72, height: 72, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 32 }}>{step === "otp" ? "🔑" : "🔒"}</div>
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 6 }}>
-          {step === "otp" ? "Enter reset code" : "Choose new password"}
+          {step === "otp" ? "Enter reset code" : otpError ? "Invalid OTP" : "Choose new password"}
         </h2>
         <p style={{ color: "#6B7280", fontSize: 15 }}>
-          {step === "otp" ? "Enter the 6-digit code sent to your email" : "Must be at least 8 characters"}
+          {step === "otp" ? "Enter the 6-digit code sent to your email" : otpError ? "The code you entered was invalid. Go back to try again." : "Must be at least 8 characters"}
         </p>
       </div>
       <ErrorModal message={error} onClose={() => setError("")} />
@@ -409,9 +470,17 @@ function ResetPasswordForm({ token, setPage }) {
               />
             </div>
             <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 8 }}>Check your inbox for the 6-digit code</p>
+            <button type="button" onClick={handleResendOtp} disabled={otpCooldown > 0} style={{ background: "none", border: "none", color: otpCooldown > 0 ? "#9CA3AF" : AMBER, fontWeight: 600, cursor: otpCooldown > 0 ? "not-allowed" : "pointer", fontSize: 13, marginTop: 4 }}>
+              {otpCooldown > 0 ? `Resend code in ${otpCooldown}s` : "Resend code"}
+            </button>
           </div>
         ) : (
           <>
+            {otpError && (
+              <button type="button" onClick={() => { setStep("otp"); setOtpError(false); setError(""); }} style={{ background: "none", border: "1px dashed #E8E8F0", borderRadius: 8, padding: "8px 14px", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 13, marginBottom: 12, width: "100%" }}>
+                ← Wrong OTP? Go back to re-enter the code
+              </button>
+            )}
             <Field label="New password" type={showPw ? "text" : "password"} value={password} onChange={e => { setPassword(e.target.value); setError(""); }} placeholder="Min. 8 characters" icon={<Lock size={18} />} suffix={
               <button type="button" onClick={() => setShowPw(!showPw)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}>
                 {showPw ? <EyeOff size={18} /> : <Eye size={18} />}

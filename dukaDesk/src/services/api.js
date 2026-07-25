@@ -142,13 +142,19 @@ export async function signup(body) {
   const { user, accessToken, refreshToken } = payload;
 
   let tenant = null;
-  try {
-    const tenantRes = await httpClient.post("/api/v1/tenants", {
-      name: body.businessName || body.fullName,
-      slug: slugify(body.businessName || body.fullName),
-    });
-    tenant = tenantRes.data;
-  } catch { /* tenant creation failed, proceed without */ }
+  if (user?.tenantId) {
+    try {
+      const tenantRes = await httpClient.get(`/api/v1/tenants/${user.tenantId}`);
+      tenant = tenantRes.data || tenantRes;
+    } catch { /* fetch failed */ }
+  }
+  if (!tenant) {
+    try {
+      const tenantsRes = await httpClient.get("/api/v1/tenants");
+      const tenants = tenantsRes.data || [];
+      if (tenants.length > 0) tenant = tenants[0];
+    } catch { /* fetch failed */ }
+  }
 
   const merchant = buildMerchant(user, tenant);
   setToken(accessToken);
@@ -541,6 +547,105 @@ export async function updateTenantConfig(id, body) {
 export async function publishTenant(id) {
   const res = await httpClient.post(`/api/v1/tenants/${id}/publish`);
   return res.data || res;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   INTEGRATION CONFIG
+   ═══════════════════════════════════════════════════════════════════ */
+
+export async function getIntegrationConfig(name) {
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) return null;
+  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
+  const data = cfg.data || cfg;
+  return data.integrationConfigs?.[name] || null;
+}
+
+export async function setIntegrationConfig(name, config) {
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) return;
+  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
+  const data = cfg.data || cfg;
+  await updateTenantConfig(tenantId, {
+    ...data,
+    integrationConfigs: {
+      ...(data.integrationConfigs || {}),
+      [name]: config,
+    },
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DESIGN / CANVAS
+   ═══════════════════════════════════════════════════════════════════ */
+
+export async function getDesignData() {
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) return null;
+  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
+  const data = cfg.data || cfg;
+  return data.design || null;
+}
+
+export async function saveDesignData(design) {
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) return;
+  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
+  const data = cfg.data || cfg;
+  await updateTenantConfig(tenantId, {
+    ...data,
+    design,
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PUBLISHING / RELEASES
+   ═══════════════════════════════════════════════════════════════════ */
+
+export async function getReleases() {
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) return [];
+  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
+  const data = cfg.data || cfg;
+  return data.releases || [];
+}
+
+export async function getCurrentDeployment() {
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) return null;
+  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
+  const data = cfg.data || cfg;
+  return data.deployed || null;
+}
+
+export async function saveReleases(releases) {
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) return;
+  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
+  const data = cfg.data || cfg;
+  await updateTenantConfig(tenantId, {
+    ...data,
+    releases,
+  });
+}
+
+export async function saveDeployment(deployed) {
+  const merchant = getMerchant();
+  const tenantId = merchant?.tenantId;
+  if (!tenantId) return;
+  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
+  const data = cfg.data || cfg;
+  await updateTenantConfig(tenantId, {
+    ...data,
+    deployed,
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════════

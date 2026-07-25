@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import { INTEGRATION_BADGE_COLORS, INTEGRATION_DETAILS } from "../../config/integrations";
-import { getIntegrations, toggleIntegration } from "../../services/api";
+import { getIntegrations, toggleIntegration, getIntegrationConfig, setIntegrationConfig } from "../../services/api";
 import { Loading, Empty } from "../layout/States";
 import IntegrationConfigPanel from "./IntegrationConfigPanel";
 
@@ -19,6 +19,7 @@ export default function IntegrationDetails() {
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState(false);
   const [configPanel, setConfigPanel] = useState(null);
+  const [configPanelData, setConfigPanelData] = useState(null);
   const [selectedTypes, setSelectedTypes] = useState([]);
 
   const details = INTEGRATION_DETAILS[name];
@@ -36,6 +37,14 @@ export default function IntegrationDetails() {
     }).catch(() => toast.error("Failed to load integration"))
     .finally(() => setLoading(false));
   }, [name]);
+
+  useEffect(() => {
+    if (configPanel) {
+      getIntegrationConfig(configPanel.name).then(setConfigPanelData).catch(() => setConfigPanelData(null));
+    } else {
+      setConfigPanelData(null);
+    }
+  }, [configPanel]);
 
   if (loading) return <Loading message={`Loading ${name}...`} />;
   if (!integration) return <Empty icon="ðŸ”Œ" message="Integration not found" sub="This integration doesn't exist or has been removed" action={<button onClick={() => navigate("/dashboard/integrations")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Back to Integrations</button>} />;
@@ -141,16 +150,17 @@ export default function IntegrationDetails() {
       {configPanel && (
         <IntegrationConfigPanel
           integration={configPanel}
-          config={(() => { try { return JSON.parse(localStorage.getItem(`dd_integration_config_${configPanel.name}`)); } catch { return null; } })()}
-          onConfig={(name, cfg) => localStorage.setItem(`dd_integration_config_${name}`, JSON.stringify(cfg))}
-          onSave={(cfg) => {
-            if (cfg) localStorage.setItem(`dd_integration_config_${configPanel.name}`, JSON.stringify(cfg));
-            setConfigPanel(null);
-            toast.success(`${configPanel.name} settings saved!`);
+          config={configPanelData}
+          onConfig={(name, cfg) => setConfigPanelData(cfg)}
+          onSave={async (cfg) => {
+            try {
+              if (cfg) await setIntegrationConfig(configPanel.name, cfg);
+              setConfigPanel(null);
+              toast.success(`${configPanel.name} settings saved!`);
+            } catch { toast.error("Failed to save settings"); }
           }}
           onRemove={async (item) => {
             try {
-              const { toggleIntegration } = await import("../../services/api");
               await toggleIntegration(item.name);
               setActive(false);
               setConfigPanel(null);

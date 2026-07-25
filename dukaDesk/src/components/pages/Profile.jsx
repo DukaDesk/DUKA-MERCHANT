@@ -33,6 +33,8 @@ export default function Profile() {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.business.trim()) { toast.error("Name and business name are required"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { toast.error("Invalid email format"); return; }
+    if (form.phone && !/^[\d\s\+\-\(\)]{7,20}$/.test(form.phone)) { toast.error("Invalid phone number format"); return; }
     setSaving(true);
     try {
       const updated = await updateMerchantProfile({ name: form.name, business: form.business, email: form.email, phone: form.phone });

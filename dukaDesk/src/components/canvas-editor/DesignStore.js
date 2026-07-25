@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { getDesignData, saveDesignData } from "../../services/api";
 
 let nextId = 1;
 function genId() { return `c_${nextId++}`; }
@@ -29,32 +30,38 @@ function enrichSections(sections) {
   }));
 }
 
-export function useDesignStore(initialData) {
-  const [data, setData] = useState(() => {
-    if (initialData) return initialData;
-    try {
-      const saved = localStorage.getItem("dukadesk_design");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed?.meta && parsed?.screens && parsed?.shared) {
-          const sid = parsed.navigation?.initialScreen || Object.keys(parsed.screens)[0];
-          if (!parsed.screens[sid]) parsed.screens[Object.keys(parsed.screens)[0]] = { name: "Home", backgroundColor: "#FCF8FA", bodySections: [] };
-          return parsed;
-        }
+function getDefaultData() {
+  return {
+    meta: { category: "", appName: "", primaryColor: "#1A1A2E", logo: null },
+    navigation: { initialScreen: "screen_1", tabs: [] },
+    shared: {
+      header: { id: "section_header", type: "header", name: "Header", backgroundColor: "#FCF8FA", components: [] },
+      footer: { id: "section_footer", type: "footer", name: "Footer", backgroundColor: "#FCF8FA", components: [] },
+    },
+    screens: {
+      screen_1: { name: "Home", backgroundColor: "#FCF8FA", bodySections: [] },
+    },
+  };
+}
+
+function loadLocalFallback() {
+  try {
+    const saved = localStorage.getItem("dukadesk_design");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed?.meta && parsed?.screens && parsed?.shared) {
+        const sid = parsed.navigation?.initialScreen || Object.keys(parsed.screens)[0];
+        if (!parsed.screens[sid]) parsed.screens[Object.keys(parsed.screens)[0]] = { name: "Home", backgroundColor: "#FCF8FA", bodySections: [] };
+        return parsed;
       }
-    } catch {}
-    return {
-      meta: { category: "", appName: "", primaryColor: "#1A1A2E", logo: null },
-      navigation: { initialScreen: "screen_1", tabs: [] },
-      shared: {
-        header: { id: "section_header", type: "header", name: "Header", backgroundColor: "#FCF8FA", components: [] },
-        footer: { id: "section_footer", type: "footer", name: "Footer", backgroundColor: "#FCF8FA", components: [] },
-      },
-      screens: {
-        screen_1: { name: "Home", backgroundColor: "#FCF8FA", bodySections: [] },
-      },
-    };
-  });
+    }
+  } catch {}
+  return null;
+}
+
+export function useDesignStore(initialData) {
+  const [data, setData] = useState(() => initialData || loadLocalFallback() || getDefaultData());
+  const [serverLastSaved, setServerLastSaved] = useState(null);
   const [currentScreenId, setCurrentScreenId] = useState(data.navigation.initialScreen);
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
@@ -66,7 +73,23 @@ export function useDesignStore(initialData) {
   const [copiedStyles, setCopiedStyles] = useState(null);
   const [assets, setAssets] = useState([]);
   const [lastSaved, setLastSaved] = useState(null);
+  const [savingToServer, setSavingToServer] = useState(false);
   const saveTimerRef = useRef(null);
+  const apiSaveTimerRef = useRef(null);
+
+  const templateLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!initialData) {
+      getDesignData().then(apiData => {
+        if (!templateLoadedRef.current && apiData?.meta && apiData?.screens && apiData?.shared) {
+          setData(apiData);
+          setCurrentScreenId(apiData.navigation?.initialScreen || Object.keys(apiData.screens)[0]);
+          setServerLastSaved(new Date());
+        }
+      }).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -79,19 +102,29 @@ export function useDesignStore(initialData) {
     return () => clearTimeout(saveTimerRef.current);
   }, [data]);
 
+  useEffect(() => {
+    if (apiSaveTimerRef.current) clearTimeout(apiSaveTimerRef.current);
+    apiSaveTimerRef.current = setTimeout(() => {
+      setSavingToServer(true);
+      saveDesignData(data).then(() => { setServerLastSaved(new Date()); setSavingToServer(false); }).catch(() => setSavingToServer(false));
+    }, 2000);
+    return () => clearTimeout(apiSaveTimerRef.current);
+  }, [data]);
+
+  const saveToServer = useCallback(async () => {
+    if (apiSaveTimerRef.current) clearTimeout(apiSaveTimerRef.current);
+    setSavingToServer(true);
+    try {
+      await saveDesignData(data);
+      setServerLastSaved(new Date());
+    } catch {} finally {
+      setSavingToServer(false);
+    }
+  }, [data]);
+
   const clearDesign = useCallback(() => {
     try { localStorage.removeItem("dukadesk_design"); } catch {}
-    setData({
-      meta: { category: "", appName: "", primaryColor: "#1A1A2E", logo: null },
-      navigation: { initialScreen: "screen_1", tabs: [] },
-      shared: {
-        header: { id: "section_header", type: "header", name: "Header", backgroundColor: "#FCF8FA", components: [] },
-        footer: { id: "section_footer", type: "footer", name: "Footer", backgroundColor: "#FCF8FA", components: [] },
-      },
-      screens: {
-        screen_1: { name: "Home", backgroundColor: "#FCF8FA", bodySections: [] },
-      },
-    });
+    setData(getDefaultData());
     undoStack.current = [];
     redoStack.current = [];
   }, []);
@@ -387,9 +420,9 @@ export function useDesignStore(initialData) {
 
   /* ── Load Template ── */
   const loadTemplate = useCallback((templateData) => {
+    templateLoadedRef.current = true;
     pushUndo();
     const enriched = JSON.parse(JSON.stringify(templateData));
-    // Enrich shared sections
     if (enriched.shared) {
       if (enriched.shared.header) {
         enriched.shared.header.components = enrichComponents(enriched.shared.header.components || []);
@@ -398,7 +431,6 @@ export function useDesignStore(initialData) {
         enriched.shared.footer.components = enrichComponents(enriched.shared.footer.components || []);
       }
     }
-    // Enrich screen body sections
     Object.keys(enriched.screens).forEach(sid => {
       const s = enriched.screens[sid];
       if (s.bodySections) {
@@ -471,7 +503,7 @@ export function useDesignStore(initialData) {
     loadTemplate, getDesignJSON,
 
     // Persistence
-    lastSaved, clearDesign,
+    lastSaved, serverLastSaved, savingToServer, saveToServer, clearDesign,
 
     // Assets
     assets, addAsset, removeAsset,

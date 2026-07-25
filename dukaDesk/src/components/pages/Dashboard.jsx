@@ -7,8 +7,7 @@ import { useAuth } from "../../contexts";
 import { toast } from "react-toastify";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
-import ApiClient from "../../services/ApiClient";
-import { getComplianceStatus, getCurrentPlan, getMerchant } from "../../services/api";
+import { getMyApp, getDashboardStats, getRevenue, getActivity, getSetupData, getComplianceStatus, getCurrentPlan, getMerchant } from "../../services/api";
 import { Loading, Empty, ErrorState } from "../layout/States";
 import { useDispatchAction } from "../../runtime/RuntimeContext";
 import { EventBus } from "../../runtime/EventBus";
@@ -39,7 +38,7 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    ApiClient.getMyApp().then(setDeployedApp).catch(() => {});
+    getMyApp().then(setDeployedApp).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -64,14 +63,14 @@ export default function Dashboard() {
   const loadDashboard = () => {
     setError(null);
     setLoading(true);
-    Promise.all([ApiClient.getDashboardStats(), ApiClient.getRevenue(), ApiClient.getActivity()])
+    Promise.all([getDashboardStats(), getRevenue(), getActivity()])
       .then(([s, r, a]) => { setStats(s); setRevenueData(r); setActivity(a); })
       .catch(() => setError("Failed to load dashboard data"))
       .finally(() => setLoading(false));
   };
   useEffect(loadDashboard, []);
 
-  const setup = ApiClient.getSetupData();
+  const setup = getSetupData();
   const statusItems = [
     { dot: "#7C3AED", label: merchant?.name || "Merchant", sub: merchant?.email || "No email" },
     { dot: "#0D9488", label: merchant?.business || "Business", sub: merchant?.phone || "No phone" },

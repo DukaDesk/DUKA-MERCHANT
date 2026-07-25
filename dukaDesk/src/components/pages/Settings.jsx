@@ -48,10 +48,6 @@ export default function Settings() {
         }
       }).catch(() => {});
     }
-    const saved = localStorage.getItem("dd_settings");
-    if (saved) {
-      try { setForm(prev => ({ ...prev, ...JSON.parse(saved) })); } catch { /* ignore */ }
-    }
     setLoading(false);
   }, []);
 
@@ -60,6 +56,11 @@ export default function Settings() {
   const handleHourChange = (day, value) => setForm(f => ({ ...f, hours: { ...f.hours, [day]: value } }));
 
   const handleSave = async () => {
+    if (!form.businessName.trim()) { toast.error("Business name is required"); return; }
+    if (!form.email.trim()) { toast.error("Email is required"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { toast.error("Invalid email format"); return; }
+    if (form.phone && !/^[\d\s\+\-\(\)]{7,20}$/.test(form.phone)) { toast.error("Invalid phone number format"); return; }
+    if (form.website && !/^https?:\/\/.+/.test(form.website)) { toast.error("Website must start with http:// or https://"); return; }
     setSaving(true);
     const tenantId = merchant?.tenantId || getMerchant()?.tenantId;
     try {
@@ -79,11 +80,9 @@ export default function Settings() {
           accentColor: form.accentColor,
         });
       }
-      localStorage.setItem("dd_settings", JSON.stringify(form));
       toast.success("Settings saved successfully!");
     } catch {
-      localStorage.setItem("dd_settings", JSON.stringify(form));
-      toast.success("Settings saved locally!");
+      toast.error("Failed to save settings");
     }
     setSaving(false);
   };

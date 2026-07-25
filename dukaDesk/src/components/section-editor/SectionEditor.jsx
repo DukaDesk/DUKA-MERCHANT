@@ -4,6 +4,7 @@ import SectionRenderer from "./SectionRenderer";
 import SectionPanel from "./SectionPanel";
 import PropertiesPanel from "./PropertiesPanel";
 import ScreenSwitcher from "./ScreenSwitcher";
+import { toast } from "react-toastify";
 import { NAVY } from "../../theme";
 import { theme, iconBtn, primaryBtn, panelHeader } from "./editorTheme";
 import { publishProject, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
@@ -53,7 +54,7 @@ export default function SectionEditor({ store, onBack }) {
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); store.undo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) { e.preventDefault(); store.redo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); store.redo(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); store.saveToServer(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "p") { e.preventDefault(); handleTogglePreview(); }
       if ((e.key === "Delete" || e.key === "Backspace") && !e.target.closest("input,textarea,select")) {
         if (selectedComponentId && selectedSectionId) {
@@ -112,25 +113,28 @@ export default function SectionEditor({ store, onBack }) {
     setPreviewScreenId(screenId);
   }, []);
 
-  const handlePublish = useCallback(() => {
+  const handlePublish = useCallback(async () => {
     const design = store.getDesignJSON();
-    const result = publishProject(design);
+    const result = await publishProject(design);
     if (result.success) {
+      toast.success("Published successfully!");
       setTimeout(() => onBack?.(), 1200);
     } else {
       setValidationErrors(result.validation);
     }
   }, [store, onBack]);
 
-  const handleShowReleases = useCallback(() => {
-    setReleases(getReleaseHistory());
+  const handleShowReleases = useCallback(async () => {
+    const history = await getReleaseHistory();
+    setReleases(history);
     setShowReleases(true);
   }, []);
 
-  const handleRollback = useCallback((releaseId) => {
-    const result = rollbackToRelease(releaseId);
+  const handleRollback = useCallback(async (releaseId) => {
+    const result = await rollbackToRelease(releaseId);
     if (result.success) {
-      setReleases(getReleaseHistory());
+      const history = await getReleaseHistory();
+      setReleases(history);
     }
   }, []);
 
@@ -148,10 +152,13 @@ export default function SectionEditor({ store, onBack }) {
     setShowExport(false);
   }, [store]);
 
-  const lastSaved = store.lastSaved;
-  const saveStatus = lastSaved
-    ? `Saved ${formatTimeAgo(lastSaved)}`
-    : "Saving...";
+  const serverLastSaved = store.serverLastSaved;
+  const savingToServer = store.savingToServer;
+  const saveStatus = savingToServer
+    ? "Saving to server..."
+    : serverLastSaved
+      ? `Saved ${formatTimeAgo(serverLastSaved)}`
+      : "";
 
   if (previewMode) {
     const screen = data.screens[previewCurrentScreen];
@@ -285,8 +292,8 @@ export default function SectionEditor({ store, onBack }) {
           }}>
             {data.meta.category || "App"}
           </span>
-          <span style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 4, color: saveStatus === "Saving..." ? theme.textSecondary : theme.success }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: saveStatus === "Saving..." ? theme.textSecondary : theme.success, display: "inline-block" }} />
+          <span style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 4, color: savingToServer ? "#D97706" : (serverLastSaved ? theme.success : theme.textSecondary) }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: savingToServer ? "#D97706" : (serverLastSaved ? theme.success : theme.textSecondary), display: "inline-block" }} />
             {saveStatus}
           </span>
         </div>
@@ -305,6 +312,10 @@ export default function SectionEditor({ store, onBack }) {
             onMouseEnter={() => setHoveredIcon("redo")}
             onMouseLeave={() => setHoveredIcon(null)}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+
+          <button onClick={() => store.saveToServer()} style={iconBtn} title="Save to Server">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           </button>
 
           <div style={{ width: 1, height: 20, background: theme.border, margin: "0 4px" }} />
@@ -500,7 +511,8 @@ export default function SectionEditor({ store, onBack }) {
   }
 
   function ReleasesPanel({ releases, onRollback, onClose }) {
-    const current = getCurrentDeployment();
+    const [current, setCurrent] = useState(null);
+    useEffect(() => { getCurrentDeployment().then(setCurrent).catch(() => setCurrent(null)); }, []);
     return (
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }} onClick={onClose}>
         <div onClick={e => e.stopPropagation()} style={{ background: theme.surface, borderRadius: theme.radius["2xl"], boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24, maxWidth: 480, width: "90%", maxHeight: "70vh", overflowY: "auto" }}>

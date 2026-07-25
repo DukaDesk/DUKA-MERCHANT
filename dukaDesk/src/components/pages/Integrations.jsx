@@ -4,7 +4,7 @@ import { Lock, Store } from "lucide-react";
 import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
-import { getIntegrations, toggleIntegration, getMyApp } from "../../services/api";
+import { getIntegrations, toggleIntegration, getMyApp, getIntegrationConfig, setIntegrationConfig } from "../../services/api";
 import { INTEGRATION_BADGE_COLORS } from "../../config/integrations";
 import { getTemplateIntegrationNames } from "../../config/wizard";
 import { Loading, Empty, ErrorState } from "../layout/States";
@@ -20,6 +20,7 @@ export default function Integrations() {
   const [appTemplate, setAppTemplate] = useState(null);
   const [catFilter, setCatFilter] = useState("All");
   const [configPanel, setConfigPanel] = useState(null);
+  const [configPanelData, setConfigPanelData] = useState(null);
   const [removeConfirm, setRemoveConfirm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,6 +49,14 @@ export default function Integrations() {
     .finally(() => setLoading(false));
   };
   useEffect(loadIntegrations, []);
+
+  useEffect(() => {
+    if (configPanel) {
+      getIntegrationConfig(configPanel.name).then(setConfigPanelData).catch(() => setConfigPanelData(null));
+    } else {
+      setConfigPanelData(null);
+    }
+  }, [configPanel]);
 
   const toggle = async (catIdx, itemIdx) => {
     const item = integrations[catIdx].items[itemIdx];
@@ -170,12 +179,14 @@ export default function Integrations() {
       {configPanel && (
         <IntegrationConfigPanel
           integration={configPanel}
-          config={JSON.parse(localStorage.getItem(`dd_integration_config_${configPanel.name}`) || "null")}
-          onConfig={(name, cfg) => localStorage.setItem(`dd_integration_config_${name}`, JSON.stringify(cfg))}
-          onSave={(cfg) => {
-            if (cfg) localStorage.setItem(`dd_integration_config_${configPanel.name}`, JSON.stringify(cfg));
-            setConfigPanel(null);
-            toast.success(`${configPanel.name} settings saved!`);
+          config={configPanelData}
+          onConfig={(name, cfg) => setConfigPanelData(cfg)}
+          onSave={async (cfg) => {
+            try {
+              if (cfg) await setIntegrationConfig(configPanel.name, cfg);
+              setConfigPanel(null);
+              toast.success(`${configPanel.name} settings saved!`);
+            } catch { toast.error("Failed to save settings"); }
           }}
           onRemove={(item) => setRemoveConfirm(item)}
         />
