@@ -118,7 +118,7 @@ export default function App() {
               <Route path="/canvas-editor" element={<ProtectedRoute><CanvasEditor /></ProtectedRoute>} />
               <Route path="/compliance" element={<ProtectedRoute><CompliancePage /></ProtectedRoute>} />
               <Route path="/desk-design" element={<ProtectedRoute><DeskDesignPage /></ProtectedRoute>} />
-              <Route path="/" element={<Navigate to="/signup" replace />} />
+              <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/dashboard" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
                 <Route path="products" element={<Products />} />
