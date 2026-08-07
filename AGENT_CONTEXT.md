@@ -29,6 +29,14 @@ The `merchant-portal/` repository contains the Business Dashboard — an adminis
 - `Compliance.jsx`: Uses API instead of localStorage
 - `Dashboard.jsx`, `Sidebar.jsx`: Compliance checks via API
 
+### Compliance Payload Hardening (Session 2026-08-07)
+- `api.js`: `submitCompliance` now uploads verification docs via Media/DAM (`POST /tenants/:id/media/upload`)
+  and stores document refs (`{ name, size, status, mediaId, url }`) instead of base64 blobs
+- Added `status: "pending"` field to compliance payload (verification lifecycle begins)
+- Added helpers `dataUrlToBlob`, `uploadComplianceDocument`, `toDocumentRecord`
+- Backend gap documented: `knowledge-base/backend/BUSINESS_VERIFICATION_BACKEND_TODO.md`
+  (no dedicated KYC/compliance endpoints exist — data provisionally stored in tenant config)
+
 ### Toast System Migration
 - Removed legacy `ToastContext` / `useToast` from `contexts.jsx`
 - Removed `ToastContext.Provider` wrapper from `App.jsx`

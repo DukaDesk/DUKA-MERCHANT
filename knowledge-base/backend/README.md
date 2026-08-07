@@ -27,6 +27,8 @@ scripts/lint
 
 - [Agent Context](AGENT_CONTEXT.md)
 - [Architecture Alignment](ARCHITECTURE_ALIGNMENT.md)
+- [API Endpoints Reference](api-endpoints-reference.md)
+- [Business Verification (KYC) Backend TODO](BUSINESS_VERIFICATION_BACKEND_TODO.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 

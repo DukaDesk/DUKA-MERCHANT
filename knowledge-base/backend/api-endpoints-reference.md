@@ -706,6 +706,11 @@ This document catalogs all REST API endpoints exposed by the DUKA-BACKEND servic
 | POST | `/api/v1/security/consent` | Record consent action |
 | GET | `/api/v1/security/consent/:userId` | Get consent history |
 
+> **⚠️ Gap — Business Verification (KYC):** The Business Dashboard currently persists merchant
+> compliance data into the generic tenant config (`config.compliance`). The Security & Compliance
+> module has **no dedicated business-verification endpoints**. Planned work is tracked in
+> [Business Verification (KYC) Backend TODO](BUSINESS_VERIFICATION_BACKEND_TODO.md).
+
 ---
 
 ## 25. Developer Platform
