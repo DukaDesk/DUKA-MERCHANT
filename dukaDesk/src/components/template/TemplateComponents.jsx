@@ -71,6 +71,10 @@ export function CategoryPills({ categories = [], activeCategory, style = {}, onA
   );
 }
 
+function isImageUrl(src) {
+  return typeof src === "string" && /^(https?:)?\/\//.test(src);
+}
+
 export function MenuGrid({ items = [], columns = 2, variant = "default", style = {}, onAction }) {
   const brand = useBrand();
   return (
@@ -97,7 +101,15 @@ export function MenuGrid({ items = [], columns = 2, variant = "default", style =
           onClick={() => onAction?.("viewDetails", { item, index: i })}
           onDoubleClick={() => onAction?.("addItem", { item, index: i })}
         >
-          <div style={{ fontSize: 32, textAlign: "center" }}>{item.emoji || item.img || "🍽️"}</div>
+          {isImageUrl(item.img) ? (
+            <img
+              src={item.img}
+              alt={item.name || "item"}
+              style={{ width: "100%", height: 96, objectFit: "cover", borderRadius: 10, display: "block" }}
+            />
+          ) : (
+            <div style={{ fontSize: 32, textAlign: "center" }}>{item.emoji || item.img || "🍽️"}</div>
+          )}
           <div style={{ fontWeight: 700, fontSize: 14, color: brand.NAVY || '#0F0F1A' }}>{item.name}</div>
           {item.desc && <div style={{ fontSize: 12, color: brand.GRAY?.[500] || '#6B7280' }}>{item.desc}</div>}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
@@ -377,23 +389,26 @@ export function SlotGrid({ duration = 60, variant = "default", style = {}, onAct
   );
 }
 
-export function BookingSummary({ style = {}, onAction }) {
+export function BookingSummary({ service = "Hair Styling", subtitle, duration = 60, total = 8000, style = {}, onAction }) {
   const brand = useBrand();
   return (
     <div style={{ background: brand.cardColor || "#fff", borderRadius: 14, padding: 20, border: `1px solid ${brand.GRAY?.[200]}`, ...style }}>
       <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: brand.NAVY, marginBottom: 16 }}>Booking Summary</div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, color: brand.GRAY?.[600] }}>
-        <span>Service</span><span style={{ fontWeight: 600 }}>Hair Styling</span>
+        <span>Service</span><span style={{ fontWeight: 600 }}>{service}</span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, color: brand.GRAY?.[600] }}>
         <span>Date</span><span style={{ fontWeight: 600 }}>Tomorrow, 2:00 PM</span>
       </div>
+      {subtitle && (
+        <div style={{ fontSize: 12, color: brand.GRAY?.[500], marginBottom: 8, lineHeight: 1.4 }}>{subtitle}</div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, color: brand.GRAY?.[600] }}>
-        <span>Duration</span><span style={{ fontWeight: 600 }}>60 min</span>
+        <span>Duration</span><span style={{ fontWeight: 600 }}>{duration} min</span>
       </div>
       <div style={{ borderTop: `1px solid ${brand.GRAY?.[200]}`, paddingTop: 12, marginTop: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16, color: brand.NAVY }}>
-          <span>Total</span><span>₦8,000</span>
+          <span>Total</span><span>₦{total.toLocaleString()}</span>
         </div>
       </div>
       <button
@@ -418,34 +433,46 @@ export function BookingSummary({ style = {}, onAction }) {
   );
 }
 
-export function CartSummary({ style = {}, onAction }) {
+export function CartSummary({ items = [], style = {}, onAction }) {
   const brand = useBrand();
+  const cartItems = items.length ? items : [
+    { id: 1, name: "Jollof Rice & Chicken", price: 2500, qty: 2, img: "🍛" }
+  ];
+  const subtotal = cartItems.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0);
+  const delivery = items.length ? 500 : 500;
+  const total = subtotal + delivery;
   return (
     <div style={{ background: brand.cardColor || "#fff", borderRadius: 14, padding: 20, border: `1px solid ${brand.GRAY?.[200]}`, ...style }}>
-      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: brand.NAVY, marginBottom: 16 }}>Your Cart</div>
+      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: brand.NAVY, marginBottom: 16 }}>Your Cart ({cartItems.length})</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: brand.GRAY?.[50], borderRadius: 10 }}>
-          <div style={{ fontSize: 24 }}>🍛</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, color: brand.NAVY }}>Jollof Rice & Chicken</div>
-            <div style={{ fontSize: 13, color: brand.GRAY?.[500] }}>₦2,500 × 2</div>
+        {cartItems.map(item => (
+          <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: brand.GRAY?.[50], borderRadius: 10 }}>
+            {isImageUrl(item.img) ? (
+              <img src={item.img} alt={item.name} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
+            ) : (
+              <div style={{ fontSize: 24 }}>{item.img || "🛍️"}</div>
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, color: brand.NAVY }}>{item.name}</div>
+              <div style={{ fontSize: 13, color: brand.GRAY?.[500] }}>₦{item.price?.toLocaleString()} × {item.qty}</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => onAction?.("removeItem", { id: item.id })} style={{ background: "none", border: "none", cursor: "pointer", color: brand.RED, fontSize: 18 }}>−</button>
+              <span style={{ fontWeight: 700 }}>{item.qty}</span>
+              <button onClick={() => onAction?.("addItem", { id: item.id })} style={{ background: "none", border: "none", cursor: "pointer", color: brand.AMBER, fontSize: 18 }}>+</button>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button onClick={() => onAction?.("removeItem", { id: 1 })} style={{ background: "none", border: "none", cursor: "pointer", color: brand.RED, fontSize: 18 }}>−</button>
-            <span style={{ fontWeight: 700 }}>2</span>
-            <button onClick={() => onAction?.("addItem", { id: 1 })} style={{ background: "none", border: "none", cursor: "pointer", color: brand.AMBER, fontSize: 18 }}>+</button>
-          </div>
-        </div>
+        ))}
       </div>
       <div style={{ borderTop: `1px solid ${brand.GRAY?.[200]}`, paddingTop: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, color: brand.GRAY?.[600] }}>
-          <span>Subtotal</span><span>₦5,000</span>
+          <span>Subtotal</span><span>₦{subtotal.toLocaleString()}</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, color: brand.GRAY?.[600] }}>
-          <span>Delivery</span><span>₦500</span>
+          <span>Delivery</span><span>₦{delivery.toLocaleString()}</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16, color: brand.NAVY }}>
-          <span>Total</span><span>₦5,500</span>
+          <span>Total</span><span>₦{total.toLocaleString()}</span>
         </div>
       </div>
       <button
@@ -546,8 +573,7 @@ export function SectionHeader({ children, style = {} }) {
   );
 }
 
-export { EmptyState } from "../../runtime/ComponentRegistry";
-export { DynamicCard } from "../../runtime/ComponentRegistry";
+import { EmptyState, DynamicCard } from "../../runtime/ComponentRegistry";
 
 const components = {
   hero_banner: HeroBanner,

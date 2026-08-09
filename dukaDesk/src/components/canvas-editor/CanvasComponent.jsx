@@ -18,8 +18,10 @@ const cornerHandles = [
 function buildFillCSS(fills) {
   if (!fills || fills.length === 0) return "transparent";
   const solid = fills.find(f => f.type === "solid");
-  if (solid) return solid.color || "transparent";
   const grad = fills.find(f => f.type === "gradient");
+  const img = fills.find(f => f.type === "image" && f.src);
+  if (img) return `${solid ? solid.color || "transparent" : "transparent"} url("${img.src}") center / cover no-repeat`;
+  if (solid) return solid.color || "transparent";
   if (grad) return `linear-gradient(135deg, ${grad.stops?.map(s => `${s.color} ${s.offset * 100}%`).join(", ") || "#E5E1E3, #C8C5CD"})`;
   return "transparent";
 }

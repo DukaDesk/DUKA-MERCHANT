@@ -65,7 +65,7 @@ function SectionHeader({ children, style }) {
   }, children);
 }
 
-function EmptyState({ title, description, icon, style = {}, dispatchAction }) {
+function EmptyState({ title, description, icon, style = {} }) {
   return createElement("div", {
     style: {
       display: "flex", flexDirection: "column", alignItems: "center",

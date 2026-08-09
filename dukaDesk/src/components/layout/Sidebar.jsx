@@ -1,43 +1,42 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, Settings as SettingsIcon, Users, ChevronLeft, ChevronRight, LogOut, Sparkles, PenTool, Contact, ClipboardList, Megaphone, ShieldCheck, Palette } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, Settings as SettingsIcon, Users, ChevronLeft, ChevronRight, LogOut, Sparkles, PenTool, Contact, ClipboardList, Megaphone, ShieldCheck, Palette, UtensilsCrossed, HeartHandshake, HandCoins, CalendarCheck, CalendarDays, Wallet, CalendarClock, Receipt, Ticket, Briefcase, Inbox, BadgeCheck, Dumbbell } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../contexts";
 import { NAVY, AMBER, transition } from "../../theme";
 import { getOrders, getConversations, getComplianceStatus, getMerchant } from "../../services/api";
+import { applyFlagGate } from "../../services/moduleGate";
+import { useVertical } from "../../runtime/VerticalContext";
+import { PRIMITIVES } from "../../config/primitives";
+import dukaLogo from "../../assets/image/Dukalogo.png";
 
 const roleAccess = {
-  super_admin: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team", "settings"],
-  platform_operator: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team"],
-  support_agent: ["dashboard", "compliance", "desk-design", "orders", "customers", "messages", "analytics"],
-  tenant_owner: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team", "settings"],
-  business_manager: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing"],
-  store_manager: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "messages", "integrations"],
-  sales_staff: ["dashboard", "compliance", "desk-design", "orders", "customers", "messages"],
+  super_admin: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team", "settings", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
+  platform_operator: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
+  support_agent: ["dashboard", "compliance", "desk-design", "orders", "customers", "messages", "analytics", "attendance", "appointments", "giving", "reservations", "tickets"],
+  tenant_owner: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team", "settings", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
+  business_manager: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
+  store_manager: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "messages", "integrations", "attendance", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
+  sales_staff: ["dashboard", "compliance", "desk-design", "orders", "customers", "messages", "appointments"],
   content_manager: ["dashboard", "compliance", "desk-design", "products", "messages", "marketing"],
   customer: ["dashboard", "compliance", "desk-design"],
   member: ["dashboard", "compliance", "desk-design"],
 };
 
-const mainNavItems = [
-  { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+const ICON_MAP = {
+  LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard,
+  SettingsIcon, Users, Contact, ClipboardList, Megaphone, ShieldCheck, Palette,
+  UtensilsCrossed, HeartHandshake, HandCoins, CalendarCheck, CalendarDays, Wallet,
+  CalendarClock, Receipt, Sparkles, Ticket, Briefcase, Inbox, BadgeCheck, Dumbbell,
+};
+
+const CHROME_NAV = [
+  { id: "dashboard", icon: LayoutDashboard, label: "Overview" },
   { id: "compliance", icon: ShieldCheck, label: "Compliance", route: "/compliance" },
   { id: "desk-design", icon: Palette, label: "Desk Design", route: "/desk-design", requiresCompliance: true },
-  { id: "products", icon: Package, label: "Products" },
-  { id: "orders", icon: ShoppingCart, label: "Orders" },
-  { id: "customers", icon: Contact, label: "Customers" },
-  { id: "inventory", icon: ClipboardList, label: "Inventory" },
-  { id: "analytics", icon: BarChart3, label: "Analytics" },
-  { id: "messages", icon: MessageSquare, label: "Messages" },
-  { id: "marketing", icon: Megaphone, label: "Marketing" },
-  { id: "integrations", icon: Link2, label: "Integrations" },
 ];
 
-const secondaryNavItems = [
-  { id: "billing", icon: CreditCard, label: "Billing" },
-  { id: "team", icon: Users, label: "Team" },
-  { id: "settings", icon: SettingsIcon, label: "Settings" },
-];
+const SECONDARY_IDS = ["billing", "team", "settings"];
 
 export default function Sidebar() {
   const isMobile = useIsMobile();
@@ -49,14 +48,11 @@ export default function Sidebar() {
   const currentPage = location.pathname.split("/")[2] || location.pathname.replace("/", "") || "dashboard";
   const navigateTo = (path) => navigate(path === "dashboard" ? "/dashboard" : `/dashboard/${path}`);
   const { merchant, logout } = useAuth();
+  const { vertical: resolvedVertical } = useVertical();
+  const { modules: enabledIds } = useVertical();
   const handleLogout = () => { logout(); };
   const role = merchant?.role || "member";
   const allowed = roleAccess[role] || roleAccess.member;
-  const visibleNav = mainNavItems.filter(item => {
-    if (!allowed.includes(item.id)) return false;
-    if (item.requiresCompliance && !compliance) return false;
-    return true;
-  });
 
   useEffect(() => {
     const m = getMerchant();
@@ -71,7 +67,44 @@ export default function Sidebar() {
       const unread = data.filter(c => c.unread > 0).length;
       setBadges(b => ({ ...b, messages: unread }));
     }).catch(() => {});
-  }, []); 
+  }, []);
+
+  const vertical = applyFlagGate(resolvedVertical, {});
+  const allowedModuleIds = new Set(enabledIds);
+  const resolvedModules = (vertical.modules || []).filter(m => allowedModuleIds.has(m.id)).map(m => ({
+    ...m,
+    icon: ICON_MAP[m.icon] || Sparkles,
+  }));
+  const resolvedAdminPages = (vertical.adminPages || []).filter(p => allowedModuleIds.has(p.id)).map(p => ({
+    ...p,
+    icon: ICON_MAP[p.icon] || Sparkles,
+    route: `/dashboard/${p.route}`,
+  }));
+
+  const adminByPage = new Map(resolvedAdminPages.map(p => [p.id, p]));
+  const installedSectors = PRIMITIVES
+    .filter(p => p.group === "Sector" && p.page && allowedModuleIds.has(p.id))
+    .map(p => adminByPage.get(p.id) || {
+      id: p.id,
+      label: p.label,
+      icon: ICON_MAP[p.icon] || Sparkles,
+      route: `/dashboard/${p.page}`,
+    });
+
+  const primaryModules = (mods) => mods.filter(m => !SECONDARY_IDS.includes(m.id));
+
+  const mainNavItems = [
+    ...CHROME_NAV,
+    ...primaryModules(resolvedModules),
+    ...installedSectors,
+  ];
+  const secondaryNavItems = resolvedModules.filter(m => SECONDARY_IDS.includes(m.id));
+
+  const visibleNav = mainNavItems.filter(item => {
+    if (!allowed.includes(item.id)) return false;
+    if (item.requiresCompliance && !compliance) return false;
+    return true;
+  }); 
 
   if (isMobile) {
     return (
@@ -81,7 +114,7 @@ export default function Sidebar() {
           return true;
         }).map(item => {
           const id = item.id === "compliance-mobile" ? "compliance" : item.id;
-          const active = currentPage === id || currentPage === item.route?.replace("/", "");
+          const active = item.route ? location.pathname === item.route : (currentPage === id || currentPage === item.route?.replace("/", ""));
           const Icon = item.icon;
           return (
             <button key={item.id} onClick={() => item.route ? navigate(item.route) : navigateTo(item.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "8px 0 6px", minHeight: 48, background: "none", border: "none", cursor: "pointer", position: "relative", transition }}>
@@ -145,13 +178,13 @@ export default function Sidebar() {
         display: "flex", alignItems: "center", gap: 10,
         justifyContent: collapsed ? "center" : "flex-start",
       }}>
-        <div style={{ width: 36, height: 36, background: AMBER, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <span style={{ color: NAVY, fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 18 }}>D</span>
+        <div style={{ width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+          <img src={dukaLogo} alt="DukaDesk" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
         {!collapsed && (
           <div style={{ overflow: "hidden" }}>
             <div style={{ color: "#fff", fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, whiteSpace: "nowrap" }}>DukaDesk</div>
-            <span style={{ background: AMBER, color: NAVY, fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 10 }}>MERCHANT</span>
+            <span style={{ background: AMBER, color: NAVY, fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 10 }}>MERCHANTS</span>
           </div>
         )}
       </div>

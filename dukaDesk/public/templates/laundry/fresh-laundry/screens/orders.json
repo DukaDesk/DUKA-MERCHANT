@@ -1,0 +1,26 @@
+{
+  "screenId": "orders",
+  "title": "My Orders",
+  "layout": {
+    "kind": "scroll",
+    "children": [
+      {
+        "type": "section_header",
+        "key": "orders-header",
+        "props": { "children": "Recent Orders" }
+      },
+      {
+        "type": "order_history",
+        "key": "orders-list",
+        "props": {
+          "orders": [
+            { "id": "#LA-1024", "status": "In Progress", "items": "Wash & Fold \u00b7 3kg", "date": "Today, 3:00 PM", "total": 7500 },
+            { "id": "#LA-1019", "status": "Delivered", "items": "Express Wash \u00b7 1 bundle", "date": "Yesterday, 12:00 PM", "total": 5000 },
+            { "id": "#LA-1011", "status": "Delivered", "items": "Dry Cleaning \u00b7 2 items", "date": "Jul 28, 9:00 AM", "total": 7000 }
+          ]
+        },
+        "actions": { "selectOrder": { "type": "navigate", "payload": { "push": "/orders" } } }
+      }
+    ]
+  }
+}

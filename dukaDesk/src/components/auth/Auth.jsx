@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, User, Store, Phone, ArrowLeft, KeyRound, AlertCircle, AlertTriangle, CheckCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, KeyRound, AlertCircle, AlertTriangle, CheckCircle } from "lucide-react";
 import PropTypes from "prop-types";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, RED, PURPLE, inputStyle, labelStyle } from "../../theme";
-import { login, signup, forgotPassword, confirmPasswordReset, setToken } from "../../services/api";
+import { login, signup, forgotPassword, confirmPasswordReset, setToken, googleSignIn } from "../../services/api";
+import GoogleSignInButton from "./GoogleSignInButton";
+import dukaLogo from "../../assets/image/Dukalogo.png";
 
 export default function Auth({ onAuth }) {
   const isMobile = useIsMobile();
@@ -15,13 +17,18 @@ export default function Auth({ onAuth }) {
   const params = new URLSearchParams(location.search);
   const resetToken = params.get("token") || location.pathname.split("/").filter(Boolean).slice(1).find(s => s.length > 10) || "";
 
+  const afterAuth = (merchant) => {
+    onAuth(merchant);
+    navigate(merchant?.category ? "/dashboard" : "/onboarding", { replace: true });
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh" }}>
       <LeftPanel page={page} isMobile={isMobile} />
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", padding: isMobile ? "24px 16px" : "40px 24px" }}>
         <div style={{ width: "100%", maxWidth: 460, animation: "fadeIn 0.4s ease" }}>
-          {page === "login" && <LoginForm onAuth={onAuth} setPage={navigate} />}
-          {page === "signup" && <SignupForm onAuth={onAuth} setPage={navigate} />}
+          {page === "login" && <LoginForm onAuth={afterAuth} setPage={navigate} />}
+          {page === "signup" && <SignupForm onAuth={afterAuth} setPage={navigate} />}
           {page === "forgot" && <ForgotForm setPage={navigate} />}
           {(page === "reset-password" || page === "reset-password-confirm") && <ResetPasswordForm token={resetToken} setPage={navigate} />}
         </div>
@@ -45,8 +52,8 @@ function LeftPanel({ page, isMobile }) {
       <div style={{ position: "absolute", top: "-40%", right: "-20%", width: "60%", height: "60%", background: `radial-gradient(circle, rgba(244,160,38,0.08) 0%, transparent 70%)`, borderRadius: "50%", pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: "-30%", left: "-10%", width: "50%", height: "50%", background: `radial-gradient(circle, rgba(244,160,38,0.05) 0%, transparent 70%)`, borderRadius: "50%", pointerEvents: "none" }} />
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: isMobile ? 28 : 56, position: "relative", zIndex: 1 }}>
-        <div style={{ width: 38, height: 38, background: AMBER, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ color: NAVY, fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 20 }}>D</span>
+        <div style={{ width: 38, height: 38, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+          <img src={dukaLogo} alt="DukaDesk" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
         <div>
           <span style={{ color: "#fff", fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 20 }}>DukaDesk</span>
@@ -122,11 +129,22 @@ function LoginForm({ onAuth, setPage }) {
         console.log("[LoginForm] login result", res);
         setToken(res.token);
         onAuth(res.merchant);
-        setPage("/dashboard");
       } catch (err) {
         console.error("[LoginForm] login error", err);
         setError(err.message || "Login failed. Please try again.");
       } finally { setLoading(false); }
+  };
+
+  const handleGoogleToken = async (idToken) => {
+    try {
+      const res = await googleSignIn(idToken);
+      console.log("[LoginForm] google sign-in result", res);
+      setToken(res.token);
+      onAuth(res.merchant);
+    } catch (err) {
+      console.error("[LoginForm] google sign-in error", err);
+      setError(err.message || "Google sign-in failed. Please try again.");
+    }
   };
 
   return (
@@ -149,7 +167,10 @@ function LoginForm({ onAuth, setPage }) {
         <PrimaryBtn loading={loading}>{loading ? "Logging in..." : "Log in"}</PrimaryBtn>
       </form>
       <Divider />
-      <SocialBtn icon="G" provider="Google" disabled />
+      <GoogleSignInButton
+        onToken={handleGoogleToken}
+        label="Continue with Google"
+      />
       <p style={{ textAlign: "center", marginTop: 24, fontSize: 14, color: "#6B7280" }}>
         Don't have an account?{" "}
         <button onClick={() => setPage("/signup")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer" }}>Sign up →</button>
@@ -161,7 +182,7 @@ function LoginForm({ onAuth, setPage }) {
 LoginForm.propTypes = { onAuth: PropTypes.func.isRequired, setPage: PropTypes.func.isRequired };
 
 function SignupForm({ onAuth, setPage }) {
-  const [form, setForm] = useState({ name: "", business: "", email: "", phone: "", password: "", confirm: "" });
+  const [form, setForm] = useState({ name: "", email: "", countryCode: "+234", phone: "", password: "", confirm: "" });
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -183,9 +204,9 @@ function SignupForm({ onAuth, setPage }) {
 
   const validators = {
     name: (v) => !v ? "Full name is required" : v.length < 2 ? "Name too short" : "",
-    business: (v) => !v ? "Business name is required" : v.length < 2 ? "Name too short" : "",
     email: (v) => !v ? "Email is required" : !v.includes("@") ? "Enter a valid email" : "",
-    phone: (v) => !v ? "Phone number is required" : v.replace(/\s/g, "").length < 10 ? "Enter a valid Nigerian number" : "",
+    countryCode: (v) => !v ? "Enter a country code" : !/^\+\d{1,4}$/.test(v) ? "Enter a valid country code" : "",
+    phone: (v) => !v ? "Phone number is required" : v.replace(/\s/g, "").length < 10 ? "Enter a valid phone number" : "",
     password: (v) => !v ? "Password is required" : v.length < 8 ? "Minimum 8 characters" : !/[A-Z]/.test(v) ? "Add an uppercase letter" : !/[0-9!@#$%]/.test(v) ? "Add a number or symbol" : "",
     confirm: (v) => !v ? "Confirm your password" : v !== form.password ? "Passwords do not match" : "",
   };
@@ -206,6 +227,15 @@ function SignupForm({ onAuth, setPage }) {
     }
   };
 
+  const handleCountryCodeChange = (e) => {
+    const value = e.target.value.replace(/[^\d]/g, "");
+    const code = value ? `+${value}` : "";
+    setForm(f => ({ ...f, countryCode: code }));
+    if (touched.countryCode) {
+      setErrors(e => ({ ...e, countryCode: validateField("countryCode", code) }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
@@ -220,15 +250,26 @@ function SignupForm({ onAuth, setPage }) {
 
     setLoading(true);
     try {
-      const res = await signup({ fullName: form.name, businessName: form.business, email: form.email, phone: form.phone, password: form.password });
+      const res = await signup({ fullName: form.name, email: form.email, phone: form.countryCode + form.phone, password: form.password });
       console.log("[SignupForm] signup result", res);
       setToken(res.token);
       onAuth(res.merchant);
-      setPage("/dashboard");
     } catch (err) {
       console.error("[SignupForm] signup error", err);
       setErrors({ submit: err.message || "Signup failed. Please try again." });
     } finally { setLoading(false); }
+  };
+
+  const handleGoogleToken = async (idToken) => {
+    try {
+      const res = await googleSignIn(idToken);
+      console.log("[SignupForm] google sign-in result", res);
+      setToken(res.token);
+      onAuth(res.merchant);
+    } catch (err) {
+      console.error("[SignupForm] google sign-in error", err);
+      setErrors({ submit: err.message || "Google sign-in failed. Please try again." });
+    }
   };
 
   return (
@@ -238,15 +279,18 @@ function SignupForm({ onAuth, setPage }) {
       <ErrorModal message={errors.submit} onClose={() => setErrors(e => ({ ...e, submit: "" }))} />
       <form onSubmit={handleSubmit}>
         <Field label="Full name" value={form.name} onChange={handleChange("name")} onBlur={() => handleBlur("name")} placeholder="Ada Okafor" error={touched.name ? errors.name : undefined} icon={<User size={18} />} />
-        <Field label="Business name" value={form.business} onChange={handleChange("business")} onBlur={() => handleBlur("business")} placeholder="Ada's Kitchen" error={touched.business ? errors.business : undefined} icon={<Store size={18} />} />
         <Field label="Email address" type="email" value={form.email} onChange={handleChange("email")} onBlur={() => handleBlur("email")} placeholder="ada@example.com" error={touched.email ? errors.email : undefined} icon={<Mail size={18} />} />
         <div style={{ marginBottom: 16 }}>
           <label htmlFor="phone" style={labelStyle}>Phone number</label>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Phone size={18} color="#9CA3AF" />
-            <div style={{ ...inputStyle, width: 80, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, cursor: "default", flexShrink: 0 }}>🇳🇬 +234</div>
+            <div style={{ ...inputStyle, width: 84, display: "flex", alignItems: "center", gap: 2, flexShrink: 0, padding: "0 10px" }}>
+              <span style={{ color: "#9CA3AF", fontSize: 14 }}>+</span>
+              <input aria-label="Country code" type="tel" value={form.countryCode.replace(/^\+/, "")} onChange={handleCountryCodeChange} onBlur={() => handleBlur("countryCode")} style={{ border: "none", outline: "none", width: "100%", fontSize: 14, background: "transparent", color: "#1C1B1D" }} />
+            </div>
             <input id="phone" name="phone" style={{ ...inputStyle, flex: 1 }} placeholder="801 234 5678" type="tel" value={form.phone} onChange={handleChange("phone")} onBlur={() => handleBlur("phone")} />
           </div>
+          {touched.countryCode && errors.countryCode && <p style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.countryCode}</p>}
           {touched.phone && errors.phone && <p style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.phone}</p>}
         </div>
         <Field label="Password" type={showPw ? "text" : "password"} value={form.password} onChange={handleChange("password")} onBlur={() => handleBlur("password")} placeholder="Min. 8 characters" error={touched.password ? errors.password : undefined} icon={<Lock size={18} />} ref={passwordInputRef} suffix={
@@ -274,7 +318,10 @@ function SignupForm({ onAuth, setPage }) {
         <PrimaryBtn loading={loading}>{loading ? "Creating account..." : "Create merchant account"}</PrimaryBtn>
       </form>
       <Divider />
-      <SocialBtn icon="G" provider="Google" disabled />
+      <GoogleSignInButton
+        onToken={handleGoogleToken}
+        label="Sign up with Google"
+      />
       <p style={{ textAlign: "center", marginTop: 24, fontSize: 14, color: "#6B7280" }}>
         Already have an account?{" "}
         <button onClick={() => setPage("/login")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer" }}>Log in →</button>
@@ -535,21 +582,6 @@ function PrimaryBtn({ children, loading, onClick, type = "submit" }) {
 }
 
 PrimaryBtn.propTypes = { children: PropTypes.node.isRequired, loading: PropTypes.bool, onClick: PropTypes.func, type: PropTypes.string };
-
-function SocialBtn({ icon, provider, disabled }) {
-  const handleClick = () => {
-    if (disabled) return;
-    toast.info(`${provider} sign-in coming soon`);
-  };
-  return (
-    <button onClick={handleClick} disabled={disabled} style={{ width: "100%", height: 50, borderRadius: 10, border: disabled ? "1.5px solid #E8E8F0" : "1.5px solid #D1D5DB", background: disabled ? "#fff" : "#F9FAFB", fontSize: 14, color: disabled ? NAVY : "#9CA3AF", cursor: disabled ? "pointer" : "not-allowed", fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s", opacity: disabled ? 1 : 0.6 }}>
-      <div style={{ width: 20, height: 20, background: NAVY, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 700 }}>{icon}</div>
-      Continue with {provider}
-    </button>
-  );
-}
-
-SocialBtn.propTypes = { icon: PropTypes.string, provider: PropTypes.string, disabled: PropTypes.bool };
 
 function Divider() {
   return (

@@ -18,7 +18,15 @@ const processQueue = (error, token = null) => {
 };
 
 const mutMethods = ['post', 'put', 'patch', 'delete'];
-const mutLabels = { post: 'Created', put: 'Updated', patch: 'Updated', delete: 'Deleted' };
+
+httpClient.interceptors.request.use(config => {
+  const token = localStorage.getItem('dukadesk_token');
+  if (token && !config.headers?.Authorization) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 httpClient.interceptors.response.use(
   response => {

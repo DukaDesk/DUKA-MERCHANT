@@ -1,14 +1,31 @@
 {
   "screenId": "orders",
   "title": "My Orders",
-  "children": [
-    {
-      "type": "order_history",
-      "key": "order-list",
-      "props": { "showStatus": true },
-      "actions": {
-        "selectOrder": { "type": "navigate", "payload": { "push": "/order-detail" } }
+  "layout": {
+    "kind": "scroll",
+    "gap": 12,
+    "padding": 16,
+    "children": [
+      {
+        "type": "section_header",
+        "key": "orders-header",
+        "props": { "children": "Your Orders" }
+      },
+      {
+        "type": "order_history",
+        "key": "order-list",
+        "props": {
+          "showStatus": true,
+          "orders": [
+            { "id": "#ORD-4581", "status": "Processing", "items": "Slim Fit Shirt, Classic Sneakers", "date": "Today, 2:10 PM", "total": 36500 },
+            { "id": "#ORD-4527", "status": "Delivered", "items": "Wireless Headset", "date": "Aug 02, 5:40 PM", "total": 32000 },
+            { "id": "#ORD-4490", "status": "Delivered", "items": "Convertible Backpack × 2", "date": "Jul 28, 11:15 AM", "total": 37000 }
+          ]
+        },
+        "actions": {
+          "selectOrder": { "type": "navigate", "payload": { "push": "/shop" } }
+        }
       }
-    }
-  ]
+    ]
+  }
 }

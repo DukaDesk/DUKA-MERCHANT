@@ -1,0 +1,64 @@
+{
+  "screenId": "home",
+  "title": "Fresh Laundry",
+  "layout": {
+    "kind": "scroll",
+    "gap": 16,
+    "padding": 16,
+    "children": [
+      {
+        "type": "hero_banner",
+        "key": "hero",
+        "props": {
+          "title": "Fresh Laundry",
+          "subtitle": "Free pickup & same-day delivery",
+          "image": "https://picsum.photos/seed/laundry-hero/800/360"
+        },
+        "actions": {
+          "default": { "type": "navigate", "payload": { "push": "/book" } }
+        }
+      },
+      {
+        "type": "promotion_list",
+        "key": "offers",
+        "props": {
+          "offers": [
+            { "title": "Free Pickup", "subtitle": "On orders above ₦5,000", "image": "https://picsum.photos/seed/laundry-pickup/400/240", "badge": "Free" },
+            { "title": "First Load Free", "subtitle": "New customers save today", "image": "https://picsum.photos/seed/laundry-first/400/240", "badge": "New" }
+          ]
+        },
+        "actions": { "tap": { "type": "navigate", "payload": { "push": "/book" } } }
+      },
+      {
+        "type": "section_header",
+        "key": "services-header",
+        "props": { "children": "Our Services" }
+      },
+      {
+        "type": "menu_grid",
+        "key": "services",
+        "props": {
+          "columns": 2,
+          "items": [
+            { "id": "wash-fold", "name": "Wash & Fold", "desc": "Per kg", "price": 2500, "img": "https://picsum.photos/seed/wash-fold/400/300" },
+            { "id": "dry-clean", "name": "Dry Cleaning", "desc": "Per item", "price": 3500, "img": "https://picsum.photos/seed/dry-clean/400/300" },
+            { "id": "ironing", "name": "Iron Only", "desc": "Per item", "price": 1000, "img": "https://picsum.photos/seed/ironing/400/300" },
+            { "id": "express", "name": "Express Wash", "desc": "Ready in 5 hrs", "price": 5000, "img": "https://picsum.photos/seed/express/400/300" },
+            { "id": "shoes", "name": "Shoe Care", "desc": "Clean & polish", "price": 4000, "img": "https://picsum.photos/seed/shoe-care/400/300" },
+            { "id": "blankets", "name": "Blankets & Curtains", "desc": "Per piece", "price": 6000, "img": "https://picsum.photos/seed/blankets/400/300" }
+          ]
+        },
+        "actions": {
+          "viewDetails": { "type": "navigate", "payload": { "push": "/book" } },
+          "addItem": { "type": "navigate", "payload": { "push": "/book" } }
+        }
+      },
+      {
+        "type": "primary_button",
+        "key": "cta",
+        "props": { "label": "Schedule a Pickup" },
+        "actions": { "default": { "type": "navigate", "payload": { "push": "/book" } } }
+      }
+    ]
+  }
+}

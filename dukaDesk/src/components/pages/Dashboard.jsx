@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from "recharts";
-import { Plus, Package, BarChart3, MessageSquare, Store, TrendingUp, Users, DollarSign, Star, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
+import { Plus, Package, BarChart3, MessageSquare, Store, TrendingUp, Users, DollarSign, Star, ArrowRight, ShieldCheck, Sparkles, HandCoins, Wallet, CalendarClock, HeartHandshake, Receipt, Megaphone, Ticket, Briefcase, Inbox, CalendarCheck } from "lucide-react";
 import QRCode from "qrcode";
 import { useAuth } from "../../contexts";
 import { toast } from "react-toastify";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import { getMyApp, getDashboardStats, getRevenue, getActivity, getSetupData, getComplianceStatus, getCurrentPlan, getMerchant } from "../../services/api";
+import { PRIMITIVE_BY_ID } from "../../config/primitives";
 import { Loading, Empty, ErrorState } from "../layout/States";
 import { useDispatchAction } from "../../runtime/RuntimeContext";
+import { useVertical } from "../../runtime/VerticalContext";
 import { EventBus } from "../../runtime/EventBus";
 
 export default function Dashboard() {
@@ -18,6 +20,10 @@ export default function Dashboard() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { merchant } = useAuth();
+  const { vertical } = useVertical();
+  const { modules: enabledIds } = useVertical();
+  const enabledModulesSet = new Set(enabledIds);
+  const moduleGate = (id) => !id || PRIMITIVE_BY_ID[id] === undefined || enabledModulesSet.has(id);
   const [qrCopied, setQrCopied] = useState(false);
   const [stats, setStats] = useState(null);
   const [revenueData, setRevenueData] = useState([]);
@@ -88,21 +94,42 @@ export default function Dashboard() {
 
   if (loading) return <Loading message="Loading dashboard..." />;
   if (error) return <ErrorState message={error} onRetry={loadDashboard} />;
-  if (!stats) return <Empty icon="ðŸ“Š" message="No dashboard data yet" sub={setup ? "Setup data saved. Complete your app setup to see stats here." : "Complete your app setup to see stats here"} action={<button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{setup ? "Continue Setup â†’" : "Setup Your App â†’"}</button>} />;
+  if (!stats) return <Empty icon="📊" message="No dashboard data yet" sub={setup ? "Setup data saved. Complete your app setup to see stats here." : "Complete your app setup to see stats here"} action={<button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{setup ? "Continue Setup →" : "Setup Your App →"}</button>} />;
 
-  const kpiData = [
-    { label: "Total Customers", value: stats.customers.toLocaleString(), trend: "+34 this week", trendUp: true, icon: Users, color: "#7C3AED" },
-    { label: "Revenue (This Month)", value: `â‚¦${stats.revenue.toLocaleString()}`, trend: "+18% vs last month", trendUp: true, icon: DollarSign, color: AMBER },
-    { label: "Unread Messages", value: stats.unreadMessages, trend: "Reply now â†’", trendUp: null, icon: MessageSquare, color: "#0D9488", page: "messages" },
-    { label: "Avg Rating", value: `${stats.avgRating} â­`, trend: `(${stats.reviewsCount} reviews)`, trendUp: null, icon: Star, color: "#EC4899" },
-  ];
+  const statField = { customers: "customers", revenue: "revenue", orders: "orders", rating: "avgRating", attendance: "attendance", booking: "orders", fees: "revenue", giving: "revenue" };
+  const iconMap = { Users, DollarSign, MessageSquare, Star, ShoppingCart: Package, HandCoins, CalendarCheck, Wallet, CalendarClock, HeartHandshake, Receipt, Megaphone, Ticket, Briefcase, Inbox, Sparkles };
+
+  const kpiData = (vertical.kpis || []).map(k => {
+    if (!moduleGate(k.page)) return null;
+    const field = statField[k.id] || k.id;
+    const Icon = iconMap[k.icon] || Package;
+    const raw = stats?.[field];
+    const hasData = raw !== undefined && raw !== null;
+    let value = hasData ? (k.currency ? `₦${raw.toLocaleString()}` : raw.toLocaleString()) : "—";
+    const trend = hasData ? (k.trendUp === true ? "+today" : (k.trend ?? "—")) : "No data yet";
+    return {
+      label: k.label,
+      value,
+      trend,
+      trendUp: hasData ? k.trendUp : null,
+      icon: Icon,
+      color: k.color,
+      page: k.page,
+    };
+  }).filter(Boolean);
+
+  function format(value, currency) {
+    if (currency) return `₦${(value || 0).toLocaleString()}`;
+    if (typeof value === "number") return value.toLocaleString();
+    return value;
+  }
 
   return (
     <div style={{ animation: "fadeIn 0.35s ease" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
-          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: 0 }}>Dashboard</h2>
-          <p style={{ color: "#6B7280", fontSize: 14, marginTop: 4 }}>Your business at a glance</p>
+          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: 0 }}>Overview</h2>
+          <p style={{ color: "#6B7280", fontSize: 14, marginTop: 4 }}>Your {vertical.label.toLowerCase()} at a glance</p>
         </div>
         <button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <Plus size={16} /> Edit App
@@ -122,23 +149,6 @@ export default function Dashboard() {
           </div>
           <button onClick={() => navigate("/compliance")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
             Start Verification â†’
-          </button>
-        </div>
-      )}
-
-      {currentPlan && currentPlan.plan === "Starter Plan" && (
-        <div style={{ ...cardStyle, marginBottom: 20, background: "linear-gradient(135deg, rgba(244,160,38,0.08), rgba(244,160,38,0.02))", border: "1px solid rgba(244,160,38,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 40, height: 40, background: `${AMBER}20`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Sparkles size={20} color={AMBER} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>You're on the {currentPlan.plan}</div>
-              <div style={{ fontSize: 13, color: "#6B7280" }}>{currentPlan.label} â€” Upgrade to unlock more features.</div>
-            </div>
-          </div>
-          <button onClick={() => navigate("/dashboard/billing")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-            Upgrade Plan â†‘
           </button>
         </div>
       )}
@@ -173,6 +183,15 @@ export default function Dashboard() {
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Phone</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.phone || "â€”"}</div>
+        </div>
+        <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
+          <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>DukaDesk Plan</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
+            {currentPlan?.plan || "Starter Plan"}
+            {currentPlan && currentPlan.plan === "Starter Plan" && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#92400E", background: "#FFF8ED", border: "1px solid rgba(244,160,38,0.3)", borderRadius: 8, padding: "2px 6px" }}>DukaDesk</span>
+            )}
+          </div>
         </div>
         {deployedApp?.appName && <>
           <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
@@ -247,12 +266,25 @@ export default function Dashboard() {
           <div style={{ ...cardStyle }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Quick Actions</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {[
-                { label: "Add Product", icon: Plus, page: "products" },
-                { label: "View Orders", icon: Package, page: "orders", accent: true },
-                { label: "Messages", icon: MessageSquare, page: "messages", outline: true },
-                { label: "Analytics", icon: BarChart3, page: "analytics", outline: true },
-              ].map((a, i) => (
+              {((vertical.quickActions || []).filter(a => moduleGate(a.page)).map(a => ({
+                label: a.label,
+                icon: a.icon === "Plus" ? Plus
+                  : a.icon === "ShoppingCart" ? Package
+                  : a.icon === "MessageSquare" ? MessageSquare
+                  : a.icon === "BarChart3" ? BarChart3
+                  : a.icon === "HandCoins" ? HandCoins
+                  : a.icon === "CalendarClock" ? CalendarClock
+                  : a.icon === "Wallet" ? Wallet
+                  : a.icon === "Users" ? Users
+                  : a.icon === "Megaphone" ? Megaphone
+                  : a.icon === "Ticket" ? Ticket
+                  : a.icon === "Receipt" ? Receipt
+                  : a.icon === "Inbox" ? Inbox
+                  : Plus,
+                page: a.page,
+                accent: a.accent,
+                outline: a.outline,
+              }))).map((a, i) => (
                 <button key={i} onClick={() => handleNavigate(a.page)} style={{
                   background: a.accent ? NAVY : a.outline ? "#fff" : `${AMBER}15`,
                   color: a.accent ? "#fff" : NAVY,

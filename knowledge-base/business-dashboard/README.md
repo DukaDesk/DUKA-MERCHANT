@@ -27,6 +27,7 @@ scripts/lint
 
 - [Agent Context](AGENT_CONTEXT.md)
 - [Architecture Alignment](ARCHITECTURE_ALIGNMENT.md)
+- [Verticals (Sector Catalog)](VERTICALS.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 

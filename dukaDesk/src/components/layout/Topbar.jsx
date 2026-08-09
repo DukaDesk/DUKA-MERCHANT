@@ -5,23 +5,26 @@ import { useAuth } from "../../contexts";
 import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { AMBER, NAVY, transition } from "../../theme";
+import { useVertical } from "../../runtime/VerticalContext";
 
 export default function Topbar() {
   const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
   const { merchant } = useAuth();
+  const { vertical } = useVertical();
   const page = location.pathname.split("/")[2] || "dashboard";
   const greetingName = merchant?.name?.split(" ")[0] || "there";
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
 
   const pageTitles = {
-    dashboard: "Dashboard",
-    products: "Products",
-    orders: "Orders",
+    dashboard: "Overview",
+    compliance: "Compliance",
+    ...(vertical.topbarTitles || {}),
     analytics: "Analytics",
-    messages: "Messages",
+    messages: vertical.topbarTitles?.messages || "Messages",
+    marketing: "Marketing",
     integrations: "Integrations",
     billing: "Billing",
   };
@@ -51,11 +54,11 @@ export default function Topbar() {
     }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         {isMobile ? (
-          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: NAVY }}>{pageTitles[page] || "Dashboard"}</div>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: NAVY }}>{pageTitles[page] || "Overview"}</div>
         ) : (
           <div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY, marginBottom: 1 }}>{greeting()}, {greetingName}</div>
-            <div style={{ fontSize: 13, color: "#6B7280" }}>{pageTitles[page] || "Dashboard"} overview</div>
+            <div style={{ fontSize: 13, color: "#6B7280" }}>{pageTitles[page] || "Overview"}</div>
           </div>
         )}
       </div>

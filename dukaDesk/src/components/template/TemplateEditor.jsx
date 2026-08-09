@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, Eye, Code, Layers, Palette, RotateCcw, Download, Upload, Undo, Redo, ChevronLeft, ChevronRight, MousePointer, GripVertical, Trash2, Edit3, Copy, Plus, X, ChevronDown } from "lucide-react";
-import { AMBER, NAVY, cardStyle, btnPrimary, btnSecondary } from "../../theme";
-import { TemplateRenderer, TemplateScreenList } from "./TemplateRenderer";
+import { ArrowLeft, Save, Eye, Code, Layers, Download, Undo, Redo, ChevronLeft, ChevronRight, MousePointer, GripVertical, Trash2, Edit3, Copy, Plus, X, Smartphone, Check, Palette } from "lucide-react";
+import { AMBER, NAVY, btnSecondary } from "../../theme";
+import { TemplateScreenList, TemplatePreview } from "./TemplateRenderer";
 import { loadTemplateManifest, loadAllTemplateScreens } from "../../services/TemplateLoader";
+import { updateApp } from "../../services/api";
 import { ComponentPalette } from "./ComponentPalette";
 
 const DEFAULT_SCREEN_NODES = {
@@ -24,7 +25,7 @@ const DEFAULT_SCREEN_NODES = {
   section_header: { type: "section_header", key: "section-title", props: {}, actions: {} },
 };
 
-function DraggableComponent({ node, index, isSelected, onSelect, onMove, onDelete, onDuplicate, onEditProps }) {
+function DraggableComponent({ node, index, isSelected, onSelect, onMove, onDelete, onDuplicate, onEditProps, gap = 8 }) {
   const [dragging, setDragging] = useState(false);
 
   const handleDragStart = (e) => {
@@ -58,7 +59,7 @@ function DraggableComponent({ node, index, isSelected, onSelect, onMove, onDelet
         background: dragging ? "#F9FAFB" : "transparent",
         transition: "all 0.15s",
         padding: "8px",
-        marginBottom: 8,
+        marginBottom: isSelected ? gap : Math.max(gap, 8),
       }}
     >
       <div style={{ position: "absolute", top: -28, left: -28, width: 24, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, opacity: isSelected || dragging ? 1 : 0, transition: "opacity 0.2s", pointerEvents: "none", zIndex: 10 }}>
@@ -89,7 +90,6 @@ const toolbarBtn = { padding: 6, background: "#fff", border: "1px solid #E5E7EB"
 export default function TemplateEditor({ templateId }) {
   const navigate = useNavigate();
   const [manifest, setManifest] = useState(null);
-  const [screens, setScreens] = useState({});
   const [currentScreenId, setCurrentScreenId] = useState(null);
   const [screenNodes, setScreenNodes] = useState({});
   const [selectedNode, setSelectedNode] = useState(null);
@@ -99,6 +99,9 @@ export default function TemplateEditor({ templateId }) {
   const [showCode, setShowCode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [previewMode, setPreviewMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [screenSettings, setScreenSettings] = useState({});
 
   const saveToHistory = useCallback((newNodes) => {
     setHistory(prev => {
@@ -119,8 +122,7 @@ export default function TemplateEditor({ templateId }) {
           loadAllTemplateScreens(templateId),
         ]);
         setManifest(m);
-        setScreens(scr);
-        const firstScreenId = m?.navigation?.tabs?.[0]?.screenId || Object.keys(scr)[0];
+        const firstScreenId = m?.navigation?.tabs?.[0]?.screenId || Object.keys(scr)[0] || currentScreenId;
         setCurrentScreenId(firstScreenId);
         
         const initialNodes = {};
@@ -147,6 +149,17 @@ export default function TemplateEditor({ templateId }) {
         });
         setScreenNodes(initialNodes);
         saveToHistory(initialNodes);
+
+        const initialSettings = {};
+        Object.entries(scr).forEach(([id, def]) => {
+          initialSettings[id] = {
+            title: def.title || id,
+            gap: def.layout?.gap ?? 16,
+            padding: def.layout?.padding ?? 16,
+            background: def.background || (typeof def.layout?.background === "string" ? def.layout.background : "") || m?.theme?.bgColor || "#FAFAFA",
+          };
+        });
+        setScreenSettings(initialSettings);
       } catch (err) {
         console.error("Failed to load template:", err);
       } finally {
@@ -206,6 +219,61 @@ export default function TemplateEditor({ templateId }) {
     setSelectedNode(null);
   };
 
+  const updateScreenSetting = (screenId, patch) => {
+    setScreenSettings(prev => ({ ...prev, [screenId]: { ...(prev[screenId] || {}), ...patch } }));
+  };
+
+  /* Rebuild screen JSON from the edited node list + live screen settings. */
+  const buildLiveScreens = useMemo(() => {
+    const out = {};
+    Object.keys(screenNodes).forEach(id => {
+      const s = screenSettings[id] || {};
+      const children = screenNodes[id] || [];
+      out[id] = {
+        screenId: id,
+        title: s.title || id,
+        background: s.background || undefined,
+        layout: {
+          kind: "scroll",
+          gap: s.gap ?? 16,
+          padding: s.padding ?? 16,
+          background: s.background || undefined,
+          children,
+        },
+      };
+    });
+    return out;
+  }, [screenNodes, screenSettings]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const screenRefs = (manifest?.screens || []).map(r => ({ id: r.id, path: r.path }));
+      const config = {
+        templateId: manifest?.templateId || templateId,
+        name: manifest?.name || templateId,
+        category: manifest?.category || "",
+        theme: manifest?.theme || {},
+        navigation: manifest?.navigation || { initialScreen: currentScreenId, tabs: Object.keys(screenNodes).map(id => ({ screenId: id, label: id, icon: "grid-outline" })) },
+        screens: screenRefs,
+        assets: manifest?.assets || {},
+        branding: manifest?.branding || {},
+        integrations: manifest?.integrations || [],
+        settings: manifest?.settings || {},
+        _screens: buildLiveScreens,
+      };
+      localStorage.setItem(`dd_template_${templateId}`, JSON.stringify(config));
+      await updateApp({ templateConfig: config });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      console.error("Failed to save template:", err);
+      alert("Failed to save template: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleUndo = () => {
     if (historyIndex > 0) {
       const prev = history[historyIndex - 1];
@@ -260,6 +328,26 @@ export default function TemplateEditor({ templateId }) {
           <button onClick={handleUndo} disabled={historyIndex <= 0} style={{ ...btnSecondary, opacity: historyIndex <= 0 ? 0.5 : 1, padding: "8px 12px" }} title="Undo"><Undo size={16} /></button>
           <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} style={{ ...btnSecondary, opacity: historyIndex >= history.length - 1 ? 0.5 : 1, padding: "8px 12px" }} title="Redo"><Redo size={16} /></button>
           <button onClick={exportJSON} style={{ ...btnSecondary, padding: "8px 12px" }} title="Export JSON"><Download size={16} /></button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              background: saved ? "#22C55E" : AMBER,
+              border: "none",
+              color: saved ? "#fff" : NAVY,
+              borderRadius: 8,
+              padding: "8px 16px",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            {saved ? <Check size={16} /> : <Save size={16} />}
+            {saving ? "Saving…" : saved ? "Saved" : "Save to App"}
+          </button>
           <button onClick={() => setPreviewMode(!previewMode)} style={{ background: previewMode ? AMBER : "transparent", border: previewMode ? "none" : "1px solid #6B7280", color: previewMode ? NAVY : "#D1D5DB", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             {previewMode ? <MousePointer size={16} /> : <Eye size={16} />}
             {previewMode ? "Exit Preview" : "Preview"}
@@ -282,13 +370,14 @@ export default function TemplateEditor({ templateId }) {
             </div>
             <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
               {previewMode ? (
-                <TemplateRenderer
-                  templateId={templateId}
-                  screenId={currentScreenId}
-                  onAction={(actionKey, payload) => console.log("Preview action:", actionKey, payload)}
+                <TemplatePreview
+                  manifest={{ ...(manifest || {}), templateId }}
+                  screens={buildLiveScreens}
+                  initialScreenId={currentScreenId}
+                  onScreenChange={handleScreenChange}
                 />
               ) : (
-                <div style={{ flex: 1, overflow: "auto", padding: 16, background: "#F3F4F6", borderRadius: 12 }}>
+                <div style={{ flex: 1, overflow: "auto", padding: 16, background: screenSettings[currentScreenId]?.background || "#F3F4F6", borderRadius: 12 }}>
                   {screenNodes[currentScreenId]?.length === 0 ? (
                     <div
                       onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
@@ -312,6 +401,7 @@ export default function TemplateEditor({ templateId }) {
                           onDelete={handleDelete}
                           onDuplicate={handleDuplicate}
                           onEditProps={handleSelect}
+                          gap={screenSettings[currentScreenId]?.gap ?? 16}
                         >
                           <div style={{ padding: 12, background: "#F9FAFB", borderRadius: 6, border: "1px solid #E5E7EB", fontSize: 12, fontFamily: "monospace", color: "#6B7280" }}>
                             {node.type}: {node.key}
@@ -342,14 +432,16 @@ export default function TemplateEditor({ templateId }) {
             {selectedNode ? (
               <PropertyEditor
                 node={selectedNode}
+                screens={manifest?.screens || []}
                 onUpdate={handleUpdateNode}
                 onClose={() => setSelectedNode(null)}
               />
             ) : (
-              <div style={{ textAlign: "center", color: "#6B7280", padding: 40 }}>
-                <Layers size={48} style={{ marginBottom: 12, opacity: 0.5 }} />
-                <div>Select a component to edit its properties</div>
-              </div>
+              <ScreenSettings
+                screenId={currentScreenId}
+                settings={screenSettings[currentScreenId] || {}}
+                onChange={(patch) => updateScreenSetting(currentScreenId, patch)}
+              />
             )}
           </div>
         </div>
@@ -372,7 +464,7 @@ export default function TemplateEditor({ templateId }) {
   );
 }
 
-function PropertyEditor({ node, onUpdate, onClose }) {
+function PropertyEditor({ node, screens = [], onUpdate, onClose }) {
   const [props, setProps] = useState({});
   const [activeTab, setActiveTab] = useState("props");
 
@@ -577,15 +669,11 @@ function PropertyEditor({ node, onUpdate, onClose }) {
         )}
 
         {activeTab === "actions" && (
-          <div style={{ padding: 4 }}>
-            <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 12 }}>Actions define what happens when users interact with this component. Configure action handlers in the JSON screen definition.</div>
-            <div style={{ background: "#0F0F1A", borderRadius: 8, padding: 12, fontSize: 11, fontFamily: "monospace", color: "#9CA3AF" }}>
-              {JSON.stringify(node.actions || {}, null, 2)}
-            </div>
-            <div style={{ marginTop: 12, fontSize: 12, color: "#6B7280" }}>
-              Edit actions in the screen JSON (View Code button)
-            </div>
-          </div>
+          <ActionRelationshipsEditor
+            node={node}
+            screens={screens}
+            onUpdate={onUpdate}
+          />
         )}
 
         {activeTab === "style" && (
@@ -609,7 +697,10 @@ function PropertyEditor({ node, onUpdate, onClose }) {
       </div>
 
       <div style={{ display: "flex", gap: 8, marginTop: 16, paddingTop: 16, borderTop: "1px solid #E5E7EB" }}>
-        <button onClick={handleSave} style={{ flex: 1, padding: "12px", background: AMBER, color: NAVY, border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, fontFamily: "'Sora',sans-serif", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+        <button
+          onClick={() => { onUpdate({ ...node, props }); onClose(); }}
+          style={{ flex: 1, padding: "12px", background: AMBER, color: NAVY, border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, fontFamily: "'Sora',sans-serif", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+        >
           <Save size={14} /> Save Changes
         </button>
       </div>
@@ -617,7 +708,195 @@ function PropertyEditor({ node, onUpdate, onClose }) {
   );
 }
 
-function handleSave() {
-  onUpdate({ ...node, props });
-  onClose();
+/* Screen-level settings: title, section gap, padding and background. */
+function ScreenSettings({ screenId, settings = {}, onChange }) {
+  const field = (label, key, type = "number", min = 0, max = 80) => (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: NAVY, marginBottom: 4 }}>{label}</label>
+      <input
+        type={type}
+        value={settings[key] ?? (type === "number" ? 16 : "")}
+        min={min}
+        max={max}
+        onChange={e => onChange({ [key]: type === "number" ? Number(e.target.value) || 0 : e.target.value })}
+        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit" }}
+      />
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid #E5E7EB" }}>
+        <div>
+          <div style={{ fontWeight: 700, color: NAVY, fontSize: 14 }}>Screen Settings</div>
+          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{screenId}</div>
+        </div>
+        <Smartphone size={18} style={{ color: "#9CA3AF" }} />
+      </div>
+
+      {field("Screen Title", "title", "text")}
+      {field("Section Gap (px)", "gap", "number", 0, 80)}
+      {field("Padding (px)", "padding", "number", 0, 80)}
+
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: NAVY, marginBottom: 4 }}>Background</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input
+            type="color"
+            value={settings.background || "#FAFAFA"}
+            onChange={e => onChange({ background: e.target.value })}
+            style={{ width: 40, height: 40, border: "1px solid #E5E7EB", borderRadius: 8, padding: 2, cursor: "pointer", background: "#fff" }}
+          />
+          <input
+            type="text"
+            value={settings.background || ""}
+            onChange={e => onChange({ background: e.target.value })}
+            placeholder="#FAFAFA"
+            style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "'JetBrains Mono',monospace" }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginTop: "auto", paddingTop: 16, borderTop: "1px solid #E5E7EB" }}>
+        <div style={{ fontSize: 12, color: "#6B7280" }}>
+          Changes apply live to the preview. Use <b>Save to App</b> to persist the template to your app.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Interactive editor for the button → action → page relationships of a component.
+   Mirrors the Action System in knowledge-base (ADR-003): each trigger key on a
+   node maps to an ActionDef `{ type, payload }`; navigation actions select a
+   target screen from the template. */
+function ActionRelationshipsEditor({ node, screens = [], onUpdate }) {
+  const [entries, setEntries] = useState(() => {
+    const actions = node.actions || {};
+    return Object.entries(actions).map(([trigger, def]) => ({
+      trigger,
+      type: def?.type || "navigate",
+      payload: def?.payload || {},
+    }));
+  });
+
+  const commit = (next) => {
+    setEntries(next);
+    const actions = {};
+    next.forEach(({ trigger, type, payload }) => {
+      if (!trigger.trim()) return;
+      actions[trigger.trim()] = { type, payload };
+    });
+    onUpdate({ ...node, actions });
+  };
+
+  const updateEntry = (index, patch) => {
+    const next = entries.map((e, i) => (i === index ? { ...e, ...patch } : e));
+    commit(next);
+  };
+
+  const addEntry = () => {
+    const screenId = screens[0]?.id || screens[0] || "home";
+    commit([...entries, { trigger: `action${entries.length + 1}`, type: "navigate", payload: { push: `/${screenId}` } }]);
+  };
+
+  const removeEntry = (index) => {
+    commit(entries.filter((_, i) => i !== index));
+  };
+
+  const screenOptions = screens.map(s => (typeof s === "string" ? s : (s.id || s.screenId)));
+
+  const ACTION_TYPES = [
+    { value: "navigate", label: "Navigate → page" },
+    { value: "pop", label: "Back → previous page" },
+    { value: "switch_screen", label: "Switch tab" },
+    { value: "add_to_cart", label: "Add to cart" },
+    { value: "remove_from_cart", label: "Remove from cart" },
+    { value: "checkout", label: "Checkout" },
+    { value: "submit_form", label: "Submit form" },
+    { value: "book_appointment", label: "Book appointment" },
+    { value: "call_phone", label: "Call phone" },
+    { value: "email", label: "Email" },
+    { value: "open_url", label: "Open URL" },
+    { value: "open_maps", label: "Open maps" },
+    { value: "share", label: "Share" },
+    { value: "filter", label: "Filter" },
+    { value: "api_request", label: "API request" },
+    { value: "send_notification", label: "Send notification" },
+    { value: "logout", label: "Logout" },
+  ];
+
+  const isNav = (type) => type === "navigate" || type === "push" || type === "replace" || type === "switch_screen";
+
+  return (
+    <div style={{ padding: 4 }}>
+      <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 4 }}>
+        Connect each button / trigger on this component to an action and a target page.
+      </div>
+      <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 12 }}>
+        Trigger names are used by the component (default, tap, submit, selectDate…). Pick an action type, then a target screen for navigation.
+      </div>
+
+      {entries.length === 0 && (
+        <div style={{ textAlign: "center", padding: 20, color: "#6B7280", borderRadius: 8, border: "1px dashed #D1D5DB", marginBottom: 12 }}>
+          No actions wired up yet.
+        </div>
+      )}
+
+      {entries.map((entry, i) => (
+        <div key={i} style={{ marginBottom: 10, background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 8, padding: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              value={entry.trigger}
+              onChange={e => updateEntry(i, { trigger: e.target.value })}
+              placeholder="trigger"
+              style={{ flex: 1, padding: "6px 10px", borderRadius: 6, border: "1px solid #E5E7EB", fontFamily: "'JetBrains Mono',monospace", fontSize: 12 }}
+            />
+            <button onClick={() => removeEntry(i)} style={{ background: "none", border: "none", color: "#E74C3C", cursor: "pointer" }} title="Remove action"><X size={16} /></button>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <select
+              value={entry.type}
+              onChange={e => updateEntry(i, { type: e.target.value })}
+              style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid #E5E7EB", fontSize: 12, fontFamily: "inherit", background: "#fff" }}
+            >
+              {ACTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          {isNav(entry.type) && (
+            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 11, color: "#6B7280" }}>Target page</span>
+              <select
+                value={String(entry.payload?.push || entry.payload?.screenId || entry.payload?.screen || "").replace(/^\//, "")}
+                onChange={e => {
+                  const target = e.target.value;
+                  if (entry.type === "switch_screen") updateEntry(i, { payload: { screenId: target } });
+                  else updateEntry(i, { payload: { push: `/${target}` } });
+                }}
+                style={{ flex: 1, padding: "6px 10px", borderRadius: 6, border: "1px solid #E5E7EB", fontSize: 12, fontFamily: "inherit", background: "#fff" }}
+              >
+                <option value="">— Select —</option>
+                {screenOptions.map(id => <option key={id} value={id}>{id}</option>)}
+              </select>
+            </div>
+          )}
+          {!isNav(entry.type) && entry.type === "call_phone" && (
+            <input
+              value={entry.payload?.phone || ""}
+              onChange={e => updateEntry(i, { payload: { ...entry.payload, phone: e.target.value } })}
+              placeholder="phone number"
+              style={{ width: "100%", marginTop: 8, padding: "6px 10px", borderRadius: 6, border: "1px solid #E5E7EB", fontSize: 12, fontFamily: "inherit" }}
+            />
+          )}
+        </div>
+      ))}
+
+      <button
+        onClick={addEntry}
+        style={{ width: "100%", padding: "10px", background: "#fff", border: "1.5px dashed #D1D5DB", borderRadius: 8, color: AMBER, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+      >
+        <Plus size={14} /> Add action
+      </button>
+    </div>
+  );
 }

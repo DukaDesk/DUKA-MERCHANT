@@ -4,6 +4,7 @@ import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
 import { toast } from "react-toastify";
 import { getMerchant, submitCompliance, getComplianceStatus } from "../../services/api";
+import { BUSINESS_CATEGORIES } from "../../config/taxonomy";
 import { Store, Building2, FileText, CheckCircle, ArrowLeft, ArrowRight, Upload, X, ShieldCheck } from "lucide-react";
 
 const STEPS = [
@@ -183,11 +184,9 @@ export default function Compliance() {
                 <label style={labelStyle}>Business Type</label>
                 <select value={form.businessType} onChange={e => setForm(f => ({ ...f, businessType: e.target.value }))} style={{ ...inputStyle, appearance: "none" }}>
                   <option value="">Select type</option>
-                  <option value="Restaurant">Restaurant / Food Service</option>
-                  <option value="Retail">Retail / Ecommerce</option>
-                  <option value="Service">Service Provider</option>
-                  <option value="School">School / Education</option>
-                  <option value="Church">Church / Religious</option>
+                  {Array.from(new Set(BUSINESS_CATEGORIES.map(c => c.kycType))).map(kyc => (
+                    <option key={kyc} value={kyc}>{kyc === "Service" ? "Service Provider" : kyc}</option>
+                  ))}
                   <option value="Other">Other</option>
                 </select>
               </div>

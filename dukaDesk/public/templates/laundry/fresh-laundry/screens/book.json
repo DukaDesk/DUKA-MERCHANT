@@ -1,0 +1,54 @@
+{
+  "screenId": "book",
+  "title": "Schedule Pickup",
+  "layout": {
+    "kind": "scroll",
+    "gap": 16,
+    "padding": 16,
+    "children": [
+      {
+        "type": "section_header",
+        "key": "pickup-header",
+        "props": { "children": "Delivery Address" }
+      },
+      {
+        "type": "address_form",
+        "key": "pickup-address",
+        "props": {},
+        "actions": { "submit": { "type": "filter", "payload": { "source": "address" } } }
+      },
+      {
+        "type": "section_header",
+        "key": "date-header",
+        "props": { "children": "Pickup Date" }
+      },
+      {
+        "type": "calendar_strip",
+        "key": "pickup-date",
+        "props": { "minDate": "today", "maxDate": "+30", "variant": "default" },
+        "actions": { "selectDate": { "type": "filter", "payload": { "source": "date" } } }
+      },
+      {
+        "type": "section_header",
+        "key": "time-header",
+        "props": { "children": "Preferred Time" }
+      },
+      {
+        "type": "slot_grid",
+        "key": "pickup-time",
+        "props": { "duration": 60, "variant": "default" },
+        "actions": { "selectSlot": { "type": "filter", "payload": { "source": "slot" } } }
+      },
+      {
+        "type": "booking_summary",
+        "key": "pickup-summary",
+        "props": {
+          "service": "Wash & Fold",
+          "subtitle": "Free pickup between 9:00 AM - 6:00 PM",
+          "total": 4500
+        },
+        "actions": { "confirm": { "type": "navigate", "payload": { "push": "/orders" } } }
+      }
+    ]
+  }
+}

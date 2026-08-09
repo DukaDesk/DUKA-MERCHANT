@@ -85,6 +85,26 @@ Builder
 └── Publishing
 ```
 
+### Sector Modules (vertical-adaptive admin)
+
+```text
+Sector (per tenant category)
+├── Giving         (Church)      → commerce
+├── Donations      (Church)      → commerce
+├── Timetable      (School)      → forms
+├── Fees           (School)      → commerce
+├── Attendance     (School/Church)→ forms
+├── Services       (Booking)     → booking
+├── Appointments   (Booking)     → booking
+└── Members        (Church)      → commerce
+```
+
+Sector modules are surfaced in the Business Dashboard shell via `src/config/verticals.js`
+(driven by tenant category) and gated by the feature flags defined in
+`SPECIFICATIONS/backend-tenants.md` (`commerce`, `booking`, `forms`, `notifications`,
+`analytics`, `integrations`). See [ADR-014](../ADRs/ADR-014-vertical-adaptive-business-dashboard.md)
+and `business-dashboard/VERTICALS.md`.
+
 ## Module Ownership
 
 | Module | Domain | Owner |

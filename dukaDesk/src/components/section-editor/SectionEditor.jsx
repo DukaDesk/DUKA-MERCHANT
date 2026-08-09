@@ -8,6 +8,8 @@ import { toast } from "react-toastify";
 import { NAVY } from "../../theme";
 import { theme, iconBtn, primaryBtn, panelHeader } from "./editorTheme";
 import { publishProject, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
+import TemplateGallery from "../app-builder/TemplateGallery";
+import { loadTemplateForCanvas } from "../../services/staticTemplates";
 
 const PREVIEW_SIZES = {
   mobile: { width: 390, height: 740, label: "Mobile", icon: "M12 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2s2-.9 2-2V4c0-1.1-.9-2-2-2z" },
@@ -29,6 +31,7 @@ export default function SectionEditor({ store, onBack }) {
   const [selectedComponentId, setSelectedComponentId] = useState(null);
   const [showExport, setShowExport] = useState(false);
   const [showSectionPicker, setShowSectionPicker] = useState(false);
+  const [pickerTab, setPickerTab] = useState("presets");
   const [previewMode, setPreviewMode] = useState(false);
   const [previewSize, setPreviewSize] = useState("mobile");
   const [previewScreenId, setPreviewScreenId] = useState(null);
@@ -36,6 +39,9 @@ export default function SectionEditor({ store, onBack }) {
   const [validationErrors, setValidationErrors] = useState(null);
   const [showReleases, setShowReleases] = useState(false);
   const [releases, setReleases] = useState([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [focusSubKey, setFocusSubKey] = useState(null);
 
   const data = store.data;
   const logo = data.meta?.logo;
@@ -78,12 +84,25 @@ export default function SectionEditor({ store, onBack }) {
   const handleSelectSection = useCallback((sectionId) => {
     setSelectedSectionId(sectionId);
     setSelectedComponentId(null);
+    setFocusSubKey(null);
   }, []);
 
   const handleSelectComponent = useCallback((sectionId, compId) => {
     setSelectedSectionId(sectionId);
     setSelectedComponentId(compId);
+    setFocusSubKey(null);
   }, []);
+
+  const handleFocusSubElement = useCallback((sectionId, compId, key) => {
+    setSelectedSectionId(sectionId);
+    setSelectedComponentId(compId);
+    setFocusSubKey({ compId, key });
+  }, []);
+
+  const handleRemoveSubElement = useCallback((sectionId, compId, key) => {
+    store.clearProp(sectionId, compId, key);
+    if (focusSubKey?.compId === compId && focusSubKey?.key === key) setFocusSubKey(null);
+  }, [store, focusSubKey]);
 
   const handleAddSection = useCallback((preset) => {
     if (!preset) { setShowSectionPicker(true); return; }
@@ -96,6 +115,16 @@ export default function SectionEditor({ store, onBack }) {
       backgroundColor: section.backgroundColor || "#FCF8FA",
       components: section.components || [],
     });
+    if (id) setSelectedSectionId(id);
+  }, [store]);
+
+  const handleInsertSavedSection = useCallback((libraryId) => {
+    if (!libraryId) return;
+    setShowSectionPicker(false);
+    const lib = (store.savedSections || []).find(s => s.id === libraryId);
+    if (!lib) return;
+    if (lib.published === false) { toast.info("This section is a draft — publish it from the Library first."); return; }
+    const id = store.insertSavedSection(null, libraryId);
     if (id) setSelectedSectionId(id);
   }, [store]);
 
@@ -137,6 +166,26 @@ export default function SectionEditor({ store, onBack }) {
       setReleases(history);
     }
   }, []);
+
+  const handleLoadTemplate = useCallback(async (templateId) => {
+    if (!templateId) return;
+    setLoadingTemplate(true);
+    try {
+      const design = await loadTemplateForCanvas(templateId);
+      store.loadTemplate(design);
+      store.setMeta({
+        appName: design.meta.appName,
+        category: design.meta.category,
+        primaryColor: design.meta.primaryColor,
+      });
+      toast.success(`Template "${design.meta.appName}" loaded`);
+      setShowTemplates(false);
+    } catch {
+      toast.error("Failed to load template");
+    } finally {
+      setLoadingTemplate(false);
+    }
+  }, [store]);
 
   const handleExport = useCallback((format) => {
     const json = JSON.stringify(store.getDesignJSON(), null, 2);
@@ -218,17 +267,18 @@ export default function SectionEditor({ store, onBack }) {
           </div>
           <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 120, height: 22, background: "#1a1a2e", borderRadius: "0 0 14px 14px", zIndex: 10 }} />
           <div style={{ flex: 1, overflowY: "auto" }}>
-            {data.shared?.header && <HeaderPreview section={data.shared.header} meta={data.meta} componentTypes={null} />}
-            {(screen?.bodySections || []).map(sec => (
-              <div key={sec.id} style={{ background: sec.backgroundColor || screen?.backgroundColor, padding: "4px 0" }}>
-                {(sec.components || []).map(comp => {
-                  const CompType = getComponentType(comp.type);
-                  if (!CompType) return null;
-                  return <div key={comp.id} style={{ padding: "4px 16px" }}>{CompType.render({ ...comp.props })}</div>;
-                })}
-              </div>
-            ))}
-            {data.shared?.footer && <FooterPreview section={data.shared.footer} />}
+            {(screen?.bodySections || []).map(sec => {
+              const resolved = store.resolveSection(sec);
+              return (
+                <div key={resolved.id} style={{ background: resolved.backgroundColor || screen?.backgroundColor, padding: "4px 0" }}>
+                  {(resolved.components || []).map(comp => {
+                    const CompType = getComponentType(comp.type);
+                    if (!CompType) return null;
+                    return <div key={comp.id} style={{ padding: "4px 16px" }}>{CompType.render({ ...comp.props })}</div>;
+                  })}
+                </div>
+              );
+            })}
           </div>
           {(data.navigation?.tabs || []).length > 0 && (
             <div style={{ height: 56, background: "#fff", borderTop: "1px solid #E5E7EB", display: "flex", alignItems: "center", justifyContent: "space-around", flexShrink: 0 }}>
@@ -265,10 +315,10 @@ export default function SectionEditor({ store, onBack }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onBack}
             style={{ ...iconBtn, border: "none", boxShadow: "none", background: "none", padding: "4px" }}
-            title="Back to Dashboard"
+            title="Close — Back to Dashboard"
             onMouseEnter={() => setHoveredIcon("back")}
             onMouseLeave={() => setHoveredIcon(null)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
           {logo && (
             <img src={logo} alt="" style={{ width: 28, height: 28, borderRadius: theme.radius.sm, objectFit: "cover" }} />
@@ -316,6 +366,10 @@ export default function SectionEditor({ store, onBack }) {
 
           <button onClick={() => store.saveToServer()} style={iconBtn} title="Save to Server">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          </button>
+
+          <button onClick={() => setShowTemplates(true)} style={iconBtn} title="Load a Template into this canvas">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           </button>
 
           <div style={{ width: 1, height: 20, background: theme.border, margin: "0 4px" }} />
@@ -376,7 +430,7 @@ export default function SectionEditor({ store, onBack }) {
           <div style={panelHeader}>
             Elements
             <span style={{ fontSize: 10, color: theme.textMuted, fontWeight: 400, fontFamily: "'Inter',sans-serif" }}>
-              {(store.screen?.bodySections || []).length + (data.shared?.header ? 1 : 0) + (data.shared?.footer ? 1 : 0)}
+{(store.screen?.bodySections || []).length}
             </span>
           </div>
           <SectionPanel
@@ -386,6 +440,9 @@ export default function SectionEditor({ store, onBack }) {
             onSelectSection={handleSelectSection}
             onSelectComponent={handleSelectComponent}
             onAddSection={handleAddSection}
+            focusSubKey={focusSubKey}
+            onFocusSubElement={handleFocusSubElement}
+            onRemoveSubElement={handleRemoveSubElement}
           />
         </div>
 
@@ -408,6 +465,9 @@ export default function SectionEditor({ store, onBack }) {
             selectedSectionId={selectedSectionId}
             selectedComponentId={selectedComponentId}
             onClose={handleClose}
+            onSelectComponent={handleSelectComponent}
+            focusSubKey={focusSubKey}
+            onClearProp={(key) => { if (selectedComponentId) store.clearProp(selectedSectionId, selectedComponentId, key); }}
           />
         </div>
       </div>
@@ -430,31 +490,105 @@ export default function SectionEditor({ store, onBack }) {
         />
       )}
 
+      {/* Templates modal */}
+      {showTemplates && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150 }} onClick={() => setShowTemplates(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: theme.surface, borderRadius: theme.radius["2xl"], boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24, maxWidth: 820, width: "90%", maxHeight: "82vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: theme.text }}>Templates</div>
+              <button onClick={() => setShowTemplates(false)} style={{ ...iconBtn, border: "none" }} title="Close">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: theme.textMuted, marginBottom: 16, lineHeight: 1.4 }}>
+              Loading a template replaces your current design. Click a template to load it into this canvas.
+            </p>
+            <TemplateGallery
+              value={null}
+              onChange={handleLoadTemplate}
+              onSkip={() => setShowTemplates(false)}
+              isMobile={false}
+              loading={loadingTemplate}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Section picker */}
       {showSectionPicker && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setShowSectionPicker(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: theme.surface, borderRadius: theme.radius["2xl"], boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24, maxWidth: 500, width: "90%" }}>
-            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: theme.text, marginBottom: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: theme.surface, borderRadius: theme.radius["2xl"], boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24, maxWidth: 560, width: "90%" }}>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: theme.text, marginBottom: 12 }}>
               Add Section
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
-              {Object.entries(SECTION_PRESETS).map(([key, sec]) => (
-                <button key={key} onClick={() => handleAddSection(key)}
+            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+              {["presets", "saved"].map(tab => (
+                <button key={tab} onClick={() => setPickerTab(tab)}
                   style={{
-                    padding: "14px 12px", borderRadius: theme.radius.lg, border: `1px solid ${theme.border}`,
-                    background: theme.surface, cursor: "pointer", textAlign: "left",
-                    fontFamily: "'Inter',sans-serif", transition: `all ${theme.transition}`,
-                    boxShadow: theme.shadow,
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.background = theme.hoverAmber; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = theme.shadowMd; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = theme.shadow; }}
-                >
-                  <div style={{ fontSize: 20, marginBottom: 6 }}>{sec.icon}</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 4 }}>{sec.name}</div>
-                  <div style={{ fontSize: 11, color: theme.textMuted, lineHeight: 1.4 }}>{sec.desc}</div>
+                    padding: "6px 14px", borderRadius: theme.radius.md, border: pickerTab === tab ? `1.5px solid ${theme.active}` : `1.5px solid ${theme.border}`,
+                    background: pickerTab === tab ? theme.hoverAmber : theme.surface,
+                    color: pickerTab === tab ? "#6B4200" : theme.textSecondary,
+                    fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Inter',sans-serif",
+                    transition: `all ${theme.transition}`,
+                  }}>
+                  {tab === "presets" ? "Presets" : `Saved (${(store.savedSections || []).length})`}
                 </button>
               ))}
             </div>
+            {pickerTab === "saved" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                {(store.savedSections || []).length === 0 && (
+                  <div style={{ padding: "24px 12px", textAlign: "center", color: theme.textMuted, fontSize: 13 }}>
+                    No saved sections yet. Save a section from the canvas to reuse it here.
+                  </div>
+                )}
+                {(store.savedSections || []).map(lib => (
+                  <div key={lib.id} style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "12px 14px",
+                    borderRadius: theme.radius.lg, border: `1px solid ${theme.border}`,
+                    background: theme.surface, cursor: lib.published === false ? "not-allowed" : "pointer",
+                    transition: `all ${theme.transition}`,
+                  }}
+                    onClick={() => handleInsertSavedSection(lib.id)}
+                    onMouseEnter={e => { if (lib.published !== false) { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.background = theme.hoverAmber; } }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface; }}
+                  >
+                    <div style={{ width: 34, height: 34, borderRadius: theme.radius.md, background: lib.backgroundColor || theme.hover, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+                      {lib.type === "hero" ? "\uD83C\uDF1F" : lib.type === "menu_list" ? "\uD83C\uDF7D\uFE0F" : lib.type === "info" ? "\u2139\uFE0F" : "\uD83D\uDCC4"}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lib.name}</div>
+                      <div style={{ fontSize: 11, color: theme.textMuted }}>{(lib.components || []).length} components</div>
+                    </div>
+                    {lib.published === false && (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#92400E", background: "#FEF3C7", padding: "2px 8px", borderRadius: 20 }}>Draft</span>
+                    )}
+                    <button style={iconBtn} title="Insert" onClick={e => { e.stopPropagation(); handleInsertSavedSection(lib.id); }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+                {Object.entries(SECTION_PRESETS).map(([key, sec]) => (
+                  <button key={key} onClick={() => handleAddSection(key)}
+                    style={{
+                      padding: "14px 12px", borderRadius: theme.radius.lg, border: `1px solid ${theme.border}`,
+                      background: theme.surface, cursor: "pointer", textAlign: "left",
+                      fontFamily: "'Inter',sans-serif", transition: `all ${theme.transition}`,
+                      boxShadow: theme.shadow,
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.background = theme.hoverAmber; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = theme.shadowMd; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = theme.shadow; }}
+                  >
+                    <div style={{ fontSize: 20, marginBottom: 6 }}>{sec.icon}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 4 }}>{sec.name}</div>
+                    <div style={{ fontSize: 11, color: theme.textMuted, lineHeight: 1.4 }}>{sec.desc}</div>
+                  </button>
+                ))}
+              </div>
+            )}
             <button onClick={() => setShowSectionPicker(false)}
               style={{ width: "100%", padding: "8px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: "pointer", fontSize: 13, color: theme.textSecondary, fontFamily: "'Inter',sans-serif", transition: `all ${theme.transition}` }}
               onMouseEnter={e => { e.currentTarget.style.background = theme.hover; e.currentTarget.style.borderColor = theme.border; }}
@@ -581,42 +715,4 @@ function formatTimeAgo(date) {
   const mins = Math.floor(seconds / 60);
   if (mins < 60) return `${mins}m ago`;
   return `${Math.floor(mins / 60)}h ago`;
-}
-
-function HeaderPreview({ section, meta }) {
-  const logo = meta?.logo;
-  const appName = meta?.appName || "My App";
-  if (!section.components?.length) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: section.backgroundColor || "#FCF8FA" }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: logo ? `url(${logo}) center/cover no-repeat` : "#F1EDEF", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: theme.textMuted, border: logo ? "none" : "2px dashed #D1D5DB" }}>
-          {!logo && "\uD83D\uDCF7"}
-        </div>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, color: theme.text }}>{appName}</div>
-      </div>
-    );
-  }
-  return (
-    <div style={{ background: section.backgroundColor || "#FCF8FA" }}>
-      {section.components.map(comp => {
-        const CompType = getComponentType(comp.type);
-        if (!CompType) return null;
-        return <div key={comp.id} style={{ padding: "4px 16px" }}>{CompType.render({ ...comp.props, logo: logo || comp.props?.logo, appName: appName })}</div>;
-      })}
-    </div>
-  );
-}
-
-function FooterPreview({ section }) {
-  return (
-    <div style={{ background: section.backgroundColor || "#FCF8FA", padding: "8px 16px", textAlign: "center", fontSize: 11, color: theme.textMuted }}>
-      {section.components?.length > 0 ? section.components.map((comp, i) => {
-        const CompType = getComponentType(comp.type);
-        if (!CompType) return null;
-        return <div key={comp.id} style={{ padding: "2px 0" }}>{CompType.render({ ...comp.props })}</div>;
-      }) : (
-        <span>\u00A9 {new Date().getFullYear()} All rights reserved.</span>
-      )}
-    </div>
-  );
 }

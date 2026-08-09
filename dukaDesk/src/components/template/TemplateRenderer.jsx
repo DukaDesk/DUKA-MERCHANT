@@ -1,18 +1,27 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { LayoutRenderer, ScreenRenderer } from "../../runtime/layouts";
+import { RuntimeContext } from "../../runtime/RuntimeContext";
+import { Home, Calendar, ClipboardList, ShoppingCart, User, Store, Tag } from "lucide-react";
 import { TemplateComponents } from "./TemplateComponents";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";
 function getScreenPreviewData() {
   return {};
 }
 
-export function TemplateRenderer({ templateId, screenId, onAction, previewData: externalPreviewData = {} }) {
+export function TemplateRenderer({ templateId, screenId, onAction, previewData: externalPreviewData = {}, screens: screensOverride }) {
   const [screenDef, setScreenDef] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const loadScreen = useCallback(async () => {
-    if (!templateId || !screenId) return;
+    if (!screenId) return;
+    if (screensOverride && screensOverride[screenId]) {
+      setScreenDef(screensOverride[screenId]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    if (!templateId) return;
     setLoading(true);
     setError(null);
     try {
@@ -23,7 +32,7 @@ export function TemplateRenderer({ templateId, screenId, onAction, previewData: 
     } finally {
       setLoading(false);
     }
-  }, [templateId, screenId]);
+  }, [templateId, screenId, screensOverride]);
 
   useEffect(() => {
     loadScreen();
@@ -162,82 +171,199 @@ return node;
   return <ScreenRenderer screenDef={enhancedScreenDef} extraProps={mergedProps} />;
 }
 
-export function TemplatePreview({ templateId, initialScreenId, onScreenChange }) {
-  const [currentScreenId, setCurrentScreenId] = useState(initialScreenId);
-  const [manifest, setManifest] = useState(null);
+const linkToScreen = (target, screenRefs) => {
+  if (!target) return null;
+  const expected = String(target).replace(/^\//, "").replace(/-/g, "").replace(/_/g, "");
+  const found = screenRefs.find(s => {
+    const rawId = String(s?.id ?? s?.screenId);
+    const id = rawId.replace(/-/g, "").replace(/_/g, "");
+    return id === expected || rawId === String(target) || id === expected.toLowerCase() || rawId.toLowerCase() === String(target).toLowerCase();
+  });
+  return found ? (found.id ?? found.screenId) : null;
+};
+
+/* App-like shell that mirrors manifest tabs at the bottom and pushes detail screens
+   via an in-preview navigation stack with a back button. */
+function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }) {
+  const [stack, setStack] = useState(() => [initialScreenId || manifest?.navigation?.initialScreen || Object.keys(screens)[0]]);
+  const currentScreenId = stack[stack.length - 1];
+
+  const screenRefs = manifest?.screens || Object.keys(screens || {}).map(id => ({ id }));
+
+  const navigateTo = (target) => {
+    const id = linkToScreen(target, screenRefs);
+    if (!id) return;
+    setStack(prev => {
+      const next = [...prev, id];
+      onScreenChange?.(id, next);
+      return next;
+    });
+  };
+
+  const switchTab = (screenId) => {
+    if (!screenId || screenId === currentScreenId) return;
+    setStack([screenId]);
+  };
+
+  const goBack = () => {
+    setStack(prev => {
+      if (prev.length <= 1) return prev;
+      const next = prev.slice(0, -1);
+      onScreenChange?.(next[next.length - 1], next);
+      return next;
+    });
+  };
+
+  const dispatchAction = (actionDef) => {
+    if (!actionDef) return;
+    const { type, payload = {} } = actionDef;
+    if (type === "navigate" || type === "push" || type === "replace") {
+      navigateTo(payload.push || payload.screen || payload.screenId);
+    } else if (type === "pop") {
+      goBack();
+    } else if (type === "switch_screen") {
+      switchTab(payload.screenId);
+    } else if (type === "logout") {
+      window.__logout?.();
+    } else {
+      onScreenChange?.(type, payload);
+    }
+  };
+
+  const tabs = manifest?.navigation?.tabs || [];
+  const isRoot = stack.length === 1;
+
+  return (
+    <RuntimeContext.Provider value={{ dispatchAction }}>
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        {/* App header */}
+        <div style={{
+          background: manifest?.theme?.primaryColor || "#1B4332",
+          padding: "10px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          flexShrink: 0,
+          color: "#fff",
+        }}>
+          {!isRoot && (
+            <button
+              onClick={goBack}
+              style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, padding: 0, fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}
+            >
+              <span style={{ fontSize: 18 }}>←</span> Back
+            </button>
+          )}
+          <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, flex: 1, textAlign: isRoot ? "center" : "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {screens[currentScreenId]?.title || pathScreenTitle(currentScreenId)}
+          </span>
+          <span style={{ width: 24 }} />
+        </div>
+
+        {/* Screen body */}
+        <div style={{ flex: 1, overflow: "auto", background: manifest?.theme?.bgColor || manifest?.theme?.backgroundColor || "#F9FAFB" }}>
+          <TemplateRenderer
+            templateId={manifest?.templateId}
+            screenId={currentScreenId}
+            screens={screens}
+            onAction={(actionKey, payload) => {
+              dispatchAction({ type: actionKey, payload });
+            }}
+          />
+        </div>
+
+        {/* Bottom tab bar */}
+        {tabs.length > 0 && (
+          <div style={{
+            display: "flex",
+            background: "#fff",
+            borderTop: "1px solid #E5E7EB",
+            flexShrink: 0,
+            padding: "4px 0 8px",
+          }}>
+            {tabs.map(tab => {
+              const active = tab.screenId === currentScreenId;
+              return (
+                <button
+                  key={tab.screenId}
+                  onClick={() => switchTab(tab.screenId)}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 3,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "6px 4px",
+                    fontFamily: "inherit",
+                    color: active ? "#1B4332" : "#9CA3AF",
+                    fontSize: 10,
+                    fontWeight: active ? 700 : 500,
+                  }}
+                >
+                  <TabIcon icon={tab.icon} active={active} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </RuntimeContext.Provider>
+  );
+}
+
+function pathScreenTitle(id) {
+  return id.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+
+function TabIcon({ icon, active }) {
+  const Icon = TAB_ICONS[icon];
+  if (Icon) {
+    const activeColor = "#1B4332";
+    return <Icon size={20} strokeWidth={active ? 2.4 : 1.8} color={active ? activeColor : "#9CA3AF"} />;
+  }
+  return <span style={{ fontSize: 18, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon || "•"}</span>;
+}
+
+const TAB_ICONS = {
+  "home-outline": Home,
+  "storefront-outline": Store,
+  "cart-outline": ShoppingCart,
+  "receipt-outline": ClipboardList,
+  "person-outline": User,
+  "calendar-outline": Calendar,
+  "tag-outline": Tag,
+};
+
+export function TemplatePreview({ templateId, initialScreenId, manifest, screens, onScreenChange }) {
+  const [state, setState] = useState({ manifest: null, screens: {} });
 
   useEffect(() => {
-    loadAllTemplateScreens(templateId).then(({ manifest }) => setManifest(manifest));
-  }, [templateId]);
+    if (manifest && screens && Object.keys(screens).length > 0) {
+      setState({ manifest, screens });
+    } else if (templateId) {
+      loadAllTemplateScreens(templateId).then(({ manifest: m, screens: s }) => setState({ manifest: m, screens: s }));
+    }
+  }, [templateId, manifest, screens]);
 
-  if (!manifest) {
+  if (!state.manifest || Object.keys(state.screens).length === 0) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300, color: "#9CA3AF" }}>
-        Loading template manifest...
+        Loading template...
       </div>
     );
   }
 
-  const handleAction = (actionKey, payload) => {
-    if (actionKey === "navigate" && payload?.push) {
-      const screenMatch = payload.push.match(/\/([^/]+)$/);
-      if (screenMatch) {
-        const newScreenId = screenMatch[1].replace(/-/g, '');
-        const found = manifest.screens.find(s => s.id === newScreenId || s.id.replace(/-/g, '') === newScreenId);
-        if (found) {
-          setCurrentScreenId(found.id);
-          onScreenChange?.(found.id);
-        }
-      }
-    }
-  };
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{
-        display: "flex",
-        gap: 4,
-        padding: 8,
-        background: "#F9FAFB",
-        borderBottom: "1px solid #E5E7EB",
-        overflowX: "auto"
-      }}>
-        {manifest.navigation?.tabs?.map(tab => (
-          <button
-            key={tab.screenId}
-            onClick={() => {
-              setCurrentScreenId(tab.screenId);
-              onScreenChange?.(tab.screenId);
-            }}
-            style={{
-              flex: "0 0 auto",
-              padding: "8px 16px",
-              borderRadius: 20,
-              border: "none",
-              background: currentScreenId === tab.screenId ? "#F4A026" : "#fff",
-              color: currentScreenId === tab.screenId ? "#0F0F1A" : "#6B7280",
-              fontWeight: 600,
-              fontSize: 12,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              display: "flex",
-              alignItems: "center",
-              gap: 6
-            }}
-          >
-            {tab.icon && <span>{tab.icon}</span>}
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
-        <TemplateRenderer
-          templateId={templateId}
-          screenId={currentScreenId}
-          onAction={handleAction}
-        />
-      </div>
-    </div>
+    <TemplateAppShell
+      manifest={state.manifest}
+      screens={state.screens}
+      initialScreenId={initialScreenId}
+      onScreenChange={(id) => onScreenChange?.(id)}
+    />
   );
 }
 

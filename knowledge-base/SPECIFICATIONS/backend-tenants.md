@@ -48,6 +48,21 @@ Feature flags control capability access per plan:
 - `integrations`: SendGrid, Google Calendar
 - `custom_domain`: custom domain binding
 
+### Sector module mapping
+
+Sector modules surfaced by the Business Dashboard (`dukaDesk/src/config/verticals.js`) map
+to these flags so the tenant's category drives which modules render:
+
+| Flag | Sector module ids (vertical label) |
+|------|------------------------------------|
+| `commerce` | Giving, Donations, Membership (Church); Fees (School); Products/Orders (all) |
+| `booking` | Services, Appointments (Booking/Services) |
+| `forms` | Timetable, Attendance (School/Church) |
+| `notifications` | Announcements (Church), Parent Comms (School), Messages |
+
+When flags are absent, `dukaDesk/src/services/moduleGate.js` passes all modules through
+(today's behavior). See [ADR-014](../ADRs/ADR-014-vertical-adaptive-business-dashboard.md).
+
 ## Runtime Configuration
 
 Each tenant has runtime config:

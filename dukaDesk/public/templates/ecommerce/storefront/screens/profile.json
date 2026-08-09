@@ -1,29 +1,47 @@
 {
   "screenId": "profile",
   "title": "Profile",
-  "children": [
-    {
-      "type": "info_list",
-      "key": "account-info",
-      "props": {
-        "items": [
-          { "icon": "👤", "label": "My Account", "value": "Manage settings" },
-          { "icon": "📍", "label": "Shipping Addresses", "value": "2 addresses" },
-          { "icon": "💳", "label": "Payment Methods", "value": "Card, Bank Transfer" },
-          { "icon": "⭐", "label": "Wishlist", "value": "5 items" }
-        ]
+  "layout": {
+    "kind": "scroll",
+    "gap": 16,
+    "padding": 16,
+    "children": [
+      {
+        "type": "hero_banner",
+        "key": "profile-hero",
+        "props": {
+          "title": "Hey, Ada!",
+          "subtitle": "Manage your storefront account",
+          "image": "https://picsum.photos/seed/profile-hero/720/260"
+        },
+        "actions": {
+          "default": { "type": "filter", "payload": { "source": "profile" } }
+        }
       },
-      "actions": {
-        "tap": { "type": "navigate", "payload": { "push": "/settings" } }
+      {
+        "type": "info_list",
+        "key": "account-info",
+        "props": {
+          "items": [
+            { "icon": "👤", "label": "My Account", "value": "Name, email & phone" },
+            { "icon": "📍", "label": "Shipping Addresses", "value": "2 addresses saved" },
+            { "icon": "💳", "label": "Payment Methods", "value": "Card, Bank Transfer" },
+            { "icon": "⭐", "label": "Wishlist", "value": "5 items saved" },
+            { "icon": "🛍️", "label": "Track Order", "value": "Live delivery status" }
+          ]
+        },
+        "actions": {
+          "tap": { "type": "navigate", "payload": { "push": "/orders" } }
+        }
+      },
+      {
+        "type": "primary_button",
+        "key": "logout-btn",
+        "props": { "label": "Logout" },
+        "actions": {
+          "default": { "type": "logout" }
+        }
       }
-    },
-    {
-      "type": "primary_button",
-      "key": "logout-btn",
-      "props": { "label": "Logout" },
-      "actions": {
-        "default": { "type": "logout" }
-      }
-    }
-  ]
+    ]
+  }
 }

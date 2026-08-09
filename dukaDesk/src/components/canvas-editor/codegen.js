@@ -22,7 +22,9 @@ function genComponentCode(comp) {
   const fills = comp.fills || [];
   const strokes = comp.strokes || [];
   const fillCSS = fills.length > 0
-    ? (fills[0].color || "transparent")
+    ? (fills[0].type === "image" && fills[0].src
+      ? `url("${fills[0].src}") center / cover no-repeat`
+      : (fills[0].color || "transparent"))
     : "transparent";
   const strokeCSS = strokes.length > 0
     ? `${strokes[0].width || 0}px solid ${strokes[0].color || "transparent"}`

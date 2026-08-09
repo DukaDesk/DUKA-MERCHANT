@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Palette, SlidersHorizontal, MousePointer } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../contexts";
 import { getMyApp, getSetupData, getProducts, updateApp } from "../../services/api";
 import { TemplatePreview } from "../template/TemplateRenderer";
-import { loadAllTemplateScreens } from "../../services/TemplateLoader";
+import { resolveTemplateId } from "../../services/staticTemplates";
 import { AMBER, NAVY } from "../../theme";
 import { generateShopTemplate } from "../../services/TemplateGenerator";
 
@@ -30,7 +30,6 @@ export default function MiniAppPreview() {
   const [view, setView] = useState("menu");
   const [showCartModal, setShowCartModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [templateScreens, setTemplateScreens] = useState({});
   const [currentScreenId, setCurrentScreenId] = useState("menu");
   const [templateManifest, setTemplateManifest] = useState(null);
   const [templateConfig, setTemplateConfig] = useState(null);
@@ -88,13 +87,29 @@ export default function MiniAppPreview() {
   const openCustomize = () => {
     // Navigate to the template editor for this specific shop
     if (app?.category && app?.template) {
-      const templateId = `${(app.category || "").toLowerCase()}/${(app.template || "").toLowerCase().replace(/\s+/g, '-')}`;
+      const templateId = resolveTemplateId(app.category, app.template);
       navigate(`/template-editor/${templateId}`);
     }
   };
 
   const brandColor = app?.color || FALLBACK_COLOR;
   const storeName = app?.appName || app?.businessName || app?.business || merchant?.business || "My Store";
+
+  /* Build the layout screen map from the template config so the mini app preview
+     actually renders the merchant's current template (edited or generated). */
+  const configScreens = useMemo(() => {
+    if (templateConfig?._screens && Object.keys(templateConfig._screens).length > 0) {
+      return templateConfig._screens;
+    }
+    if (Array.isArray(templateConfig?.screens)) {
+      const map = {};
+      templateConfig.screens.forEach(s => { if (s?.screenId) map[s.screenId] = s; });
+      return map;
+    }
+    return null;
+  }, [templateConfig]);
+
+  const hasRenderableTemplate = Boolean(templateManifest && configScreens && Object.keys(configScreens).length > 0);
   const menuItems = products?.length > 0 ? products.map(p => ({
     id: p.id, name: p.name, desc: p.cat || "", price: p.price, img: p.img || "🍛", cat: p.cat || "Mains",
   })) : FALLBACK_ITEMS;
@@ -174,7 +189,7 @@ export default function MiniAppPreview() {
               </button>
             ))}
             <div style={{ marginLeft: "auto", color: "#6B7280", fontSize: 12 }}>
-              {Object.keys(templateScreens).length} screens loaded
+              {(templateConfig?._screens ? Object.keys(templateConfig._screens).length : 0) || (app?.template ? "Custom template ready" : "Standard app")}
             </div>
           </div>
         </div>
@@ -190,9 +205,11 @@ export default function MiniAppPreview() {
               </div>
             </div>
 
-            {templateManifest && templateScreens[currentScreenId] && app?.category && app?.template ? (
+            {hasRenderableTemplate ? (
               <TemplatePreview
-                templateId={`${(app.category || "").toLowerCase()}/${(app.template || "").toLowerCase().replace(/\s+/g, '-')}`}
+                templateId={app?.category && app?.template ? resolveTemplateId(app.category, app.template) : undefined}
+                manifest={templateConfig}
+                screens={configScreens}
                 initialScreenId={currentScreenId}
                 onScreenChange={setCurrentScreenId}
               />

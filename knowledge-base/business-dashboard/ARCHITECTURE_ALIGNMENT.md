@@ -6,7 +6,7 @@ This document records the architectural constraints and decisions that guide bus
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| | | |
+| ADR-014 | Vertical-Adaptive Business Dashboard | ✅ Accepted |
 
 ## Design Principles
 

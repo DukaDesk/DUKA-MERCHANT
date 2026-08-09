@@ -55,7 +55,7 @@ export default function Billing() {
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: "#fff", marginBottom: 4 }}>{currentPlan.plan}</div>
             <div style={{ color: "rgba(255,255,255,0.85)", fontSize: isMobile ? 16 : 18, marginBottom: 8 }}>{currentPlan.label}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {currentPlan.features.map((f, i) => (
+              {(currentPlan.features || []).map((f, i) => (
                 <div key={i} style={{ color: "rgba(255,255,255,0.9)", fontSize: 14 }}>âœ“ {f}</div>
               ))}
             </div>
@@ -82,7 +82,7 @@ export default function Billing() {
             </tr>
           </thead>
           <tbody>
-            {plans.length > 0 && Object.keys(plans[0].features).map((feat, fi) => (
+            {plans.length > 0 && Object.keys(plans[0].features || {}).map((feat, fi) => (
               <tr key={feat} style={{ background: fi % 2 === 0 ? "#F9FAFB" : "#fff" }}>
                 <td style={{ padding: "12px 16px", fontSize: 14, color: "#374151", fontWeight: 500 }}>{feat}</td>
                 {plans.map(p => (

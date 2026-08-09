@@ -1,10 +1,6 @@
 # Architecture Decision Records — Index
 
-<<<<<<< HEAD
-**Last Updated:** 2026-07-20
-=======
-**Last Updated:** 2026-07-17
->>>>>>> origin/main
+**Last Updated:** 2026-08-07
 
 Template: `ADR-000-template.md`
 
@@ -22,10 +18,9 @@ Template: `ADR-000-template.md`
 | ADR-010 | SDUI Publishing Pipeline | ✅ Accepted | 2026-07-01 |
 | ADR-011 | Tenant Resolution Strategy | ✅ Accepted | 2026-07-01 |
 | ADR-012 | Provider Adapter Pattern | ✅ Accepted | 2026-07-01 |
-<<<<<<< HEAD
 | ADR-013 | Account Deactivation & Deletion | ✅ Accepted | 2026-07-20 |
+| ADR-013 | Builder Template Gallery and Section Editor Redesign | ✅ Accepted | 2026-07-17 |
+| ADR-014 | Vertical-Adaptive Business Dashboard | ✅ Accepted | 2026-08-07 |
+| ADR-015 | Reusable Saved Sections and Per-Page Theme Chrome | ✅ Accepted | 2026-08-08 |
 
 > **ADR-013 Note:** Account deactivation uses a 30-day soft deactivation flow (status = `deactivated`, `deactivatedAt`, `scheduledDeletionAt`) before permanent deletion, plus an immediate hard delete option for GDPR/Apple/Google compliance. Reactivation is permitted within the 30-day window. Admin cleanup endpoint purges expired deactivated accounts. Events: `user.deactivated`, `user.reactivated`, `user.permanently_deleted`, `user.auto_deleted_after_30_days`.
-=======
-| ADR-013 | Builder Template Gallery and Section Editor Redesign | ✅ Accepted | 2026-07-17 |
->>>>>>> origin/main

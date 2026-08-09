@@ -68,6 +68,8 @@ function generateMenuScreen(config) {
     title: "Menu",
     layout: {
       kind: "scroll",
+      gap: 16,
+      padding: 16,
       children: [
         {
           type: "hero_banner",
@@ -102,6 +104,8 @@ function generateShopScreen() {
     title: "Shop",
     layout: {
       kind: "scroll",
+      gap: 16,
+      padding: 16,
       children: [
         {
           type: "promotion_list",
@@ -132,6 +136,8 @@ function generateBookingScreen(config) {
     title: "Services",
     layout: {
       kind: "scroll",
+      gap: 16,
+      padding: 16,
       children: [
         {
           type: "hero_banner",
@@ -255,6 +261,8 @@ function generateEventsScreen(config) {
     title: "Events",
     layout: {
       kind: "scroll",
+      gap: 16,
+      padding: 16,
       children: [
         {
           type: "hero_banner",

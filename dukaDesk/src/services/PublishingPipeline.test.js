@@ -95,7 +95,7 @@ describe("PublishingPipeline", () => {
       });
       api.getReleases.mockResolvedValue([]);
 
-      const result = await publishProject(validProject);
+      await publishProject(validProject);
 
       const saved = api.saveReleases.mock.calls[0][0][0];
       expect(saved.validationResult).toEqual({ errors: 1, warnings: 1 });

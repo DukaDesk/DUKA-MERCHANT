@@ -1,15 +1,36 @@
 {
   "screenId": "cart",
   "title": "Cart",
-  "children": [
-    {
-      "type": "cart_summary",
-      "key": "cart-summary",
-      "props": {},
-      "actions": {
-        "checkout": { "type": "checkout" },
-        "removeItem": { "type": "remove_from_cart" }
+  "layout": {
+    "kind": "scroll",
+    "gap": 16,
+    "padding": 16,
+    "children": [
+      {
+        "type": "promotion_list",
+        "key": "free-shipping",
+        "props": {
+          "offers": [
+            { "title": "Free Delivery", "subtitle": "Add ₦3,000 more for free shipping", "image": "https://picsum.photos/seed/cart-promo/720/240", "badge": "Promo" }
+          ]
+        },
+        "actions": { "tap": { "type": "filter", "payload": { "source": "promo" } } }
+      },
+      {
+        "type": "cart_summary",
+        "key": "cart-summary",
+        "props": {
+          "items": [
+            { "id": 101, "name": "Slim Fit Shirt", "price": 12500, "qty": 1, "img": "https://picsum.photos/seed/shirt/200/200" },
+            { "id": 104, "name": "Classic Sneakers", "price": 24000, "qty": 1, "img": "https://picsum.photos/seed/sneakers/200/200" }
+          ]
+        },
+        "actions": {
+          "checkout": { "type": "navigate", "payload": { "push": "/orders" } },
+          "removeItem": { "type": "remove_from_cart" },
+          "addItem": { "type": "add_to_cart" }
+        }
       }
-    }
-  ]
+    ]
+  }
 }

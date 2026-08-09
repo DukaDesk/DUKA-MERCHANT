@@ -10,8 +10,10 @@ import { dispatchEngine, setupActionRouter, clearActionRouter } from "./runtime/
 import { BrandThemeProvider } from "./runtime/BrandThemeProvider";
 import { AuthContext, useAuth } from "./contexts";
 import { on as onNotify } from "./services/notifier";
+import { VerticalProvider } from "./runtime/VerticalContext";
 
 const Auth = lazy(() => import("./components/auth/Auth"));
+const Onboarding = lazy(() => import("./components/auth/Onboarding"));
 const Dashboard = lazy(() => import("./components/pages/Dashboard"));
 const Products = lazy(() => import("./components/pages/Products"));
 const Orders = lazy(() => import("./components/pages/Orders"));
@@ -29,6 +31,14 @@ const Marketing = lazy(() => import("./components/pages/Marketing"));
 const Notifications = lazy(() => import("./components/pages/Notifications"));
 const CompliancePage = lazy(() => import("./components/pages/Compliance"));
 const DeskDesignPage = lazy(() => import("./components/pages/DeskDesign"));
+const AttendancePage = lazy(() => import("./components/pages/sector/Attendance"));
+const GivingPage = lazy(() => import("./components/pages/sector/Giving"));
+const FeesPage = lazy(() => import("./components/pages/sector/Fees"));
+const AppointmentsTodayPage = lazy(() => import("./components/pages/sector/AppointmentsToday"));
+const ReservationsPage = lazy(() => import("./components/pages/sector/Reservations"));
+const MembershipsPage = lazy(() => import("./components/pages/sector/Memberships"));
+const TicketsPage = lazy(() => import("./components/pages/sector/Tickets"));
+const ClassesPage = lazy(() => import("./components/pages/sector/Classes"));
 const MiniAppPreview = lazy(() => import("./components/app-builder/MiniAppPreview"));
 const TemplateEditor = lazy(() => import("./components/template/TemplateEditor"));
 const CanvasEditor = lazy(() => import("./components/canvas-editor/CanvasEditor"));
@@ -51,7 +61,7 @@ function ProtectedRoute({ children }) {
 
 function PublicRoute({ children }) {
   const { merchant } = useAuth();
-  if (merchant) return <Navigate to="/dashboard" replace />;
+  if (merchant) return <Navigate to={merchant?.category ? "/dashboard" : "/onboarding"} replace />;
   return children;
 }
 
@@ -101,6 +111,7 @@ export default function App() {
 
   return (
     <AuthContext.Provider value={{ merchant, logout, handleAuth }}>
+    <VerticalProvider>
     <RuntimeContext.Provider value={{ dispatchAction }}>
     <BrandThemeProvider>
       <ErrorBoundary>
@@ -113,10 +124,13 @@ export default function App() {
               <Route path="/forgot" element={<PublicRoute><Auth onAuth={handleAuth} /></PublicRoute>} />
               <Route path="/reset-password" element={<PublicRoute><Auth onAuth={handleAuth} /></PublicRoute>} />
               <Route path="/reset-password-confirm" element={<PublicRoute><Auth onAuth={handleAuth} /></PublicRoute>} />
+              <Route path="/onboarding" element={<ProtectedRoute><Onboarding onAuth={handleAuth} /></ProtectedRoute>} />
               <Route path="/miniapp" element={<ProtectedRoute><MiniAppPreview /></ProtectedRoute>} />
               <Route path="/template-editor/:templateId" element={<ProtectedRoute><TemplateEditor /></ProtectedRoute>} />
               <Route path="/canvas-editor" element={<ProtectedRoute><CanvasEditor /></ProtectedRoute>} />
-              <Route path="/compliance" element={<ProtectedRoute><CompliancePage /></ProtectedRoute>} />
+              <Route path="/compliance" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
+                <Route index element={<CompliancePage />} />
+              </Route>
               <Route path="/desk-design" element={<ProtectedRoute><DeskDesignPage /></ProtectedRoute>} />
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/dashboard" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
@@ -127,6 +141,14 @@ export default function App() {
                 <Route path="messages" element={<Messages />} />
                 <Route path="integrations" element={<Integrations />} />
                 <Route path="integrations/:name" element={<IntegrationDetails />} />
+                <Route path="attendance" element={<AttendancePage />} />
+                <Route path="giving" element={<GivingPage />} />
+                <Route path="fees" element={<FeesPage />} />
+                <Route path="appointments" element={<AppointmentsTodayPage />} />
+                <Route path="reservations" element={<ReservationsPage />} />
+                <Route path="memberships" element={<MembershipsPage />} />
+                <Route path="tickets" element={<TicketsPage />} />
+                <Route path="classes" element={<ClassesPage />} />
                 <Route path="billing" element={<Billing />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="customers" element={<Customers />} />
@@ -143,6 +165,7 @@ export default function App() {
       </ErrorBoundary>
     </BrandThemeProvider>
     </RuntimeContext.Provider>
+    </VerticalProvider>
     </AuthContext.Provider>
   );
 }

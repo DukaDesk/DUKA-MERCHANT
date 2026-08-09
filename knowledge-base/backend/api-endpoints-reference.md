@@ -120,6 +120,10 @@ This document catalogs all REST API endpoints exposed by the DUKA-BACKEND servic
 | POST | `/api/v1/tenants/:id/subscribe` | Subscribe to a plan |
 | POST | `/api/v1/tenants/:id/subscription/cancel` | Cancel subscription |
 
+> **⚠️ Gap — One-time onboarding:** The Tenant entity has **no first-class `category` /
+> `onboardingCompleted` field**, so the merchant dashboard re-shows onboarding on every login.
+> Planned work is tracked in [One-Time Tenant Onboarding Backend TODO](ONBOARDING_ONETIME_BACKEND_TODO.md).
+
 ---
 
 ## 4. Templates

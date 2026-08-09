@@ -5,10 +5,11 @@ import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER } from "../../theme";
 import { setSetupData, getSetupData, deployApp } from "../../services/api";
-import { WIZARD_CATEGORIES, WIZARD_TEMPLATES_BY_CATEGORY, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, getTemplateIntegrationNames } from "../../config/wizard";
+import { WIZARD_CATEGORIES, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, getTemplateIntegrationNames } from "../../config/wizard";
 import { INTEGRATION_BADGE_COLORS } from "../../config/integrations";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";
 import { generateShopTemplate } from "../../services/TemplateGenerator";
+import { resolveTemplateId } from "../../services/staticTemplates";
 import { SetupWizard } from "./SetupWizard";
 import { InteractivePreview } from "../template/TemplateRenderer";
 import { Share2, Download, QrCode, ExternalLink, Edit2 } from "lucide-react";
@@ -50,7 +51,7 @@ export default function Wizard() {
 
   const loadPreview = useCallback(async (category, template) => {
     if (!category || !template) return;
-    const templateId = `${category.toLowerCase()}/${template.toLowerCase().replace(/\s+/g, '-')}`;
+    const templateId = resolveTemplateId(category, template);
     try {
       const { manifest, screens } = await loadAllTemplateScreens(templateId);
       setPreviewData({ manifest, screens });
@@ -81,8 +82,7 @@ export default function Wizard() {
   const openCustomize = useCallback(() => {
     const { category, template } = initialData || {};
     if (category && template) {
-      const templateId = `${category.toLowerCase()}/${template.toLowerCase().replace(/\s+/g, '-')}`;
-      setCustomizeTemplateId(templateId);
+      setCustomizeTemplateId(resolveTemplateId(category, template));
       setShowCustomize(true);
     }
   }, [initialData]);

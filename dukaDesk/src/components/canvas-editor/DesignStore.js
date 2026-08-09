@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { getDesignData, saveDesignData } from "../../services/api";
+import { getComponentType } from "./componentTypes";
 
 let nextId = 1;
 function genId() { return `c_${nextId++}`; }
@@ -19,6 +20,7 @@ function enrichComponents(components) {
     rotation: comp.rotation ?? 0,
     locked: comp.locked ?? false,
     visible: comp.visible ?? true,
+    children: comp.children ? enrichComponents(comp.children) : [],
   }));
 }
 
@@ -30,6 +32,34 @@ function enrichSections(sections) {
   }));
 }
 
+function findSectionById(data, sectionId) {
+  if (!data || !sectionId) return null;
+  const shared = data.shared && Object.values(data.shared).find(s => s.id === sectionId);
+  if (shared) return shared;
+  for (const s of Object.values(data.screens || {})) {
+    const sec = (s.bodySections || []).find(x => x.id === sectionId);
+    if (sec) return sec;
+  }
+  return null;
+}
+
+function migrateScreens(data) {
+  Object.values(data.screens || {}).forEach(s => ensureChrome(s));
+  return data;
+}
+
+function getDefaultChrome() {
+  return { header: { mode: "inherit" }, footer: { mode: "inherit" } };
+}
+
+function ensureChrome(screen) {
+  if (!screen) return screen;
+  if (!screen.chrome) screen.chrome = getDefaultChrome();
+  screen.chrome.header = screen.chrome.header || { mode: "inherit" };
+  screen.chrome.footer = screen.chrome.footer || { mode: "inherit" };
+  return screen;
+}
+
 function getDefaultData() {
   return {
     meta: { category: "", appName: "", primaryColor: "#1A1A2E", logo: null },
@@ -39,8 +69,9 @@ function getDefaultData() {
       footer: { id: "section_footer", type: "footer", name: "Footer", backgroundColor: "#FCF8FA", components: [] },
     },
     screens: {
-      screen_1: { name: "Home", backgroundColor: "#FCF8FA", bodySections: [] },
+      screen_1: ensureChrome({ name: "Home", backgroundColor: "#FCF8FA", bodySections: [] }),
     },
+    savedSections: [],
   };
 }
 
@@ -52,9 +83,11 @@ function loadLocalFallback() {
       if (parsed?.meta && parsed?.screens && parsed?.shared) {
         const sid = parsed.navigation?.initialScreen || Object.keys(parsed.screens)[0];
         if (!parsed.screens[sid]) parsed.screens[Object.keys(parsed.screens)[0]] = { name: "Home", backgroundColor: "#FCF8FA", bodySections: [] };
-        return parsed;
+        parsed.savedSections = parsed.savedSections || [];
+        return migrateScreens(parsed);
       }
     }
+    // eslint-disable-next-line no-empty
   } catch {}
   return null;
 }
@@ -66,11 +99,9 @@ export function useDesignStore(initialData) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [selectedComponentId, setSelectedComponentId] = useState(null);
-  const [activeTool, setActiveTool] = useState("select");
   const [bumpVal, bumpHistory] = useState(0); void bumpVal;
   const undoStack = useRef([]);
   const redoStack = useRef([]);
-  const [copiedStyles, setCopiedStyles] = useState(null);
   const [assets, setAssets] = useState([]);
   const [lastSaved, setLastSaved] = useState(null);
   const [savingToServer, setSavingToServer] = useState(false);
@@ -83,6 +114,8 @@ export function useDesignStore(initialData) {
     if (!initialData) {
       getDesignData().then(apiData => {
         if (!templateLoadedRef.current && apiData?.meta && apiData?.screens && apiData?.shared) {
+          if (!Array.isArray(apiData.savedSections)) apiData.savedSections = [];
+          migrateScreens(apiData);
           setData(apiData);
           setCurrentScreenId(apiData.navigation?.initialScreen || Object.keys(apiData.screens)[0]);
           setServerLastSaved(new Date());
@@ -97,6 +130,7 @@ export function useDesignStore(initialData) {
       try {
         localStorage.setItem("dukadesk_design", JSON.stringify(data));
         setLastSaved(new Date());
+        // eslint-disable-next-line no-empty
       } catch {}
     }, 300);
     return () => clearTimeout(saveTimerRef.current);
@@ -117,12 +151,14 @@ export function useDesignStore(initialData) {
     try {
       await saveDesignData(data);
       setServerLastSaved(new Date());
+      // eslint-disable-next-line no-empty
     } catch {} finally {
       setSavingToServer(false);
     }
   }, [data]);
 
   const clearDesign = useCallback(() => {
+    // eslint-disable-next-line no-empty
     try { localStorage.removeItem("dukadesk_design"); } catch {}
     setData(getDefaultData());
     undoStack.current = [];
@@ -147,17 +183,54 @@ export function useDesignStore(initialData) {
 
   const screen = data.screens[currentScreenId] || data.screens[data.navigation.initialScreen];
 
+  const findSavedSection = useCallback((id) => {
+    return (data.savedSections || []).find(s => s.id === id) || null;
+  }, [data.savedSections]);
+
+  /* Resolve a section for rendering: linked body sections surface the library item content
+     while keeping the instance id so selection/edit wiring keeps working. */
+  const resolveSection = useCallback((section) => {
+    if (!section) return null;
+    if (section.kind === "saved" && section.libraryId) {
+      const lib = findSavedSection(section.libraryId);
+      if (lib) {
+        return { ...lib, id: section.id, kind: "saved", libraryId: lib.id };
+      }
+    }
+    return section;
+  }, [findSavedSection]);
+
+  /* Per-screen chrome resolution: inherit -> shared theme section, hide -> null, custom -> any section by id. */
+  const resolveChrome = useCallback((type) => {
+    const cfg = screen?.chrome?.[type] || { mode: "inherit" };
+    if (cfg.mode === "hide") return null;
+    if (cfg.mode === "custom" && cfg.sectionId) {
+      return findSectionById(data, cfg.sectionId) || data.shared?.[type] || null;
+    }
+    return data.shared?.[type] || null;
+  }, [screen, data]);
+
+  const setScreenChrome = useCallback((screenId, type, mode, sectionId) => {
+    const sid = screenId || currentScreenId;
+    updateData(d => {
+      const s = d.screens[sid];
+      if (!s) return;
+      s.chrome = s.chrome || getDefaultChrome();
+      s.chrome[type] = { mode, sectionId: mode === "custom" ? sectionId : null };
+    });
+  }, [updateData, currentScreenId]);
+
   const getAllSections = useCallback(() => [
-    data.shared.header,
+    resolveChrome("header"),
     ...(screen?.bodySections || []),
-    data.shared.footer,
-  ], [data.shared.header, data.shared.footer, screen?.bodySections]);
+    resolveChrome("footer"),
+  ].filter(Boolean), [resolveChrome, screen?.bodySections]);
 
   /* ── Screens ── */
   const addScreen = useCallback((id, name) => {
     const sid = id || genScreenId();
     updateData(d => {
-      d.screens[sid] = { name: name || "New Screen", backgroundColor: "#FCF8FA", bodySections: [] };
+      d.screens[sid] = ensureChrome({ name: name || "New Screen", backgroundColor: "#FCF8FA", bodySections: [] });
     });
     return sid;
   }, [updateData]);
@@ -218,13 +291,33 @@ export function useDesignStore(initialData) {
     });
   }, [updateData, currentScreenId]);
 
+  const moveBodySectionToIndex = useCallback((screenId, sectionId, toIndex) => {
+    const sid = screenId || currentScreenId;
+    updateData(d => {
+      const s = d.screens[sid];
+      if (!s || !s.bodySections) return;
+      const fromIdx = s.bodySections.findIndex(sec => sec.id === sectionId);
+      if (fromIdx === -1 || toIndex === fromIdx) return;
+      const clamped = Math.max(0, Math.min(toIndex, s.bodySections.length - 1));
+      const [item] = s.bodySections.splice(fromIdx, 1);
+      s.bodySections.splice(clamped, 0, item);
+    });
+  }, [updateData, currentScreenId]);
+
   const setSectionColor = useCallback((screenId, sectionId, color) => {
     const sid = screenId || currentScreenId;
     updateData(d => {
       const s = d.screens[sid];
       if (!s || !s.bodySections) return;
-      const sec = s.bodySections.find(x => x.id === sectionId);
-      if (sec) sec.backgroundColor = color;
+      const idx = s.bodySections.findIndex(x => x.id === sectionId);
+      if (idx === -1) return;
+      const sec = s.bodySections[idx];
+      if (sec.kind === "saved" && sec.libraryId) {
+        const lib = (d.savedSections || []).find(x => x.id === sec.libraryId);
+        if (lib) lib.backgroundColor = color;
+        return;
+      }
+      sec.backgroundColor = color;
     });
   }, [updateData, currentScreenId]);
 
@@ -233,8 +326,25 @@ export function useDesignStore(initialData) {
     updateData(d => {
       const s = d.screens[sid];
       if (!s || !s.bodySections) return;
+      const idx = s.bodySections.findIndex(x => x.id === sectionId);
+      if (idx === -1) return;
+      const sec = s.bodySections[idx];
+      if (sec.kind === "saved" && sec.libraryId) {
+        const lib = (d.savedSections || []).find(x => x.id === sec.libraryId);
+        if (lib) lib.name = name;
+        return;
+      }
+      sec.name = name;
+    });
+  }, [updateData, currentScreenId]);
+
+  const setSectionVisible = useCallback((screenId, sectionId, visible) => {
+    const sid = screenId || currentScreenId;
+    updateData(d => {
+      const s = d.screens[sid];
+      if (!s || !s.bodySections) return;
       const sec = s.bodySections.find(x => x.id === sectionId);
-      if (sec) sec.name = name;
+      if (sec) sec.visible = !!visible;
     });
   }, [updateData, currentScreenId]);
 
@@ -251,29 +361,162 @@ export function useDesignStore(initialData) {
     });
   }, [updateData]);
 
+  /* ── Saved section library (ADR-015) ── */
+  function genLibraryId() { return `lib_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`; }
+
+  const saveSectionToLibrary = useCallback((screenId, sectionId, name) => {
+    const sid = screenId || currentScreenId;
+    let libraryId = null;
+    updateData(d => {
+      const s = d.screens[sid];
+      if (!s || !s.bodySections) return;
+      const idx = s.bodySections.findIndex(sec => sec.id === sectionId);
+      if (idx === -1) return;
+      const source = s.bodySections[idx];
+      libraryId = source.kind === "saved" && source.libraryId
+        ? source.libraryId
+        : genLibraryId();
+      let lib = (d.savedSections || []).find(x => x.id === libraryId);
+      if (!lib) {
+        if (!d.savedSections) d.savedSections = [];
+        lib = { id: libraryId, name: name || source.name || "Saved Section", type: source.type || "custom", backgroundColor: source.backgroundColor || "#FCF8FA", components: [], published: true, updatedAt: Date.now() };
+        d.savedSections.push(lib);
+      }
+      lib.name = name || lib.name || source.name || "Saved Section";
+      lib.type = source.type || lib.type || "custom";
+      lib.backgroundColor = source.backgroundColor || lib.backgroundColor || "#FCF8FA";
+      lib.components = JSON.parse(JSON.stringify(source.components || []));
+      lib.published = true;
+      lib.updatedAt = Date.now();
+      s.bodySections[idx] = { id: source.id, kind: "saved", libraryId, name: lib.name, type: lib.type, backgroundColor: lib.backgroundColor };
+    });
+    return libraryId;
+  }, [updateData, currentScreenId]);
+
+  const insertSavedSection = useCallback((screenId, libraryId) => {
+    const sid = screenId || currentScreenId;
+    const secId = genSectionId();
+    updateData(d => {
+      const lib = (d.savedSections || []).find(x => x.id === libraryId);
+      if (!lib) return;
+      const s = d.screens[sid];
+      if (!s) return;
+      if (!s.bodySections) s.bodySections = [];
+      s.bodySections.push({ id: secId, kind: "saved", libraryId: lib.id, name: lib.name, type: lib.type || "custom", backgroundColor: lib.backgroundColor || "#FCF8FA" });
+    });
+    return secId;
+  }, [updateData, currentScreenId]);
+
+  const deleteSavedSection = useCallback((libraryId) => {
+    updateData(d => {
+      const lib = (d.savedSections || []).find(x => x.id === libraryId);
+      const snapshotComponents = lib ? JSON.parse(JSON.stringify(lib.components || [])) : [];
+      const snapshotType = lib?.type || "custom";
+      const snapshotBg = lib?.backgroundColor || "#FCF8FA";
+      d.savedSections = (d.savedSections || []).filter(x => x.id !== libraryId);
+      Object.values(d.screens).forEach(s => {
+        (s.bodySections || []).forEach((sec, i) => {
+          if (sec.kind === "saved" && sec.libraryId === libraryId) {
+            s.bodySections[i] = { id: sec.id, name: sec.name, type: snapshotType, backgroundColor: snapshotBg, components: JSON.parse(JSON.stringify(snapshotComponents)) };
+          }
+        });
+      });
+    });
+  }, [updateData]);
+
+  const renameSavedSection = useCallback((libraryId, name) => {
+    updateData(d => {
+      const lib = (d.savedSections || []).find(x => x.id === libraryId);
+      if (lib) lib.name = name;
+    });
+  }, [updateData]);
+
+  const setSavedSectionPublished = useCallback((libraryId, published) => {
+    updateData(d => {
+      const lib = (d.savedSections || []).find(x => x.id === libraryId);
+      if (lib) lib.published = !!published;
+    });
+  }, [updateData]);
+
+  const detachSection = useCallback((screenId, sectionId) => {
+    const sid = screenId || currentScreenId;
+    updateData(d => {
+      const s = d.screens[sid];
+      if (!s || !s.bodySections) return;
+      const idx = s.bodySections.findIndex(sec => sec.id === sectionId);
+      if (idx === -1) return;
+      const sec = s.bodySections[idx];
+      const lib = sec.kind === "saved" ? (d.savedSections || []).find(x => x.id === sec.libraryId) : null;
+      s.bodySections[idx] = {
+        id: sec.id,
+        name: sec.name || lib?.name || "Section",
+        type: lib?.type || sec.type || "custom",
+        backgroundColor: lib?.backgroundColor || sec.backgroundColor || "#FCF8FA",
+        components: lib ? JSON.parse(JSON.stringify(lib.components || [])) : (sec.components ? JSON.parse(JSON.stringify(sec.components)) : []),
+      };
+    });
+  }, [updateData, currentScreenId]);
+
   /* ── Components within sections ── */
   function findSection(data, sectionId) {
     const shared = data.shared && Object.values(data.shared).find(s => s.id === sectionId);
     if (shared) return shared;
     for (const s of Object.values(data.screens)) {
       const sec = (s.bodySections || []).find(x => x.id === sectionId);
-      if (sec) return sec;
+      if (sec) {
+        if (sec.kind === "saved" && sec.libraryId) {
+          const lib = (data.savedSections || []).find(x => x.id === sec.libraryId);
+          if (lib) return lib;
+        }
+        return sec;
+      }
     }
     return null;
   }
 
-  const addComponentToSection = useCallback((sectionId, type, props) => {
+  /* Recursively locate a component anywhere inside a section's tree. */
+  function findComponentDeep(components, compId) {
+    for (const c of components || []) {
+      if (c.id === compId) return c;
+      const hit = findComponentDeep(c.children || [], compId);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  /* Return { parent, list, index } for a nested component so mutators can add/remove/reorder in place. */
+  function findComponentPlacement(components, componentId) {
+    for (let i = 0; i < (components || []).length; i++) {
+      const c = components[i];
+      if (c.id === componentId) return { parent: components, index: i };
+      const hit = findComponentPlacement(c.children || [], componentId);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  const addComponentToSection = useCallback((sectionId, type, props, parentCompId) => {
     const id = genId();
     updateData(d => {
       const sec = findSection(d, sectionId);
       if (!sec) return;
-      if (!sec.components) sec.components = [];
-      sec.components.push({
+      const comp = {
         id, type, props: props || {},
         fills: [{ type: "solid", color: "#E8E5E0", opacity: 100 }],
         strokes: [], effects: [], cornerRadius: 0, opacity: 1, rotation: 0,
-        locked: false, visible: true, zIndex: sec.components.length,
-      });
+        locked: false, visible: true, zIndex: 0,
+      };
+      if (parentCompId) {
+        const container = findComponentDeep(sec.components || [], parentCompId);
+        if (!container) return;
+        if (!container.children) container.children = [];
+        comp.zIndex = container.children.length;
+        container.children.push(comp);
+      } else {
+        if (!sec.components) sec.components = [];
+        comp.zIndex = sec.components.length;
+        sec.components.push(comp);
+      }
     });
     setSelectedComponentId(id);
     return id;
@@ -283,7 +526,9 @@ export function useDesignStore(initialData) {
     updateData(d => {
       const sec = findSection(d, sectionId);
       if (!sec || !sec.components) return;
-      sec.components = sec.components.filter(c => c.id !== compId);
+      const placement = findComponentPlacement(sec.components, compId);
+      if (!placement) return;
+      placement.parent.splice(placement.index, 1);
     });
     setSelectedComponentId(prev => prev === compId ? null : prev);
   }, [updateData]);
@@ -292,13 +537,13 @@ export function useDesignStore(initialData) {
     updateData(d => {
       const sec = findSection(d, sectionId);
       if (!sec || !sec.components) return;
-      const idx = sec.components.findIndex(c => c.id === compId);
-      if (idx === -1) return;
-      const orig = sec.components[idx];
+      const placement = findComponentPlacement(sec.components, compId);
+      if (!placement) return;
+      const orig = placement.parent[placement.index];
       const copy = JSON.parse(JSON.stringify(orig));
       copy.id = genId();
-      copy.zIndex = sec.components.length;
-      sec.components.splice(idx + 1, 0, copy);
+      copy.zIndex = placement.parent.length;
+      placement.parent.splice(placement.index + 1, 0, copy);
     });
   }, [updateData]);
 
@@ -306,12 +551,13 @@ export function useDesignStore(initialData) {
     updateData(d => {
       const sec = findSection(d, sectionId);
       if (!sec || !sec.components) return;
-      const idx = sec.components.findIndex(c => c.id === compId);
-      if (idx === -1) return;
+      const placement = findComponentPlacement(sec.components, compId);
+      if (!placement) return;
+      const list = placement.parent;
+      const idx = placement.index;
       const target = direction === "up" ? idx - 1 : idx + 1;
-      if (target < 0 || target >= sec.components.length) return;
-      [sec.components[idx], sec.components[target]] = [sec.components[target], sec.components[idx]];
-      sec.components.forEach((c, i) => c.zIndex = i);
+      if (target < 0 || target >= list.length) return;
+      [list[idx], list[target]] = [list[target], list[idx]];
     });
   }, [updateData]);
 
@@ -319,7 +565,7 @@ export function useDesignStore(initialData) {
     updateData(d => {
       const sec = findSection(d, sectionId);
       if (!sec || !sec.components) return;
-      const comp = sec.components.find(c => c.id === compId);
+      const comp = findComponentDeep(sec.components, compId);
       if (comp) {
         Object.assign(comp, patch);
         if (patch.props) {
@@ -333,8 +579,20 @@ export function useDesignStore(initialData) {
     updateData(d => {
       const sec = findSection(d, sectionId);
       if (!sec || !sec.components) return;
-      const comp = sec.components.find(c => c.id === compId);
+      const comp = findComponentDeep(sec.components, compId);
       if (comp) comp.props[key] = value;
+    });
+  }, [updateData]);
+
+  const clearProp = useCallback((sectionId, compId, key) => {
+    updateData(d => {
+      const sec = findSection(d, sectionId);
+      if (!sec || !sec.components) return;
+      const comp = findComponentDeep(sec.components, compId);
+      if (!comp) return;
+      const def = getComponentType(comp.type);
+      const defVal = def?.defaultProps?.[key];
+      comp.props[key] = typeof defVal === "undefined" ? "" : (defVal === null ? "" : defVal);
     });
   }, [updateData]);
 
@@ -432,13 +690,15 @@ export function useDesignStore(initialData) {
       }
     }
     Object.keys(enriched.screens).forEach(sid => {
-      const s = enriched.screens[sid];
+      const s = ensureChrome(enriched.screens[sid]);
       if (s.bodySections) {
         s.bodySections = enrichSections(s.bodySections);
       } else {
         s.bodySections = [];
       }
+      enriched.screens[sid] = s;
     });
+    enriched.savedSections = Array.isArray(enriched.savedSections) ? enriched.savedSections : [];
     setData(enriched);
     setCurrentScreenId(templateData.navigation?.initialScreen || Object.keys(templateData.screens)[0]);
     setSelectedSectionId(null);
@@ -477,8 +737,14 @@ export function useDesignStore(initialData) {
 
     // Sections
     getAllSections,
-    addBodySection, removeBodySection, reorderBodySection,
-    setSectionColor, renameSection, duplicateSection,
+    addBodySection, removeBodySection, reorderBodySection, moveBodySectionToIndex,
+    setSectionColor, renameSection, duplicateSection, setSectionVisible,
+
+    // Saved section library (ADR-015)
+    savedSections: data.savedSections || [],
+    resolveSection, resolveChrome, setScreenChrome,
+    saveSectionToLibrary, insertSavedSection, deleteSavedSection,
+    renameSavedSection, setSavedSectionPublished, detachSection,
 
     // Shared sections
     updateSharedSection, setSharedSectionColor,
@@ -486,7 +752,7 @@ export function useDesignStore(initialData) {
     // Components
     addComponentToSection, removeComponentFromSection,
     duplicateComponentInSection,
-    reorderComponent, updateComponentInSection, updateProp,
+    reorderComponent, updateComponentInSection, updateProp, clearProp,
 
     // Navigation tabs
     addTab, removeTab, updateTab, reorderTab,

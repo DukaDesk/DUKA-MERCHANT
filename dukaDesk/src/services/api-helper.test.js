@@ -9,7 +9,20 @@ vi.mock("./httpClient", () => {
   return { default: mock };
 });
 
-import { getIntegrationConfig, setIntegrationConfig, getDesignData, saveDesignData, getReleases, getCurrentDeployment, saveReleases, saveDeployment, signup } from "./api";
+vi.mock("axios", () => {
+  const mock = {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+    create: vi.fn(() => mock),
+    interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+  };
+  return { default: mock };
+});
+
+import axios from "axios";
+import { getIntegrationConfig, setIntegrationConfig, getDesignData, saveDesignData, getReleases, getCurrentDeployment, saveDeployment, signup, getDashboardModules, saveDashboardModules } from "./api";
 import httpClient from "./httpClient";
 
 const mockHttpClient = vi.mocked(httpClient);
@@ -188,7 +201,7 @@ describe("signup", () => {
         refreshToken: "rtok_123",
       },
     });
-    mockHttpClient.get.mockResolvedValueOnce({
+    axios.get.mockResolvedValueOnce({
       data: { id: "t1", name: "Ada's Kitchen", slug: "adas-kitchen" },
     });
 
@@ -213,7 +226,7 @@ describe("signup", () => {
         refreshToken: "rtok_456",
       },
     });
-    mockHttpClient.get.mockResolvedValueOnce({
+    axios.get.mockResolvedValueOnce({
       data: [{ id: "t2", name: "Bob's Shop", slug: "bobs-shop" }],
     });
 
@@ -236,8 +249,7 @@ describe("signup", () => {
         refreshToken: "rtok_789",
       },
     });
-    mockHttpClient.get.mockRejectedValueOnce(new Error("not found"));
-    mockHttpClient.get.mockRejectedValueOnce(new Error("no tenants"));
+    axios.get.mockRejectedValueOnce(new Error("not found"));
 
     const result = await signup({
       fullName: "Test User",
@@ -249,5 +261,48 @@ describe("signup", () => {
 
     expect(result.merchant.tenantId).toBeNull();
     expect(result.token).toBe("tok_789");
+  });
+});
+
+describe("dashboard modules (primitives)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it("getDashboardModules returns null when nothing saved", () => {
+    expect(getDashboardModules()).toBeNull();
+  });
+
+  it("getDashboardModules reads from setup data", () => {
+    localStorage.setItem("dukadesk_setup", JSON.stringify({ category: "Restaurant", modules: ["analytics", "messages"] }));
+    expect(getDashboardModules()).toEqual(["analytics", "messages"]);
+  });
+
+  it("getDashboardModules falls back to merchant.modules", () => {
+    setupMerchant({ ...DEFAULT_MERCHANT, modules: ["orders", "customers"] });
+    expect(getDashboardModules()).toEqual(["orders", "customers"]);
+  });
+
+  it("saveDashboardModules persists to setup + merchant + tenant config", async () => {
+    setupMerchant();
+    mockHttpClient.get.mockResolvedValue({ data: { businessName: "Test" } });
+    mockHttpClient.put.mockResolvedValue({ data: {} });
+
+    await saveDashboardModules(["analytics", "billing"]);
+
+    const setup = JSON.parse(localStorage.getItem("dukadesk_setup"));
+    expect(setup.modules).toEqual(["analytics", "billing"]);
+    const merchant = JSON.parse(localStorage.getItem("dd_merchant"));
+    expect(merchant.modules).toEqual(["analytics", "billing"]);
+    expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`, expect.objectContaining({
+      app: expect.objectContaining({ modules: ["analytics", "billing"] }),
+    }));
+  });
+
+  it("saveDashboardModules returns early when no merchant", async () => {
+    const result = await saveDashboardModules(["analytics"]);
+    expect(result.success).toBe(false);
+    expect(mockHttpClient.put).not.toHaveBeenCalled();
   });
 });

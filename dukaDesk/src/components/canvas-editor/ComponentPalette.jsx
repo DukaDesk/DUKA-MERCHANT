@@ -1,12 +1,10 @@
 import { useState, useCallback } from "react";
-import { getAllComponentTypes } from "./componentTypes";
+import { getComponentsByCategory } from "./componentTypes";
 import AssetPanel from "./AssetPanel";
-
-const categories = ["Primitives", "SDUI Components"];
 
 export default function ComponentPalette({ assets, onAddAsset, onRemoveAsset, componentLibrary, onRemoveFromLibrary, tokens }) {
   const [tab, setTab] = useState("components");
-  const all = getAllComponentTypes();
+  const categories = getComponentsByCategory();
 
   const handleLibDragStart = useCallback((e, libItem) => {
     e.dataTransfer.setData("library-component", JSON.stringify(libItem.component));
@@ -32,11 +30,11 @@ export default function ComponentPalette({ assets, onAddAsset, onRemoveAsset, co
       <div style={{ flex: 1, overflow: "auto", padding: tab === "assets" ? 0 : 8 }}>
         {tab === "components" ? (
           categories.map(cat => {
-            const items = all.filter(t => t.category === cat);
+            const items = cat.components;
             if (items.length === 0) return null;
             return (
-              <div key={cat} style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.04em", padding: "4px 8px", marginBottom: 4 }}>{cat}</div>
+              <div key={cat.key} style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.04em", padding: "4px 8px", marginBottom: 4 }}>{cat.icon} {cat.label}</div>
                 {items.map(def => (
                   <div
                     key={def.type}

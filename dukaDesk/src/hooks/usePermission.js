@@ -14,8 +14,6 @@ const rolePermissions = {
   member: [],
 };
 
-const allResources = ["product", "order", "customer", "team", "billing", "analytics", "settings", "marketing", "integration"];
-
 function matchPermission(perm, required) {
   if (perm === "*") return true;
   const [pRes, pAct] = perm.split(":");

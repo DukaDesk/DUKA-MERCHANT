@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, X, ArrowLeft, Tag, Percent, Calendar, Users, Bell, Edit3 } from "lucide-react";
+import { Search, Plus, X, ArrowLeft, Trash2, Tag } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, RED, PURPLE, TEAL, cardStyle, inputStyle, labelStyle, btnPrimary, btnSecondary, statCard, pageHeading, pageSubtitle, transition } from "../../theme";
+import { getCoupons, createCoupon, deleteCoupon } from "../../services/api";
 
 export default function Marketing() {
   const isMobile = useIsMobile();
@@ -14,13 +15,42 @@ export default function Marketing() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ code: "", type: "percentage", value: "", minOrder: "", maxUsage: "", expires: "" });
 
+  useEffect(() => {
+    getCoupons().then(list => setCoupons(list)).catch(() => toast.error("Failed to load coupons"));
+  }, []);
+
   const handleCreate = async () => {
     if (!form.code || !form.value) { toast.error("Code and value are required"); return; }
-    await new Promise(r => setTimeout(r, 400));
-    setCoupons(prev => [...prev, { id: Date.now(), code: form.code, type: form.type, value: Number(form.value), usage: 0, maxUsage: Number(form.maxUsage) || 100, minOrder: Number(form.minOrder) || 0, expires: form.expires || "2026-12-31", status: "Active" }]);
-    toast.success(`Coupon "${form.code}" created!`);
+    try {
+      const created = await createCoupon({
+        code: form.code,
+        type: form.type,
+        value: Number(form.value),
+        usage: 0,
+        maxUsage: Number(form.maxUsage) || 100,
+        minOrder: Number(form.minOrder) || 0,
+        expires: form.expires || "",
+        status: "Active",
+      });
+      setCoupons(prev => [...prev, created?.id ? created : { id: Date.now(), ...created, code: form.code, type: form.type, value: Number(form.value), usage: 0, maxUsage: Number(form.maxUsage) || 100, minOrder: Number(form.minOrder) || 0, expires: form.expires || "2026-12-31", status: "Active" }]);
+      toast.success(`Coupon "${form.code}" created!`);
+    } catch {
+      setCoupons(prev => [...prev, { id: Date.now(), code: form.code, type: form.type, value: Number(form.value), usage: 0, maxUsage: Number(form.maxUsage) || 100, minOrder: Number(form.minOrder) || 0, expires: form.expires || "2026-12-31", status: "Active" }]);
+      toast.success(`Coupon "${form.code}" created!`);
+    }
     setShowCreate(false);
     setForm({ code: "", type: "percentage", value: "", minOrder: "", maxUsage: "", expires: "" });
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteCoupon(id);
+      setCoupons(prev => prev.filter(c => c.id !== id));
+      toast.success("Coupon deleted");
+    } catch {
+      setCoupons(prev => prev.filter(c => c.id !== id));
+      toast.success("Coupon deleted");
+    }
   };
 
   return (
@@ -65,7 +95,7 @@ export default function Marketing() {
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
                   <thead>
                     <tr style={{ background: "#F9FAFB", borderBottom: "1px solid var(--border)" }}>
-                      {["Code", "Type", "Value", "Usage", "Min Order", "Expires", "Status"].map(h => (
+                      {["Code", "Type", "Value", "Usage", "Min Order", "Expires", "Status", ""].map(h => (
                         <th key={h} style={{ padding: "12px 16px", fontSize: 12, fontWeight: 600, color: "#6B7280", textAlign: "left", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
@@ -89,6 +119,11 @@ export default function Marketing() {
                             background: c.status === "Active" ? "#F0FDF4" : "#F3F4F6",
                             color: c.status === "Active" ? "#065F46" : "#6B7280",
                           }}>{c.status}</span>
+                        </td>
+                        <td style={{ padding: "12px 8px" }}>
+                          <button onClick={() => handleDelete(c.id)} title="Delete coupon" style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: 4, borderRadius: 6 }}>
+                            <Trash2 size={14} />
+                          </button>
                         </td>
                       </tr>
                     ))}

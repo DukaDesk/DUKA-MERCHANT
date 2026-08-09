@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { getComponentType } from "./componentTypes";
 
 const inputStyle = {
@@ -256,15 +256,41 @@ function FillRow({ fill, index, fills, onChange }) {
     next[index] = { ...next[index], ...patch };
     onChange(next);
   };
+  const fileRef = useRef(null);
+  const onPickFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { update({ src: reader.result }); e.target.value = ""; };
+    reader.readAsDataURL(file);
+  };
+  const isImage = fill.type === "image";
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, padding: "6px 8px", background: "#FAFAFA", borderRadius: 6, border: "1px solid #F3F4F6" }}>
-      <select value={fill.type} onChange={e => update({ type: e.target.value })} style={{ ...inputStyle, width: 80, fontSize: 11 }}>
-        <option value="solid">Solid</option>
-        <option value="gradient">Gradient</option>
-      </select>
-      <input type="color" value={fill.color || "#000000"} onChange={e => update({ color: e.target.value })} style={{ width: 28, height: 28, padding: 0, border: "1px solid #D1D5DB", borderRadius: 4, cursor: "pointer", flexShrink: 0 }} />
-      <input type="number" min={0} max={1} step={0.1} value={fill.opacity ?? 1} onChange={e => update({ opacity: Number(e.target.value) })} style={{ ...inputStyle, width: 50, fontSize: 11 }} />
-      <button onClick={() => onChange(fills.filter((_, i) => i !== index))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#E74C3C", padding: 0, lineHeight: 1 }}>×</button>
+    <div style={{ marginBottom: 6, padding: "6px 8px", background: "#FAFAFA", borderRadius: 6, border: "1px solid #F3F4F6" }}>
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <select value={fill.type} onChange={e => update({ type: e.target.value })} style={{ ...inputStyle, width: 80, fontSize: 11 }}>
+          <option value="solid">Solid</option>
+          <option value="gradient">Gradient</option>
+          <option value="image">Image</option>
+        </select>
+        {!isImage ? (
+          <>
+            <input type="color" value={fill.color || "#000000"} onChange={e => update({ color: e.target.value })} style={{ width: 28, height: 28, padding: 0, border: "1px solid #D1D5DB", borderRadius: 4, cursor: "pointer", flexShrink: 0 }} />
+            <input type="number" min={0} max={1} step={0.1} value={fill.opacity ?? 1} onChange={e => update({ opacity: Number(e.target.value) })} style={{ ...inputStyle, width: 50, fontSize: 11 }} />
+          </>
+        ) : (
+          <span style={{ fontSize: 11, color: "#6B7280", flex: 1 }}>Image fill</span>
+        )}
+        <button onClick={() => onChange(fills.filter((_, i) => i !== index))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#E74C3C", padding: 0, lineHeight: 1 }}>×</button>
+      </div>
+      {isImage && (
+        <div style={{ marginTop: 6, display: "flex", gap: 6, alignItems: "center" }}>
+          {fill.src && <div style={{ width: 32, height: 32, borderRadius: 4, flexShrink: 0, background: `url("${fill.src}") center / cover no-repeat`, border: "1px solid #E5E7EB" }} />}
+          <input value={fill.src || ""} onChange={e => update({ src: e.target.value })} placeholder="Paste image URL…" style={{ ...inputStyle, flex: 1, fontSize: 11 }} />
+          <button onClick={() => fileRef.current?.click()} style={{ background: "none", border: "1px solid #D1D5DB", borderRadius: 6, padding: "5px 8px", cursor: "pointer", fontSize: 11, color: "#6B7280", whiteSpace: "nowrap" }}>Upload</button>
+          <input ref={fileRef} type="file" accept="image/*" onChange={onPickFile} style={{ display: "none" }} />
+        </div>
+      )}
     </div>
   );
 }

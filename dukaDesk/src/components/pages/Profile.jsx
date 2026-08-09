@@ -4,20 +4,24 @@ import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../contexts";
 import { toast } from "react-toastify";
 import { NAVY, AMBER, cardStyle, inputStyle, labelStyle } from "../../theme";
-import { getMerchantProfile, updateMerchantProfile, getCurrentPlan } from "../../services/api";
+import { getMerchantProfile, updateMerchantProfile, getCurrentPlan, deactivateAccount, reactivateAccount, permanentlyDeleteAccount, getDeactivationStatus } from "../../services/api";
 import { Loading, ErrorState } from "../layout/States";
-import { Store, Mail, Phone, User, Save, ArrowLeft, Sparkles } from "lucide-react";
+import { Store, Mail, Phone, User, Save, ArrowLeft, Sparkles, AlertTriangle, Undo2, Trash2, X } from "lucide-react";
 
 export default function Profile() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { merchant: contextMerchant, handleAuth } = useAuth();
+  const { merchant: contextMerchant, handleAuth, logout } = useAuth();
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({ name: "", business: "", email: "", phone: "" });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPlan, setCurrentPlan] = useState(null);
+  const [deactivation, setDeactivation] = useState(null);
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const loadProfile = () => {
     setError(null);
@@ -28,6 +32,7 @@ export default function Profile() {
     }).catch(() => setError("Failed to load profile"))
     .finally(() => setLoading(false));
     getCurrentPlan().then(p => setCurrentPlan(p)).catch(() => {});
+    getDeactivationStatus().then(s => setDeactivation(s)).catch(() => {});
   };
   useEffect(loadProfile, []);
 
@@ -45,6 +50,45 @@ export default function Profile() {
       toast.error("Failed to update profile");
     } finally { setSaving(false); }
   };
+
+  const handleDeactivate = async () => {
+    setBusy(true);
+    try {
+      await deactivateAccount();
+      toast.success("Account scheduled for deletion (30 days). You can reactivate during this window.");
+      const s = await getDeactivationStatus();
+      setDeactivation(s);
+    } catch {
+      toast.error("Failed to deactivate account");
+    } finally { setBusy(false); }
+  };
+
+  const handleReactivate = async () => {
+    setBusy(true);
+    try {
+      await reactivateAccount();
+      setDeactivation(null);
+      toast.success("Account reactivated!");
+    } catch {
+      toast.error("Failed to reactivate account");
+    } finally { setBusy(false); }
+  };
+
+  const handlePermanentDelete = async () => {
+    if (confirmText.toLowerCase() !== "delete") { toast.error("Type DELETE PERMANENTLY to confirm"); return; }
+    setBusy(true);
+    try {
+      await permanentlyDeleteAccount();
+      toast.success("Account permanently deleted");
+      logout();
+      navigate("/login");
+    } catch {
+      toast.error("Failed to delete account");
+    } finally { setBusy(false); setDeleteModal(false); }
+  };
+
+  const isDeactivated = !!(deactivation && (deactivation.status === "deactivated" || deactivation.deactivatedAt));
+  const remainingDays = deactivation?.daysRemaining ?? deactivation?.remainingDays;
 
   if (loading) return <Loading message="Loading profile..." />;
   if (error) return <ErrorState message={error} onRetry={loadProfile} />;
@@ -124,7 +168,81 @@ export default function Profile() {
             <Save size={16} /> {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
+
+        <div style={{ ...cardStyle, border: "1px solid rgba(220,38,38,0.25)", background: "linear-gradient(135deg, rgba(220,38,38,0.04), rgba(220,38,38,0.01))" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <AlertTriangle size={18} color="#DC2626" />
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Account</div>
+          </div>
+          <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 16px", lineHeight: 1.6 }}>
+            Deactivating schedules account deletion in 30 days — you can reactivate anytime during that window. Deleting permanently is immediate and irreversible.
+          </p>
+
+          {isDeactivated ? (
+            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "14px 16px", marginBottom: 14 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#DC2626" }}>Account scheduled for deletion</div>
+              <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>
+                {remainingDays != null && remainingDays > 0
+                  ? `Permanently deleted in approximately ${remainingDays} day${remainingDays === 1 ? "" : "s"}.`
+                  : "Deletion is in progress."}
+              </div>
+            </div>
+          ) : null}
+
+          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 12 }}>
+            <button onClick={isDeactivated ? handleReactivate : handleDeactivate} disabled={busy} style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              padding: "12px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: busy ? "wait" : "pointer",
+              background: isDeactivated ? "#F0FDF4" : "#fff", color: isDeactivated ? "#16A34A" : "#DC2626",
+              border: isDeactivated ? "1.5px solid #86EFAC" : "1.5px solid #FCA5A5", transition: "all 0.15s",
+            }}>
+              {isDeactivated ? <><Undo2 size={16} /> Reactivate account</> : <><Undo2 size={16} /> Deactivate account</>}
+            </button>
+            <button onClick={() => { setConfirmText(""); setDeleteModal(true); }} disabled={busy} style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              padding: "12px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: busy ? "wait" : "pointer",
+              background: "#DC2626", color: "#fff", border: "none", transition: "all 0.15s",
+            }}>
+              <Trash2 size={16} /> Delete permanently
+            </button>
+          </div>
+        </div>
       </div>
+
+      {deleteModal && (
+        <div onClick={() => !busy && setDeleteModal(false)} style={{
+          position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", animation: "fadeIn 0.2s ease", padding: 20,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "#fff", borderRadius: 16, maxWidth: 420, width: "100%", padding: 32,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)", animation: "scaleIn 0.25s ease",
+          }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+              <button onClick={() => !busy && setDeleteModal(false)} style={{ background: "none", border: "none", cursor: busy ? "not-allowed" : "pointer", color: "#9CA3AF" }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ width: 52, height: 52, background: "#FEF2F2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <Trash2 size={26} color="#DC2626" />
+            </div>
+            <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY, margin: "0 0 8px", textAlign: "center" }}>Delete account permanently?</h3>
+            <p style={{ color: "#6B7280", fontSize: 14, margin: "0 0 20px", lineHeight: 1.6, textAlign: "center" }}>
+              This permanently deletes your account and all associated data. This action <strong>cannot be undone</strong>.
+            </p>
+            <label htmlFor="delete-confirm" style={labelStyle}>Type DELETE to confirm</label>
+            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <input id="delete-confirm" name="delete-confirm" value={confirmText} onChange={e => setConfirmText(e.target.value)} disabled={busy} placeholder="DELETE" style={{ ...inputStyle, textTransform: confirmText ? "uppercase" : "none", borderColor: confirmText.toLowerCase() === "delete" ? "#DC2626" : undefined }} autoFocus />
+            </div>
+            <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+              <button onClick={() => setDeleteModal(false)} disabled={busy} style={{ flex: 1, background: "#fff", border: "1px solid #E8E8F0", borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 600, color: "#6B7280", cursor: busy ? "not-allowed" : "pointer" }}>Cancel</button>
+              <button onClick={handlePermanentDelete} disabled={busy || confirmText.toLowerCase() !== "delete"} style={{ flex: 1, background: "#DC2626", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 700, cursor: busy || confirmText.toLowerCase() !== "delete" ? "not-allowed" : "pointer", opacity: busy || confirmText.toLowerCase() !== "delete" ? 0.5 : 1 }}>
+                {busy ? "Deleting..." : "Delete permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

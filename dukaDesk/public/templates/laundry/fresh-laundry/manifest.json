@@ -1,0 +1,29 @@
+{
+  "templateId": "fresh-laundry",
+  "name": "Fresh Laundry",
+  "category": "Laundry",
+  "tags": ["Clean", "Simple"],
+  "features": ["Services", "Pickup", "Booking", "Delivery"],
+  "preview": "🧺",
+  "theme": {
+    "primaryColor": "#0EA5E9",
+    "secondaryColor": "#2563EB",
+    "textColor": "#0F172A",
+    "bgColor": "#F0F9FF",
+    "cardColor": "#FFFFFF",
+    "fontFamily": "'Inter', sans-serif"
+  },
+  "navigation": {
+    "initialScreen": "home",
+    "tabs": [
+      { "label": "Home", "icon": "home-outline", "screenId": "home" },
+      { "label": "Schedule", "icon": "calendar-outline", "screenId": "book" },
+      { "label": "Orders", "icon": "receipt-outline", "screenId": "orders" }
+    ]
+  },
+  "screens": [
+    { "id": "home", "path": "screens/home.json" },
+    { "id": "book", "path": "screens/book.json" },
+    { "id": "orders", "path": "screens/orders.json" }
+  ]
+}

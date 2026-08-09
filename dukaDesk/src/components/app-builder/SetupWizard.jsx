@@ -12,7 +12,7 @@ import {
 import { INTEGRATION_BADGE_COLORS } from "../../config/integrations";
 import TemplateGallery from "./TemplateGallery";
 
-const SETUP_STEPS = ["Gallery", "Branding", "Business Info", "Integrations"];
+const SETUP_STEPS = ["Templates", "Branding", "Business Info", "Integrations"];
 const STEP_LABELS = ["Choose template", "Brand your app", "Business info", "Integrations"];
 const defaultHours = () => WIZARD_DAYS.map((d, i) => ({ day: d, open: i < 5, start: "09:00", end: "22:00" }));
 
@@ -72,13 +72,18 @@ export function SetupWizard({
   const handleBack = useCallback(() => setStep(s => s - 1), []);
 
   const handleTemplateSelect = useCallback((templateName) => {
-    const tmpl = ALL_TEMPLATES.find(t => t.name === templateName);
     setData(d => ({
       ...d,
       template: templateName,
-      category: tmpl?.category || d.category,
       selectedIntegrations: getTemplateIntegrationNames(templateName),
     }));
+  }, []);
+
+  const handlePreviewAction = useCallback((actionKey, payload) => {
+    if (actionKey === "navigate" && payload?.push) {
+      const id = String(payload.push).split("/").pop()?.replace(/-/g, "") || "";
+      setPreviewScreenId(id);
+    }
   }, []);
 
   const Sidebar = memo(function Sidebar() {

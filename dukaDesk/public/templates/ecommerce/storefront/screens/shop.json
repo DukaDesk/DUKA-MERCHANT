@@ -3,24 +3,39 @@
   "title": "Shop",
   "layout": {
     "kind": "scroll",
+    "gap": 16,
+    "padding": 16,
     "children": [
+      {
+        "type": "hero_banner",
+        "key": "sale-banner",
+        "props": {
+          "title": "Mid-Season Sale",
+          "subtitle": "Up to 40% off selected items",
+          "image": "https://picsum.photos/seed/storefront-hero/800/360"
+        },
+        "actions": {
+          "default": { "type": "navigate", "payload": { "push": "/cart" } }
+        }
+      },
       {
         "type": "promotion_list",
         "key": "promo-banner",
         "props": {
           "offers": [
-            { "title": "New Arrivals", "subtitle": "Up to 30% off", "image": "assets/sale.jpg" }
+            { "title": "New Arrivals", "subtitle": "Fresh styles added weekly", "image": "https://picsum.photos/seed/storefront-new/400/240", "badge": "New" },
+            { "title": "Free Delivery", "subtitle": "On orders above ₦20,000", "image": "https://picsum.photos/seed/storefront-delivery/400/240", "badge": "Free" }
           ]
         },
         "actions": {
-          "tap": { "type": "navigate", "payload": { "push": "/products?filter=new-arrivals" } }
+          "tap": { "type": "navigate", "payload": { "push": "/cart" } }
         }
       },
       {
         "type": "category_pills",
         "key": "category-pills",
         "props": {
-          "categories": ["All", "Clothing", "Electronics", "Accessories"]
+          "categories": ["All", "Clothing", "Electronics", "Accessories", "Home"]
         },
         "actions": {
           "selectCategory": { "type": "filter", "payload": { "source": "category" } }
@@ -29,10 +44,28 @@
       {
         "type": "menu_grid",
         "key": "products-grid",
-        "props": { "columns": 2 },
+        "props": {
+          "columns": 2,
+          "items": [
+            { "id": "p1", "name": "Slim Fit Shirt", "desc": "Navy · L / XL", "price": 12500, "img": "https://picsum.photos/seed/shirt/400/300", "cat": "Clothing" },
+            { "id": "p2", "name": "Convertible Backpack", "desc": "Water resistant · 25L", "price": 18500, "img": "https://picsum.photos/seed/backpack/400/300", "cat": "Accessories" },
+            { "id": "p3", "name": "Wireless Headset", "desc": "Active noise cancelling", "price": 32000, "img": "https://picsum.photos/seed/headset/400/300", "cat": "Electronics" },
+            { "id": "p4", "name": "Classic Sneakers", "desc": "White leather · UK 8-11", "price": 24000, "img": "https://picsum.photos/seed/sneakers/400/300", "cat": "Clothing" },
+            { "id": "p5", "name": "Smart Watch", "desc": "Heart-rate · 7-day battery", "price": 45000, "img": "https://picsum.photos/seed/watch/400/300", "cat": "Electronics" },
+            { "id": "p6", "name": "Clay Diffuser Set", "desc": "Aromatherapy gift set", "price": 9800, "img": "https://picsum.photos/seed/diffuser/400/300", "cat": "Home" }
+          ]
+        },
         "actions": {
           "addItem": { "type": "add_to_cart" },
-          "viewDetails": { "type": "navigate", "payload": { "push": "/product-detail" } }
+          "viewDetails": { "type": "navigate", "payload": { "push": "/cart" } }
+        }
+      },
+      {
+        "type": "primary_button",
+        "key": "checkout-cta",
+        "props": { "label": "View Cart & Checkout" },
+        "actions": {
+          "default": { "type": "navigate", "payload": { "push": "/cart" } }
         }
       }
     ]
