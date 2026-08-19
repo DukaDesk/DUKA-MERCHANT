@@ -7,7 +7,7 @@ import { NAVY, AMBER, inputStyle, labelStyle } from "../../theme";
 import { ONBOARDING_CATEGORIES } from "../../config/taxonomy";
 import { useAuth } from "../../contexts";
 import { useVertical } from "../../runtime/VerticalContext";
-import { updateTenant, getMerchant } from "../../services/api";
+import { updateTenant, getMerchant, ensureTenant } from "../../services/api";
 import dukaLogo from "../../assets/image/Dukalogo.png";
 
 export default function Onboarding({ onAuth }) {
@@ -31,10 +31,13 @@ export default function Onboarding({ onAuth }) {
 
   const saveName = async () => {
     const m = getMerchant();
-    if (!m?.tenantId) return;
     const value = name.trim();
     if (!value) return;
-    await updateTenant(m.tenantId, { name: value });
+    if (m?.tenantId) {
+      await updateTenant(m.tenantId, { name: value });
+    } else {
+      await ensureTenant(value);
+    }
   };
 
   const finishSetup = async (key) => {
@@ -95,7 +98,10 @@ export default function Onboarding({ onAuth }) {
               <input id="onboard-name" value={name} onChange={e => setName(e.target.value)} placeholder="Ada's Kitchen" autoFocus style={{ ...inputStyle, paddingLeft: 42 }} />
             </div>
             {error && <p style={{ color: "#E74C3C", fontSize: 13, marginTop: 10 }}>{error}</p>}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 28 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 28 }}>
+              <button onClick={() => setStep(1)} style={{ background: "none", border: "1px solid #E8E8F0", borderRadius: 10, padding: "12px 20px", fontSize: 14, color: "#6B7280", cursor: "pointer", fontWeight: 600 }}>
+                Skip
+              </button>
               <button onClick={handleNext} disabled={saving || !name.trim()} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: saving || !name.trim() ? "not-allowed" : "pointer", opacity: saving || !name.trim() ? 0.6 : 1, display: "flex", alignItems: "center", gap: 8 }}>
                 {saving ? "Saving..." : "Continue"} <ArrowRight size={16} />
               </button>

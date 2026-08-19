@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, Plus, X, Upload, Trash2 } from "lucide-react";
+import { Search, Plus, X, Upload, Trash2, Package, Soup, Drumstick, Fish, UtensilsCrossed, CupSoda, Cookie, Pizza, Salad, Sandwich, CookingPot, IceCream, ChefHat } from "lucide-react";
 import { toast } from "react-toastify";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { usePermission } from "../../hooks/usePermission";
@@ -7,7 +7,21 @@ import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, statusBadge, glidePanel
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../../services/api";
 import { Loading, Empty, ErrorState } from "../layout/States";
 
-const EMOJI_GRID = ["ðŸ›", "ðŸ—", "ðŸŸ", "ðŸ¥£", "ðŸ¥¤", "ðŸ©", "ðŸ•", "ðŸ¥—", "ðŸ”", "ðŸœ", "ðŸ¦", "ðŸ¥˜"];
+const PRODUCT_ICONS = {
+  soup: Soup,
+  drumstick: Drumstick,
+  fish: Fish,
+  utensils: UtensilsCrossed,
+  cupsoda: CupSoda,
+  cookie: Cookie,
+  pizza: Pizza,
+  salad: Salad,
+  sandwich: Sandwich,
+  cookingpot: CookingPot,
+  icecream: IceCream,
+  chefhat: ChefHat,
+};
+const PRODUCT_ICON_KEYS = Object.keys(PRODUCT_ICONS);
 const STATUS_OPTS = ["In Stock", "Low Stock", "Out of Stock"];
 
 export default function Products() {
@@ -18,7 +32,7 @@ export default function Products() {
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [panel, setPanel] = useState(null);
-  const [form, setForm] = useState({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "ðŸ›" });
+  const [form, setForm] = useState({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "soup" });
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -83,7 +97,7 @@ export default function Products() {
           cat: cols[headers.indexOf("category")] || "",
           stock: Number(cols[headers.indexOf("stock")]) || 0,
           status: cols[headers.indexOf("status")] || "In Stock",
-          img: cols[headers.indexOf("emoji")] || "ðŸ›",
+          img: cols[headers.indexOf("emoji")] && PRODUCT_ICONS[cols[headers.indexOf("emoji")]] ? cols[headers.indexOf("emoji")] : "soup",
         };
         try {
           const created = await createProduct(p);
@@ -102,7 +116,7 @@ export default function Products() {
     setPanel(p);
   };
   const openAdd = () => {
-    setForm({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "ðŸ›" });
+    setForm({ name: "", cat: "", price: "", stock: "", status: "In Stock", img: "soup" });
     setPanel("add");
   };
 
@@ -114,7 +128,7 @@ export default function Products() {
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", gap: 12, marginBottom: 20 }}>
         <div>
           <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: 0 }}>Products</h2>
-          <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>{products.length} total Â· {products.filter(p => p.status === "Low Stock").length} low stock Â· {products.filter(p => p.status === "Out of Stock").length} out of stock</div>
+          <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>{products.length} total · {products.filter(p => p.status === "Low Stock").length} low stock · {products.filter(p => p.status === "Out of Stock").length} out of stock</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           {can("product:create") && <>
@@ -161,7 +175,7 @@ export default function Products() {
       </div>
 
       {filtered.length === 0 ? (
-        <Empty icon={products.length === 0 ? "ðŸ“¦" : "ðŸ”"} message={products.length === 0 ? "No products yet" : "No products match your filter"}
+        <Empty icon={products.length === 0 ? <Package size={40} color="#9CA3AF" /> : <Search size={40} color="#9CA3AF" />} message={products.length === 0 ? "No products yet" : "No products match your filter"}
           sub={products.length === 0 ? "Click 'Add Product' to get started" : "Try a different filter or search term"}
           action={products.length === 0 ? <button onClick={openAdd} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Add Product</button> : null}
         />
@@ -170,10 +184,11 @@ export default function Products() {
           {filtered.map(p => {
             const ss = statusBadge[p.status] || statusBadge["In Stock"];
             const isSel = selected.includes(p.id);
+            const Img = PRODUCT_ICONS[p.img] || Package;
             return (
               <div key={p.id} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(15,15,26,0.06)", border: isSel ? `2px solid ${AMBER}` : "1px solid #E8E8F0", transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)", animation: `fadeIn 0.3s ease ${i * 0.05}s both` }}>
                 <div style={{ height: 160, background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, position: "relative", borderBottom: "1px solid #F3F4F6" }}>
-                  {p.img}
+                  <Img size={56} strokeWidth={1.5} color="#6B7280" />
                   <span style={{ position: "absolute", top: 10, left: 10, background: ss.bg, color: ss.color, fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 8 }}>{p.status}</span>
                   <input type="checkbox" checked={isSel} onChange={() => toggleSelect(p.id)} style={{ position: "absolute", top: 10, right: 10, width: 18, height: 18, cursor: "pointer", accentColor: AMBER }} />
                 </div>
@@ -181,10 +196,10 @@ export default function Products() {
                   <div style={{ fontWeight: 600, fontSize: 15, color: NAVY, marginBottom: 4 }}>{p.name}</div>
                   <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 8 }}>{p.cat}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>â‚¦{p.price.toLocaleString()}</span>
-                    {p.oldPrice && <span style={{ fontSize: 13, color: "#9CA3AF", textDecoration: "line-through" }}>â‚¦{p.oldPrice.toLocaleString()}</span>}
+                    <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>₦{p.price.toLocaleString()}</span>
+                    {p.oldPrice && <span style={{ fontSize: 13, color: "#9CA3AF", textDecoration: "line-through" }}>₦{p.oldPrice.toLocaleString()}</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: "#6B7280" }}>ðŸ“¦ {p.stock} in stock</div>
+                  <div style={{ fontSize: 12, color: "#6B7280" }}><Package size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} />{p.stock} in stock</div>
                 </div>
                 <div style={{ padding: "10px 16px", borderTop: "1px solid #F3F4F6", display: "flex", gap: 12 }}>
                   {can("product:update") && <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "4px 0" }}>Edit</button>}
@@ -211,7 +226,7 @@ export default function Products() {
               <button onClick={() => setPanel(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}><X size={22} /></button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
-              {[["Product Name *", "name", "text", "Jollof Rice & Chicken"], ["Category", "cat", "text", "Mains"], ["Price (â‚¦) *", "price", "number", "2500"], ["Stock Quantity", "stock", "number", "10"]].map(([label, key, type, ph]) => (
+              {[["Product Name *", "name", "text", "Jollof Rice & Chicken"], ["Category", "cat", "text", "Mains"], ["Price (₦) *", "price", "number", "2500"], ["Stock Quantity", "stock", "number", "10"]].map(([label, key, type, ph]) => (
                 <div key={key} style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>{label}</label>
                   <input type={type} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={ph} style={inputStyle} />
@@ -224,17 +239,20 @@ export default function Products() {
                 </select>
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={labelStyle}>Emoji Icon</label>
+                <label style={labelStyle}>Product Icon</label>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {EMOJI_GRID.map(e => (
-                    <div key={e} onClick={() => setForm(f => ({ ...f, img: e }))} style={{
-                      width: 44, height: 44, background: form.img === e ? "#FFF8ED" : "#F3F4F6",
-                      border: `2px solid ${form.img === e ? AMBER : "transparent"}`,
-                      borderRadius: 8, display: "flex", alignItems: "center",
-                      justifyContent: "center", fontSize: 22, cursor: "pointer",
-                      transition: "all 0.15s",
-                    }}>{e}</div>
-                  ))}
+                  {PRODUCT_ICON_KEYS.map(k => {
+                    const Img = PRODUCT_ICONS[k];
+                    return (
+                      <div key={k} onClick={() => setForm(f => ({ ...f, img: k }))} style={{
+                        width: 44, height: 44, background: form.img === k ? "#FFF8ED" : "#F3F4F6",
+                        border: `2px solid ${form.img === k ? AMBER : "transparent"}`,
+                        borderRadius: 8, display: "flex", alignItems: "center",
+                        justifyContent: "center", cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}><Img size={22} color={form.img === k ? AMBER : "#6B7280"} /></div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

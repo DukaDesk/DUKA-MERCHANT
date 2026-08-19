@@ -3,8 +3,6 @@ import PropTypes from "prop-types";
 
 const GSI_SRC = "https://accounts.google.com/gsi/client";
 
-const DEFAULT_CLIENT_ID = "606232078363-08o10lpokt7t9qckgh9kesknmag5a0m9.apps.googleusercontent.com";
-
 function loadGsi() {
   return new Promise((resolve) => {
     if (window.google?.accounts?.id) return resolve(true);
@@ -31,10 +29,14 @@ export default function GoogleSignInButton({ clientId, onToken, label }) {
   const callbackRef = useRef(null);
   callbackRef.current = onToken;
 
-  const id = clientId?.trim() || import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || DEFAULT_CLIENT_ID;
+  const id = clientId?.trim() || import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || "";
 
   useEffect(() => {
     let cancelled = false;
+    if (!id) {
+      console.error("[GoogleSignInButton] No Google Client ID configured. Set VITE_GOOGLE_CLIENT_ID (or pass a clientId prop) before using Google sign-in.");
+      return () => { cancelled = true; };
+    }
     loadGsi().then((ok) => {
       if (cancelled || !ok || !holderRef.current) return;
 

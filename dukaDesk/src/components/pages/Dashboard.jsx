@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from "recharts";
-import { Plus, Package, BarChart3, MessageSquare, Store, TrendingUp, Users, DollarSign, Star, ArrowRight, ShieldCheck, Sparkles, HandCoins, Wallet, CalendarClock, HeartHandshake, Receipt, Megaphone, Ticket, Briefcase, Inbox, CalendarCheck } from "lucide-react";
+import { Plus, Package, BarChart3, MessageSquare, Store, TrendingUp, Users, DollarSign, Star, ArrowRight, ShieldCheck, Sparkles, HandCoins, Wallet, CalendarClock, HeartHandshake, Receipt, Megaphone, Ticket, Briefcase, Inbox, CalendarCheck, Smartphone, QrCode, Check, ArrowUp, Bell } from "lucide-react";
 import QRCode from "qrcode";
 import { useAuth } from "../../contexts";
 import { toast } from "react-toastify";
@@ -131,8 +131,8 @@ export default function Dashboard() {
           <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: 0 }}>Overview</h2>
           <p style={{ color: "#6B7280", fontSize: 14, marginTop: 4 }}>Your {vertical.label.toLowerCase()} at a glance</p>
         </div>
-        <button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-          <Plus size={16} /> Edit App
+        <button onClick={() => navigate("/my-app")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <Smartphone size={16} /> My app
         </button>
       </div>
 
@@ -147,8 +147,8 @@ export default function Dashboard() {
               <div style={{ fontSize: 13, color: "#6B7280" }}>Verify your business to unlock Desk Design and go live.</div>
             </div>
           </div>
-          <button onClick={() => navigate("/compliance")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-            Start Verification â†’
+          <button onClick={() => navigate("/compliance")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+            Start Verification <ArrowRight size={15} />
           </button>
         </div>
       )}
@@ -162,7 +162,7 @@ export default function Dashboard() {
             </div>
             <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 500, marginBottom: 4 }}>{k.label}</div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 28, color: NAVY, marginBottom: 4 }}>{k.value}</div>
-            <div style={{ fontSize: 13, color: k.trendUp === true ? "#2ECC71" : k.trendUp === false ? "#E74C3C" : AMBER, fontWeight: 500 }}>{k.trendUp === true ? "â†‘ " : ""}{k.trend}</div>
+            <div style={{ fontSize: 13, color: k.trendUp === true ? "#2ECC71" : k.trendUp === false ? "#E74C3C" : AMBER, fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>{k.trendUp === true && <ArrowUp size={13} />}{k.trend}</div>
           </div>
         ))}
       </div>
@@ -170,19 +170,19 @@ export default function Dashboard() {
       <div style={{ ...cardStyle, marginBottom: 20, display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 12 }}>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Merchant</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.name || "â€”"}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.name || "—"}</div>
         </div>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Business</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.business || "â€”"}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.business || "—"}</div>
         </div>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Email</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.email || "â€”"}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.email || "—"}</div>
         </div>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Phone</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.phone || "â€”"}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.phone || "—"}</div>
         </div>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>DukaDesk Plan</div>
@@ -200,11 +200,11 @@ export default function Dashboard() {
           </div>
           <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
             <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Category</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.category || setup?.category || "â€”"}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.category || setup?.category || "—"}</div>
           </div>
           <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
             <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Template</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.template || setup?.template || "â€”"}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.template || setup?.template || "—"}</div>
           </div>
           <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
             <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Integrations</div>
@@ -225,7 +225,7 @@ export default function Dashboard() {
                 View All <ArrowRight size={14} />
               </button>
             </div>
-            {activity.length === 0 ? <Empty icon="ðŸ””" message="No recent activity" sub="Customer actions will appear here" /> : activity.map((a, i) => (
+            {activity.length === 0 ? <Empty icon={<Bell size={32} color="#9CA3AF" />} message="No recent activity" sub="Customer actions will appear here" /> : activity.map((a, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < activity.length - 1 ? "1px solid #F3F4F6" : "none", animation: `fadeIn 0.3s ease ${i * 0.06}s both` }}>
                 <div style={{ width: 40, height: 40, background: a.color + "18", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{a.icon}</div>
                 <div style={{ flex: 1 }}>
@@ -247,14 +247,14 @@ export default function Dashboard() {
                 <TrendingUp size={14} /> +18%
               </span>
             </div>
-            {revenueData.length === 0 ? <Empty icon="ðŸ“ˆ" message="No revenue data yet" sub="Revenue will appear once you start receiving orders" /> : (
+            {revenueData.length === 0 ? <Empty icon={<TrendingUp size={32} color="#9CA3AF" />} message="No revenue data yet" sub="Revenue will appear once you start receiving orders" /> : (
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={revenueData}>
                 <defs><linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={AMBER} stopOpacity={0.25}/><stop offset="100%" stopColor={AMBER} stopOpacity={0}/></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                 <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={v => `â‚¦${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={v => [`â‚¦${v.toLocaleString()}`, "Revenue"]} contentStyle={{ borderRadius: 10, border: "1px solid #E8E8F0", boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }} />
+                <YAxis tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={v => `₦${(v/1000).toFixed(0)}k`} />
+                <Tooltip formatter={v => [`₦${v.toLocaleString()}`, "Revenue"]} contentStyle={{ borderRadius: 10, border: "1px solid #E8E8F0", boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }} />
                 <Area type="monotone" dataKey="revenue" stroke={AMBER} strokeWidth={3} fill="url(#revGrad)" dot={{ fill: AMBER, r: 4, strokeWidth: 2, stroke: "#fff" }} activeDot={{ r: 6 }} />
               </AreaChart>
             </ResponsiveContainer>
@@ -321,7 +321,7 @@ export default function Dashboard() {
 
           <div style={{ ...cardStyle, textAlign: "center" }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Your QR Code</div>
-            <div style={{ width: 100, height: 100, background: "#F3F4F6", borderRadius: 10, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, border: "1px solid #E8E8F0" }}>â–£</div>
+            <div style={{ width: 100, height: 100, background: "#F3F4F6", borderRadius: 10, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, border: "1px solid #E8E8F0" }}><QrCode size={44} color="#9CA3AF" /></div>
             <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 12, wordBreak: "break-all" }}>{storeUrl}</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={copyLink} style={{
@@ -329,7 +329,7 @@ export default function Dashboard() {
                 color: qrCopied ? "#fff" : NAVY, border: "none",
                 borderRadius: 10, padding: "9px 0", fontSize: 13,
                 fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif",
-              }}>{qrCopied ? "Copied! âœ“" : "Copy Link"}</button>
+              }}>{qrCopied ? <>Copied! <Check size={14} style={{ verticalAlign: "-2px" }} /></> : "Copy Link"}</button>
               <button onClick={downloadQr} style={{
                 flex: 1, background: "none",
                 border: `1.5px solid var(--border)`, color: NAVY,

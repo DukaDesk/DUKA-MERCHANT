@@ -21,7 +21,7 @@ const getSectionIcon = (type) => SECTION_ICONS[type] || SECTION_ICONS.custom;
 
 const COMPONENT_FALLBACK = "\uD83D\uDDC4\uFE0F";
 
-export default function SectionPanel({ store, selectedSectionId, selectedComponentId, onSelectSection, onSelectComponent, onAddSection, focusSubKey, onFocusSubElement, onRemoveSubElement }) {
+export default function SectionPanel({ store, selectedSectionId, selectedComponentId, onSelectSection, onSelectComponent, onOpenLayout, focusSubKey, onFocusSubElement, onRemoveSubElement }) {
   const screen = store.screen;
   const [expanded, setExpanded] = useState({});
   const [expandedComps, setExpandedComps] = useState({});
@@ -233,7 +233,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
             </div>
             <div style={{ color: theme.textSecondary, fontSize: 12, fontWeight: 600, marginBottom: 4, fontFamily: "'Inter',sans-serif" }}>This page is empty</div>
             <div style={{ color: theme.textMuted, fontSize: 11, lineHeight: 1.5, fontFamily: "'Inter',sans-serif" }}>
-              Drag in a section or click {" "}{"Add Section"} below.
+              Add a section from the Layout panel above, then fill it with components.
             </div>
           </div>
         )}
@@ -370,7 +370,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
         })}
 
         <button
-          onClick={onAddSection}
+          onClick={onOpenLayout}
           style={{
             marginTop: 8, padding: "9px 12px", borderRadius: theme.radius.md, border: `1.5px dashed ${theme.border}`,
             background: "transparent", color: theme.textSecondary, fontSize: 12, fontWeight: 600, cursor: "pointer",

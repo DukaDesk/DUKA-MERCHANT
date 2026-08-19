@@ -21,6 +21,7 @@ export default function Topbar() {
   const pageTitles = {
     dashboard: "Overview",
     compliance: "Compliance",
+    "my-app": "My App",
     ...(vertical.topbarTitles || {}),
     analytics: "Analytics",
     messages: vertical.topbarTitles?.messages || "Messages",

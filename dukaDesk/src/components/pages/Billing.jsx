@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Download } from "lucide-react";
+import { X, Download, Check, XCircle, PartyPopper, CreditCard, Info, Lock, ArrowRight } from "lucide-react";
 import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { usePermission } from "../../hooks/usePermission";
@@ -37,13 +37,13 @@ export default function Billing() {
     setPayStep(2);
     try {
       await upgradePlan({ planName: upgradeModal.name, cardNumber: cardNum, expiry, cvv });
-      setTimeout(() => { setUpgradeModal(null); setPayStep(0); toast.success(`Upgraded to ${upgradeModal.name} plan! ðŸŽ‰`); }, 1500);
+      setTimeout(() => { setUpgradeModal(null); setPayStep(0); toast.success(`Upgraded to ${upgradeModal.name} plan! 🎉`); }, 1500);
     } catch { toast.error("Upgrade failed. Please try again."); setPayStep(0); }
   };
 
   if (loading) return <Loading message="Loading billing info..." />;
   if (error) return <ErrorState message={error} onRetry={loadBilling} />;
-  if (!currentPlan && plans.length === 0) return <Empty icon="ðŸ’³" message="No billing data available" sub="Your subscription information will appear here" />;
+  if (!currentPlan && plans.length === 0) return <Empty icon={<CreditCard size={32} color="#9CA3AF" />} message="No billing data available" sub="Your subscription information will appear here" />;
 
   return (
     <div>
@@ -56,13 +56,13 @@ export default function Billing() {
             <div style={{ color: "rgba(255,255,255,0.85)", fontSize: isMobile ? 16 : 18, marginBottom: 8 }}>{currentPlan.label}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {(currentPlan.features || []).map((f, i) => (
-                <div key={i} style={{ color: "rgba(255,255,255,0.9)", fontSize: 14 }}>âœ“ {f}</div>
+                <div key={i} style={{ color: "rgba(255,255,255,0.9)", fontSize: 14 }}><Check size={14} style={{ verticalAlign: "-2px", marginRight: 6 }} />{f}</div>
               ))}
             </div>
           </div>
           <div style={{ textAlign: isMobile ? "left" : "right" }}>
             <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, marginBottom: 8 }}>Renews: {currentPlan.renews}</div>
-            {can("billing:update") && <button onClick={() => setUpgradeModal(plans.find(p => !p.current) || plans[0])} style={{ background: "#fff", color: AMBER, border: "none", borderRadius: 24, padding: "12px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Upgrade Plan â†’</button>}
+            {can("billing:update") && <button onClick={() => setUpgradeModal(plans.find(p => !p.current) || plans[0])} style={{ background: "#fff", color: AMBER, border: "none", borderRadius: 24, padding: "12px 28px", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "'Sora',sans-serif", display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>Upgrade Plan <ArrowRight size={16} /></button>}
           </div>
         </div>
       )}
@@ -88,7 +88,7 @@ export default function Billing() {
                 {plans.map(p => (
                   <td key={p.name} style={{ padding: "12px 16px", textAlign: "center", background: p.current ? "#FFF8ED" : "transparent" }}>
                     {typeof p.features[feat] === "boolean"
-                      ? <span style={{ fontSize: 18, color: p.features[feat] ? "#2ECC71" : "#D1D5DB" }}>{p.features[feat] ? "âœ“" : "âœ—"}</span>
+                      ? <span style={{ fontSize: 18, color: p.features[feat] ? "#2ECC71" : "#D1D5DB" }}>{p.features[feat] ? <Check size={18} style={{ verticalAlign: "middle" }} /> : <XCircle size={18} style={{ verticalAlign: "middle" }} />}</span>
                       : <span style={{ fontSize: 14, color: NAVY, fontWeight: 500 }}>{p.features[feat]}</span>}
                   </td>
                 ))}
@@ -138,14 +138,14 @@ export default function Billing() {
                 <td style={{ padding: "12px 14px", fontSize: 14, color: "#374151" }}>{row.date}</td>
                 <td style={{ padding: "12px 14px", fontSize: 14, color: "#374151" }}>{row.desc}</td>
                 <td style={{ padding: "12px 14px", fontSize: 14, fontWeight: 600, color: NAVY }}>{row.amount}</td>
-                <td style={{ padding: "12px 14px" }}><span style={{ background: "#F0FDF4", color: "#065F46", fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 10 }}>{row.status} âœ“</span></td>
+                <td style={{ padding: "12px 14px" }}><span style={{ background: "#F0FDF4", color: "#065F46", fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 10 }}>{row.status} <Check size={12} style={{ verticalAlign: "-2px" }} /></span></td>
                 <td style={{ padding: "12px 14px" }}><button onClick={() => { toast.success("Invoice downloaded"); }} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, cursor: "pointer", padding: "4px 0" }}>Download</button></td>
               </tr>
             ))}
           </tbody>
         </table>
         <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 8, padding: 14, marginTop: 16 }}>
-          <div style={{ fontSize: 13, color: "#92400E" }}>â„¹ Invoices will appear here once you upgrade to a paid plan.</div>
+          <div style={{ fontSize: 13, color: "#92400E" }}><Info size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} />Invoices will appear here once you upgrade to a paid plan.</div>
         </div>
       </div>
 

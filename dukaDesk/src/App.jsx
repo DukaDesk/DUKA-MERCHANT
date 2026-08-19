@@ -31,6 +31,7 @@ const Marketing = lazy(() => import("./components/pages/Marketing"));
 const Notifications = lazy(() => import("./components/pages/Notifications"));
 const CompliancePage = lazy(() => import("./components/pages/Compliance"));
 const DeskDesignPage = lazy(() => import("./components/pages/DeskDesign"));
+const MyAppPage = lazy(() => import("./components/pages/MyApp"));
 const AttendancePage = lazy(() => import("./components/pages/sector/Attendance"));
 const GivingPage = lazy(() => import("./components/pages/sector/Giving"));
 const FeesPage = lazy(() => import("./components/pages/sector/Fees"));
@@ -127,11 +128,16 @@ export default function App() {
               <Route path="/onboarding" element={<ProtectedRoute><Onboarding onAuth={handleAuth} /></ProtectedRoute>} />
               <Route path="/miniapp" element={<ProtectedRoute><MiniAppPreview /></ProtectedRoute>} />
               <Route path="/template-editor/:templateId" element={<ProtectedRoute><TemplateEditor /></ProtectedRoute>} />
-              <Route path="/canvas-editor" element={<ProtectedRoute><CanvasEditor /></ProtectedRoute>} />
+              <Route path="/canvas-editor" element={<CanvasEditor />} />
               <Route path="/compliance" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
                 <Route index element={<CompliancePage />} />
               </Route>
-              <Route path="/desk-design" element={<ProtectedRoute><DeskDesignPage /></ProtectedRoute>} />
+              <Route path="/desk-design" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
+                <Route index element={<DeskDesignPage />} />
+              </Route>
+              <Route path="/my-app" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
+                <Route index element={<MyAppPage />} />
+              </Route>
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/dashboard" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />

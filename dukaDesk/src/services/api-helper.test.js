@@ -22,7 +22,7 @@ vi.mock("axios", () => {
 });
 
 import axios from "axios";
-import { getIntegrationConfig, setIntegrationConfig, getDesignData, saveDesignData, getReleases, getCurrentDeployment, saveDeployment, signup, getDashboardModules, saveDashboardModules } from "./api";
+import { getIntegrationConfig, setIntegrationConfig, getDesignData, saveDesignData, getReleases, getCurrentDeployment, saveDeployment, signup, getDashboardModules, saveDashboardModules, ensureTenant, deployApp } from "./api";
 import httpClient from "./httpClient";
 
 const mockHttpClient = vi.mocked(httpClient);
@@ -50,7 +50,9 @@ describe("api helpers (tenant config-based)", () => {
       setupMerchant();
       mockHttpClient.get.mockResolvedValue({
         data: {
-          integrationConfigs: { Paystack: { apiKey: "sk_test_123" } },
+          config: {
+            integrationConfigs: { Paystack: { apiKey: "sk_test_123" } },
+          },
         },
       });
 
@@ -62,7 +64,7 @@ describe("api helpers (tenant config-based)", () => {
 
     it("returns null when integration not configured", async () => {
       setupMerchant();
-      mockHttpClient.get.mockResolvedValue({ data: {} });
+      mockHttpClient.get.mockResolvedValue({ data: { config: {} } });
 
       const result = await getIntegrationConfig("Paystack");
 
@@ -75,7 +77,9 @@ describe("api helpers (tenant config-based)", () => {
       setupMerchant();
       mockHttpClient.get.mockResolvedValue({
         data: {
-          integrationConfigs: { ExistingInt: { key: "val" } },
+          config: {
+            integrationConfigs: { ExistingInt: { key: "val" } },
+          },
         },
       });
       mockHttpClient.put.mockResolvedValue({ data: {} });
@@ -83,9 +87,11 @@ describe("api helpers (tenant config-based)", () => {
       await setIntegrationConfig("Paystack", { apiKey: "sk_test_456" });
 
       expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`, expect.objectContaining({
-        integrationConfigs: expect.objectContaining({
-          ExistingInt: { key: "val" },
-          Paystack: { apiKey: "sk_test_456" },
+        config: expect.objectContaining({
+          integrationConfigs: expect.objectContaining({
+            ExistingInt: { key: "val" },
+            Paystack: { apiKey: "sk_test_456" },
+          }),
         }),
       }));
     });
@@ -95,7 +101,7 @@ describe("api helpers (tenant config-based)", () => {
     it("returns design from tenant config", async () => {
       setupMerchant();
       mockHttpClient.get.mockResolvedValue({
-        data: { design: { screens: { home: {} } } },
+        data: { config: { design: { screens: { home: {} } } } },
       });
 
       const result = await getDesignData();
@@ -105,7 +111,7 @@ describe("api helpers (tenant config-based)", () => {
 
     it("returns null when no design in config", async () => {
       setupMerchant();
-      mockHttpClient.get.mockResolvedValue({ data: {} });
+      mockHttpClient.get.mockResolvedValue({ data: { config: {} } });
 
       const result = await getDesignData();
 
@@ -116,14 +122,16 @@ describe("api helpers (tenant config-based)", () => {
   describe("saveDesignData", () => {
     it("saves design via tenant config", async () => {
       setupMerchant();
-      mockHttpClient.get.mockResolvedValue({ data: { businessName: "Test" } });
+      mockHttpClient.get.mockResolvedValue({ data: { config: { businessName: "Test" } } });
       mockHttpClient.put.mockResolvedValue({ data: {} });
 
       await saveDesignData({ screens: { home: {} } });
 
       expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`, expect.objectContaining({
-        businessName: "Test",
-        design: { screens: { home: {} } },
+        config: expect.objectContaining({
+          businessName: "Test",
+          design: { screens: { home: {} } },
+        }),
       }));
     });
   });
@@ -132,7 +140,7 @@ describe("api helpers (tenant config-based)", () => {
     it("getReleases returns releases array", async () => {
       setupMerchant();
       mockHttpClient.get.mockResolvedValue({
-        data: { releases: [{ id: "r1", version: "1.0.0" }] },
+        data: { config: { releases: [{ id: "r1", version: "1.0.0" }] } },
       });
 
       const result = await getReleases();
@@ -154,7 +162,7 @@ describe("api helpers (tenant config-based)", () => {
     it("returns deployed object from config", async () => {
       setupMerchant();
       mockHttpClient.get.mockResolvedValue({
-        data: { deployed: { version: "1.0.0", status: "published" } },
+        data: { config: { deployed: { version: "1.0.0", status: "published" } } },
       });
 
       const result = await getCurrentDeployment();
@@ -175,13 +183,15 @@ describe("api helpers (tenant config-based)", () => {
   describe("saveDeployment", () => {
     it("saves deployment to tenant config", async () => {
       setupMerchant();
-      mockHttpClient.get.mockResolvedValue({ data: {} });
+      mockHttpClient.get.mockResolvedValue({ data: { config: {} } });
       mockHttpClient.put.mockResolvedValue({ data: {} });
 
       await saveDeployment({ version: "2.0.0", status: "published" });
 
       expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`, expect.objectContaining({
-        deployed: { version: "2.0.0", status: "published" },
+        config: expect.objectContaining({
+          deployed: { version: "2.0.0", status: "published" },
+        }),
       }));
     });
   });
@@ -286,7 +296,7 @@ describe("dashboard modules (primitives)", () => {
 
   it("saveDashboardModules persists to setup + merchant + tenant config", async () => {
     setupMerchant();
-    mockHttpClient.get.mockResolvedValue({ data: { businessName: "Test" } });
+    mockHttpClient.get.mockResolvedValue({ data: { config: { businessName: "Test" } } });
     mockHttpClient.put.mockResolvedValue({ data: {} });
 
     await saveDashboardModules(["analytics", "billing"]);
@@ -296,7 +306,9 @@ describe("dashboard modules (primitives)", () => {
     const merchant = JSON.parse(localStorage.getItem("dd_merchant"));
     expect(merchant.modules).toEqual(["analytics", "billing"]);
     expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`, expect.objectContaining({
-      app: expect.objectContaining({ modules: ["analytics", "billing"] }),
+      config: expect.objectContaining({
+        app: expect.objectContaining({ modules: ["analytics", "billing"] }),
+      }),
     }));
   });
 
@@ -304,5 +316,67 @@ describe("dashboard modules (primitives)", () => {
     const result = await saveDashboardModules(["analytics"]);
     expect(result.success).toBe(false);
     expect(mockHttpClient.put).not.toHaveBeenCalled();
+  });
+});
+
+describe("ensureTenant / deployApp", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it("ensureTenant returns existing tenantId without creating", async () => {
+    setupMerchant();
+    const id = await ensureTenant("Should Not Be Used");
+    expect(id).toBe(TENANT_ID);
+    expect(mockHttpClient.post).not.toHaveBeenCalled();
+  });
+
+  it("ensureTenant creates a tenant for merchants without one", async () => {
+    setupMerchant({ ...DEFAULT_MERCHANT, tenantId: null });
+    mockHttpClient.post.mockResolvedValue({
+      data: { id: "tenant_new", name: "Ada's Kitchen", slug: "adas-kitchen" },
+    });
+
+    const id = await ensureTenant("Ada's Kitchen");
+
+    expect(id).toBe("tenant_new");
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/tenants", expect.objectContaining({
+      name: "Ada's Kitchen",
+      slug: "adas-kitchen",
+    }));
+    const merchant = JSON.parse(localStorage.getItem("dd_merchant"));
+    expect(merchant.tenantId).toBe("tenant_new");
+  });
+
+  it("deployApp creates tenant, writes config and publishes", async () => {
+    setupMerchant({ ...DEFAULT_MERCHANT, tenantId: null });
+    mockHttpClient.post.mockResolvedValue({
+      data: { id: "tenant_new", slug: "tasty-bites" },
+    });
+    mockHttpClient.get.mockResolvedValue({ data: { config: {} } });
+    mockHttpClient.put.mockResolvedValue({ data: {} });
+
+    const result = await deployApp({ appName: "Tasty Bites", category: "Restaurant" });
+
+    expect(result.app.slug).toBe("tasty-bites");
+    expect(mockHttpClient.put).toHaveBeenCalledWith("/api/v1/tenants/tenant_new/config", expect.objectContaining({
+      config: expect.objectContaining({
+        app: expect.objectContaining({ appName: "Tasty Bites", status: "live" }),
+      }),
+    }));
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/tenants/tenant_new/publish");
+  });
+
+  it("deployApp reuses existing tenant", async () => {
+    setupMerchant();
+    mockHttpClient.get.mockResolvedValue({ data: { config: {} } });
+    mockHttpClient.put.mockResolvedValue({ data: {} });
+    mockHttpClient.post.mockResolvedValue({ data: {} });
+
+    await deployApp({ appName: "Tasty Bites" });
+
+    expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`, expect.anything());
+    expect(mockHttpClient.post).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/publish`);
   });
 });

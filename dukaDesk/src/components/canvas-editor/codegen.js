@@ -85,10 +85,15 @@ export function generateReactCode(designJSON) {
       lines.push(`        {screen === "${id}" && <Screen_${id} data={{}} />}`);
     });
     lines.push("      </div>");
-    lines.push("      <div className=\"bottom-nav\">");
+    const barBg = navigation.style?.background || "#FFFFFF";
+    lines.push(`      <div className="bottom-nav" style={{ background: "${barBg}" }}>`);
     navigation.tabs.forEach(tab => {
-      lines.push(`        <div className="nav-tab" onClick={() => setScreen("${tab.screenId}")}>`);
-      lines.push(`          <span>${tab.icon || "○"}</span>`);
+      const active = tab.screenId === navigation.initialScreen;
+      const color = active
+        ? (tab.color || navigation.style?.active || "#1A1A2E")
+        : (navigation.style?.inactive || "#9CA3AF");
+      lines.push(`        <div className="nav-tab" style={{ color: "${color}" }} onClick={() => setScreen("${tab.screenId}")}>`);
+      lines.push(`          <span style={{ fontSize: 18 }}>${tab.icon || "○"}</span>`);
       lines.push(`          <span>${tab.label}</span>`);
       lines.push("        </div>");
     });
@@ -143,9 +148,14 @@ export function generateHTMLCode(designJSON) {
   }
 
   if (navigation.tabs?.length > 0) {
-    lines.push("    <div class=\"bottom-nav\">");
+    const barBg = navigation.style?.background || "#FFFFFF";
+    lines.push(`    <div class="bottom-nav" style="background:${barBg};">`);
     navigation.tabs.forEach(tab => {
-      lines.push(`      <div class="nav-tab">${tab.icon || "○"} ${tab.label}</div>`);
+      const active = tab.screenId === navigation.initialScreen;
+      const color = active
+        ? (tab.color || navigation.style?.active || "#1A1A2E")
+        : (navigation.style?.inactive || "#9CA3AF");
+      lines.push(`      <div class="nav-tab" style="color:${color}">${tab.icon || "○"} ${tab.label}</div>`);
     });
     lines.push("    </div>");
   }

@@ -38,12 +38,14 @@ export default function Settings() {
       }).catch(() => {});
       getTenantConfig(tenantId).then(cfg => {
         if (cfg) {
+          const data = (cfg.config && typeof cfg.config === "object") ? cfg.config : {};
+          const p = data.profile || {};
           setForm(f => ({
             ...f,
-            ...cfg,
-            businessName: cfg.businessName || f.businessName,
-            hours: cfg.hours || f.hours,
-            accentColor: cfg.accentColor || f.accentColor,
+            ...p,
+            businessName: p.businessName || f.businessName,
+            hours: p.hours || f.hours,
+            accentColor: p.accentColor || f.accentColor,
           }));
         }
       }).catch(() => {});
@@ -66,18 +68,25 @@ export default function Settings() {
     try {
       if (tenantId) {
         await updateTenant(tenantId, { name: form.businessName });
+        const cfg = await getTenantConfig(tenantId).catch(() => ({}));
+        const data = (cfg && cfg.config && typeof cfg.config === "object") ? cfg.config : {};
         await updateTenantConfig(tenantId, {
-          businessName: form.businessName,
-          businessDescription: form.businessDescription,
-          email: form.email,
-          phone: form.phone,
-          address: form.address,
-          city: form.city,
-          country: form.country,
-          website: form.website,
-          timezone: form.timezone,
-          hours: form.hours,
-          accentColor: form.accentColor,
+          config: {
+            ...data,
+            profile: {
+              businessName: form.businessName,
+              businessDescription: form.businessDescription,
+              email: form.email,
+              phone: form.phone,
+              address: form.address,
+              city: form.city,
+              country: form.country,
+              website: form.website,
+              timezone: form.timezone,
+              hours: form.hours,
+              accentColor: form.accentColor,
+            },
+          },
         });
       }
       toast.success("Settings saved successfully!");

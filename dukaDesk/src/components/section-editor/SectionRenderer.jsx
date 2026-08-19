@@ -1,9 +1,19 @@
 import { useState, useRef, useCallback } from "react";
-import { getComponentType } from "../canvas-editor/componentTypes";
+import { getComponentType, getAllComponentTypes, resolveBackground, ROW_TEMPLATES } from "../canvas-editor/componentTypes";
 import { theme, iconBtn, iconBtnDanger } from "./editorTheme";
 import { toast } from "react-toastify";
 
 const TIME = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+function sanitizeNum(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function sanitizeRadius(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
 
 export default function SectionRenderer({ store, selectedSectionId, selectedComponentId, onSelectSection, onSelectComponent }) {
   const data = store.data;
@@ -16,27 +26,15 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [showBgPicker, setShowBgPicker] = useState(null);
+  const [addPicker, setAddPicker] = useState(null);
   const editRef = useRef(null);
-  const logoRef = useRef(null);
 
   if (!screen) return null;
 
   const bodySections = screen.bodySections || [];
   const logo = data.meta?.logo;
   const appName = data.meta?.appName || "Your App";
-  const tagline = data.meta?.tagline || "";
   const screenBg = screen.backgroundColor || "#FCF8FA";
-
-  const handleLogoUpload = useCallback((e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      store.setMeta({ logo: ev.target.result });
-    };
-    reader.readAsDataURL(file);
-  }, [store]);
 
   const allSections = bodySections.map(sec => {
     const resolved = store.resolveSection?.(sec) || sec;
@@ -182,28 +180,58 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
         </div>
       );
     } else if (comp.type === "hero_banner") {
-      const bg = comp.props?.backgroundImage
-        ? `url(${comp.props.backgroundImage}) center/cover no-repeat`
-        : `linear-gradient(135deg, ${comp.props?.color || "#1A1A2E"}, #15152A)`;
+      const p = comp.props || {};
+      const fit = p.fit === "contain" ? "contain" : "cover";
+      const radius = sanitizeRadius(p.radius, 16);
+      const height = sanitizeNum(p.height, 200);
+      const variant = p.variant || "center";
+      const fillVal = p.fill;
+      const bgImage = fillVal && typeof fillVal === "object" && fillVal.type === "image"
+        ? fillVal.value
+        : (typeof fillVal === "string" ? fillVal : (p.backgroundImage || ""));
+      const isImageBg = !!bgImage;
+      const splitImage = variant === "split" && isImageBg;
+      const overlay = variant === "overlay" && isImageBg;
+      const flex = (variant === "left" || variant === "overlay")
+        ? { textAlign: "left", alignItems: "flex-start" }
+        : { textAlign: "center", alignItems: "center" };
+      const background = splitImage
+        ? `linear-gradient(135deg, ${p.color || "#1A1A2E"}, #15152A)`
+        : (isImageBg
+          ? `url(${bgImage}) center/${fit} no-repeat`
+          : `linear-gradient(135deg, ${p.color || "#1A1A2E"}, #15152A)`);
       rendered = (
         <div style={{
-          background: bg, color: "#fff", borderRadius: 16, padding: 32, textAlign: "center",
-          display: "flex", flexDirection: "column",
-          justifyContent: "center", alignItems: "center",
+          background, color: "#fff", borderRadius: radius, minHeight: height,
+          padding: splitImage ? 0 : 32, display: "flex", flexDirection: "column",
+          justifyContent: "center", alignItems: flex.alignItems || "center",
+          textAlign: flex.textAlign, position: "relative", overflow: "hidden",
+          backgroundSize: "cover",
         }}>
-          {!!comp.props?.badge && (
-            <span style={{ fontSize: 11, fontWeight: 600, background: theme.active, color: "#6B4200", padding: "4px 12px", borderRadius: 20, marginBottom: 12, display: "inline-block" }}>
-              {renderInlineText(comp, "badge", comp.props?.badge, sectionId)}
-            </span>
+          {splitImage && (
+            <img src={bgImage} alt="" style={{
+              position: "absolute", right: 0, top: 0, bottom: 0,
+              width: "42%", height: "100%", objectFit: fit,
+            }} />
           )}
-          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
-            {renderInlineText(comp, "title", comp.props?.title || "Welcome", sectionId)}
-          </div>
-          {comp.props?.subtitle && (
-            <div style={{ fontSize: 13, opacity: 0.8 }}>
-              {renderInlineText(comp, "subtitle", comp.props?.subtitle, sectionId)}
+          {overlay && (
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,rgba(10,10,20,0.1) 0%,rgba(10,10,20,0.7) 100%)" }} />
+          )}
+          <div style={{ position: "relative", zIndex: 1, maxWidth: splitImage ? "58%" : "100%" }}>
+            {!!p.badge && (
+              <span style={{ fontSize: 11, fontWeight: 600, background: theme.active, color: "#6B4200", padding: "4px 12px", borderRadius: 20, marginBottom: 12, display: "inline-block" }}>
+                {renderInlineText(comp, "badge", p.badge, sectionId)}
+              </span>
+            )}
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+              {renderInlineText(comp, "title", p.title || "Welcome", sectionId)}
             </div>
-          )}
+            {p.subtitle && (
+              <div style={{ fontSize: 13, opacity: 0.8 }}>
+                {renderInlineText(comp, "subtitle", p.subtitle, sectionId)}
+              </div>
+            )}
+          </div>
         </div>
       );
     } else if (comp.type === "menu_item") {
@@ -306,12 +334,113 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
           )}
         </div>
       );
+    } else if (comp.type === "row") {
+      const rp = comp.props || {};
+      const cols = ROW_TEMPLATES[rp.template] || [1];
+      const N = cols.length;
+      const gap = rp.gap != null ? Number(rp.gap) : 10;
+      const rowPad = rp.padding != null ? Number(rp.padding) : 10;
+      const rowRadius = rp.radius != null ? Number(rp.radius) : 12;
+      const rowBg = resolveBackground(rp.background, "transparent");
+      const colCss = cols.map(c => `${c}fr`).join(" ");
+      const slotRows = Math.max(1, Math.ceil((children.length + 1) / N));
+      const pickerOpen = addPicker?.compId === comp.id;
+
+      const addCell = (index) => (
+        <div
+          key={`add_${index}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setAddPicker(pickerOpen && addPicker.index === index ? null : { compId: comp.id, index });
+          }}
+          style={{
+            minHeight: 46, border: "1.5px dashed rgba(140,130,190,0.55)", borderRadius: 10,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#8B7FC8", cursor: "pointer", background: "rgba(140,130,190,0.06)",
+            fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 600, gap: 5,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(140,130,190,0.15)"; e.currentTarget.style.color = "#5D4FC0"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(140,130,190,0.06)"; e.currentTarget.style.color = "#8B7FC8"; }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>Add</span>
+        </div>
+      );
+
+      rendered = (
+        <div style={{
+          background: rowBg, borderRadius: rowRadius, padding: rowPad,
+          margin: "4px 8px", display: "flex", flexDirection: "column", gap,
+          position: "relative", border: "1.5px dashed rgba(140,130,190,0.4)",
+        }}>
+          {Array.from({ length: slotRows }).map((_, r) => {
+            const start = r * N;
+            return (
+              <div key={r} style={{ display: "grid", gridTemplateColumns: N === 1 ? "1fr" : colCss, gap }}>
+                {Array.from({ length: N }).map((_, c) => {
+                  const index = start + c;
+                  if (index < children.length) return renderComponent(children[index], sectionId, depth + 1);
+                  return addCell(index);
+                })}
+              </div>
+            );
+          })}
+
+          {pickerOpen && (
+            <>
+              <div style={{ position: "fixed", inset: 0, zIndex: 38 }} onClick={() => setAddPicker(null)} />
+              <div style={{
+                position: "absolute", top: 12, left: 8, right: 8, zIndex: 42,
+                background: "#FFFFFF", borderRadius: 12, boxShadow: "0 16px 44px rgba(26,26,46,0.22)",
+                border: "1px solid #E5E1E3", padding: 9, maxHeight: 320, overflowY: "auto",
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0 6px 8px", fontFamily: "'Inter',sans-serif" }}>
+                  Add to row
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                  {getAllComponentTypes().map(def2 => (
+                    <button
+                      key={def2.type}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        store.insertComponentAt(sectionId, comp.id, addPicker.index, def2.type, { ...def2.defaultProps });
+                        setAddPicker(null);
+                      }}
+                      style={{
+                        padding: "7px 3px", borderRadius: 8, border: "1px solid #E5E1E3", background: "#fff",
+                        cursor: "pointer", textAlign: "center", fontSize: 9, fontWeight: 600, color: "#6B7280",
+                        fontFamily: "'Inter',sans-serif", transition: "all 0.12s", lineHeight: 1.15,
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.background = theme.hoverAmber; e.currentTarget.style.color = "#5B3A00"; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E1E3"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#6B7280"; }}
+                    >
+                      <div style={{ fontSize: 14, marginBottom: 2 }}>{def2.icon || "▣"}</div>
+                      <div>{def2.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      );
     } else {
       rendered = def.render({
         ...comp.props,
         ...(comp.type === "header_bar" ? { logo: logo || comp.props?.logo, appName: appName || comp.props?.appName } : {}),
       });
     }
+
+    const margin = comp.props?.margin || {};
+    const padding = comp.props?.padding || {};
+    const ELEVATIONS = {
+      none: "none",
+      soft: "0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)",
+      medium: "0 4px 10px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06)",
+      raised: "0 10px 24px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.1)",
+    };
+    const elevation = ELEVATIONS[comp.props?.elevation] || "none";
+    const compOpacity = comp.props?.opacity != null ? Number(comp.props.opacity) / 100 : 1;
 
     return (
       <div
@@ -321,10 +450,20 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
         onMouseLeave={() => setHoveredCompId(null)}
         style={{
           width: "100%",
-          opacity: comp.visible === false ? 0.4 : 1,
+          opacity: comp.visible === false ? 0.4 : compOpacity,
           position: "relative",
           outline: isSelected ? `2px solid ${theme.selection}` : "none",
           outlineOffset: -1,
+          marginTop: margin.top || 0,
+          marginRight: margin.right || 0,
+          marginBottom: margin.bottom || 0,
+          marginLeft: margin.left || 0,
+          paddingTop: padding.top || 0,
+          paddingRight: padding.right || 0,
+          paddingBottom: padding.bottom || 0,
+          paddingLeft: padding.left || 0,
+          boxShadow: elevation,
+          boxSizing: "border-box",
         }}
       >
         {rendered}
@@ -397,25 +536,22 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
               minHeight: section.components?.length ? undefined : 48,
             }}
           >
-            {/* Floating toolbar */}
-            {(selectedSectionId === section.id || hoveredSectionId === section.id) && (
+            {/* Floating toolbar (actions only when the section is selected) */}
+            {selectedSectionId === section.id && (
               <div style={{
                 position: "absolute", top: 4, right: 4, zIndex: 20,
                 display: "flex", gap: 2,
                 animation: "fadeIn 0.12s ease",
               }}>
                 <span style={{
-                  background: selectedSectionId === section.id ? theme.active : "rgba(0,0,0,0.5)",
-                  color: selectedSectionId === section.id ? "#6B4200" : "#fff",
+                  background: theme.active,
+                  color: "#6B4200",
                   fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4,
                   fontFamily: "'Inter',sans-serif", marginRight: 4, display: "flex", alignItems: "center", gap: 3,
                 }}>
                   {section._label}
                   {section._link && (
                     <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                  )}
-                  {hoveredSectionId === section.id && (
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="2"/><circle cx="15" cy="5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="19" r="2"/><circle cx="15" cy="19" r="2"/></svg>
                   )}
                 </span>
                 {section._link && (
@@ -430,18 +566,14 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
                     style={iconBtn} title="Save to library"
                   ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
                 )}
-                {(
-                  <>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); store.duplicateSection(null, section.id); }}
-                      style={iconBtn} title="Duplicate"
-                    ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); store.removeBodySection(null, section.id); onSelectSection(null); }}
-                      style={iconBtnDanger} title="Delete"
+                <button
+                  onClick={(e) => { e.stopPropagation(); store.duplicateSection(null, section.id); }}
+                  style={iconBtn} title="Duplicate"
+                ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); store.removeBodySection(null, section.id); onSelectSection(null); }}
+                  style={iconBtnDanger} title="Delete"
                     ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                  </>
-                )}
               </div>
             )}
 
@@ -469,28 +601,6 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
               </div>
             )}
 
-            {/* Header with logo upload (empty state) */}
-            {section.components?.length === 0 && (selectedSectionId === section.id || hoveredSectionId === section.id) && (
-              <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-                <div
-                  onClick={(e) => { e.stopPropagation(); logoRef.current?.click(); }}
-                  style={{
-                    width: 40, height: 40, borderRadius: 10,
-                    background: logo ? `url(${logo}) center/cover no-repeat` : "#F1EDEF",
-                    cursor: "pointer", flexShrink: 0, display: "flex",
-                    alignItems: "center", justifyContent: "center",
-                    border: "2px dashed #D1D5DB", fontSize: 18,
-                  }}
-                >
-                  {!logo && "\uD83D\uDCF7"}
-                </div>
-                <div>
-                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: theme.text }}>{appName}</div>
-                  {tagline && <div style={{ fontSize: 11, color: theme.textSecondary }}>{tagline}</div>}
-                </div>
-              </div>
-            )}
-
             {/* Components (recursive: containers nest child components/sections) */}
             {renderComponentList(section.components || [], section.id, 0)}
 
@@ -501,18 +611,45 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
                 </div>
                 <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 2 }}>Add components from the right panel</div>
-                <div style={{ fontSize: 11, color: theme.border }}>Select this section and use Properties</div>
+                <div style={{ fontSize: 11, color: theme.border }}>Open \u201CAdd Component\u201D in Properties</div>
               </div>
             )}
           </div>
         ))}
+
+        {/* Bottom nav bar */}
+        {(data.navigation?.tabs || []).length > 0 && (
+          <div style={{
+            position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 12,
+            background: data.navigation?.style?.background || "#FFFFFF",
+            borderTop: `1px solid ${theme.border}`,
+            display: "flex", alignItems: "stretch", justifyContent: "space-around",
+            flexShrink: 0, padding: "4px 0 6px",
+            boxShadow: "0 -2px 10px rgba(0,0,0,0.05)",
+          }}>
+            {data.navigation.tabs.map(tab => {
+              const isActive = tab.screenId === store.currentScreenId;
+              const color = isActive
+                ? (tab.color || data.navigation?.style?.active || "#1A1A2E")
+                : (data.navigation?.style?.inactive || "#9CA3AF");
+              return (
+                <div key={tab.id} style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                  padding: "2px 14px", color,
+                }}>
+                  <span style={{ fontSize: 19, lineHeight: 1, opacity: isActive ? 1 : 0.65 }}>{tab.icon || "\u25CB"}</span>
+                  <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 500, color, fontFamily: "'Inter',sans-serif" }}>{tab.label || "Tab"}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Bottom spacer for nav */}
         {data.navigation?.tabs?.length > 0 && <div style={{ height: 56, flexShrink: 0 }} />}
       </div>
 
       {/* Hidden file inputs */}
-      <input ref={logoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogoUpload} />
       <input ref={imageFileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageUpload} />
     </div>
   );

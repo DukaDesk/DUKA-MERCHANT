@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { LayoutRenderer, ScreenRenderer } from "../../runtime/layouts";
 import { RuntimeContext } from "../../runtime/RuntimeContext";
-import { Home, Calendar, ClipboardList, ShoppingCart, User, Store, Tag } from "lucide-react";
+import { Home, Calendar, ClipboardList, ShoppingCart, User, Store, Tag, Utensils, Info, Megaphone, Trophy, Heart, BookOpen, Users, Briefcase, CreditCard, ShoppingBag, Video, Phone } from "lucide-react";
 import { TemplateComponents } from "./TemplateComponents";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";
 function getScreenPreviewData() {
@@ -184,6 +184,68 @@ const linkToScreen = (target, screenRefs) => {
 
 /* App-like shell that mirrors manifest tabs at the bottom and pushes detail screens
    via an in-preview navigation stack with a back button. */
+function AppSplash({ manifest }) {
+  const [leaving, setLeaving] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setLeaving(true), 1400);
+    const t2 = setTimeout(() => setDone(true), 1700);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  if (done) return null;
+
+  const brandColor = manifest?.theme?.primaryColor || "#1B4332";
+  const bgColor = manifest?.theme?.bgColor || manifest?.theme?.backgroundColor || "#FFFFFF";
+  const logo = manifest?.assets?.logo || manifest?.assets?.icon;
+  const name = manifest?.branding?.appName || manifest?.name || "My App";
+  const tagline = manifest?.branding?.tagline || "Tap to explore";
+  const isImage = typeof logo === "string" && /^(https?:|data:)/.test(logo);
+
+  return (
+    <div style={{
+      position: "absolute",
+      inset: 0,
+      zIndex: 50,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 16,
+      background: bgColor,
+      transition: "opacity 0.3s ease",
+      opacity: leaving ? 0 : 1,
+      fontFamily: "'Sora', sans-serif",
+      textAlign: "center",
+      padding: 24,
+    }}>
+      <div style={{
+        width: 84,
+        height: 84,
+        borderRadius: 22,
+        background: `linear-gradient(135deg, ${brandColor}, ${brandColor}CC)`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 40,
+        boxShadow: `0 12px 32px ${brandColor}40`,
+        overflow: "hidden",
+      }}>
+        {isImage ? (
+          <img src={logo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <span>{logo || name.charAt(0).toUpperCase()}</span>
+        )}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: brandColor, lineHeight: 1.2 }}>
+        {name}
+      </div>
+      {tagline && <div style={{ fontSize: 13, color: "#6B7280", marginTop: -8 }}>{tagline}</div>}
+    </div>
+  );
+}
+
 function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }) {
   const [stack, setStack] = useState(() => [initialScreenId || manifest?.navigation?.initialScreen || Object.keys(screens)[0]]);
   const currentScreenId = stack[stack.length - 1];
@@ -235,7 +297,8 @@ function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }
 
   return (
     <RuntimeContext.Provider value={{ dispatchAction }}>
-      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", height: "100%" }}>
+        <AppSplash manifest={manifest} />
         {/* App header */}
         <div style={{
           background: manifest?.theme?.primaryColor || "#1B4332",
@@ -276,16 +339,19 @@ function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }
         {tabs.length > 0 && (
           <div style={{
             display: "flex",
-            background: "#fff",
+            background: manifest?.navigation?.style?.background || "#fff",
             borderTop: "1px solid #E5E7EB",
             flexShrink: 0,
             padding: "4px 0 8px",
           }}>
             {tabs.map(tab => {
               const active = tab.screenId === currentScreenId;
+              const color = active
+                ? (tab.color || manifest?.navigation?.style?.active || "#1B4332")
+                : (manifest?.navigation?.style?.inactive || "#9CA3AF");
               return (
                 <button
-                  key={tab.screenId}
+                  key={tab.screenId || tab.id || tab.label}
                   onClick={() => switchTab(tab.screenId)}
                   style={{
                     flex: 1,
@@ -298,12 +364,12 @@ function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }
                     cursor: "pointer",
                     padding: "6px 4px",
                     fontFamily: "inherit",
-                    color: active ? "#1B4332" : "#9CA3AF",
+                    color,
                     fontSize: 10,
                     fontWeight: active ? 700 : 500,
                   }}
                 >
-                  <TabIcon icon={tab.icon} active={active} />
+                  <TabIcon icon={tab.icon} active={active} color={color} />
                   {tab.label}
                 </button>
               );
@@ -319,11 +385,10 @@ function pathScreenTitle(id) {
   return id.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-function TabIcon({ icon, active }) {
+function TabIcon({ icon, active, color }) {
   const Icon = TAB_ICONS[icon];
   if (Icon) {
-    const activeColor = "#1B4332";
-    return <Icon size={20} strokeWidth={active ? 2.4 : 1.8} color={active ? activeColor : "#9CA3AF"} />;
+    return <Icon size={20} strokeWidth={active ? 2.4 : 1.8} color={color} />;
   }
   return <span style={{ fontSize: 18, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon || "•"}</span>;
 }
@@ -336,6 +401,21 @@ const TAB_ICONS = {
   "person-outline": User,
   "calendar-outline": Calendar,
   "tag-outline": Tag,
+  "restaurant-outline": Utensils,
+  "information-outline": Info,
+  "megaphone-outline": Megaphone,
+  "trophy-outline": Trophy,
+  "heart-outline": Heart,
+  "book-outline": BookOpen,
+  "people-outline": Users,
+  "clipboard-outline": ClipboardList,
+  "videocam-outline": Video,
+  "shop-outline": Store,
+  "bag-outline": ShoppingBag,
+  "card-outline": CreditCard,
+  "grid-outline": Briefcase,
+  "order-outline": ClipboardList,
+  "phone-outline": Phone,
 };
 
 export function TemplatePreview({ templateId, initialScreenId, manifest, screens, onScreenChange }) {

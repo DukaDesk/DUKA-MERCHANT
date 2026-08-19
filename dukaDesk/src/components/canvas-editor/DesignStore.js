@@ -60,7 +60,7 @@ function ensureChrome(screen) {
   return screen;
 }
 
-function getDefaultData() {
+export function getDefaultData() {
   return {
     meta: { category: "", appName: "", primaryColor: "#1A1A2E", logo: null },
     navigation: { initialScreen: "screen_1", tabs: [] },
@@ -92,7 +92,9 @@ function loadLocalFallback() {
   return null;
 }
 
-export function useDesignStore(initialData) {
+export function useDesignStore(initialData, options = {}) {
+  const deferSave = !!options.deferSave;
+  const dirtyRef = useRef(false);
   const [data, setData] = useState(() => initialData || loadLocalFallback() || getDefaultData());
   const [serverLastSaved, setServerLastSaved] = useState(null);
   const [currentScreenId, setCurrentScreenId] = useState(data.navigation.initialScreen);
@@ -109,22 +111,27 @@ export function useDesignStore(initialData) {
   const apiSaveTimerRef = useRef(null);
 
   const templateLoadedRef = useRef(false);
+  const [hydrated, setHydrated] = useState(!!initialData);
 
   useEffect(() => {
-    if (!initialData) {
-      getDesignData().then(apiData => {
-        if (!templateLoadedRef.current && apiData?.meta && apiData?.screens && apiData?.shared) {
-          if (!Array.isArray(apiData.savedSections)) apiData.savedSections = [];
-          migrateScreens(apiData);
-          setData(apiData);
-          setCurrentScreenId(apiData.navigation?.initialScreen || Object.keys(apiData.screens)[0]);
-          setServerLastSaved(new Date());
-        }
-      }).catch(() => {});
+    if (initialData) {
+      setHydrated(true);
+      return;
     }
+    getDesignData().then(apiData => {
+      if (!templateLoadedRef.current && apiData?.meta && apiData?.screens && apiData?.shared) {
+        if (!Array.isArray(apiData.savedSections)) apiData.savedSections = [];
+        migrateScreens(apiData);
+        setData(apiData);
+        setCurrentScreenId(apiData.navigation?.initialScreen || Object.keys(apiData.screens)[0]);
+        setServerLastSaved(new Date());
+      }
+    }).catch(() => {}).finally(() => setHydrated(true));
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
+    if (deferSave && !dirtyRef.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       try {
@@ -134,16 +141,18 @@ export function useDesignStore(initialData) {
       } catch {}
     }, 300);
     return () => clearTimeout(saveTimerRef.current);
-  }, [data]);
+  }, [data, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) return;
+    if (deferSave && !dirtyRef.current) return;
     if (apiSaveTimerRef.current) clearTimeout(apiSaveTimerRef.current);
     apiSaveTimerRef.current = setTimeout(() => {
       setSavingToServer(true);
       saveDesignData(data).then(() => { setServerLastSaved(new Date()); setSavingToServer(false); }).catch(() => setSavingToServer(false));
     }, 2000);
     return () => clearTimeout(apiSaveTimerRef.current);
-  }, [data]);
+  }, [data, hydrated]);
 
   const saveToServer = useCallback(async () => {
     if (apiSaveTimerRef.current) clearTimeout(apiSaveTimerRef.current);
@@ -158,6 +167,7 @@ export function useDesignStore(initialData) {
   }, [data]);
 
   const clearDesign = useCallback(() => {
+    dirtyRef.current = true;
     // eslint-disable-next-line no-empty
     try { localStorage.removeItem("dukadesk_design"); } catch {}
     setData(getDefaultData());
@@ -173,6 +183,7 @@ export function useDesignStore(initialData) {
   }, [data]);
 
   const updateData = useCallback((fn) => {
+    dirtyRef.current = true;
     pushUndo();
     setData(prev => {
       const next = JSON.parse(JSON.stringify(prev));
@@ -533,6 +544,28 @@ export function useDesignStore(initialData) {
     setSelectedComponentId(prev => prev === compId ? null : prev);
   }, [updateData]);
 
+  const insertComponentAt = useCallback((sectionId, parentCompId, index, type, props) => {
+    const id = genId();
+    updateData(d => {
+      const sec = findSection(d, sectionId);
+      if (!sec) return;
+      const container = findComponentDeep(sec.components || [], parentCompId);
+      if (!container) return;
+      if (!container.children) container.children = [];
+      const comp = {
+        id, type, props: props || {},
+        fills: [{ type: "solid", color: "#E8E5E0", opacity: 100 }],
+        strokes: [], effects: [], cornerRadius: 0, opacity: 1, rotation: 0,
+        locked: false, visible: true, zIndex: container.children.length,
+        children: [],
+      };
+      const pos = Math.max(0, Math.min(index, container.children.length));
+      container.children.splice(pos, 0, comp);
+    });
+    setSelectedComponentId(id);
+    return id;
+  }, [updateData]);
+
   const duplicateComponentInSection = useCallback((sectionId, compId) => {
     updateData(d => {
       const sec = findSection(d, sectionId);
@@ -627,6 +660,21 @@ export function useDesignStore(initialData) {
     });
   }, [updateData]);
 
+  const addTabs = useCallback((tabs) => {
+    updateData(d => {
+      if (!Array.isArray(tabs) || tabs.length === 0) return;
+      const existing = d.navigation.tabs || [];
+      const startIdx = existing.length;
+      const next = tabs.map((t, i) => ({
+        id: `tab_${Date.now()}_${i}`,
+        label: t.label || `Tab ${startIdx + i + 1}`,
+        icon: t.icon || "\uD83D\uDCCB",
+        screenId: t.screenId || "",
+      }));
+      d.navigation.tabs = [...existing, ...next];
+    });
+  }, [updateData]);
+
   const removeTab = useCallback((index) => {
     updateData(d => {
       if (!d.navigation.tabs) return;
@@ -679,6 +727,7 @@ export function useDesignStore(initialData) {
   /* ── Load Template ── */
   const loadTemplate = useCallback((templateData) => {
     templateLoadedRef.current = true;
+    dirtyRef.current = true;
     pushUndo();
     const enriched = JSON.parse(JSON.stringify(templateData));
     if (enriched.shared) {
@@ -751,11 +800,12 @@ export function useDesignStore(initialData) {
 
     // Components
     addComponentToSection, removeComponentFromSection,
+    insertComponentAt,
     duplicateComponentInSection,
     reorderComponent, updateComponentInSection, updateProp, clearProp,
 
     // Navigation tabs
-    addTab, removeTab, updateTab, reorderTab,
+    addTab, addTabs, removeTab, updateTab, reorderTab,
 
     // Meta / Navigation
     setMeta, setNavigation,

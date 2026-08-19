@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars -- used by the commented-out tenant API calls (restore path)
 import axios from "axios";
 import httpClient from "./httpClient";
 import { WIZARD_INTEGRATIONS } from "../config/wizard";
@@ -24,6 +25,133 @@ function buildIntegrationCatalog(connected) {
   }));
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   DEMO MODE — FRONTEND-ONLY DUMMY DATA  [DEMO]
+   ═══════════════════════════════════════════════════════════════════
+   The backend is unavailable (tenant API calls were failing with
+   "only tenant owner can perform this action"), so every tenant-scoped
+   call below has been commented out and replaced with realistic sample
+   data kept in localStorage. Auth, profile and notification endpoints
+   are untouched. To restore real API calls, un-comment the httpClient
+   lines in each function and delete the demo helpers above them.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const DEMO_STORE_KEY = "dukadesk_demo_store";
+
+const DEMO_PLANS = [
+  {
+    name: "Starter",
+    label: "₦9,000/month",
+    color: "#6B7280",
+    current: false,
+    features: { "Up to 50 products": true, "Custom domain": false, "Advanced analytics": false, "Priority support": false, "Team members": 1 },
+  },
+  {
+    name: "Business",
+    label: "₦25,000/month",
+    color: "#1B4332",
+    current: false,
+    features: { "Up to 50 products": true, "Custom domain": true, "Advanced analytics": true, "Priority support": true, "Team members": 5 },
+  },
+  {
+    name: "Enterprise",
+    label: "₦75,000/month",
+    color: "#F4A026",
+    current: false,
+    features: { "Unlimited products": true, "Custom domain": true, "Advanced analytics": true, "Priority support": true, "Team members": 25 },
+  },
+];
+
+function demoSeed() {
+  return {
+    tenant: {
+      id: "tenant_demo_001",
+      name: "Ada's Kitchen",
+      slug: "adas-kitchen",
+      category: "Restaurant",
+      status: "active",
+      createdAt: new Date().toISOString(),
+    },
+    config: {
+      app: {
+        appName: "Ada's Kitchen",
+        businessName: "Ada's Kitchen",
+        slug: "adas-kitchen",
+        storeUrl: "dukadesk.app/adas-kitchen",
+        category: "Restaurant",
+        template: "Classic Dine",
+        tagline: "Home-cooked Nigerian favourites, delivered fresh.",
+        color: "#1B4332",
+        logo: null,
+        selectedIntegrations: ["Paystack"],
+        bizDesc: "Your favourite local kitchen serving rich, smoky jollof and more.",
+        phone: "+234 801 234 5678",
+        address: "12 Admiralty Way, Lekki Phase 1",
+        hours: [],
+        status: "live",
+        updatedAt: new Date().toISOString(),
+      },
+      compliance: {
+        businessName: "Ada's Kitchen",
+        businessType: "Restaurant",
+        status: "approved",
+        complianceDone: true,
+        submittedAt: new Date().toISOString(),
+      },
+      profile: null,
+      design: null,
+      releases: [],
+      deployed: null,
+      integrationConfigs: {},
+    },
+    products: [
+      { id: "p_1001", name: "Jollof Rice & Chicken", cat: "Mains", price: 2500, stock: 24, status: "In Stock", img: "soup" },
+      { id: "p_1002", name: "Peppered Gizzard", cat: "Small Chops", price: 1800, stock: 40, status: "In Stock", img: "drumstick" },
+      { id: "p_1003", name: "Grilled Tilapia", cat: "Mains", price: 4500, stock: 0, status: "Out of Stock", img: "fish" },
+      { id: "p_1004", name: "Egusi Soup + Eba", cat: "Mains", price: 3200, stock: 12, status: "Low Stock", img: "cookingpot" },
+      { id: "p_1005", name: "Chicken Shawarma", cat: "Small Chops", price: 2000, stock: 18, status: "In Stock", img: "sandwich" },
+      { id: "p_1006", name: "Chapman Cocktail", cat: "Drinks", price: 1500, stock: 35, status: "In Stock", img: "cupsoda" },
+    ],
+    orders: [
+      { id: "#ORD-1001", customer: "Chidinma Okafor", items: "2x Jollof Rice & Chicken, 1x Chapman", total: 6500, payment: "Card", status: "Pending", date: "Today, 2:30 PM", address: "14 Admiralty Way, Lekki Phase 1" },
+      { id: "#ORD-1002", customer: "Emeka Nwosu", items: "1x Grilled Tilapia, 2x Peppered Gizzard", total: 8100, payment: "Transfer", status: "Processing", date: "Today, 1:05 PM", address: "5 Bourdillon Road, Ikoyi" },
+      { id: "#ORD-1003", customer: "Fatima Bello", items: "3x Egusi Soup + Eba", total: 10100, payment: "Card", status: "Completed", date: "Yesterday", address: "8 Akin Adesola St, Victoria Island" },
+      { id: "#ORD-1004", customer: "Tunde Adeyemi", items: "1x Chicken Shawarma, 1x Chapman", total: 3700, payment: "Cash", status: "Cancelled", date: "Yesterday", address: "22 Ozumba Mbadiwe, VI" },
+      { id: "#ORD-1005", customer: "Ngozi Uche", items: "4x Jollof Rice & Chicken", total: 10600, payment: "Card", status: "Completed", date: "Mon", address: "3 Yacht Road, Lekki Phase 2" },
+    ],
+    coupons: [
+      { id: "c_1", code: "WELCOME15", type: "percentage", value: 15, usage: 42, maxUsage: 200, minOrder: 3000, expires: "2026-12-31", status: "Active" },
+      { id: "c_2", code: "JOLOFF5", type: "fixed", value: 500, usage: 18, maxUsage: 100, minOrder: 2000, expires: "2026-10-31", status: "Active" },
+    ],
+    subscription: {
+      plan: "Business",
+      label: "₦25,000/month",
+      renews: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      features: ["Unlimited products", "Custom domain", "Advanced analytics", "Priority support"],
+    },
+    billingHistory: [
+      { date: "Jul 25, 2026", desc: "Business plan — monthly", amount: "₦25,000", status: "Paid" },
+      { date: "Jun 25, 2026", desc: "Business plan — monthly", amount: "₦25,000", status: "Paid" },
+      { date: "May 25, 2026", desc: "Business plan — monthly", amount: "₦25,000", status: "Paid" },
+    ],
+    integrations: [{ provider: "Paystack", name: "Paystack" }],
+  };
+}
+
+function demoStore() {
+  try {
+    const raw = localStorage.getItem(DEMO_STORE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  const seed = demoSeed();
+  try { localStorage.setItem(DEMO_STORE_KEY, JSON.stringify(seed)); } catch { /* ignore */ }
+  return seed;
+}
+
+function demoSave(store) {
+  try { localStorage.setItem(DEMO_STORE_KEY, JSON.stringify(store)); } catch { /* ignore */ }
+}
+
 /* ───── Token ───── */
 export function setToken(t) {
   if (t) localStorage.setItem("dukadesk_token", t);
@@ -36,22 +164,27 @@ function setRefreshToken(t) {
 }
 
 async function fetchTenantSilently(tenantId = null) {
-  const token = localStorage.getItem("dukadesk_token");
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const base = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
-  try {
-    if (tenantId) {
-      const res = await axios.get(`${base}/api/v1/tenants/${tenantId}`, { headers });
-      const body = res.data?.data ?? res.data;
-      return body?.name ? body : null;
-    }
-    const res = await axios.get(`${base}/api/v1/tenants/my`, { headers });
-    const body = res.data?.tenants ?? res.data?.data ?? res.data;
-    const tenants = Array.isArray(body) ? body : [];
-    return tenants.length > 0 ? tenants[0] : null;
-  } catch {
-    return null;
-  }
+  // [DEMO] Real call commented out (backend unavailable):
+  // const token = localStorage.getItem("dukadesk_token");
+  // const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  // const base = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+  // try {
+  //   if (tenantId) {
+  //     const res = await axios.get(`${base}/api/v1/tenants/${tenantId}`, { headers });
+  //     const body = res.data?.data ?? res.data;
+  //     return body?.name ? body : null;
+  //   }
+  //   const res = await axios.get(`${base}/api/v1/tenants/my`, { headers });
+  //   const body = res.data?.tenants ?? res.data?.data ?? res.data;
+  //   const tenants = Array.isArray(body) ? body : [];
+  //   return tenants.length > 0 ? tenants[0] : null;
+  // } catch {
+  //   return null;
+  // }
+  const store = demoStore();
+  const tenant = { ...store.tenant };
+  if (tenantId && tenant.id !== tenantId) return null;
+  return tenant;
 }
 
 /* ───── Setup / App Config ───── */
@@ -59,6 +192,7 @@ export function setSetupData(data) { try { localStorage.setItem("dukadesk_setup"
 export function getSetupData() { try { return JSON.parse(localStorage.getItem("dukadesk_setup")); } catch { return null; } }
 
 /* ───── Compliance ───── */
+// eslint-disable-next-line no-unused-vars -- used by the commented-out compliance upload (restore path)
 function dataUrlToBlob(dataUrl) {
   const [meta, b64] = String(dataUrl || "").split(",");
   const mime = (meta.match(/data:(.*?)[;,]/) || [])[1] || "application/octet-stream";
@@ -69,12 +203,14 @@ function dataUrlToBlob(dataUrl) {
 }
 
 export async function uploadComplianceDocument(tenantId, file) {
-  const form = new FormData();
-  form.append("file", dataUrlToBlob(file.data), file.name);
-  const res = await httpClient.post(`/api/v1/tenants/${tenantId}/media/upload`, form, {
-    headers: { "Content-Type": undefined },
-  });
-  return res.data || res;
+  // [DEMO] Real upload commented out (backend unavailable) — documents are recorded as "pending":
+  // const form = new FormData();
+  // form.append("file", dataUrlToBlob(file.data), file.name);
+  // const res = await httpClient.post(`/api/v1/tenants/${tenantId}/media/upload`, form, {
+  //   headers: { "Content-Type": undefined },
+  // });
+  // return res.data || res;
+  return { tenantId, fileName: file?.name || null, status: "pending", mediaId: null, url: null };
 }
 
 function toDocumentRecord(file, uploaded) {
@@ -110,12 +246,8 @@ export async function submitCompliance(tenantId, formData) {
   await updateTenant(tenantId, {
     name: info.businessName,
     phone: info.phone,
-    address: `${info.address}, ${info.city || ""}, ${info.state || ""}, ${info.country || ""}`,
   });
-  const config = await getTenantConfig(tenantId).catch(() => ({}));
-  const existing = config.data || config;
-  await updateTenantConfig(tenantId, {
-    ...existing,
+  await writeConfig(tenantId, {
     compliance: {
       businessName: info.businessName,
       businessType: info.businessType || "",
@@ -140,9 +272,8 @@ export async function submitCompliance(tenantId, formData) {
 
 export async function getComplianceStatus(tenantId) {
   try {
-    const config = await getTenantConfig(tenantId);
-    const data = config.data || config;
-    return !!(data?.compliance?.complianceDone);
+    const { data } = await readConfig(tenantId);
+    return !!(data.compliance?.complianceDone);
   } catch {
     return false;
   }
@@ -184,8 +315,7 @@ async function hydrateMerchantCategory(merchant) {
   }
   if (!category) {
     try {
-      const config = await getTenantConfig(merchant.tenantId).catch(() => ({}));
-      const data = config.data || config;
+      const { data } = await readConfig(merchant.tenantId);
       category = data?.app?.category || "";
     } catch { /* best-effort */ }
   }
@@ -297,18 +427,12 @@ export async function googleSignIn(idToken) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function deployApp(appData) {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  if (!tenantId) throw new Error("No tenant — signup required");
+  const tenantId = await ensureTenant();
 
   const slug = (appData.appName || "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   const storeUrl = `dukadesk.app/${slug}`;
 
-  const config = await getTenantConfig(tenantId).catch(() => ({}));
-  const existing = config.data || config;
-
-  await updateTenantConfig(tenantId, {
-    ...existing,
+  await writeConfig(tenantId, {
     app: {
       appName: appData.appName,
       slug,
@@ -333,16 +457,12 @@ export async function deployApp(appData) {
 }
 
 export async function updateApp(appData) {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  if (!tenantId) throw new Error("No tenant");
+  const tenantId = await ensureTenant();
 
-  const config = await getTenantConfig(tenantId);
-  const existing = config.data || config;
-  const app = existing.app || {};
+  const { data } = await readConfig(tenantId);
+  const app = data.app || {};
 
-  await updateTenantConfig(tenantId, {
-    ...existing,
+  await writeConfig(tenantId, {
     app: { ...app, ...appData, updatedAt: new Date().toISOString() },
   });
 
@@ -353,20 +473,17 @@ export async function getMyApp() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return null;
-  const config = await getTenantConfig(tenantId);
-  const data = config.data || config;
-  return data?.app || null;
+  const { data } = await readConfig(tenantId);
+  return data.app || null;
 }
 
 export async function saveCategory(category) {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return { success: false };
-  const config = await getTenantConfig(tenantId).catch(() => ({}));
-  const data = config.data || config;
-  await updateTenantConfig(tenantId, {
-    ...data,
-    app: { ...(data?.app || {}), category, updatedAt: new Date().toISOString() },
+  const { data } = await readConfig(tenantId);
+  await writeConfig(tenantId, {
+    app: { ...(data.app || {}), category, updatedAt: new Date().toISOString() },
   });
   return { success: true };
 }
@@ -394,11 +511,9 @@ export async function saveDashboardModules(modules) {
 
   const tenantId = merchant?.tenantId;
   if (!tenantId) return { success: false };
-  const config = await getTenantConfig(tenantId).catch(() => ({}));
-  const data = config.data || config;
-  await updateTenantConfig(tenantId, {
-    ...data,
-    app: { ...(data?.app || {}), modules: list, updatedAt: new Date().toISOString() },
+  const { data } = await readConfig(tenantId);
+  await writeConfig(tenantId, {
+    app: { ...(data.app || {}), modules: list, updatedAt: new Date().toISOString() },
   });
   return { success: true };
 }
@@ -432,57 +547,76 @@ export async function getRevenue() {
 }
 
 export async function getActivity() {
-  try {
-    const merchant = getMerchant();
-    const tenantId = merchant?.tenantId;
-    if (!tenantId) return [];
-    const res = await httpClient.get(`${tenantPath(tenantId)}/orders`, { params: { limit: 5 } });
-    const orders = res.data || res;
-    if (Array.isArray(orders)) {
-      return orders.map(o => ({
-        icon: "🛒",
-        title: `New order from ${o.customer || "customer"}`,
-        sub: `₦${(o.total || 0).toLocaleString()}`,
-        time: o.date || "recent",
-        color: "#F4A026",
-      }));
-    }
-    return [];
-  } catch {
-    return [];
-  }
+  // [DEMO] Real call commented out (backend unavailable):
+  // const merchant = getMerchant();
+  // const tenantId = merchant?.tenantId;
+  // if (!tenantId) return [];
+  // const res = await httpClient.get(`${tenantPath(tenantId)}/orders`, { params: { limit: 5 } });
+  // const orders = res.data || res;
+  // if (Array.isArray(orders)) {
+  //   return orders.map(o => ({
+  //     icon: "🛒",
+  //     title: `New order from ${o.customer || "customer"}`,
+  //     sub: `₦${(o.total || 0).toLocaleString()}`,
+  //     time: o.date || "recent",
+  //     color: "#F4A026",
+  //   }));
+  // }
+  // return [];
+  return (demoStore().orders || []).slice(0, 5).map(o => ({
+    icon: "🛒",
+    title: `New order from ${o.customer || "customer"}`,
+    sub: `₦${(o.total || 0).toLocaleString()}`,
+    time: o.date || "recent",
+    color: "#F4A026",
+  }));
 }
 
 /* ═══════════════════════════════════════════════════════════════════
    PRODUCTS
    ═══════════════════════════════════════════════════════════════════ */
 
+// eslint-disable-next-line no-unused-vars -- used by the commented-out tenant API calls (restore path)
 function tenantPath(tenantId) {
   return tenantId ? `/api/v1/tenants/${tenantId}` : "";
 }
 
 export async function getProducts() {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
-  return unwrapList(res);
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
+  // [DEMO] return unwrapList(res);
+  return demoStore().products || [];
 }
 
 export async function createProduct(body) {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  const res = await httpClient.post(`${tenantPath(tenantId)}/products`, body);
-  return res.data || res;
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] const res = await httpClient.post(`${tenantPath(tenantId)}/products`, body);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  const created = { ...body, id: `p_${Date.now()}` };
+  store.products = [created, ...(store.products || [])];
+  demoSave(store);
+  return created;
 }
 
 export async function updateProduct(id, body) {
-  const res = await httpClient.put(`/api/v1/products/${id}`, body);
-  return res.data || res;
+  // [DEMO] const res = await httpClient.put(`/api/v1/products/${id}`, body);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  store.products = (store.products || []).map(p => (p.id === id ? { ...p, ...body, id } : p));
+  demoSave(store);
+  return { ...body, id };
 }
 
 export async function deleteProduct(id) {
-  const res = await httpClient.delete(`/api/v1/products/${id}`);
-  return res.data || res;
+  // [DEMO] const res = await httpClient.delete(`/api/v1/products/${id}`);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  store.products = (store.products || []).filter(p => p.id !== id);
+  demoSave(store);
+  return { id };
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -490,15 +624,20 @@ export async function deleteProduct(id) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getOrders() {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  const res = await httpClient.get(`${tenantPath(tenantId)}/orders`);
-  return unwrapList(res);
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] const res = await httpClient.get(`${tenantPath(tenantId)}/orders`);
+  // [DEMO] return unwrapList(res);
+  return demoStore().orders || [];
 }
 
 export async function updateOrderStatus(id, status) {
-  const res = await httpClient.post(`/api/v1/orders/${id}/status`, { status });
-  return res.data || res;
+  // [DEMO] const res = await httpClient.post(`/api/v1/orders/${id}/status`, { status });
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  store.orders = (store.orders || []).map(o => (o.id === id ? { ...o, status } : o));
+  demoSave(store);
+  return { id, status };
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -573,25 +712,31 @@ export async function dismissNotification(id) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getIntegrations() {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  try {
-    const res = await httpClient.get(`${tenantPath(tenantId)}/integrations`);
-    const body = unwrapList(res);
-    return buildIntegrationCatalog(body);
-  } catch {
-    return buildIntegrationCatalog([]);
-  }
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] try {
+  // [DEMO]   const res = await httpClient.get(`${tenantPath(tenantId)}/integrations`);
+  // [DEMO]   const body = unwrapList(res);
+  // [DEMO]   return buildIntegrationCatalog(body);
+  // [DEMO] } catch {
+  // [DEMO]   return buildIntegrationCatalog([]);
+  // [DEMO] }
+  return buildIntegrationCatalog(unwrapList(demoStore().integrations || []));
 }
 
 export async function toggleIntegration(name, active) {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  if (active === false) {
-    await httpClient.post(`${tenantPath(tenantId)}/integrations/${name}/disconnect`);
-  } else {
-    await httpClient.post(`${tenantPath(tenantId)}/integrations/connect`, { provider: name });
-  }
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] if (active === false) {
+  // [DEMO]   await httpClient.post(`${tenantPath(tenantId)}/integrations/${name}/disconnect`);
+  // [DEMO] } else {
+  // [DEMO]   await httpClient.post(`${tenantPath(tenantId)}/integrations/connect`, { provider: name });
+  // [DEMO] }
+  const store = demoStore();
+  const connected = (store.integrations || []).filter(i => i.name !== name);
+  if (active !== false) connected.push({ provider: name, name });
+  store.integrations = connected;
+  demoSave(store);
   return { name, active: active !== false };
 }
 
@@ -600,69 +745,93 @@ export async function toggleIntegration(name, active) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getCurrentPlan() {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  const res = await httpClient.get(`${tenantPath(tenantId)}/subscription`);
-  return res.data || res;
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] const res = await httpClient.get(`${tenantPath(tenantId)}/subscription`);
+  // [DEMO] return res.data || res;
+  return demoStore().subscription || null;
 }
 
 export async function getPlans() {
-  const res = await httpClient.get("/api/v1/bff/website/pricing");
-  return unwrapList(res);
+  // [DEMO] const res = await httpClient.get("/api/v1/bff/website/pricing");
+  // [DEMO] return unwrapList(res);
+  const current = (demoStore().subscription || {}).plan;
+  return DEMO_PLANS.map(p => ({ ...p, current: p.name === current }));
 }
 
 export async function getBillingHistory() {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  try {
-    const res = await httpClient.get(`${tenantPath(tenantId)}/billing-history`);
-    return unwrapList(res);
-  } catch {
-    try {
-      const res = await httpClient.get(`${tenantPath(tenantId)}/payments/transactions`, { params: { limit: 50 } });
-      const rows = unwrapList(res);
-      return rows.map(t => ({
-        date: t?.createdAt ? new Date(t.createdAt).toLocaleDateString() : "",
-        desc: t?.description || t?.reference || t?.id || "Transaction",
-        amount: t?.currency === "USD" ? `$${((t?.amount || t?.value) || 0).toFixed(2)}` : `₦${(t?.amount || t?.value || 0).toLocaleString()}`,
-        status: t?.status || t?.transactionStatus || "completed",
-      }));
-    } catch {
-      return [];
-    }
-  }
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] try {
+  // [DEMO]   const res = await httpClient.get(`${tenantPath(tenantId)}/billing-history`);
+  // [DEMO]   return unwrapList(res);
+  // [DEMO] } catch {
+  // [DEMO]   try {
+  // [DEMO]     const res = await httpClient.get(`${tenantPath(tenantId)}/payments/transactions`, { params: { limit: 50 } });
+  // [DEMO]     const rows = unwrapList(res);
+  // [DEMO]     return rows.map(t => ({
+  // [DEMO]       date: t?.createdAt ? new Date(t.createdAt).toLocaleDateString() : "",
+  // [DEMO]       desc: t?.description || t?.reference || t?.id || "Transaction",
+  // [DEMO]       amount: t?.currency === "USD" ? `$${((t?.amount || t?.value) || 0).toFixed(2)}` : `₦${(t?.amount || t?.value || 0).toLocaleString()}`,
+  // [DEMO]       status: t?.status || t?.transactionStatus || "completed",
+  // [DEMO]     }));
+  // [DEMO]   } catch {
+  // [DEMO]     return [];
+  // [DEMO]   }
+  // [DEMO] }
+  return demoStore().billingHistory || [];
 }
 
 export async function upgradePlan(body) {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  const res = await httpClient.post(`${tenantPath(tenantId)}/subscribe`, body);
-  return res.data || res;
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] const res = await httpClient.post(`${tenantPath(tenantId)}/subscribe`, body);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  const plan = DEMO_PLANS.find(p => p.name === body?.planName) || DEMO_PLANS[1];
+  store.subscription = {
+    plan: plan.name,
+    label: plan.label,
+    renews: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    features: Object.keys(plan.features).filter(k => plan.features[k] === true),
+  };
+  demoSave(store);
+  return { success: true, plan: store.subscription };
 }
 
 /* ───── Marketing: Coupons ───── */
 
 export async function getCoupons() {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  try {
-    const res = await httpClient.get(`${tenantPath(tenantId)}/coupons`);
-    return unwrapList(res);
-  } catch {
-    return [];
-  }
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] try {
+  // [DEMO]   const res = await httpClient.get(`${tenantPath(tenantId)}/coupons`);
+  // [DEMO]   return unwrapList(res);
+  // [DEMO] } catch {
+  // [DEMO]   return [];
+  // [DEMO] }
+  return demoStore().coupons || [];
 }
 
 export async function createCoupon(body) {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  const res = await httpClient.post(`${tenantPath(tenantId)}/coupons`, body);
-  return res.data || res;
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] const res = await httpClient.post(`${tenantPath(tenantId)}/coupons`, body);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  const created = { ...body, id: `c_${Date.now()}` };
+  store.coupons = [created, ...(store.coupons || [])];
+  demoSave(store);
+  return created;
 }
 
 export async function deleteCoupon(id) {
-  const res = await httpClient.delete(`/api/v1/coupons/${id}`);
-  return res.data || res;
+  // [DEMO] const res = await httpClient.delete(`/api/v1/coupons/${id}`);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  store.coupons = (store.coupons || []).filter(c => c.id !== id);
+  demoSave(store);
+  return { id };
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -670,31 +839,55 @@ export async function deleteCoupon(id) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getRevenueData() {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  const res = await httpClient.get(`/api/v1/analytics/reports/revenue`, { params: { tenantId } });
-  return unwrapList(res);
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] const res = await httpClient.get(`/api/v1/analytics/reports/revenue`, { params: { tenantId } });
+  // [DEMO] return unwrapList(res);
+  return [
+    { w: "Week 1", v: 182000, week: "Week 1", revenue: 182000 },
+    { w: "Week 2", v: 224500, week: "Week 2", revenue: 224500 },
+    { w: "Week 3", v: 210000, week: "Week 3", revenue: 210000 },
+    { w: "Week 4", v: 285000, week: "Week 4", revenue: 285000 },
+  ];
 }
 
 export async function getOrderStats() {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  const res = await httpClient.get(`${tenantPath(tenantId)}/orders`);
-  return unwrapList(res);
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] const res = await httpClient.get(`${tenantPath(tenantId)}/orders`);
+  // [DEMO] return unwrapList(res);
+  return [
+    { name: "Completed", value: 24 },
+    { name: "Pending", value: 6 },
+    { name: "Cancelled", value: 3 },
+  ];
 }
 
 export async function getTopProducts() {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
-  return unwrapList(res);
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
+  // [DEMO] return unwrapList(res);
+  return [
+    { name: "Jollof Rice & Chicken", views: 1240, orders: 86, revenue: 215000, trend: "↑" },
+    { name: "Egusi Soup + Eba", views: 980, orders: 54, revenue: 172800, trend: "↑" },
+    { name: "Peppered Gizzard", views: 720, orders: 41, revenue: 73800, trend: "↓" },
+  ];
 }
 
 export async function getAnalyticsSummary() {
-  const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  const res = await httpClient.get(`/api/v1/analytics/summary`, { params: { tenantId } });
-  return res.data || res;
+  // [DEMO] const merchant = getMerchant();
+  // [DEMO] const tenantId = merchant?.tenantId;
+  // [DEMO] const res = await httpClient.get(`/api/v1/analytics/summary`, { params: { tenantId } });
+  // [DEMO] return res.data || res;
+  return {
+    customers: 328,
+    revenue: 285000,
+    unreadMessages: 4,
+    avgRating: 4.8,
+    reviewsCount: 234,
+    orders: 33,
+  };
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -702,44 +895,128 @@ export async function getAnalyticsSummary() {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function createTenant(body) {
-  const res = await httpClient.post("/api/v1/tenants", body);
-  return res.data || res;
+  // [DEMO] const res = await httpClient.post("/api/v1/tenants", body);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  const slug = body?.slug || (body?.name || "my-business").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/g, "") || "my-business";
+  store.tenant = { id: `tenant_${Date.now()}`, name: body?.name || "My Business", slug, category: body?.category || "Restaurant", status: "active", createdAt: new Date().toISOString() };
+  demoSave(store);
+  return { ...store.tenant };
 }
 
 export async function getTenant(id) {
-  const res = await httpClient.get(`/api/v1/tenants/${id}`);
-  return res.data || res;
+  // [DEMO] const res = await httpClient.get(`/api/v1/tenants/${id}`);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  return store.tenant.id === id ? { ...store.tenant } : null;
 }
 
 export async function suspendTenant(id) {
-  const res = await httpClient.post(`/api/v1/tenants/${id}/suspend`);
-  return res.data || res;
+  // [DEMO] const res = await httpClient.post(`/api/v1/tenants/${id}/suspend`);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  store.tenant = { ...store.tenant, status: "suspended" };
+  demoSave(store);
+  return { id, status: "suspended" };
 }
 
 export async function updateTenant(id, body) {
-  const res = await httpClient.put(`/api/v1/tenants/${id}`, body);
-  const data = res.data || res;
+  // [DEMO] const res = await httpClient.put(`/api/v1/tenants/${id}`, body);
+  // [DEMO] const data = res.data || res;
+  // [DEMO] const m = getMerchant();
+  // [DEMO] if (m && data) {
+  // [DEMO]   const updated = { ...m, business: data.name || m.business };
+  // [DEMO]   setMerchant(updated);
+  // [DEMO] }
+  // [DEMO] return data;
+  const store = demoStore();
+  store.tenant = { ...store.tenant, ...body };
+  demoSave(store);
   const m = getMerchant();
-  if (m && data) {
-    const updated = { ...m, business: data.name || m.business };
-    setMerchant(updated);
-  }
-  return data;
+  if (m) setMerchant({ ...m, business: body?.name || m.business });
+  return { ...store.tenant };
 }
 
 export async function getTenantConfig(id) {
-  const res = await httpClient.get(`/api/v1/tenants/${id}/config`);
-  return res.data || res;
+  // [DEMO] const res = await httpClient.get(`/api/v1/tenants/${id}/config`);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  return { id, config: store.config || {} };
 }
 
 export async function updateTenantConfig(id, body) {
-  const res = await httpClient.put(`/api/v1/tenants/${id}/config`, body);
-  return res.data || res;
+  // [DEMO] const res = await httpClient.put(`/api/v1/tenants/${id}/config`, body);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  store.config = { ...(store.config || {}), ...(body?.config || {}) };
+  demoSave(store);
+  return { id, config: store.config };
 }
 
 export async function publishTenant(id) {
-  const res = await httpClient.post(`/api/v1/tenants/${id}/publish`);
-  return res.data || res;
+  // [DEMO] const res = await httpClient.post(`/api/v1/tenants/${id}/publish`);
+  // [DEMO] return res.data || res;
+  const store = demoStore();
+  if (store.config?.app) store.config.app.status = "live";
+  demoSave(store);
+  return { id, published: true };
+}
+
+/* ───── Tenant config (backend contract) ─────
+   The backend stores runtime config in a Prisma `tenantConfig` table. The generic
+   JSON payload lives in the `config` column (app, design, compliance, releases,
+   integrationConfigs, …). Top-level columns are scalars only (languages, currency,
+   timezone, region, offlinePolicy, searchSettings, notificationPrefs). */
+
+const CONFIG_COLUMNS = ["languages", "currency", "timezone", "region", "offlinePolicy", "searchSettings", "notificationPrefs"];
+
+function configRow(cfg) {
+  if (!cfg) return {};
+  if (cfg.data && typeof cfg.data === "object") return cfg.data;
+  return cfg;
+}
+
+async function readConfig(tenantId) {
+  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
+  const row = configRow(cfg);
+  return { row, data: row.config && typeof row.config === "object" ? row.config : {} };
+}
+
+async function writeConfig(tenantId, patch) {
+  const { row, data } = await readConfig(tenantId);
+  const body = { config: { ...data, ...patch } };
+  CONFIG_COLUMNS.forEach(k => {
+    if (row[k] !== undefined) body[k] = row[k];
+  });
+  return updateTenantConfig(tenantId, body);
+}
+
+/* Create a tenant on first use (fresh signups have no tenant) and persist its id
+   back onto the merchant so every tenant-scoped API call has a valid tenantId. */
+export async function ensureTenant(name) {
+  const merchant = getMerchant() || {};
+  if (merchant.tenantId) return merchant.tenantId;
+
+  const baseName = (name || merchant.business || merchant.name || "My Business").trim() || "My Business";
+  const slugBase = baseName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/g, "").slice(0, 40);
+  const candidate = slugBase || "my-business";
+
+  let tenant = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const slug = attempt === 0 ? candidate : `${candidate.slice(0, 32)}-${Math.floor(100 + Math.random() * 900)}`;
+    try {
+      const res = await createTenant({ name: baseName, slug });
+      tenant = res.data || res;
+      break;
+    } catch {
+      if (attempt === 2) throw new Error("Failed to create tenant");
+    }
+  }
+
+  const tenantId = tenant?.id || tenant?.tenantId;
+  if (!tenantId) throw new Error("Failed to create tenant");
+  setMerchant({ ...merchant, tenantId, tenantSlug: tenant.slug || candidate });
+  return tenantId;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -750,8 +1027,7 @@ export async function getIntegrationConfig(name) {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return null;
-  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
-  const data = cfg.data || cfg;
+  const { data } = await readConfig(tenantId);
   return data.integrationConfigs?.[name] || null;
 }
 
@@ -759,10 +1035,8 @@ export async function setIntegrationConfig(name, config) {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return;
-  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
-  const data = cfg.data || cfg;
-  await updateTenantConfig(tenantId, {
-    ...data,
+  const { data } = await readConfig(tenantId);
+  await writeConfig(tenantId, {
     integrationConfigs: {
       ...(data.integrationConfigs || {}),
       [name]: config,
@@ -778,8 +1052,7 @@ export async function getDesignData() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return null;
-  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
-  const data = cfg.data || cfg;
+  const { data } = await readConfig(tenantId);
   return data.design || null;
 }
 
@@ -787,12 +1060,7 @@ export async function saveDesignData(design) {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return;
-  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
-  const data = cfg.data || cfg;
-  await updateTenantConfig(tenantId, {
-    ...data,
-    design,
-  });
+  await writeConfig(tenantId, { design });
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -803,8 +1071,7 @@ export async function getReleases() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return [];
-  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
-  const data = cfg.data || cfg;
+  const { data } = await readConfig(tenantId);
   return data.releases || [];
 }
 
@@ -812,8 +1079,7 @@ export async function getCurrentDeployment() {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return null;
-  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
-  const data = cfg.data || cfg;
+  const { data } = await readConfig(tenantId);
   return data.deployed || null;
 }
 
@@ -821,24 +1087,14 @@ export async function saveReleases(releases) {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return;
-  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
-  const data = cfg.data || cfg;
-  await updateTenantConfig(tenantId, {
-    ...data,
-    releases,
-  });
+  await writeConfig(tenantId, { releases });
 }
 
 export async function saveDeployment(deployed) {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return;
-  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
-  const data = cfg.data || cfg;
-  await updateTenantConfig(tenantId, {
-    ...data,
-    deployed,
-  });
+  await writeConfig(tenantId, { deployed });
 }
 
 /* ═══════════════════════════════════════════════════════════════════

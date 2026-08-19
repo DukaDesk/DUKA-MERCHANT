@@ -4,6 +4,16 @@ import { registerComponent } from "../../runtime/ComponentRegistry";
 import { useBrand } from "../../runtime/BrandThemeProvider";
 import { ChevronRight } from "lucide-react";
 
+function heroNum(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function heroRadius(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
 function withActionProps(Component) {
   return function WrappedComponent(props) {
     const dispatchAction = useDispatchAction();
@@ -21,22 +31,59 @@ function withActionProps(Component) {
   };
 }
 
-export function HeroBanner({ title, subtitle, image, style = {}, onAction }) {
+export function HeroBanner({ title, subtitle, badge, image, backgroundImage, fill, color, fit, radius, height, variant, style = {}, onAction }) {
   const brand = useBrand();
+  const fitVal = fit === "contain" ? "contain" : "cover";
+  const radiusVal = heroRadius(radius, 16);
+  const heightVal = heroNum(height, 200);
+  const variantVal = variant || "center";
+  const fillVal = fill && typeof fill === "object"
+    ? fill.value
+    : (fill || image || backgroundImage || "");
+  const isImageBg = !!fillVal;
+  const splitImage = variantVal === "split" && isImageBg;
+  const overlay = variantVal === "overlay" && isImageBg;
+  const flex = (variantVal === "left" || variantVal === "overlay")
+    ? { textAlign: "left", alignItems: "flex-start" }
+    : { textAlign: "center", alignItems: "center" };
+  const backgroundColor = color || brand.NAVY || '#0F0F1A';
+  const background = splitImage
+    ? `linear-gradient(135deg, ${backgroundColor}, #15152A)`
+    : (isImageBg
+      ? `url(${fillVal}) center/${fitVal} no-repeat`
+      : `linear-gradient(135deg, ${brand.AMBER || '#F4A026'}, ${backgroundColor})`);
   return (
     <div style={{
-      background: image ? `url(${image}) center/cover` : `linear-gradient(135deg, ${brand.AMBER || '#F4A026'}, ${brand.NAVY || '#0F0F1A'})`,
+      background,
+      backgroundSize: "cover",
       color: "#fff",
-      borderRadius: 16,
-      padding: 32,
-      textAlign: "center",
+      borderRadius: radiusVal,
+      minHeight: heightVal,
+      padding: splitImage ? 0 : 32,
+      textAlign: flex.textAlign,
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: flex.alignItems || "center",
       position: "relative",
       overflow: "hidden",
       ...style
     }}>
-      <div style={{ position: "relative", zIndex: 1 }}>
+      {splitImage && (
+        <img src={fillVal} alt="" style={{
+          position: "absolute", right: 0, top: 0, bottom: 0,
+          width: "42%", height: "100%", objectFit: fitVal,
+        }} />
+      )}
+      {overlay && (
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,rgba(10,10,20,0.1) 0%,rgba(10,10,20,0.7) 100%)" }} />
+      )}
+      <div style={{ position: "relative", zIndex: 1, maxWidth: splitImage ? "58%" : "100%" }}>
+        {badge && (
+          <span style={{ fontSize: 11, fontWeight: 600, background: brand.AMBER || '#F4A026', color: "#6B4200", padding: "4px 12px", borderRadius: 20, marginBottom: 12, display: "inline-block" }}>{badge}</span>
+        )}
         <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 28, marginBottom: 8 }}>{title}</h1>
-        <p style={{ fontSize: 16, opacity: 0.9, marginBottom: 16 }}>{subtitle}</p>
+        {subtitle && <p style={{ fontSize: 16, opacity: 0.9, marginBottom: 16 }}>{subtitle}</p>}
       </div>
     </div>
   );

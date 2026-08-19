@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { getComponentType } from "../canvas-editor/componentTypes";
 import SectionRenderer from "./SectionRenderer";
 import SectionPanel from "./SectionPanel";
+import LayoutPanel from "./LayoutPanel";
 import PropertiesPanel from "./PropertiesPanel";
 import ScreenSwitcher from "./ScreenSwitcher";
 import { toast } from "react-toastify";
@@ -10,31 +11,51 @@ import { theme, iconBtn, primaryBtn, panelHeader } from "./editorTheme";
 import { publishProject, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
 import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
+import { SECTION_PRESETS } from "./sectionPresets";
 
 const PREVIEW_SIZES = {
   mobile: { width: 390, height: 740, label: "Mobile", icon: "M12 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2s2-.9 2-2V4c0-1.1-.9-2-2-2z" },
   tablet: { width: 768, height: 1024, label: "Tablet", icon: "M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" },
-  desktop: { width: 1280, height: 800, label: "Desktop", icon: "M20 4H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h6l-2 4h8l-2-4h6c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" },
 };
 
-const SECTION_PRESETS = {
-  hero: { icon: "\uD83C\uDF1F", type: "hero", name: "Hero Banner", backgroundColor: "#1A1A2E", desc: "Eye-catching banner with title, subtitle and badge", components: [{ type: "hero_banner", props: { title: "Welcome", subtitle: "Your tagline here", badge: "Open Now", color: "#1A1A2E" } }] },
-  menu_list: { icon: "\uD83C\uDF7D\uFE0F", type: "menu_list", name: "Menu List", backgroundColor: "#FCF8FA", desc: "Heading with category pills and menu items", components: [{ type: "text_block", props: { text: "Our Menu", fontSize: 18, fontWeight: 700, color: "#1C1B1D", alignment: "left" } }, { type: "category_pills", props: { categories: "All, Mains, Sides, Drinks" } }, { type: "menu_item", props: { name: "Jollof Rice", price: "\u20A62,500", desc: "Rich, smoky jollof rice", emoji: "\uD83C\uDF5B" } }, { type: "menu_item", props: { name: "Grilled Chicken", price: "\u20A64,500", desc: "Tender grilled chicken", emoji: "\uD83C\uDF57" } }] },
-  about: { icon: "\u2139\uFE0F", type: "info", name: "About / Info", backgroundColor: "#FCF8FA", desc: "Business description with heading and contact button", components: [{ type: "text_block", props: { text: "About Us", fontSize: 22, fontWeight: 700, color: "#1C1B1D", alignment: "left" } }, { type: "text_block", props: { text: "Tell your story here. Describe what makes your business special and why customers should choose you.", fontSize: 14, fontWeight: 400, color: "#6B7280", alignment: "left" } }, { type: "button", props: { label: "Contact Us", color: "#1C1B1D", action: "" } }] },
-  gallery: { icon: "\uD83D\uDDBC\uFE0F", type: "custom", name: "Image Gallery", backgroundColor: "#FCF8FA", desc: "Heading with a row of images", components: [{ type: "text_block", props: { text: "Gallery", fontSize: 18, fontWeight: 700, color: "#1C1B1D", alignment: "left" } }, { type: "image_block", props: { src: "", alt: "Image 1", fit: "cover" } }, { type: "image_block", props: { src: "", alt: "Image 2", fit: "cover" } }] },
-  contact: { icon: "\uD83D\uDCDE", type: "custom", name: "Contact Info", backgroundColor: "#FCF8FA", desc: "Phone, address and operating hours display", components: [{ type: "text_block", props: { text: "Get in Touch", fontSize: 18, fontWeight: 700, color: "#1C1B1D", alignment: "left" } }, { type: "text_block", props: { text: "\uD83D\uDCCD 12 Admiralty Way, Lekki, Lagos", fontSize: 14, fontWeight: 400, color: "#6B7280", alignment: "left" } }, { type: "text_block", props: { text: "\uD83D\uDCDE +234 801 234 5678", fontSize: 14, fontWeight: 400, color: "#6B7280", alignment: "left" } }, { type: "divider", props: { color: "#E5E1E3", thickness: 1 } }] },
-  empty: { icon: "\uD83D\uDCC4", type: "custom", name: "Empty Section", backgroundColor: "#FCF8FA", desc: "Blank section to build your own layout", components: [] },
-};
+function resolveActionTarget(action) {
+  if (!action || typeof action !== "object") return null;
+  return action.payload?.push || action.payload?.screen || action.payload?.screenId || action.payload?.target || null;
+}
+
+function parsePreviewAction(comp) {
+  const p = comp?.props || {};
+  const raw = p.action || p.actions?.default || (p.actions && typeof p.actions === "object" ? p.actions.tap : null);
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    try { return JSON.parse(raw); } catch { return null; }
+  }
+  return typeof raw === "object" ? raw : null;
+}
+
+function resolvePreviewTarget(target, data) {
+  const str = String(target || "").replace(/^\/+/, "").replace(/\.[a-z]+$/i, "");
+  if (!str) return target;
+  const ids = Object.keys(data?.screens || {});
+  if (ids.includes(str)) return str;
+  const direct = ids.find(id => id.toLowerCase() === str.toLowerCase());
+  if (direct) return direct;
+  const fuzzy = ids.find(id =>
+    str.toLowerCase() === String(id).replace(/[-_]/g, "").toLowerCase() ||
+    String(data.screens?.[id]?.name || "").toLowerCase() === str.toLowerCase()
+  );
+  return fuzzy || target;
+}
 
 export default function SectionEditor({ store, onBack }) {
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [selectedComponentId, setSelectedComponentId] = useState(null);
   const [showExport, setShowExport] = useState(false);
-  const [showSectionPicker, setShowSectionPicker] = useState(false);
-  const [pickerTab, setPickerTab] = useState("presets");
+  const [layoutOpen, setLayoutOpen] = useState(true);
   const [previewMode, setPreviewMode] = useState(false);
   const [previewSize, setPreviewSize] = useState("mobile");
   const [previewScreenId, setPreviewScreenId] = useState(null);
+  const [previewStack, setPreviewStack] = useState([]);
   const [hoveredIcon, setHoveredIcon] = useState(null);
   const [validationErrors, setValidationErrors] = useState(null);
   const [showReleases, setShowReleases] = useState(false);
@@ -42,6 +63,7 @@ export default function SectionEditor({ store, onBack }) {
   const [showTemplates, setShowTemplates] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [focusSubKey, setFocusSubKey] = useState(null);
+  const [navSelected, setNavSelected] = useState(false);
 
   const data = store.data;
   const logo = data.meta?.logo;
@@ -85,18 +107,21 @@ export default function SectionEditor({ store, onBack }) {
     setSelectedSectionId(sectionId);
     setSelectedComponentId(null);
     setFocusSubKey(null);
+    setNavSelected(false);
   }, []);
 
   const handleSelectComponent = useCallback((sectionId, compId) => {
     setSelectedSectionId(sectionId);
     setSelectedComponentId(compId);
     setFocusSubKey(null);
+    setNavSelected(false);
   }, []);
 
   const handleFocusSubElement = useCallback((sectionId, compId, key) => {
     setSelectedSectionId(sectionId);
     setSelectedComponentId(compId);
     setFocusSubKey({ compId, key });
+    setNavSelected(false);
   }, []);
 
   const handleRemoveSubElement = useCallback((sectionId, compId, key) => {
@@ -105,8 +130,6 @@ export default function SectionEditor({ store, onBack }) {
   }, [store, focusSubKey]);
 
   const handleAddSection = useCallback((preset) => {
-    if (!preset) { setShowSectionPicker(true); return; }
-    setShowSectionPicker(false);
     const section = SECTION_PRESETS[preset];
     if (!section) return;
     const id = store.addBodySection(null, {
@@ -116,31 +139,69 @@ export default function SectionEditor({ store, onBack }) {
       components: section.components || [],
     });
     if (id) setSelectedSectionId(id);
-  }, [store]);
-
-  const handleInsertSavedSection = useCallback((libraryId) => {
-    if (!libraryId) return;
-    setShowSectionPicker(false);
-    const lib = (store.savedSections || []).find(s => s.id === libraryId);
-    if (!lib) return;
-    if (lib.published === false) { toast.info("This section is a draft — publish it from the Library first."); return; }
-    const id = store.insertSavedSection(null, libraryId);
-    if (id) setSelectedSectionId(id);
+    setNavSelected(false);
   }, [store]);
 
   const handleClose = useCallback(() => {
     setSelectedSectionId(null);
     setSelectedComponentId(null);
+    setNavSelected(false);
   }, []);
+
+  const handleAddTabs = useCallback(() => {
+    const screenIds = Object.keys(data.screens || {});
+    const defaults = [
+      { label: "Home", icon: "\uD83C\uDFE0", screenId: screenIds[0] || "" },
+      { label: "Menu", icon: "\uD83C\uDF5F", screenId: screenIds[1] || screenIds[0] || "" },
+      { label: "Profile", icon: "\uD83D\uDC64", screenId: screenIds[2] || screenIds[0] || "" },
+    ];
+    store.addTabs(defaults);
+    setLayoutOpen(false);
+    setSelectedSectionId(null);
+    setSelectedComponentId(null);
+    setFocusSubKey(null);
+    setNavSelected(true);
+  }, [store, data]);
 
   const handleTogglePreview = useCallback(() => {
-    if (previewMode) { setPreviewMode(false); setPreviewScreenId(null); }
-    else { setPreviewMode(true); setPreviewScreenId(store.currentScreenId); }
+    if (previewMode) { setPreviewMode(false); setPreviewScreenId(null); setPreviewStack([]); }
+    else { setPreviewMode(true); setPreviewStack([store.currentScreenId]); setPreviewScreenId(store.currentScreenId); }
   }, [previewMode, store]);
 
-  const handlePreviewNavigate = useCallback((screenId) => {
-    setPreviewScreenId(screenId);
+  const handlePreviewNavigate = useCallback((screenId, mode = "replace") => {
+    if (!screenId) return;
+    const target = resolvePreviewTarget(screenId, data);
+    const last = previewStack[previewStack.length - 1];
+    if (mode === "push" && target !== last) {
+      setPreviewStack(prev => [...prev, target]);
+    } else if (mode === "replace") {
+      setPreviewStack([target]);
+    }
+    setPreviewScreenId(target);
+  }, [data, previewStack]);
+
+  const handlePreviewBack = useCallback(() => {
+    setPreviewStack(prev => {
+      if (prev.length <= 1) return prev;
+      const next = prev.slice(0, -1);
+      setPreviewScreenId(next[next.length - 1]);
+      return next;
+    });
   }, []);
+
+  const handlePreviewAction = useCallback((comp) => {
+    const action = parsePreviewAction(comp);
+    if (!action) return;
+    const { type, payload = {} } = action;
+    if (type === "pop") { handlePreviewBack(); return; }
+    const target = resolveActionTarget(action);
+    if (typeof target !== "string" || !target) return;
+    if (type === "navigate" || type === "push") {
+      handlePreviewNavigate(target, "push");
+    } else if (type === "replace" || type === "switch_screen") {
+      handlePreviewNavigate(target, "replace");
+    }
+  }, [handlePreviewNavigate, handlePreviewBack]);
 
   const handlePublish = useCallback(async () => {
     const design = store.getDesignJSON();
@@ -242,8 +303,15 @@ export default function SectionEditor({ store, onBack }) {
           ))}
         </div>
         <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 5 }}>
+          {previewStack.length > 1 && (
+            <button onClick={handlePreviewBack}
+              style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", borderRadius: theme.radius.md, padding: "5px 12px", cursor: "pointer", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, fontFamily: "'Inter',sans-serif" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              Back
+            </button>
+          )}
           {Object.keys(data.screens).map(sid => (
-            <button key={sid} onClick={() => setPreviewScreenId(sid)}
+            <button key={sid} onClick={() => handlePreviewNavigate(sid, "replace")}
               style={{
                 background: previewCurrentScreen === sid ? theme.active : "rgba(255,255,255,0.1)", border: "none",
                 color: previewCurrentScreen === sid ? NAVY : "#fff", borderRadius: theme.radius.md, padding: "5px 12px",
@@ -274,29 +342,59 @@ export default function SectionEditor({ store, onBack }) {
                   {(resolved.components || []).map(comp => {
                     const CompType = getComponentType(comp.type);
                     if (!CompType) return null;
-                    return <div key={comp.id} style={{ padding: "4px 16px" }}>{CompType.render({ ...comp.props })}</div>;
+                    const m = comp.props?.margin || {};
+                    const p = comp.props?.padding || {};
+                    const action = parsePreviewAction(comp);
+                    const ELEVATIONS = {
+                      none: "none",
+                      soft: "0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)",
+                      medium: "0 4px 10px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06)",
+                      raised: "0 10px 24px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.1)",
+                    };
+                    const elev = ELEVATIONS[comp.props?.elevation] || "none";
+                    const op = comp.props?.opacity != null ? Number(comp.props.opacity) / 100 : 1;
+                    return <div key={comp.id} style={{
+                      padding: "4px 16px",
+                      marginTop: m.top || 0, marginRight: m.right || 0,
+                      marginBottom: m.bottom || 0, marginLeft: m.left || 0,
+                      paddingTop: p.top || 0, paddingRight: p.right || 0,
+                      paddingBottom: p.bottom || 0, paddingLeft: p.left || 0,
+                      boxShadow: elev, opacity: op, boxSizing: "border-box",
+                      cursor: action ? "pointer" : "default",
+                      transition: "all 0.15s ease",
+                    }} onClick={action ? () => handlePreviewAction(comp) : undefined}
+                      onMouseEnter={action ? e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; } : undefined}
+                      onMouseLeave={action ? e => { e.currentTarget.style.background = "transparent"; } : undefined}
+                    >{CompType.render({ ...comp.props })}</div>;
                   })}
                 </div>
               );
             })}
           </div>
           {(data.navigation?.tabs || []).length > 0 && (
-            <div style={{ height: 56, background: "#fff", borderTop: "1px solid #E5E7EB", display: "flex", alignItems: "center", justifyContent: "space-around", flexShrink: 0 }}>
-              {data.navigation.tabs.map((tab, i) => (
-                <button key={tab.id || i} onClick={() => tab.screenId && setPreviewScreenId(tab.screenId)}
-                  style={{
-                    background: "none", border: "none", cursor: tab.screenId ? "pointer" : "default",
-                    display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                    padding: "4px 16px", opacity: previewCurrentScreen === tab.screenId ? 1 : 0.5,
-                    transition: `opacity ${theme.transition}`,
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
-                  onMouseLeave={e => { e.currentTarget.style.opacity = previewCurrentScreen === tab.screenId ? "1" : "0.5"; }}
-                >
-                  <span style={{ fontSize: 20 }}>{tab.icon}</span>
-                  <span style={{ fontSize: 10, color: "#6B7280", fontWeight: 500 }}>{tab.label}</span>
-                </button>
-              ))}
+            <div style={{
+              height: 56, background: data.navigation?.style?.background || "#fff",
+              borderTop: "1px solid #E5E7EB", display: "flex", alignItems: "center",
+              justifyContent: "space-around", flexShrink: 0,
+            }}>
+              {data.navigation.tabs.map((tab, i) => {
+                const isActive = previewCurrentScreen === tab.screenId;
+                const color = isActive
+                  ? (tab.color || data.navigation?.style?.active || "#1A1A2E")
+                  : (data.navigation?.style?.inactive || "#9CA3AF");
+                return (
+                  <button key={tab.id || i} onClick={() => tab.screenId && handlePreviewNavigate(tab.screenId)}
+                    style={{
+                      background: "none", border: "none", cursor: tab.screenId ? "pointer" : "default",
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                      padding: "4px 16px",
+                    }}
+                  >
+                    <span style={{ fontSize: 20, color, opacity: isActive ? 1 : 0.6 }}>{tab.icon}</span>
+                    <span style={{ fontSize: 10, color, fontWeight: isActive ? 700 : 500 }}>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -306,6 +404,23 @@ export default function SectionEditor({ store, onBack }) {
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: theme.canvas }}>
+      <style>{`
+        @keyframes templatePulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.5), 0 2px 10px rgba(245,158,11,0.35); }
+          50% { box-shadow: 0 0 0 6px rgba(245,158,11,0), 0 2px 10px rgba(245,158,11,0.35); }
+        }
+        @keyframes templateShine {
+          0% { transform: translateX(-150%) skewX(-20deg); }
+          60%, 100% { transform: translateX(250%) skewX(-20deg); }
+        }
+        .template-cta { position: relative; overflow: hidden; animation: templatePulse 2.2s ease-out infinite; }
+        .template-cta::after {
+          content: ""; position: absolute; top: 0; left: 0; height: 100%; width: 40%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
+          transform: translateX(-150%) skewX(-20deg);
+        }
+        .template-cta:hover::after { animation: templateShine 0.9s ease forwards; }
+      `}</style>
       {/* Top bar */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -368,8 +483,21 @@ export default function SectionEditor({ store, onBack }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           </button>
 
-          <button onClick={() => setShowTemplates(true)} style={iconBtn} title="Load a Template into this canvas">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <button onClick={() => setShowTemplates(true)} className="template-cta"
+            style={{
+              background: "linear-gradient(135deg, #FBBF24, #F59E0B)",
+              color: "#1F2937", border: "none", borderRadius: theme.radius.md,
+              padding: "7px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer",
+              fontFamily: "'Inter',sans-serif", display: "inline-flex", alignItems: "center", gap: 6,
+              transition: `transform ${theme.transition}, box-shadow ${theme.transition}`,
+              boxShadow: "0 2px 10px rgba(245,158,11,0.35)",
+            }}
+            title="Templates — our curated starter designs (premium)"
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 5px 18px rgba(245,158,11,0.45)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 10px rgba(245,158,11,0.35)"; }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Templates
           </button>
 
           <div style={{ width: 1, height: 20, background: theme.border, margin: "0 4px" }} />
@@ -433,13 +561,19 @@ export default function SectionEditor({ store, onBack }) {
 {(store.screen?.bodySections || []).length}
             </span>
           </div>
+          <LayoutPanel
+            onAddPreset={handleAddSection}
+            onAddTabs={handleAddTabs}
+            open={layoutOpen}
+            onToggle={() => setLayoutOpen(o => !o)}
+          />
           <SectionPanel
             store={store}
             selectedSectionId={selectedSectionId}
             selectedComponentId={selectedComponentId}
             onSelectSection={handleSelectSection}
             onSelectComponent={handleSelectComponent}
-            onAddSection={handleAddSection}
+            onOpenLayout={() => setLayoutOpen(true)}
             focusSubKey={focusSubKey}
             onFocusSubElement={handleFocusSubElement}
             onRemoveSubElement={handleRemoveSubElement}
@@ -464,6 +598,7 @@ export default function SectionEditor({ store, onBack }) {
             store={store}
             selectedSectionId={selectedSectionId}
             selectedComponentId={selectedComponentId}
+            navSelected={navSelected}
             onClose={handleClose}
             onSelectComponent={handleSelectComponent}
             focusSubKey={focusSubKey}
@@ -495,7 +630,13 @@ export default function SectionEditor({ store, onBack }) {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150 }} onClick={() => setShowTemplates(false)}>
           <div onClick={e => e.stopPropagation()} style={{ background: theme.surface, borderRadius: theme.radius["2xl"], boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24, maxWidth: 820, width: "90%", maxHeight: "82vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: theme.text }}>Templates</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 20 }}>✨</span>
+                <div>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: theme.text }}>Templates</div>
+                  <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>Premium starter designs — add them to your app in one click.</div>
+                </div>
+              </div>
               <button onClick={() => setShowTemplates(false)} style={{ ...iconBtn, border: "none" }} title="Close">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
@@ -510,91 +651,6 @@ export default function SectionEditor({ store, onBack }) {
               isMobile={false}
               loading={loadingTemplate}
             />
-          </div>
-        </div>
-      )}
-
-      {/* Section picker */}
-      {showSectionPicker && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setShowSectionPicker(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: theme.surface, borderRadius: theme.radius["2xl"], boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24, maxWidth: 560, width: "90%" }}>
-            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: theme.text, marginBottom: 12 }}>
-              Add Section
-            </div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-              {["presets", "saved"].map(tab => (
-                <button key={tab} onClick={() => setPickerTab(tab)}
-                  style={{
-                    padding: "6px 14px", borderRadius: theme.radius.md, border: pickerTab === tab ? `1.5px solid ${theme.active}` : `1.5px solid ${theme.border}`,
-                    background: pickerTab === tab ? theme.hoverAmber : theme.surface,
-                    color: pickerTab === tab ? "#6B4200" : theme.textSecondary,
-                    fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Inter',sans-serif",
-                    transition: `all ${theme.transition}`,
-                  }}>
-                  {tab === "presets" ? "Presets" : `Saved (${(store.savedSections || []).length})`}
-                </button>
-              ))}
-            </div>
-            {pickerTab === "saved" ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                {(store.savedSections || []).length === 0 && (
-                  <div style={{ padding: "24px 12px", textAlign: "center", color: theme.textMuted, fontSize: 13 }}>
-                    No saved sections yet. Save a section from the canvas to reuse it here.
-                  </div>
-                )}
-                {(store.savedSections || []).map(lib => (
-                  <div key={lib.id} style={{
-                    display: "flex", alignItems: "center", gap: 10, padding: "12px 14px",
-                    borderRadius: theme.radius.lg, border: `1px solid ${theme.border}`,
-                    background: theme.surface, cursor: lib.published === false ? "not-allowed" : "pointer",
-                    transition: `all ${theme.transition}`,
-                  }}
-                    onClick={() => handleInsertSavedSection(lib.id)}
-                    onMouseEnter={e => { if (lib.published !== false) { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.background = theme.hoverAmber; } }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface; }}
-                  >
-                    <div style={{ width: 34, height: 34, borderRadius: theme.radius.md, background: lib.backgroundColor || theme.hover, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
-                      {lib.type === "hero" ? "\uD83C\uDF1F" : lib.type === "menu_list" ? "\uD83C\uDF7D\uFE0F" : lib.type === "info" ? "\u2139\uFE0F" : "\uD83D\uDCC4"}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lib.name}</div>
-                      <div style={{ fontSize: 11, color: theme.textMuted }}>{(lib.components || []).length} components</div>
-                    </div>
-                    {lib.published === false && (
-                      <span style={{ fontSize: 10, fontWeight: 700, color: "#92400E", background: "#FEF3C7", padding: "2px 8px", borderRadius: 20 }}>Draft</span>
-                    )}
-                    <button style={iconBtn} title="Insert" onClick={e => { e.stopPropagation(); handleInsertSavedSection(lib.id); }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
-                {Object.entries(SECTION_PRESETS).map(([key, sec]) => (
-                  <button key={key} onClick={() => handleAddSection(key)}
-                    style={{
-                      padding: "14px 12px", borderRadius: theme.radius.lg, border: `1px solid ${theme.border}`,
-                      background: theme.surface, cursor: "pointer", textAlign: "left",
-                      fontFamily: "'Inter',sans-serif", transition: `all ${theme.transition}`,
-                      boxShadow: theme.shadow,
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.background = theme.hoverAmber; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = theme.shadowMd; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = theme.shadow; }}
-                  >
-                    <div style={{ fontSize: 20, marginBottom: 6 }}>{sec.icon}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 4 }}>{sec.name}</div>
-                    <div style={{ fontSize: 11, color: theme.textMuted, lineHeight: 1.4 }}>{sec.desc}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-            <button onClick={() => setShowSectionPicker(false)}
-              style={{ width: "100%", padding: "8px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: "pointer", fontSize: 13, color: theme.textSecondary, fontFamily: "'Inter',sans-serif", transition: `all ${theme.transition}` }}
-              onMouseEnter={e => { e.currentTarget.style.background = theme.hover; e.currentTarget.style.borderColor = theme.border; }}
-              onMouseLeave={e => { e.currentTarget.style.background = theme.surface; e.currentTarget.style.borderColor = theme.border; }}>
-              Cancel
-            </button>
           </div>
         </div>
       )}

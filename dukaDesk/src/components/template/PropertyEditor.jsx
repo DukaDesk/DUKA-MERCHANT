@@ -21,9 +21,14 @@ export function PropertyEditor({ node, onUpdate, onClose }) {
 
   const commonProps = {
     hero_banner: [
+      { key: "variant", label: "Style", type: "select", options: ["center", "left", "overlay", "split"] },
       { key: "title", label: "Title", type: "text", placeholder: "Welcome" },
       { key: "subtitle", label: "Subtitle", type: "textarea", placeholder: "Discover our delicious menu" },
+      { key: "badge", label: "Badge", type: "text", placeholder: "Open Now" },
       { key: "image", label: "Background Image URL", type: "text", placeholder: "https://example.com/banner.jpg" },
+      { key: "fit", label: "Image Fit", type: "select", options: ["cover", "contain"] },
+      { key: "radius", label: "Corner Radius", type: "number", min: 0, max: 64, step: 1 },
+      { key: "height", label: "Banner Height (px)", type: "number", min: 120, max: 600, step: 8 },
     ],
     category_pills: [
       { key: "categories", label: "Categories (comma-separated)", type: "textarea", placeholder: "Popular, Mains, Drinks, Desserts" },
@@ -105,8 +110,11 @@ export function PropertyEditor({ node, onUpdate, onClose }) {
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: NAVY, marginBottom: 4 }}>{field.label}</label>
             <input
               type="number"
-              value={value}
-              onChange={e => handleChange(field.key, Number(e.target.value) || 0)}
+              value={value ?? 0}
+              onChange={e => {
+                const n = Number(e.target.value);
+                handleChange(field.key, Number.isFinite(n) && e.target.value !== "" ? n : 0);
+              }}
               min={field.min}
               max={field.max}
               step={field.step}
