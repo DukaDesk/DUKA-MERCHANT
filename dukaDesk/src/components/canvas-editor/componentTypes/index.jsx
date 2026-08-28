@@ -3,14 +3,20 @@ const types = {};
 import {
   OrderHistory, InfoList, ReportAction, NotificationList, PrimaryButton,
   CalendarStrip, SlotGrid, BookingSummary, CartSummary, AddressForm,
+  LaundryBooking,
   SectionHeader as TemplateSectionHeader,
 } from "../../template/TemplateComponents";
 import { EmptyState as RegistryEmptyState, DynamicCard as RegistryDynamicCard } from "../../../runtime/ComponentRegistry";
 import {
   Home, Star, Heart, ShoppingBag, ShoppingCart, Menu, MapPin, Bell, User,
-  Clock, Wallet, Settings, Phone, Camera, Gift, Info, Check, X, Plus, Minus,
+  Clock, Calendar, Wallet, Settings, Phone, Camera, Gift, Info, Check, X, Plus, Minus,
   Trash2, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, ArrowRight,
-  ArrowLeft, ArrowUp, ArrowDown, Search, Circle,
+  ArrowLeft, ArrowUp, ArrowDown, Search, Circle, Type, Image as ImageIcon, Video,
+  LayoutGrid, Rows3, Palette, Zap, Hash, ArrowLeftRight, ArrowDownUp,
+  Sparkles, Compass, FileText, BarChart3, ClipboardList, Scissors,
+  ToggleLeft, CheckSquare, Pencil, Boxes, GalleryHorizontal, CreditCard, PanelTop, List, AlignLeft,
+  Tag,
+  Square,
 } from "lucide-react";
 
 export function registerComponentType(typeName, def) {
@@ -31,17 +37,17 @@ export function getTypeNames() {
 
 /* ── Component taxonomy (Figma-style category folders) ── */
 export const COMPONENT_CATEGORIES = [
-  { key: "buttons", label: "Buttons & Actions", icon: "\uD83D\uDD18" },
-  { key: "icons", label: "Icons & Arrows", icon: "\u2728" },
-  { key: "inputs", label: "Inputs & Forms", icon: "\u270D\uFE0F" },
-  { key: "text", label: "Text & Content", icon: "Aa" },
-  { key: "media", label: "Media", icon: "\uD83D\uDDBC\uFE0F" },
-  { key: "shapes", label: "Shapes & Primitives", icon: "\u25AC" },
-  { key: "layout", label: "Layout & Containers", icon: "\uD83E\uDDF0" },
-  { key: "nav", label: "Navigation & Chrome", icon: "\uD83E\uDDED" },
-  { key: "commerce", label: "Commerce", icon: "\uD83D\uDED2" },
-  { key: "booking", label: "Booking & Services", icon: "\uD83D\uDCC5" },
-  { key: "feedback", label: "Status & Feedback", icon: "\uD83C\uDFF7\uFE0F" },
+  { key: "buttons", label: "Buttons & Actions", icon: Square },
+  { key: "icons", label: "Icons & Arrows", icon: Sparkles },
+  { key: "inputs", label: "Inputs & Forms", icon: Pencil },
+  { key: "text", label: "Text & Content", icon: Type },
+  { key: "media", label: "Media", icon: ImageIcon },
+  { key: "shapes", label: "Shapes & Primitives", icon: Square },
+  { key: "layout", label: "Layout & Containers", icon: LayoutGrid },
+  { key: "nav", label: "Navigation & Chrome", icon: Compass },
+  { key: "commerce", label: "Commerce", icon: ShoppingBag },
+  { key: "booking", label: "Booking & Services", icon: Calendar },
+  { key: "feedback", label: "Status & Feedback", icon: Bell },
 ];
 
 export function getComponentsByCategory() {
@@ -60,6 +66,56 @@ export const ICON_LIBRARY = {
 
 export function getLucideIcon(name) {
   return ICON_LIBRARY[name] || Circle;
+}
+
+export const FONT_FAMILIES = ["Inter","Sora","Poppins","Roboto","Montserrat","Open Sans","Playfair Display","Georgia","Courier New","System UI"];
+export const FONT_WEIGHTS = ["300","400","500","600","700","800"];
+export const TEXT_TRANSFORMS = ["none","uppercase","lowercase","capitalize"];
+export const FONT_STYLES = ["normal","italic"];
+
+export function textStyleFields(prefix) {
+  const p = prefix ? `${prefix}.` : "";
+  return [
+    { key: `${p}fontFamily`, label: "Font Family", type: "select", options: FONT_FAMILIES, group: "typography" },
+    { key: `${p}fontSize`, label: "Font Size", type: "number", group: "typography" },
+    { key: `${p}fontWeight`, label: "Font Weight", type: "select", options: FONT_WEIGHTS, group: "typography" },
+    { key: `${p}fontStyle`, label: "Font Style", type: "select", options: FONT_STYLES, group: "typography" },
+    { key: `${p}lineHeight`, label: "Line Height", type: "number", group: "typography" },
+    { key: `${p}letterSpacing`, label: "Letter Spacing", type: "number", group: "typography" },
+    { key: `${p}textTransform`, label: "Text Transform", type: "select", options: TEXT_TRANSFORMS, group: "typography" },
+    { key: `${p}color`, label: "Color", type: "color", group: "colors" },
+  ];
+}
+
+export function applyTextStyle(style) {
+  if (!style) return {};
+  const out = {};
+  if (style.fontFamily) out.fontFamily = `'${style.fontFamily}',sans-serif`;
+  if (style.fontSize != null && style.fontSize !== "") out.fontSize = Number(style.fontSize);
+  if (style.fontWeight) out.fontWeight = style.fontWeight;
+  if (style.fontStyle) out.fontStyle = style.fontStyle;
+  if (style.lineHeight != null && style.lineHeight !== "") out.lineHeight = Number(style.lineHeight);
+  if (style.letterSpacing != null && style.letterSpacing !== "") out.letterSpacing = `${Number(style.letterSpacing)}px`;
+  if (style.textTransform && style.textTransform !== "none") out.textTransform = style.textTransform;
+  if (style.color) out.color = style.color;
+  if (style.alignment) out.textAlign = style.alignment;
+  return out;
+}
+
+export function resolveTextStyle(props, subKey, defaults) {
+  const bag = props?.textStyles?.[subKey] || {};
+  const d = defaults || {};
+  return {
+    fontFamily: bag.fontFamily ?? d.fontFamily,
+    fontSize: bag.fontSize ?? d.fontSize,
+    fontWeight: bag.fontWeight ?? d.fontWeight,
+    fontStyle: bag.fontStyle ?? d.fontStyle,
+    lineHeight: bag.lineHeight ?? d.lineHeight,
+    letterSpacing: bag.letterSpacing ?? d.letterSpacing,
+    textTransform: bag.textTransform ?? d.textTransform,
+    color: bag.color ?? d.color,
+    alignment: bag.alignment ?? d.alignment,
+  };
 }
 
 /* Resolve a unified fill value ({type:"color"|"image", value}) — legacy plain hex strings still work. */
@@ -81,6 +137,15 @@ function numberVal(value, fallback) {
 }
 
 function radiusVal(value, fallback) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const tl = Number(value.tl ?? value.topLeft ?? fallback);
+    const tr = Number(value.tr ?? value.topRight ?? fallback);
+    const br = Number(value.br ?? value.bottomRight ?? fallback);
+    const bl = Number(value.bl ?? value.bottomLeft ?? fallback);
+    const nums = [tl, tr, br, bl].map(n => Number.isFinite(n) && n >= 0 ? n : fallback);
+    if (nums[0] === nums[1] && nums[1] === nums[2] && nums[2] === nums[3]) return nums[0];
+    return `${nums[0]}px ${nums[1]}px ${nums[2]}px ${nums[3]}px`;
+  }
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
@@ -106,32 +171,40 @@ function heroBackground(props, withImage) {
 registerComponentType("hero_banner", {
   type: "hero_banner",
   label: "Hero Banner",
-  icon: "🖼️",
+  icon: ImageIcon,
   category: "media",
   defaultWidth: 390,
   defaultHeight: 200,
-  defaultProps: { title: "Welcome", subtitle: "Your tagline here", badge: "Open Now", color: "#1A1A2E", fill: "", fit: "cover", radius: 16, height: 200, variant: "center" },
+  defaultProps: { title: "Welcome", subtitle: "Your tagline here", badge: "Open Now", color: "#1A1A2E", fill: "", fit: "cover", radius: 16, height: 200, variant: "center",
+    textStyles: {
+      badge: { fontFamily: "Inter", fontSize: 11, fontWeight: "600", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#6B4200" },
+      title: { fontFamily: "Sora", fontSize: 22, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" },
+      subtitle: { fontFamily: "Inter", fontSize: 13, fontWeight: "400", fontStyle: "normal", lineHeight: 1.4, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" },
+    }
+  },
   subElements: [
-    { key: "badge", label: "Badge", icon: "🏷️", kind: "text" },
-    { key: "title", label: "Heading", icon: "T", kind: "text" },
-    { key: "subtitle", label: "Tagline", icon: "Aa", kind: "text" },
-    { key: "fill", label: "Background", icon: "🖼️", kind: "fill" },
-    { key: "color", label: "Background Color", icon: "🎨", kind: "color" },
+    { key: "badge", label: "Badge", icon: Tag, kind: "text", styleable: true },
+    { key: "title", label: "Heading", icon: Type, kind: "text", styleable: true },
+    { key: "subtitle", label: "Tagline", icon: Type, kind: "text", styleable: true },
+    { key: "fill", label: "Background", icon: ImageIcon, kind: "fill" },
+    { key: "color", label: "Background Color", icon: Palette, kind: "color" },
   ],
   propFields: [
-    { key: "variant", label: "Style", type: "select", options: ["center", "left", "overlay", "split"] },
+    { key: "variant", label: "Style", type: "select", options: ["center", "left", "overlay", "split"], group: "layout" },
     { key: "title", label: "Heading", type: "text" },
     { key: "subtitle", label: "Tagline", type: "text" },
     { key: "badge", label: "Badge", type: "text" },
-    { key: "fill", label: "Background", type: "bg" },
-    { key: "color", label: "Background Color", type: "color" },
-    { key: "fit", label: "Image Fit", type: "select", options: ["cover", "contain"] },
-    { key: "radius", label: "Corner Radius", type: "number" },
-    { key: "height", label: "Banner Height", type: "number" },
+    { key: "fill", label: "Background", type: "bg", group: "background" },
+    { key: "color", label: "Background Color", type: "color", group: "background" },
+    { key: "fit", label: "Image Fit", type: "select", options: ["cover", "contain"], group: "layout" },
+    { key: "radius", label: "Corner Radius", type: "radius", group: "border" },
+    { key: "width", label: "Width (px, 0=auto)", type: "number", group: "layout" },
+    { key: "height", label: "Banner Height", type: "number", group: "layout" },
   ],
   render: (props) => {
     const radius = radiusVal(props.radius, 16);
     const height = numberVal(props.height, 200);
+    const widthVal = props.width != null && Number(props.width) > 0 ? Number(props.width) : "100%";
     const fit = props.fit === "contain" ? "contain" : "cover";
     const variant = props.variant || "center";
     const bgImage = heroImageValue(props);
@@ -150,7 +223,7 @@ registerComponentType("hero_banner", {
           : heroBackground(props),
         color: "#fff", borderRadius: radius, height,
         padding: variant === "split" ? 0 : 32,
-        width: "100%", display: "flex", flexDirection: "column",
+        width: widthVal, display: "flex", flexDirection: "column",
         justifyContent: "center", ...flex, flexShrink: 0,
         position: "relative", overflow: "hidden",
       }}>
@@ -164,9 +237,9 @@ registerComponentType("hero_banner", {
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,rgba(10,10,20,0.1) 0%,rgba(10,10,20,0.7) 100%)" }} />
         )}
         <div style={{ position: "relative", zIndex: 1, maxWidth: splitImage ? "58%" : "100%", width: "100%" }}>
-          {props.badge && <span style={{ fontSize: 11, fontWeight: 600, background: "#F4A026", color: "#6B4200", padding: "4px 12px", borderRadius: 20, marginBottom: 12, display: "inline-block" }}>{props.badge}</span>}
-          {props.title && <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{props.title}</div>}
-          {props.subtitle && <div style={{ fontSize: 13, opacity: 0.8 }}>{props.subtitle}</div>}
+          {props.badge && <span style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "badge", { fontFamily: "Inter", fontSize: 11, fontWeight: "600", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#6B4200" })), { background: "#F4A026", padding: "4px 12px", borderRadius: 20, marginBottom: 12, display: "inline-block" })}>{props.badge}</span>}
+          {props.title && <div style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "title", { fontFamily: "Sora", fontSize: 22, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" })), { marginBottom: 4 })}>{props.title}</div>}
+          {props.subtitle && <div style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "subtitle", { fontFamily: "Inter", fontSize: 13, fontWeight: "400", fontStyle: "normal", lineHeight: 1.4, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" })), { opacity: 0.8 })}>{props.subtitle}</div>}
         </div>
       </div>
     );
@@ -176,39 +249,51 @@ registerComponentType("hero_banner", {
 registerComponentType("menu_item", {
   type: "menu_item",
   label: "Menu Item",
-  icon: "🍽️",
+  icon: ShoppingBag,
   category: "commerce",
   defaultWidth: 358,
   defaultHeight: 80,
-  defaultProps: { name: "Jollof Rice", price: "₦2,500", desc: "Rich, smoky jollof rice", emoji: "🍛" },
+  defaultProps: { name: "Jollof Rice", price: "₦2,500", desc: "Rich, smoky jollof rice", emoji: "🍛",
+    textStyles: {
+      name: { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#1C1B1D" },
+      price: { fontFamily: "Sora", fontSize: 14, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#1A1A2E" },
+      desc: { fontFamily: "Inter", fontSize: 11, fontWeight: "400", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#6B7280" },
+    }
+  },
   subElements: [
-    { key: "emoji", label: "Image / Emoji", icon: "🖼️", kind: "image" },
-    { key: "name", label: "Name", icon: "T", kind: "text" },
-    { key: "price", label: "Price", icon: "₦", kind: "text" },
-    { key: "desc", label: "Description", icon: "Aa", kind: "text" },
+    { key: "emoji", label: "Image / Emoji", icon: ImageIcon, kind: "image" },
+    { key: "name", label: "Name", icon: Type, kind: "text", styleable: true },
+    { key: "price", label: "Price", icon: Tag, kind: "text", styleable: true },
+    { key: "desc", label: "Description", icon: Type, kind: "text", styleable: true },
   ],
   propFields: [
     { key: "name", label: "Name", type: "text" },
     { key: "price", label: "Price", type: "text" },
     { key: "desc", label: "Description", type: "text" },
     { key: "emoji", label: "Image / Emoji", type: "text" },
+    { key: "width", label: "Width (px, 0=auto)", type: "number", group: "layout" },
+    { key: "height", label: "Height (px, 0=auto)", type: "number", group: "layout" },
   ],
-  render: (props) => (
-    <div style={{ display: "flex", gap: 12, padding: "12px 16px", background: "#FCF8FA", borderRadius: 12, boxShadow: "0px 2px 12px rgba(0,0,0,0.08)", border: "1px solid rgba(200,197,205,0.3)", width: "100%", height: "100%", alignItems: "center" }}>
+  render: (props) => {
+    const w = props.width != null && Number(props.width) > 0 ? Number(props.width) : "100%";
+    const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : "100%";
+    return (
+    <div style={{ display: "flex", gap: 12, padding: "12px 16px", background: "#FCF8FA", borderRadius: 12, boxShadow: "0px 2px 12px rgba(0,0,0,0.08)", border: "1px solid rgba(200,197,205,0.3)", width: w, height: h, alignItems: "center" }}>
       <div style={{ width: 48, height: 48, background: "#F1EDEF", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{props.emoji || "🍽️"}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 14, color: "#1C1B1D", marginBottom: 2 }}>{props.name}</div>
-        {props.desc && <div style={{ fontSize: 11, color: "#6B7280", lineHeight: 1.3 }}>{props.desc}</div>}
+        <div style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "name", { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#1C1B1D" })), { marginBottom: 2 })}>{props.name}</div>
+        {props.desc && <div style={applyTextStyle(resolveTextStyle(props, "desc", { fontFamily: "Inter", fontSize: 11, fontWeight: "400", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#6B7280" }))}>{props.desc}</div>}
       </div>
-      <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: "#1A1A2E", whiteSpace: "nowrap" }}>{props.price}</span>
+      <span style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "price", { fontFamily: "Sora", fontSize: 14, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#1A1A2E" })), { whiteSpace: "nowrap" })}>{props.price}</span>
     </div>
-  ),
+    );
+  },
 });
 
 registerComponentType("category_pills", {
   type: "category_pills",
   label: "Category Pills",
-  icon: "🏷️",
+  icon: Tag,
   category: "commerce",
   defaultWidth: 358,
   defaultHeight: 48,
@@ -220,7 +305,7 @@ registerComponentType("category_pills", {
     ],
   },
   subElements: [
-    { key: "cats", label: "Categories", icon: "🏷️", kind: "text" },
+    { key: "cats", label: "Categories", icon: Tag, kind: "text" },
   ],
   propFields: [
     {
@@ -253,64 +338,86 @@ registerComponentType("category_pills", {
 registerComponentType("text_block", {
   type: "text_block",
   label: "Text",
-  icon: "Aa",
+  icon: Type,
   category: "text",
   defaultWidth: 200,
   defaultHeight: 30,
-  defaultProps: { text: "Text", fontSize: 14, fontWeight: 400, color: "#1C1B1D", alignment: "left" },
+  defaultProps: { text: "Text", fontSize: 14, fontWeight: "400", fontFamily: "Inter", fontStyle: "normal", lineHeight: 1.4, letterSpacing: 0, textTransform: "none", color: "#1C1B1D", alignment: "left" },
   subElements: [
-    { key: "text", label: "Text", icon: "Aa", kind: "text" },
-    { key: "color", label: "Text Color", icon: "🎨", kind: "color" },
+    { key: "text", label: "Text", icon: Type, kind: "text" },
+    { key: "color", label: "Text Color", icon: Palette, kind: "color" },
   ],
   propFields: [
     { key: "text", label: "Content", type: "text" },
-    { key: "fontSize", label: "Font Size", type: "number" },
-    { key: "fontWeight", label: "Font Weight", type: "number" },
-    { key: "color", label: "Color", type: "color" },
-    { key: "alignment", label: "Alignment", type: "select", options: ["left", "center", "right"] },
+    { key: "fontFamily", label: "Font Family", type: "select", options: FONT_FAMILIES, group: "typography" },
+    { key: "fontSize", label: "Font Size", type: "number", group: "typography" },
+    { key: "fontWeight", label: "Font Weight", type: "select", options: FONT_WEIGHTS, group: "typography" },
+    { key: "fontStyle", label: "Font Style", type: "select", options: ["normal", "italic"], group: "typography" },
+    { key: "lineHeight", label: "Line Height", type: "number", group: "typography" },
+    { key: "letterSpacing", label: "Letter Spacing", type: "number", group: "typography" },
+    { key: "textTransform", label: "Text Transform", type: "select", options: ["none", "uppercase", "lowercase", "capitalize"], group: "typography" },
+    { key: "color", label: "Color", type: "color", group: "colors" },
+    { key: "alignment", label: "Alignment", type: "select", options: ["left", "center", "right"], group: "typography" },
+    { key: "width", label: "Width (px, 0=auto)", type: "number", group: "layout" },
+    { key: "height", label: "Height (px, 0=auto)", type: "number", group: "layout" },
   ],
-  render: (props) => (
+  render: (props) => {
+    const w = props.width != null && Number(props.width) > 0 ? Number(props.width) : "100%";
+    const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : "100%";
+    return (
     <div style={{
       fontSize: props.fontSize || 14, fontWeight: props.fontWeight || 400,
+      fontStyle: props.fontStyle || "normal",
+      fontFamily: props.fontFamily ? `'${props.fontFamily}',sans-serif` : "'Inter',sans-serif",
       color: props.color || "#1C1B1D", textAlign: props.alignment || "left",
-      fontFamily: "'Inter',sans-serif", padding: "2px 0", lineHeight: 1.4,
-      width: "100%", height: "100%", overflow: "hidden",
+      lineHeight: props.lineHeight != null ? Number(props.lineHeight) : 1.4,
+      letterSpacing: props.letterSpacing != null ? `${Number(props.letterSpacing)}px` : "normal",
+      textTransform: props.textTransform && props.textTransform !== "none" ? props.textTransform : "none",
+      padding: "2px 0",
+      width: w, height: h, overflow: "hidden",
     }}>{props.text}</div>
-  ),
+    );
+  },
 });
 
 registerComponentType("image_block", {
   type: "image_block",
   label: "Image",
-  icon: "🖼️",
+  icon: ImageIcon,
   category: "media",
   defaultWidth: 200,
   defaultHeight: 200,
   defaultProps: { src: "", alt: "Image", fit: "cover" },
   subElements: [
-    { key: "src", label: "Image", icon: "🖼️", kind: "image" },
-    { key: "alt", label: "Alt Text", icon: "Aa", kind: "text" },
+    { key: "src", label: "Image", icon: ImageIcon, kind: "image" },
+    { key: "alt", label: "Alt Text", icon: Type, kind: "text" },
   ],
   propFields: [
     { key: "src", label: "Image URL", type: "text" },
     { key: "alt", label: "Alt Text", type: "text" },
-    { key: "fit", label: "Object Fit", type: "select", options: ["cover", "contain", "fill"] },
+    { key: "fit", label: "Object Fit", type: "select", options: ["cover", "contain", "fill"], group: "layout" },
+    { key: "width", label: "Width (px, 0=auto)", type: "number", group: "layout" },
+    { key: "height", label: "Height (px, 0=auto)", type: "number", group: "layout" },
   ],
-  render: (props) => (
-    <div style={{ width: "100%", height: "100%", overflow: "hidden", borderRadius: 8, background: "#F1EDEF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+  render: (props) => {
+    const w = props.width != null && Number(props.width) > 0 ? Number(props.width) : "100%";
+    const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : "100%";
+    return (
+    <div style={{ width: w, height: h, overflow: "hidden", borderRadius: 8, background: "#F1EDEF", display: "flex", alignItems: "center", justifyContent: "center" }}>
       {props.src ? (
         <img src={props.src} alt={props.alt || ""} style={{ width: "100%", height: "100%", objectFit: props.fit || "cover" }} />
       ) : (
         <span style={{ color: "#9CA3AF", fontSize: 12 }}>No image</span>
       )}
     </div>
-  ),
+    );
+  },
 });
 
 registerComponentType("rectangle", {
   type: "rectangle",
   label: "Rectangle",
-  icon: "▬",
+  icon: Square,
   category: "shapes",
   defaultWidth: 100,
   defaultHeight: 100,
@@ -322,33 +429,45 @@ registerComponentType("rectangle", {
 registerComponentType("button", {
   type: "button",
   label: "Button",
-  icon: "🔘",
+  icon: Square,
   category: "buttons",
   defaultWidth: 120,
   defaultHeight: 40,
-  defaultProps: { label: "Button", color: "#FFFFFF", background: "#1A1A2E", variant: "filled", radius: 10, action: "" },
+  defaultProps: { label: "Button", color: "#FFFFFF", background: "#1A1A2E", variant: "filled", radius: 10, fontFamily: "Inter", fontSize: 14, fontWeight: "600", textTransform: "none", action: "",
+    textStyles: {
+      label: { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.25, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" },
+    }
+  },
   subElements: [
-    { key: "label", label: "Label", icon: "T", kind: "text" },
-    { key: "background", label: "Fill Color", icon: "🎨", kind: "color" },
-    { key: "action", label: "Action (JSON)", icon: "⚡", kind: "json" },
+    { key: "label", label: "Label", icon: Type, kind: "text", styleable: true },
+    { key: "background", label: "Fill Color", icon: Palette, kind: "color" },
+    { key: "action", label: "Action (JSON)", icon: Zap, kind: "json" },
   ],
   propFields: [
     { key: "label", label: "Label", type: "text" },
-    { key: "variant", label: "Variant", type: "select", options: ["filled", "outline", "ghost"] },
-    { key: "background", label: "Background / Border", type: "color" },
-    { key: "color", label: "Text Color", type: "color" },
-    { key: "radius", label: "Corner Radius", type: "number" },
+    { key: "variant", label: "Variant", type: "select", options: ["filled", "outline", "ghost"], group: "layout" },
+    { key: "background", label: "Background / Border", type: "color", group: "background" },
+    { key: "color", label: "Text Color", type: "color", group: "colors" },
+    { key: "radius", label: "Corner Radius", type: "radius", group: "border" },
+    { key: "fontFamily", label: "Font Family", type: "select", options: FONT_FAMILIES, group: "typography" },
+    { key: "fontSize", label: "Font Size", type: "number", group: "typography" },
+    { key: "fontWeight", label: "Font Weight", type: "select", options: FONT_WEIGHTS, group: "typography" },
+    { key: "textTransform", label: "Text Transform", type: "select", options: ["none", "uppercase", "lowercase", "capitalize"], group: "typography" },
+    { key: "width", label: "Width (px, 0=auto)", type: "number", group: "layout" },
+    { key: "height", label: "Height (px, 0=auto)", type: "number", group: "layout" },
     { key: "action", label: "Action (JSON)", type: "json" },
   ],
   render: (props) => {
     const variant = props.variant || "filled";
     const accent = props.background || "#1A1A2E";
-    const radius = props.radius != null ? Number(props.radius) : 10;
+    const radius = radiusVal(props.radius, 10);
     const filled = variant === "filled";
     const outlined = variant === "outline";
+    const w = props.width != null && Number(props.width) > 0 ? Number(props.width) : "100%";
+    const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : "100%";
     return (
       <div style={{
-        width: "100%", height: "100%",
+        width: w, height: h,
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "0 8px", boxSizing: "border-box",
       }}>
@@ -357,7 +476,8 @@ registerComponentType("button", {
           background: filled ? accent : "transparent",
           border: outlined ? `1.5px solid ${accent}` : "none",
           color: props.color || (filled ? "#FFFFFF" : "#1C1B1D"),
-          fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14,
+          fontFamily: props.fontFamily ? `'${props.fontFamily}',sans-serif` : "'Inter',sans-serif", fontWeight: props.fontWeight || 600, fontSize: props.fontSize || 14,
+          textTransform: props.textTransform && props.textTransform !== "none" ? props.textTransform : "none",
           width: "100%", textAlign: "center", boxSizing: "border-box",
           cursor: "pointer",
         }}>{props.label || "Button"}</span>
@@ -369,7 +489,7 @@ registerComponentType("button", {
 registerComponentType("path", {
   type: "path",
   label: "Vector Path",
-  icon: "✏️",
+  icon: Pencil,
   category: "shapes",
   defaultWidth: 100,
   defaultHeight: 100,
@@ -392,7 +512,7 @@ registerComponentType("path", {
 registerComponentType("ellipse", {
   type: "ellipse",
   label: "Ellipse",
-  icon: "⬭",
+  icon: Circle,
   category: "shapes",
   defaultWidth: 120,
   defaultHeight: 120,
@@ -413,7 +533,7 @@ registerComponentType("ellipse", {
 registerComponentType("line", {
   type: "line",
   label: "Line",
-  icon: "╱",
+  icon: Minus,
   category: "shapes",
   defaultWidth: 200,
   defaultHeight: 2,
@@ -433,7 +553,7 @@ registerComponentType("line", {
 registerComponentType("arrow", {
   type: "arrow",
   label: "Arrow",
-  icon: "→",
+  icon: ArrowRight,
   category: "icons",
   defaultWidth: 200,
   defaultHeight: 40,
@@ -459,35 +579,41 @@ registerComponentType("arrow", {
 registerComponentType("divider", {
   type: "divider",
   label: "Divider",
-  icon: "➖",
+  icon: Minus,
   category: "text",
   defaultWidth: 358,
   defaultHeight: 2,
   defaultProps: { color: "#E5E1E3", thickness: 1 },
   subElements: [
-    { key: "color", label: "Line Color", icon: "🎨", kind: "color" },
-    { key: "thickness", label: "Thickness", icon: "#", kind: "text" },
+    { key: "color", label: "Line Color", icon: Palette, kind: "color" },
+    { key: "thickness", label: "Thickness", icon: Hash, kind: "text" },
   ],
   propFields: [
     { key: "color", label: "Color", type: "color" },
     { key: "thickness", label: "Thickness", type: "number" },
+    { key: "width", label: "Width (px, 0=full)", type: "number", group: "layout" },
+    { key: "height", label: "Height (px, overrides thickness)", type: "number", group: "layout" },
   ],
-  render: (props) => (
-    <div style={{ width: "100%", height: props.thickness || 1, background: props.color || "#E5E1E3" }} />
-  ),
+  render: (props) => {
+    const w = props.width != null && Number(props.width) > 0 ? Number(props.width) : "100%";
+    const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : (props.thickness || 1);
+    return (
+    <div style={{ width: w, height: h, background: props.color || "#E5E1E3" }} />
+    );
+  },
 });
 
 registerComponentType("gap", {
   type: "gap",
   label: "Gap",
-  icon: "↕",
+  icon: ArrowDownUp,
   category: "layout",
   defaultWidth: 358,
   defaultHeight: 16,
   defaultProps: { height: 16, width: 0, background: "" },
   subElements: [
-    { key: "height", label: "Height", icon: "⇅", kind: "text" },
-    { key: "width", label: "Width", icon: "⇄", kind: "text" },
+    { key: "height", label: "Height", icon: ArrowDownUp, kind: "text" },
+    { key: "width", label: "Width", icon: ArrowLeftRight, kind: "text" },
   ],
   propFields: [
     { key: "height", label: "Height (px)", type: "number" },
@@ -514,41 +640,47 @@ registerComponentType("gap", {
 registerComponentType("header_bar", {
   type: "header_bar",
   label: "Header Bar",
-  icon: "🗂️",
+  icon: PanelTop,
   category: "nav",
   defaultWidth: 390,
   defaultHeight: 56,
   defaultProps: { logo: null, appName: "My App" },
   subElements: [
-    { key: "appName", label: "App Name", icon: "T", kind: "text" },
-    { key: "logo", label: "Logo", icon: "🖼️", kind: "image" },
+    { key: "appName", label: "App Name", icon: Type, kind: "text" },
+    { key: "logo", label: "Logo", icon: ImageIcon, kind: "image" },
   ],
   propFields: [
     { key: "appName", label: "App Name", type: "text" },
     { key: "logo", label: "Logo URL", type: "text" },
+    { key: "width", label: "Width (px, 0=auto)", type: "number", group: "layout" },
+    { key: "height", label: "Height (px, 0=auto)", type: "number", group: "layout" },
   ],
-  render: (props) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", width: "100%", height: "100%" }}>
+  render: (props) => {
+    const w = props.width != null && Number(props.width) > 0 ? Number(props.width) : "100%";
+    const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : "100%";
+    return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", width: w, height: h }}>
       <div style={{
         width: 32, height: 32, borderRadius: 8, flexShrink: 0,
         background: props.logo ? `url(${props.logo}) center/cover no-repeat` : "#F1EDEF",
         border: props.logo ? "none" : "2px dashed #D1D5DB",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 14, color: "#9CA3AF",
+        color: "#9CA3AF",
       }}>
-        {!props.logo && "📷"}
+        {!props.logo && <Camera size={14} />}
       </div>
       <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, color: "#1C1B1D" }}>
         {props.appName || "App Name"}
       </div>
     </div>
-  ),
+    );
+  },
 });
 
 registerComponentType("menu_grid", {
   type: "menu_grid",
   label: "Menu Grid",
-  icon: "📋",
+  icon: ClipboardList,
   category: "commerce",
   defaultWidth: 358,
   defaultHeight: 320,
@@ -575,14 +707,14 @@ registerComponentType("menu_grid", {
     ],
   },
   subElements: [
-    { key: "columns", label: "Columns Per Row", icon: "#", kind: "text" },
+    { key: "columns", label: "Columns Per Row", icon: Hash, kind: "text" },
   ],
   propFields: [
     { key: "columns", label: "Columns", type: "number" },
     { key: "gap", label: "Gap (px)", type: "number" },
     { key: "padding", label: "Padding (px)", type: "number" },
     { key: "cardRadius", label: "Card Corner Radius", type: "number" },
-    { key: "cardShadow", label: "Card Shadow", type: "select", options: ["none", "soft", "raised"] },
+    { key: "cardShadow", label: "Card Shadow", type: "select", options: ["none", "soft", "raised"], group: "effects" },
     { key: "background", label: "Background", type: "bg" },
     { key: "imageWidth", label: "Image Width (0 = full)", type: "number" },
     { key: "imageHeight", label: "Image Height", type: "number" },
@@ -614,8 +746,8 @@ registerComponentType("menu_grid", {
     const padding = props.padding != null ? Number(props.padding) : 12;
     const imageHeight = props.imageHeight != null ? Number(props.imageHeight) : 96;
     const imageWidth = props.imageWidth != null ? Number(props.imageWidth) : 0;
-    const imageRadius = props.imageRadius != null ? Number(props.imageRadius) : 8;
-    const cardRadius = props.cardRadius != null ? Number(props.cardRadius) : 12;
+    const imageRadius = radiusVal(props.imageRadius, 8);
+    const cardRadius = radiusVal(props.cardRadius, 12);
     const imageFit = props.imageFit || "cover";
     const SHADOWS = {
       none: "none",
@@ -703,15 +835,15 @@ registerComponentType("menu_grid", {
 registerComponentType("nested_section", {
   type: "nested_section",
   label: "Section (Nested)",
-  icon: "🧩",
+  icon: Boxes,
   category: "layout",
   container: true,
   defaultWidth: 358,
   defaultHeight: 160,
   defaultProps: { backgroundColor: "#FCF8FA", name: "" },
   subElements: [
-    { key: "name", label: "Section Name", icon: "T", kind: "text" },
-    { key: "backgroundColor", label: "Background", icon: "🎨", kind: "color" },
+    { key: "name", label: "Section Name", icon: Type, kind: "text" },
+    { key: "backgroundColor", label: "Background", icon: Palette, kind: "color" },
   ],
   propFields: [
     { key: "name", label: "Section Name", type: "text" },
@@ -734,15 +866,15 @@ registerComponentType("nested_section", {
 registerComponentType("carousel", {
   type: "carousel",
   label: "Carousel",
-  icon: "🎠",
+  icon: GalleryHorizontal,
   category: "layout",
   container: true,
   defaultWidth: 358,
   defaultHeight: 180,
   defaultProps: { autoplay: true, autoplayInterval: 4000, showDots: true, showArrows: true },
   subElements: [
-    { key: "showDots", label: "Show Dots", icon: "•", kind: "text" },
-    { key: "showArrows", label: "Show Arrows", icon: "↔", kind: "text" },
+    { key: "showDots", label: "Show Dots", icon: Circle, kind: "text" },
+    { key: "showArrows", label: "Show Arrows", icon: ArrowLeftRight, kind: "text" },
   ],
   propFields: [
     { key: "autoplay", label: "Auto-play", type: "select", options: ["true", "false"] },
@@ -798,20 +930,21 @@ function templateType(name, label, icon, height, Comp, category) {
   });
 }
 
-templateType("order_history", "Order History", "🧾", 240, OrderHistory, "commerce");
-templateType("info_list", "Info List", "ℹ️", 200, InfoList, "text");
-templateType("report_action", "Report Action", "🚨", 140, ReportAction, "feedback");
-templateType("notification_list", "Notification List", "🔔", 200, NotificationList, "feedback");
-templateType("primary_button", "Primary Button", "🔘", 80, PrimaryButton, "buttons");
-templateType("calendar_strip", "Calendar Strip", "📅", 120, CalendarStrip, "booking");
-templateType("slot_grid", "Slot Grid", "🕐", 160, SlotGrid, "booking");
-templateType("booking_summary", "Booking Summary", "📋", 160, BookingSummary, "booking");
-templateType("cart_summary", "Cart Summary", "🛒", 160, CartSummary, "commerce");
-templateType("address_form", "Address Form", "📍", 200, AddressForm, "inputs");
+templateType("order_history", "Order History", FileText, 240, OrderHistory, "commerce");
+templateType("info_list", "Info List", Info, 200, InfoList, "text");
+templateType("report_action", "Report Action", Bell, 140, ReportAction, "feedback");
+templateType("notification_list", "Notification List", Bell, 200, NotificationList, "feedback");
+templateType("primary_button", "Primary Button", Square, 80, PrimaryButton, "buttons");
+templateType("calendar_strip", "Calendar Strip", Calendar, 120, CalendarStrip, "booking");
+templateType("slot_grid", "Slot Grid", Clock, 160, SlotGrid, "booking");
+templateType("booking_summary", "Booking Summary", ClipboardList, 160, BookingSummary, "booking");
+templateType("laundry_booking", "Laundry Booking", ShoppingBag, 520, LaundryBooking, "booking");
+templateType("cart_summary", "Cart Summary", ShoppingCart, 160, CartSummary, "commerce");
+templateType("address_form", "Address Form", MapPin, 200, AddressForm, "inputs");
 registerComponentType("promotion_list", {
   type: "promotion_list",
   label: "Promotion List",
-  icon: "🏷️",
+  icon: Tag,
   category: "commerce",
   defaultWidth: 358,
   defaultHeight: 220,
@@ -837,8 +970,8 @@ registerComponentType("promotion_list", {
     ],
   },
   subElements: [
-    { key: "heading", label: "Heading", icon: "T", kind: "text" },
-    { key: "layout", label: "Layout", icon: "▦", kind: "text" },
+    { key: "heading", label: "Heading", icon: Type, kind: "text" },
+    { key: "layout", label: "Layout", icon: LayoutGrid, kind: "text" },
   ],
   propFields: [
     { key: "heading", label: "Heading", type: "text" },
@@ -875,7 +1008,7 @@ registerComponentType("promotion_list", {
     const gap = Number(props.gap) || 12;
     const imageHeight = props.imageHeight != null ? Number(props.imageHeight) : 150;
     const fit = props.imageFit || "cover";
-    const radius = Number(props.cardRadius) || 14;
+    const radius = radiusVal(props.cardRadius, 14);
     const pad = Number(props.cardPadding) || 14;
     const cardBg = resolveBackground(props.cardBackground, "#FFFFFF");
     const accent = props.accentColor || "#F4A623";
@@ -960,14 +1093,14 @@ registerComponentType("promotion_list", {
   },
 });
 
-templateType("section_header", "Section Header", "🏷️", 56, TemplateSectionHeader, "text");
-templateType("empty_state", "Empty State", "📄", 160, RegistryEmptyState, "feedback");
-templateType("dynamic_card", "Dynamic Card", "🃏", 120, RegistryDynamicCard, "layout");
+templateType("section_header", "Section Header", Tag, 56, TemplateSectionHeader, "text");
+templateType("empty_state", "Empty State", FileText, 160, RegistryEmptyState, "feedback");
+templateType("dynamic_card", "Dynamic Card", CreditCard, 120, RegistryDynamicCard, "layout");
 
 registerComponentType("card", {
   type: "card",
   label: "Card",
-  icon: "🃏",
+  icon: CreditCard,
   category: "layout",
   defaultWidth: 358,
   defaultHeight: 160,
@@ -994,12 +1127,18 @@ registerComponentType("card", {
     buttonLabel: "",
     buttonBackground: "#1A1A2E",
     buttonTextColor: "#FFFFFF",
+    textStyles: {
+      title: { fontFamily: "Sora", fontSize: 15, fontWeight: "700", fontStyle: "normal", lineHeight: 1.25, letterSpacing: 0, textTransform: "none", color: "#1A1A2E" },
+      subtitle: { fontFamily: "Inter", fontSize: 11.5, fontWeight: "400", fontStyle: "normal", lineHeight: 1.45, letterSpacing: 0, textTransform: "none", color: "#6B7280" },
+      badge: { fontFamily: "Inter", fontSize: 9, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0.5, textTransform: "uppercase", color: "#8A5A00" },
+      buttonLabel: { fontFamily: "Inter", fontSize: 12, fontWeight: "600", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" },
+    }
   },
   subElements: [
-    { key: "title", label: "Title", icon: "T", kind: "text" },
-    { key: "subtitle", label: "Subtitle", icon: "Aa", kind: "text" },
-    { key: "badge", label: "Badge", icon: "🏷️", kind: "text" },
-    { key: "background", label: "Background", icon: "🎨", kind: "fill" },
+    { key: "title", label: "Title", icon: Type, kind: "text", styleable: true },
+    { key: "subtitle", label: "Subtitle", icon: Type, kind: "text", styleable: true },
+    { key: "badge", label: "Badge", icon: Tag, kind: "text", styleable: true },
+    { key: "background", label: "Background", icon: Palette, kind: "fill" },
   ],
   propFields: [
     { key: "variant", label: "Layout", type: "select", options: ["vertical", "horizontal", "plain"] },
@@ -1024,16 +1163,20 @@ registerComponentType("card", {
     { key: "buttonLabel", label: "Button Label", type: "text" },
     { key: "buttonBackground", label: "Button Background", type: "color" },
     { key: "buttonTextColor", label: "Button Text Color", type: "color" },
+    { key: "width", label: "Width (px, 0=auto)", type: "number", group: "layout" },
+    { key: "height", label: "Height (px, 0=auto)", type: "number", group: "layout" },
   ],
   render: (props) => {
     const variant = props.variant || "vertical";
+    const outerW = props.width != null && Number(props.width) > 0 ? Number(props.width) : undefined;
+    const outerH = props.height != null && Number(props.height) > 0 ? Number(props.height) : undefined;
     const bg = resolveBackground(props.background, "#FFFFFF");
-    const radius = props.radius != null ? Number(props.radius) : 16;
+    const radius = radiusVal(props.radius, 16);
     const pad = props.padding != null ? Number(props.padding) : 14;
     const imageHeight = props.imageHeight != null ? Number(props.imageHeight) : 150;
     const imageWidth = props.imageWidth != null ? Number(props.imageWidth) : 0;
     const fit = props.imageFit || "cover";
-    const imageRadius = props.imageRadius != null ? Number(props.imageRadius) : 12;
+    const imageRadius = radiusVal(props.imageRadius, 12);
     const shadow = props.shadow === "none" ? "none"
       : props.shadow === "raised" ? "0 18px 44px rgba(26,26,46,0.18)" : "0 4px 16px rgba(26,26,46,0.08)";
     const border = props.border === "none" ? "none"
@@ -1043,7 +1186,7 @@ registerComponentType("card", {
     const badgeText = props.badgeTextColor || "#8A5A00";
 
     const badgeEl = props.badge ? (
-      <span style={{ display: "inline-block", alignSelf: "flex-start", background: badgeBg, color: badgeText, fontSize: 9, fontWeight: 700, padding: "3px 9px", borderRadius: 999, marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>
+      <span style={Object.assign({ display: "inline-block", alignSelf: "flex-start", background: badgeBg, padding: "3px 9px", borderRadius: 999, marginBottom: 8 }, applyTextStyle(resolveTextStyle(props, "badge", { fontFamily: "Inter", fontSize: 9, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0.5, textTransform: "uppercase", color: badgeText })))}>
         {props.badge}
       </span>
     ) : null;
@@ -1068,21 +1211,16 @@ registerComponentType("card", {
     const textEl = (
       <div style={{ display: "flex", flexDirection: "column", alignItems: variant === "plain" ? "center" : "flex-start", textAlign: variant === "plain" ? "center" : "left" }}>
         {badgeEl}
-        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, color: props.titleColor || "#1A1A2E", marginBottom: 4 }}>
+        <div style={Object.assign({ marginBottom: 4 }, applyTextStyle(resolveTextStyle(props, "title", { fontFamily: "Sora", fontSize: 15, fontWeight: "700", fontStyle: "normal", lineHeight: 1.25, letterSpacing: 0, textTransform: "none", color: props.titleColor || "#1A1A2E" })))}>
           {props.title || "Card"}
         </div>
         {props.subtitle && (
-          <div style={{ fontSize: 11.5, color: props.subtitleColor || "#6B7280", lineHeight: 1.45 }}>
+          <div style={applyTextStyle(resolveTextStyle(props, "subtitle", { fontFamily: "Inter", fontSize: 11.5, fontWeight: "400", fontStyle: "normal", lineHeight: 1.45, letterSpacing: 0, textTransform: "none", color: props.subtitleColor || "#6B7280" }))}>
             {props.subtitle}
           </div>
         )}
         {props.buttonLabel && (
-          <div style={{
-            marginTop: 10, alignSelf: variant === "plain" ? "center" : "flex-start",
-            background: props.buttonBackground || "#1A1A2E", color: props.buttonTextColor || "#FFFFFF",
-            fontSize: 12, fontWeight: 600, padding: "8px 18px", borderRadius: 999,
-            fontFamily: "'Inter',sans-serif",
-          }}>
+          <div style={Object.assign({ marginTop: 10, alignSelf: variant === "plain" ? "center" : "flex-start", background: props.buttonBackground || "#1A1A2E", padding: "8px 18px", borderRadius: 999 }, applyTextStyle(resolveTextStyle(props, "buttonLabel", { fontFamily: "Inter", fontSize: 12, fontWeight: "600", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: props.buttonTextColor || "#FFFFFF" })))}>
             {props.buttonLabel}
           </div>
         )}
@@ -1111,8 +1249,8 @@ registerComponentType("card", {
         </div>;
 
     return (
-      <div style={{ boxSizing: "border-box" }}>
-        <div style={{ background: bg, borderRadius: radius, boxShadow: shadow, border, overflow: "hidden" }}>
+      <div style={{ boxSizing: "border-box", width: outerW, height: outerH }}>
+        <div style={{ background: bg, borderRadius: radius, boxShadow: shadow, border, overflow: "hidden", width: "100%", height: outerH ? "100%" : undefined }}>
           {inner}
         </div>
       </div>
@@ -1127,12 +1265,13 @@ export const ROW_TEMPLATES = {
   "1/2|1/2": [1, 1],
   "1/3|2/3": [1, 2],
   "2/3|1/3": [2, 1],
+  "1/3|1/3|1/3": [1, 1, 1],
 };
 
 registerComponentType("row", {
   type: "row",
   label: "Row / Columns",
-  icon: "▤",
+  icon: LayoutGrid,
   category: "layout",
   container: true,
   defaultWidth: 358,
@@ -1145,8 +1284,8 @@ registerComponentType("row", {
     background: { type: "color", value: "" },
   },
   subElements: [
-    { key: "template", label: "Split", icon: "▤", kind: "text" },
-    { key: "background", label: "Background", icon: "🎨", kind: "fill" },
+    { key: "template", label: "Split", icon: LayoutGrid, kind: "text" },
+    { key: "background", label: "Background", icon: Palette, kind: "fill" },
   ],
   propFields: [
     { key: "template", label: "Split", type: "select", options: Object.keys(ROW_TEMPLATES) },
@@ -1160,7 +1299,7 @@ registerComponentType("row", {
     const N = cols.length;
     const gap = Number(props.gap) || 10;
     const pad = Number(props.padding) || 10;
-    const radius = Number(props.radius) || 12;
+    const radius = radiusVal(props.radius, 12);
     const items = Array.isArray(children) && children.length ? children : [];
     const colsCss = cols.map(c => `${c}fr`).join(" ");
     return (
@@ -1190,12 +1329,52 @@ registerComponentType("row", {
   },
 });
 
+registerComponentType("tabs", {
+  type: "tabs",
+  label: "Tabs",
+  icon: PanelTop,
+  category: "navigation",
+  container: false,
+  defaultWidth: 358,
+  defaultHeight: 56,
+  defaultProps: {
+    position: "top",
+    items: [
+      { label: "Home", icon: "Home", screenId: "screen_1" },
+      { label: "Shop", icon: "Star", screenId: "screen_1" },
+    ],
+  },
+  propFields: [
+    { key: "position", label: "Position", type: "select", options: ["top", "bottom"], group: "layout" },
+    { key: "items", label: "Tabs (JSON array)", type: "json", group: "data" },
+  ],
+  render: (props) => {
+    const items = Array.isArray(props.items) ? props.items : [];
+    const bar = (border) => (
+      <div style={{ display: "flex", background: "#fff", ...border }}>
+        {items.length === 0 && <div style={{ flex: 1, textAlign: "center", padding: "10px 4px", color: "#9CA3AF", fontSize: 11 }}>No tabs</div>}
+        {items.map((it, i) => {
+          const Glyph = getLucideIcon(it.icon);
+          return (
+            <div key={i} style={{ flex: 1, padding: "8px 4px", textAlign: "center", fontSize: 11, color: i === 0 ? "#B45309" : "#6B7280", borderTop: i === 0 ? "2px solid #F4A026" : "2px solid transparent" }}>
+              {Glyph ? <div style={{ display: "flex", justifyContent: "center", marginBottom: 2 }}><Glyph size={18} /></div> : null}
+              <div>{it.label || `Tab ${i + 1}`}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
+    if (props.position === "bottom") return bar({ borderTop: "1px solid #E5E1E3" });
+    return bar({ borderBottom: "1px solid #E5E1E3" });
+  },
+});
+
 /* ═══════════════ Phase 1 — new mobile building blocks ═══════════════ */
 
 registerComponentType("icon", {
   type: "icon",
   label: "Icon",
-  icon: "✨",
+  icon: Sparkles,
   category: "icons",
   defaultWidth: 32,
   defaultHeight: 32,
@@ -1203,7 +1382,7 @@ registerComponentType("icon", {
   propFields: [
     { key: "name", label: "Icon", type: "select", options: Object.keys(ICON_LIBRARY) },
     { key: "size", label: "Size", type: "number" },
-    { key: "color", label: "Color", type: "color" },
+    { key: "color", label: "Color", type: "color", group: "colors" },
   ],
   render: (props) => {
     const Glyph = getLucideIcon(props.name);
@@ -1218,7 +1397,7 @@ registerComponentType("icon", {
 registerComponentType("chevron", {
   type: "chevron",
   label: "Arrow (directional)",
-  icon: "↔️",
+  icon: ArrowLeftRight,
   category: "icons",
   defaultWidth: 40,
   defaultHeight: 40,
@@ -1241,7 +1420,7 @@ registerComponentType("chevron", {
 registerComponentType("icon_button", {
   type: "icon_button",
   label: "Icon Button",
-  icon: "🔳",
+  icon: Square,
   category: "buttons",
   defaultWidth: 44,
   defaultHeight: 44,
@@ -1272,7 +1451,7 @@ registerComponentType("icon_button", {
 registerComponentType("fab", {
   type: "fab",
   label: "Floating Action",
-  icon: "➕",
+  icon: Plus,
   category: "buttons",
   defaultWidth: 56,
   defaultHeight: 56,
@@ -1301,7 +1480,7 @@ registerComponentType("fab", {
 registerComponentType("text_input", {
   type: "text_input",
   label: "Text Field",
-  icon: "✎",
+  icon: Pencil,
   category: "inputs",
   defaultWidth: 358,
   defaultHeight: 64,
@@ -1328,7 +1507,7 @@ registerComponentType("text_input", {
 registerComponentType("search_bar", {
   type: "search_bar",
   label: "Search Bar",
-  icon: "🔍",
+  icon: Search,
   category: "inputs",
   defaultWidth: 358,
   defaultHeight: 52,
@@ -1352,7 +1531,7 @@ registerComponentType("search_bar", {
 registerComponentType("switch_toggle", {
   type: "switch_toggle",
   label: "Toggle Switch",
-  icon: "🎚️",
+  icon: ToggleLeft,
   category: "inputs",
   defaultWidth: 200,
   defaultHeight: 40,
@@ -1384,7 +1563,7 @@ registerComponentType("switch_toggle", {
 registerComponentType("checkbox_row", {
   type: "checkbox_row",
   label: "Checkbox",
-  icon: "☑️",
+  icon: CheckSquare,
   category: "inputs",
   defaultWidth: 240,
   defaultHeight: 36,
@@ -1414,7 +1593,7 @@ registerComponentType("checkbox_row", {
 registerComponentType("avatar", {
   type: "avatar",
   label: "Avatar",
-  icon: "👤",
+  icon: User,
   category: "media",
   defaultWidth: 48,
   defaultHeight: 48,
@@ -1448,7 +1627,7 @@ registerComponentType("avatar", {
 registerComponentType("badge", {
   type: "badge",
   label: "Badge / Pill",
-  icon: "🏷️",
+  icon: Tag,
   category: "feedback",
   defaultWidth: 80,
   defaultHeight: 26,
@@ -1472,7 +1651,7 @@ registerComponentType("badge", {
 registerComponentType("progress_bar", {
   type: "progress_bar",
   label: "Progress Bar",
-  icon: "📊",
+  icon: BarChart3,
   category: "feedback",
   defaultWidth: 358,
   defaultHeight: 24,
@@ -1503,7 +1682,7 @@ registerComponentType("progress_bar", {
 registerComponentType("rating", {
   type: "rating",
   label: "Star Rating",
-  icon: "⭐",
+  icon: Star,
   category: "feedback",
   defaultWidth: 120,
   defaultHeight: 28,
@@ -1512,13 +1691,17 @@ registerComponentType("rating", {
     { key: "value", label: "Stars (1-5)", type: "number" },
     { key: "color", label: "Star Color", type: "color" },
     { key: "size", label: "Size", type: "number" },
+    { key: "width", label: "Width (px, 0=auto)", type: "number", group: "layout" },
+    { key: "height", label: "Height (px, 0=auto)", type: "number", group: "layout" },
   ],
   render: (props) => {
     const v = Math.max(0, Math.min(5, Math.round(Number(props.value) || 0)));
     const size = Number(props.size) || 18;
     const color = props.color || "#F4A644";
+    const w = props.width != null && Number(props.width) > 0 ? Number(props.width) : "100%";
+    const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : "100%";
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, width: "100%", height: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, width: w, height: h }}>
         {[1, 2, 3, 4, 5].map(i => (
           <Star key={i} size={size} fill={i <= v ? color : "transparent"} color={color} strokeWidth={i <= v ? 1 : 1.6} />
         ))}
@@ -1526,3 +1709,16 @@ registerComponentType("rating", {
     );
   },
 });
+
+// Auto-inject width/height into layout group for any component that lacks them and is visual
+(() => {
+  const skip = new Set(["row","nested_section","carousel","gap"]);
+  Object.values(types).forEach(def => {
+    if (!def || skip.has(def.type)) return;
+    if (!Array.isArray(def.propFields)) def.propFields = [];
+    const hasW = def.propFields.some(f => f.key === "width");
+    const hasH = def.propFields.some(f => f.key === "height");
+    if (!hasW) def.propFields.push({ key: "width", label: "Width (px, 0=auto)", type: "number", group: "layout" });
+    if (!hasH) def.propFields.push({ key: "height", label: "Height (px, 0=auto)", type: "number", group: "layout" });
+  });
+})();

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { theme, iconBtn, iconBtnDanger } from "./editorTheme";
+import { useEditorTheme } from "./editorTheme.jsx";
 
 export default function ScreenSwitcher({ store }) {
+  const { theme, iconBtn, iconBtnDanger } = useEditorTheme();
   const data = store.data;
   const screenIds = Object.keys(data.screens);
   const [editingTabIdx, setEditingTabIdx] = useState(null);

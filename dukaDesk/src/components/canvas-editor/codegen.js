@@ -12,6 +12,7 @@ function mapType(type) {
     ellipse: "Ellipse",
     line: "Line",
     arrow: "Arrow",
+    tabs: "Tabs",
   };
   return map[type] || "Unknown";
 }

@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
-import { getComponentType, getAllComponentTypes, resolveBackground, ROW_TEMPLATES } from "../canvas-editor/componentTypes";
-import { theme, iconBtn, iconBtnDanger } from "./editorTheme";
+import { getComponentType, getAllComponentTypes, resolveBackground, ROW_TEMPLATES, applyTextStyle, resolveTextStyle, getLucideIcon } from "../canvas-editor/componentTypes";
+import { useEditorTheme } from "./editorTheme.jsx";
 import { toast } from "react-toastify";
 
 const TIME = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -15,7 +15,8 @@ function sanitizeRadius(value, fallback) {
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
-export default function SectionRenderer({ store, selectedSectionId, selectedComponentId, onSelectSection, onSelectComponent }) {
+export default function SectionRenderer({ store, selectedSectionId, selectedComponentId, onSelectSection, onSelectComponent, onFocusSubElement, focusSubKey }) {
+  const { theme, iconBtn, iconBtnDanger } = useEditorTheme();
   const data = store.data;
   const screen = store.screen;
   const [dragOverSectionId, setDragOverSectionId] = useState(null);
@@ -131,7 +132,17 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
     }
   };
 
-  const renderInlineText = (comp, field, value, sectionId) => {
+  const isSubFocused = (compId, subKey) => focusSubKey?.compId === compId && focusSubKey?.key === subKey;
+  const handleSubClick = (e, sectionId, compId, subKey) => {
+    e.stopPropagation();
+    onSelectComponent(sectionId, compId);
+    onFocusSubElement?.(sectionId, compId, subKey);
+  };
+  const subTextStyle = (comp, subKey, fallback) => applyTextStyle(resolveTextStyle(comp.props || {}, subKey, fallback));
+  const subFocusStyle = (compId, subKey) => isSubFocused(compId, subKey) ? { outline: `1.5px dashed ${theme.selection}`, outlineOffset: 1, borderRadius: 3 } : {};
+
+  const renderInlineText = (comp, field, value, sectionId, extraStyle) => {
+    const focused = isSubFocused(comp.id, field);
     if (editingCompId === comp.id && editingField === field) {
       return (
         <input
@@ -146,14 +157,17 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
             padding: "2px 4px", fontSize: "inherit", fontWeight: "inherit",
             color: "inherit", fontFamily: "inherit", textAlign: "inherit",
             outline: "none", width: "100%", boxSizing: "border-box",
+            ...extraStyle,
           }}
         />
       );
     }
     return (
       <span
+        onClick={(e) => handleSubClick(e, sectionId, comp.id, field)}
         onDoubleClick={(e) => { e.stopPropagation(); startEditing(sectionId, comp.id, field, value); }}
-        style={{ cursor: "text", minHeight: 16, display: "inline-block" }}
+        title="Click to select & style this text — double-click to edit content"
+        style={{ cursor: "text", minHeight: 16, display: "inline-block", borderRadius: 2, padding: "0 2px", ...extraStyle, ...subFocusStyle(comp.id, field), ...(focused ? { background: "rgba(244,160,38,0.12)" } : {}) }}
       >{value}</span>
     );
   };
@@ -170,12 +184,20 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
     let rendered;
     if (comp.type === "text_block") {
       const val = comp.props?.text || "";
+      const tbStyle = {
+        fontSize: comp.props?.fontSize || 14,
+        fontWeight: comp.props?.fontWeight || 400,
+        fontStyle: comp.props?.fontStyle || "normal",
+        fontFamily: comp.props?.fontFamily ? `'${comp.props.fontFamily}',sans-serif` : "'Inter',sans-serif",
+        color: comp.props?.color || "#1C1B1D",
+        textAlign: comp.props?.alignment || "left",
+        lineHeight: comp.props?.lineHeight != null ? Number(comp.props.lineHeight) : 1.4,
+        letterSpacing: comp.props?.letterSpacing != null ? `${Number(comp.props.letterSpacing)}px` : "normal",
+        textTransform: comp.props?.textTransform && comp.props.textTransform !== "none" ? comp.props.textTransform : "none",
+      };
+      const tbFocused = isSubFocused(comp.id, "text");
       rendered = (
-        <div style={{
-          fontSize: comp.props?.fontSize || 14, fontWeight: comp.props?.fontWeight || 400,
-          color: comp.props?.color || "#1C1B1D", textAlign: comp.props?.alignment || "left",
-          fontFamily: "'Inter',sans-serif", padding: "2px 16px", lineHeight: 1.4,
-        }}>
+        <div style={{ ...tbStyle, padding: "2px 16px", cursor: "text", ...(tbFocused ? { outline: `1.5px dashed ${theme.selection}`, outlineOffset: 1, borderRadius: 4, background: "rgba(244,160,38,0.08)" } : {}) }} onClick={(e) => handleSubClick(e, sectionId, comp.id, "text")}>
           {renderInlineText(comp, "text", val, sectionId)}
         </div>
       );
@@ -219,16 +241,16 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
           )}
           <div style={{ position: "relative", zIndex: 1, maxWidth: splitImage ? "58%" : "100%" }}>
             {!!p.badge && (
-              <span style={{ fontSize: 11, fontWeight: 600, background: theme.active, color: "#6B4200", padding: "4px 12px", borderRadius: 20, marginBottom: 12, display: "inline-block" }}>
-                {renderInlineText(comp, "badge", p.badge, sectionId)}
+              <span style={{ ...subTextStyle(comp, "badge", { fontFamily: "Inter", fontSize: 11, fontWeight: "600", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#6B4200" }), background: theme.active, padding: "4px 12px", borderRadius: 20, marginBottom: 12, display: "inline-block", ...subFocusStyle(comp.id, "badge"), ...(isSubFocused(comp.id, "badge") ? { background: "#F4A026", boxShadow: `0 0 0 1.5px ${theme.selection}` } : { background: "#F4A026" }) }}>
+                {renderInlineText(comp, "badge", p.badge, sectionId, subTextStyle(comp, "badge", { fontFamily: "Inter", fontSize: 11, fontWeight: "600", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#6B4200" }))}
               </span>
             )}
-            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
-              {renderInlineText(comp, "title", p.title || "Welcome", sectionId)}
+            <div style={{ ...subTextStyle(comp, "title", { fontFamily: "Sora", fontSize: 22, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" }), marginBottom: 4, ...subFocusStyle(comp.id, "title") }}>
+              {renderInlineText(comp, "title", p.title || "Welcome", sectionId, subTextStyle(comp, "title", { fontFamily: "Sora", fontSize: 22, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" }))}
             </div>
             {p.subtitle && (
-              <div style={{ fontSize: 13, opacity: 0.8 }}>
-                {renderInlineText(comp, "subtitle", p.subtitle, sectionId)}
+              <div style={{ ...subTextStyle(comp, "subtitle", { fontFamily: "Inter", fontSize: 13, fontWeight: "400", fontStyle: "normal", lineHeight: 1.4, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" }), opacity: 0.8, ...subFocusStyle(comp.id, "subtitle") }}>
+                {renderInlineText(comp, "subtitle", p.subtitle, sectionId, subTextStyle(comp, "subtitle", { fontFamily: "Inter", fontSize: 13, fontWeight: "400", fontStyle: "normal", lineHeight: 1.4, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" }))}
               </div>
             )}
           </div>
@@ -239,15 +261,15 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
         <div style={{ display: "flex", gap: 12, padding: "12px 16px", background: "#FCF8FA", borderRadius: 12, boxShadow: "0px 2px 12px rgba(0,0,0,0.08)", border: "1px solid rgba(200,197,205,0.3)", alignItems: "center", margin: "0 4px" }}>
           <div style={{ width: 48, height: 48, background: "#F1EDEF", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{comp.props?.emoji || "\uD83C\uDF7D\uFE0F"}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: theme.text, marginBottom: 2 }}>
-              {renderInlineText(comp, "name", comp.props?.name || "", sectionId)}
+            <div style={{ ...subTextStyle(comp, "name", { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: theme.text }), marginBottom: 2, ...subFocusStyle(comp.id, "name") }}>
+              {renderInlineText(comp, "name", comp.props?.name || "", sectionId, subTextStyle(comp, "name", { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: theme.text }))}
             </div>
-            {comp.props?.desc && <div style={{ fontSize: 11, color: theme.textSecondary, lineHeight: 1.3 }}>
-              {renderInlineText(comp, "desc", comp.props?.desc, sectionId)}
+            {comp.props?.desc && <div style={{ ...subTextStyle(comp, "desc", { fontFamily: "Inter", fontSize: 11, fontWeight: "400", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: theme.textSecondary }), ...subFocusStyle(comp.id, "desc") }}>
+              {renderInlineText(comp, "desc", comp.props?.desc, sectionId, subTextStyle(comp, "desc", { fontFamily: "Inter", fontSize: 11, fontWeight: "400", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: theme.textSecondary }))}
             </div>}
           </div>
-          <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: "#1A1A2E", whiteSpace: "nowrap" }}>
-            {renderInlineText(comp, "price", comp.props?.price || "", sectionId)}
+          <span style={{ ...subTextStyle(comp, "price", { fontFamily: "Sora", fontSize: 14, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#1A1A2E" }), whiteSpace: "nowrap", ...subFocusStyle(comp.id, "price") }}>
+            {renderInlineText(comp, "price", comp.props?.price || "", sectionId, subTextStyle(comp, "price", { fontFamily: "Sora", fontSize: 14, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#1A1A2E" }))}
           </span>
         </div>
       );
@@ -276,6 +298,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
       const accent = p.background || "#1A1A2E";
       const filled = variant === "filled";
       const outlined = variant === "outline";
+      const lblStyle = subTextStyle(comp, "label", { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.25, letterSpacing: 0, textTransform: "none", color: p.color || (filled ? "#FFFFFF" : "#1C1B1D") });
       rendered = (
         <div style={{ padding: "8px 16px", textAlign: "center" }}>
           <div style={{
@@ -283,10 +306,10 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
             borderRadius: p.radius != null ? Number(p.radius) : 10,
             background: filled ? accent : "transparent",
             border: outlined ? `1.5px solid ${accent}` : "none",
-            color: p.color || (filled ? "#FFFFFF" : "#1C1B1D"),
-            fontWeight: 600, fontSize: 14, fontFamily: "'Inter',sans-serif",
+            ...lblStyle,
+            ...subFocusStyle(comp.id, "label"),
           }}>
-            {renderInlineText(comp, "label", p.label || "Button", sectionId)}
+            {renderInlineText(comp, "label", p.label || "Button", sectionId, lblStyle)}
           </div>
         </div>
       );
@@ -424,6 +447,33 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
           )}
         </div>
       );
+    } else if (comp.type === "tabs") {
+      const p = comp.props || {};
+      const tabItems = Array.isArray(p.items) ? p.items : [];
+      const bar = (border) => (
+        <div style={{ display: "flex", background: "#fff", ...border }}>
+          {tabItems.length === 0 && <div style={{ flex: 1, textAlign: "center", padding: "10px 4px", color: "#9CA3AF", fontSize: 11 }}>No tabs</div>}
+          {tabItems.map((it, i) => {
+            const Glyph = getLucideIcon(it.icon);
+            const isActive = i === 0;
+            return (
+              <div
+                key={i}
+                onClick={(e) => { e.stopPropagation(); if (it.screenId) store.setCurrentScreenId(it.screenId); }}
+                style={{
+                  flex: 1, padding: "8px 4px", textAlign: "center", cursor: it.screenId ? "pointer" : "default",
+                  fontSize: 11, color: isActive ? "#B45309" : "#6B7280",
+                  borderTop: isActive ? "2px solid #F4A026" : "2px solid transparent",
+                }}
+              >
+                {Glyph ? <div style={{ display: "flex", justifyContent: "center", marginBottom: 2 }}><Glyph size={18} /></div> : null}
+                <div>{it.label || `Tab ${i + 1}`}</div>
+              </div>
+            );
+          })}
+        </div>
+      );
+      rendered = p.position === "bottom" ? bar({ borderTop: "1px solid #E5E1E3" }) : bar({ borderBottom: "1px solid #E5E1E3" });
     } else {
       rendered = def.render({
         ...comp.props,
@@ -442,6 +492,8 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
     const elevation = ELEVATIONS[comp.props?.elevation] || "none";
     const compOpacity = comp.props?.opacity != null ? Number(comp.props.opacity) / 100 : 1;
 
+    const outerW = comp.props?.width != null && Number(comp.props.width) > 0 ? Number(comp.props.width) : "100%";
+    const outerH = comp.props?.height != null && Number(comp.props.height) > 0 ? Number(comp.props.height) : undefined;
     return (
       <div
         key={comp.id}
@@ -449,7 +501,8 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
         onMouseEnter={() => setHoveredCompId(comp.id)}
         onMouseLeave={() => setHoveredCompId(null)}
         style={{
-          width: "100%",
+          width: outerW,
+          height: outerH,
           opacity: comp.visible === false ? 0.4 : compOpacity,
           position: "relative",
           outline: isSelected ? `2px solid ${theme.selection}` : "none",
@@ -464,6 +517,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
           paddingLeft: padding.left || 0,
           boxShadow: elevation,
           boxSizing: "border-box",
+          overflow: outerH ? "hidden" : undefined,
         }}
       >
         {rendered}

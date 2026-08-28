@@ -480,6 +480,68 @@ export function BookingSummary({ service = "Hair Styling", subtitle, duration = 
   );
 }
 
+export function LaundryBooking({ service = "Wash & Fold", price = 2500, unitLabel = "kg", services = [], style = {}, onAction }) {
+  const brand = useBrand();
+  const options = services.length ? services : [{ name: service, price, unitLabel }];
+  const [selectedService, setSelectedService] = useState(options[0]);
+  const [quantity, setQuantity] = useState(1);
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("09:00");
+  const [address, setAddress] = useState({ street: "", city: "", state: "", phone: "" });
+  const total = Number(selectedService.price || 0) * quantity;
+  const inputStyle = { padding: "12px", borderRadius: 10, border: `1px solid ${brand.GRAY?.[200]}`, fontSize: 14, width: "100%", boxSizing: "border-box" };
+
+  return (
+    <div style={{ background: brand.cardColor || "#fff", borderRadius: 14, padding: 20, border: `1px solid ${brand.GRAY?.[200]}`, ...style }}>
+      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: brand.NAVY, marginBottom: 4 }}>Schedule home pickup</div>
+      <div style={{ fontSize: 13, color: brand.GRAY?.[500], marginBottom: 18 }}>Set your quantity and choose when we should collect and return your laundry.</div>
+
+      <div style={{ background: `${brand.AMBER}15`, borderRadius: 12, padding: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: brand.GRAY?.[600], marginBottom: 4 }}>Selected service</div>
+        <select value={selectedService.name} onChange={e => setSelectedService(options.find(option => option.name === e.target.value) || options[0])} style={{ ...inputStyle, background: brand.cardColor, fontWeight: 700, color: brand.NAVY }}>
+          {options.map(option => <option key={option.name} value={option.name}>{option.name}</option>)}
+        </select>
+        <div style={{ fontSize: 12, color: brand.GRAY?.[600], marginTop: 6 }}>₦{Number(selectedService.price || 0).toLocaleString()} / {selectedService.unitLabel || unitLabel}</div>
+      </div>
+
+      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: brand.NAVY, marginBottom: 8 }}>Quantity ({unitLabel})</label>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+        <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} style={{ width: 38, height: 38, borderRadius: 10, border: `1px solid ${brand.GRAY?.[200]}`, background: brand.cardColor, color: brand.NAVY, fontSize: 20, cursor: "pointer" }}>−</button>
+        <span style={{ minWidth: 34, textAlign: "center", fontSize: 18, fontWeight: 700, color: brand.NAVY }}>{quantity}</span>
+        <button type="button" onClick={() => setQuantity(q => q + 1)} style={{ width: 38, height: 38, borderRadius: 10, border: `1px solid ${brand.GRAY?.[200]}`, background: brand.cardColor, color: brand.NAVY, fontSize: 20, cursor: "pointer" }}>+</button>
+      </div>
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: brand.NAVY, marginBottom: 8 }}>Pickup and delivery address</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+        <input placeholder="Street Address" value={address.street} onChange={e => setAddress({ ...address, street: e.target.value })} style={inputStyle} />
+        <div style={{ display: "flex", gap: 10 }}>
+          <input placeholder="City" value={address.city} onChange={e => setAddress({ ...address, city: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
+          <input placeholder="State" value={address.state} onChange={e => setAddress({ ...address, state: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
+        </div>
+        <input placeholder="Phone Number" value={address.phone} onChange={e => setAddress({ ...address, phone: e.target.value })} style={inputStyle} />
+      </div>
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        <label style={{ flex: 1, fontSize: 12, fontWeight: 700, color: brand.NAVY }}>Pickup date
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inputStyle, marginTop: 6 }} />
+        </label>
+        <label style={{ flex: 1, fontSize: 12, fontWeight: 700, color: brand.NAVY }}>Pickup time
+          <select value={time} onChange={e => setTime(e.target.value)} style={{ ...inputStyle, marginTop: 6, background: brand.cardColor }}>
+            {['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map(slot => <option key={slot} value={slot}>{slot}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <div style={{ borderTop: `1px solid ${brand.GRAY?.[200]}`, paddingTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div><div style={{ fontSize: 12, color: brand.GRAY?.[500] }}>Estimated total</div><div style={{ fontSize: 20, fontWeight: 800, color: brand.NAVY }}>₦{total.toLocaleString()}</div></div>
+        <button type="button" onClick={() => onAction?.("confirm", { service: selectedService.name, quantity, unitLabel: selectedService.unitLabel || unitLabel, date, time, address, total, fulfillment: "home_pickup_delivery" })} style={{ padding: "13px 16px", background: brand.AMBER, color: brand.NAVY, border: "none", borderRadius: 10, fontWeight: 700, fontFamily: "'Sora',sans-serif", cursor: "pointer" }}>
+          Schedule Pickup
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function CartSummary({ items = [], style = {}, onAction }) {
   const brand = useBrand();
   const cartItems = items.length ? items : [
@@ -622,6 +684,26 @@ export function SectionHeader({ children, style = {} }) {
 
 import { EmptyState, DynamicCard } from "../../runtime/ComponentRegistry";
 
+export function Tabs({ items = [], position = "top", style = {} }) {
+  const dispatchAction = useDispatchAction();
+  const bar = (border) => (
+    <div style={{ display: "flex", background: "#fff", ...border, ...style }}>
+      {(!items || items.length === 0) && <div style={{ flex: 1, textAlign: "center", padding: 10, color: "#9CA3AF", fontSize: 11 }}>No tabs</div>}
+      {items.map((it, i) => (
+        <button
+          key={i}
+          onClick={() => dispatchAction && dispatchAction({ type: "switch_screen", payload: { screenId: it.screenId } })}
+          style={{ flex: 1, padding: "10px 4px", textAlign: "center", background: "transparent", border: "none", cursor: "pointer", fontSize: 11, color: i === 0 ? "#B45309" : "#6B7280", borderTop: i === 0 ? "2px solid #F4A026" : "2px solid transparent" }}
+        >
+          <div>{it.label || `Tab ${i + 1}`}</div>
+        </button>
+      ))}
+    </div>
+  );
+  if (position === "bottom") return bar({ borderTop: "1px solid #E5E1E3" });
+  return bar({ borderBottom: "1px solid #E5E1E3" });
+}
+
 const components = {
   hero_banner: HeroBanner,
   category_pills: CategoryPills,
@@ -634,10 +716,12 @@ const components = {
   calendar_strip: CalendarStrip,
   slot_grid: SlotGrid,
   booking_summary: BookingSummary,
+  laundry_booking: LaundryBooking,
   cart_summary: CartSummary,
   address_form: AddressForm,
   promotion_list: PromotionList,
   section_header: SectionHeader,
+  tabs: Tabs,
   empty_state: EmptyState,
   dynamic_card: DynamicCard,
 };

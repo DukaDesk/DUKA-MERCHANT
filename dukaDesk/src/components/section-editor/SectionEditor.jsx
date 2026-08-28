@@ -1,17 +1,17 @@
 import { useState, useCallback, useEffect } from "react";
+import { Sparkles } from "lucide-react";
 import { getComponentType } from "../canvas-editor/componentTypes";
 import SectionRenderer from "./SectionRenderer";
 import SectionPanel from "./SectionPanel";
-import LayoutPanel from "./LayoutPanel";
 import PropertiesPanel from "./PropertiesPanel";
+import ElementGallery from "./ElementGallery";
 import ScreenSwitcher from "./ScreenSwitcher";
 import { toast } from "react-toastify";
 import { NAVY } from "../../theme";
-import { theme, iconBtn, primaryBtn, panelHeader } from "./editorTheme";
+import { useEditorTheme } from "./editorTheme.jsx";
 import { publishProject, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
 import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
-import { SECTION_PRESETS } from "./sectionPresets";
 
 const PREVIEW_SIZES = {
   mobile: { width: 390, height: 740, label: "Mobile", icon: "M12 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2s2-.9 2-2V4c0-1.1-.9-2-2-2z" },
@@ -48,10 +48,10 @@ function resolvePreviewTarget(target, data) {
 }
 
 export default function SectionEditor({ store, onBack }) {
+  const { theme, iconBtn, primaryBtn, isDark, toggleDark } = useEditorTheme();
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [selectedComponentId, setSelectedComponentId] = useState(null);
   const [showExport, setShowExport] = useState(false);
-  const [layoutOpen, setLayoutOpen] = useState(true);
   const [previewMode, setPreviewMode] = useState(false);
   const [previewSize, setPreviewSize] = useState("mobile");
   const [previewScreenId, setPreviewScreenId] = useState(null);
@@ -64,9 +64,9 @@ export default function SectionEditor({ store, onBack }) {
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [focusSubKey, setFocusSubKey] = useState(null);
   const [navSelected, setNavSelected] = useState(false);
+  const [browseType, setBrowseType] = useState(null);
 
   const data = store.data;
-  const logo = data.meta?.logo;
 
   const previewCurrentScreen = previewScreenId || store.currentScreenId;
 
@@ -108,6 +108,7 @@ export default function SectionEditor({ store, onBack }) {
     setSelectedComponentId(null);
     setFocusSubKey(null);
     setNavSelected(false);
+    setBrowseType(null);
   }, []);
 
   const handleSelectComponent = useCallback((sectionId, compId) => {
@@ -115,7 +116,12 @@ export default function SectionEditor({ store, onBack }) {
     setSelectedComponentId(compId);
     setFocusSubKey(null);
     setNavSelected(false);
+    setBrowseType(null);
   }, []);
+
+  const handleAddSection = useCallback(() => {
+    store.addBodySection(store.currentScreenId, { type: "custom", name: "New Section" });
+  }, [store]);
 
   const handleFocusSubElement = useCallback((sectionId, compId, key) => {
     setSelectedSectionId(sectionId);
@@ -129,39 +135,11 @@ export default function SectionEditor({ store, onBack }) {
     if (focusSubKey?.compId === compId && focusSubKey?.key === key) setFocusSubKey(null);
   }, [store, focusSubKey]);
 
-  const handleAddSection = useCallback((preset) => {
-    const section = SECTION_PRESETS[preset];
-    if (!section) return;
-    const id = store.addBodySection(null, {
-      type: section.type,
-      name: section.name,
-      backgroundColor: section.backgroundColor || "#FCF8FA",
-      components: section.components || [],
-    });
-    if (id) setSelectedSectionId(id);
-    setNavSelected(false);
-  }, [store]);
-
   const handleClose = useCallback(() => {
     setSelectedSectionId(null);
     setSelectedComponentId(null);
     setNavSelected(false);
   }, []);
-
-  const handleAddTabs = useCallback(() => {
-    const screenIds = Object.keys(data.screens || {});
-    const defaults = [
-      { label: "Home", icon: "\uD83C\uDFE0", screenId: screenIds[0] || "" },
-      { label: "Menu", icon: "\uD83C\uDF5F", screenId: screenIds[1] || screenIds[0] || "" },
-      { label: "Profile", icon: "\uD83D\uDC64", screenId: screenIds[2] || screenIds[0] || "" },
-    ];
-    store.addTabs(defaults);
-    setLayoutOpen(false);
-    setSelectedSectionId(null);
-    setSelectedComponentId(null);
-    setFocusSubKey(null);
-    setNavSelected(true);
-  }, [store, data]);
 
   const handleTogglePreview = useCallback(() => {
     if (previewMode) { setPreviewMode(false); setPreviewScreenId(null); setPreviewStack([]); }
@@ -239,6 +217,14 @@ export default function SectionEditor({ store, onBack }) {
         category: design.meta.category,
         primaryColor: design.meta.primaryColor,
       });
+      const firstScreenId = design.navigation?.initialScreen || Object.keys(design.screens)[0];
+      const firstSection = design.screens?.[firstScreenId]?.bodySections?.[0];
+      if (firstSection) {
+        setSelectedSectionId(firstSection.id);
+        setSelectedComponentId(firstSection.components?.[0]?.id || null);
+        setFocusSubKey(null);
+        setNavSelected(false);
+      }
       toast.success(`Template "${design.meta.appName}" loaded`);
       setShowTemplates(false);
     } catch {
@@ -435,28 +421,6 @@ export default function SectionEditor({ store, onBack }) {
             onMouseLeave={() => setHoveredIcon(null)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
-          {logo && (
-            <img src={logo} alt="" style={{ width: 28, height: 28, borderRadius: theme.radius.sm, objectFit: "cover" }} />
-          )}
-          <input
-            value={data.meta.appName}
-            onChange={e => store.setMeta({ appName: e.target.value })}
-            placeholder="App Name"
-            style={{
-              border: "none", outline: "none", fontSize: 15, fontWeight: 700,
-              fontFamily: "'Sora',sans-serif", color: theme.text, background: "transparent", width: 180,
-              borderBottom: "1.5px solid transparent",
-              transition: `border-color ${theme.transition}`,
-            }}
-            onFocus={e => e.currentTarget.style.borderBottomColor = theme.active}
-            onBlur={e => e.currentTarget.style.borderBottomColor = "transparent"}
-          />
-          <span style={{
-            fontSize: 11, color: theme.textMuted, background: theme.borderLight,
-            padding: "2px 8px", borderRadius: 4, fontWeight: 500,
-          }}>
-            {data.meta.category || "App"}
-          </span>
           <span style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 4, color: savingToServer ? "#D97706" : (serverLastSaved ? theme.success : theme.textSecondary) }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: savingToServer ? "#D97706" : (serverLastSaved ? theme.success : theme.textSecondary), display: "inline-block" }} />
             {saveStatus}
@@ -506,6 +470,12 @@ export default function SectionEditor({ store, onBack }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
 
+          <button onClick={toggleDark} style={iconBtn} title={isDark ? "Switch to light mode" : "Switch to dark mode"}>
+            {isDark
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>}
+          </button>
+
           <button onClick={handleShowReleases} style={iconBtn} title="Release History">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </button>
@@ -553,30 +523,20 @@ export default function SectionEditor({ store, onBack }) {
 
       {/* Main area */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Left panel */}
-        <div style={{ width: 260, background: theme.surface, borderRight: `1px solid ${theme.border}`, overflowY: "auto", flexShrink: 0 }}>
-          <div style={panelHeader}>
-            Elements
-            <span style={{ fontSize: 10, color: theme.textMuted, fontWeight: 400, fontFamily: "'Inter',sans-serif" }}>
-{(store.screen?.bodySections || []).length}
-            </span>
-          </div>
-          <LayoutPanel
-            onAddPreset={handleAddSection}
-            onAddTabs={handleAddTabs}
-            open={layoutOpen}
-            onToggle={() => setLayoutOpen(o => !o)}
-          />
+        {/* Left panel — 2-column tabbed (100px + content) */}
+        <div style={{ flex: "0 0 248", minWidth: 220, maxWidth: 320, background: theme.surface, borderRight: `1px solid ${theme.border}`, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <SectionPanel
             store={store}
             selectedSectionId={selectedSectionId}
             selectedComponentId={selectedComponentId}
             onSelectSection={handleSelectSection}
             onSelectComponent={handleSelectComponent}
-            onOpenLayout={() => setLayoutOpen(true)}
             focusSubKey={focusSubKey}
             onFocusSubElement={handleFocusSubElement}
             onRemoveSubElement={handleRemoveSubElement}
+            onBrowse={setBrowseType}
+            browseType={browseType}
+            onAddSection={handleAddSection}
           />
         </div>
 
@@ -587,23 +547,31 @@ export default function SectionEditor({ store, onBack }) {
           selectedComponentId={selectedComponentId}
           onSelectSection={handleSelectSection}
           onSelectComponent={handleSelectComponent}
+          onFocusSubElement={handleFocusSubElement}
+          focusSubKey={focusSubKey}
         />
 
-        {/* Right panel */}
-        <div style={{ width: 280, background: theme.surface, borderLeft: `1px solid ${theme.border}`, overflowY: "auto", flexShrink: 0 }}>
-          <div style={panelHeader}>
-            Properties
-          </div>
-          <PropertiesPanel
-            store={store}
-            selectedSectionId={selectedSectionId}
-            selectedComponentId={selectedComponentId}
-            navSelected={navSelected}
-            onClose={handleClose}
-            onSelectComponent={handleSelectComponent}
-            focusSubKey={focusSubKey}
-            onClearProp={(key) => { if (selectedComponentId) store.clearProp(selectedSectionId, selectedComponentId, key); }}
-          />
+        {/* Right panel — Element gallery when browsing, else Properties */}
+        <div style={{ width: 300, background: theme.surface, borderLeft: `1px solid ${theme.border}`, overflow: "hidden", flexShrink: 0, display: "flex", flexDirection: "column" }}>
+          {browseType ? (
+            <ElementGallery
+              browseType={browseType}
+              store={store}
+              selectedSectionId={selectedSectionId}
+              onClose={() => setBrowseType(null)}
+            />
+          ) : (
+            <PropertiesPanel
+              store={store}
+              selectedSectionId={selectedSectionId}
+              selectedComponentId={selectedComponentId}
+              navSelected={navSelected}
+              onClose={handleClose}
+              onSelectComponent={handleSelectComponent}
+              focusSubKey={focusSubKey}
+              onClearProp={(key) => { if (selectedComponentId) store.clearProp(selectedSectionId, selectedComponentId, key); }}
+            />
+          )}
         </div>
       </div>
 
@@ -631,7 +599,7 @@ export default function SectionEditor({ store, onBack }) {
           <div onClick={e => e.stopPropagation()} style={{ background: theme.surface, borderRadius: theme.radius["2xl"], boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24, maxWidth: 820, width: "90%", maxHeight: "82vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 20 }}>✨</span>
+                <span style={{ display: "flex", color: theme.textMuted }}><Sparkles size={20} /></span>
                 <div>
                   <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: theme.text }}>Templates</div>
                   <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>Premium starter designs — add them to your app in one click.</div>

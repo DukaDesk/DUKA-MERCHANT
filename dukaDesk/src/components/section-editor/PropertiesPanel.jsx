@@ -1,36 +1,45 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Search } from "lucide-react";
-import { getComponentType, getAllComponentTypes, getComponentsByCategory } from "../canvas-editor/componentTypes";
-import { theme, iconBtn, iconBtnDanger, textInput, labelStyle } from "./editorTheme";
+import { Search, Type, Palette, Image as ImageIcon, Square, LayoutGrid, Sparkles, Compass, FileText, Tag, ShoppingBag, ClipboardList, PanelTop, Star, Minus, Plus, Pencil, Boxes, GalleryHorizontal, CreditCard, ShoppingCart, Calendar, Clock, Bell, MapPin, BarChart3, Scissors, Phone, ToggleLeft, CheckSquare, User, ArrowLeftRight, ArrowDownUp, Zap, Hash, Circle, Construction, Link, Unlink } from "lucide-react";
+import { getComponentType, getAllComponentTypes, getComponentsByCategory, FONT_FAMILIES, FONT_WEIGHTS, resolveTextStyle, applyTextStyle } from "../canvas-editor/componentTypes";
+import { useEditorTheme, ColorInput } from "./editorTheme.jsx";
+
+function IconRender({ icon, size = 16, style }) {
+  if (!icon) return null;
+  if (typeof icon === "function") {
+    const Icon = icon;
+    return <Icon size={size} style={style} />;
+  }
+  return <span style={{ fontSize: size, ...style }}>{icon}</span>;
+}
 
 const COMPONENT_ICONS = {
-  hero_banner: "\uD83C\uDF1F",
-  menu_item: "\uD83C\uDF7D\uFE0F",
-  category_pills: "\uD83C\uDFF7\uFE0F",
-  text_block: "Aa",
-  image_block: "\uD83D\uDDBC\uFE0F",
-  button: "\uD83D\uDD18",
-  menu_grid: "\uD83D\uDCCB",
-  header_bar: "\uD83D\uDDC2\uFE0F",
-  divider: "\u2796",
-  gap: "\u2195",
-  carousel: "\uD83C\uDFA0",
-  nested_section: "\uD83E\uDDF0",
-  row: "\u25A4",
-  promotion_list: "\uD83C\uDFF7\uFE0F",
-  card: "\uD83C\uDCCF",
-  icon: "\u2728",
-  chevron: "\u2194\uFE0F",
-  icon_button: "\uD83D\uDD33",
-  fab: "\u2795",
-  text_input: "\u270E\uFE0F",
-  search_bar: "\uD83D\uDD0D",
-  switch_toggle: "\uD83C\uDF9A\uFE0F",
-  checkbox_row: "\u2611\uFE0F",
-  avatar: "\uD83D\uDC64",
-  badge: "\uD83C\uDFF7\uFE0F",
-  progress_bar: "\uD83D\uDCCA",
-  rating: "\u2B50",
+  hero_banner: ImageIcon,
+  menu_item: ShoppingBag,
+  category_pills: Tag,
+  text_block: Type,
+  image_block: ImageIcon,
+  button: Square,
+  menu_grid: ClipboardList,
+  header_bar: PanelTop,
+  divider: Minus,
+  gap: ArrowDownUp,
+  carousel: GalleryHorizontal,
+  nested_section: Boxes,
+  row: LayoutGrid,
+  promotion_list: Tag,
+  card: CreditCard,
+  icon: Star,
+  chevron: ArrowLeftRight,
+  icon_button: Square,
+  fab: Plus,
+  text_input: Pencil,
+  search_bar: Search,
+  switch_toggle: ToggleLeft,
+  checkbox_row: CheckSquare,
+  avatar: User,
+  badge: Tag,
+  progress_bar: BarChart3,
+  rating: Star,
 };
 
 const QUICK_COLORS = ["#FCF8FA", "#1A1A2E", "#F4A026", "#2ECC71", "#E74C3C", "#7C3AED", "#0D9488", "#EA580C", "#EC4899", "#000000"];
@@ -44,6 +53,7 @@ const TAB_ICONS = [
 ];
 
 export default function PropertiesPanel({ store, selectedSectionId, selectedComponentId, navSelected, onClose, focusSubKey, onClearProp, onSelectComponent }) {
+  const { theme, iconBtn, iconBtnDanger, textInput, labelStyle } = useEditorTheme();
   const data = store.data;
   const [addQuery, setAddQuery] = useState("");
   const [catCollapsed, setCatCollapsed] = useState({});
@@ -52,7 +62,6 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
   const [searchOpen, setSearchOpen] = useState(false);
   const [propQuery, setPropQuery] = useState("");
   const toggleAcc = (id) => setAccOpen(o => (o === id ? null : id));
-  const logoRef = useRef(null);
 
   useEffect(() => {
     setAccOpen(null);
@@ -96,199 +105,80 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
   const section = findSection();
   const component = findComponent();
 
-  const handleLogoUpload = useCallback((e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => store.setMeta({ logo: ev.target.result });
-    reader.readAsDataURL(file);
-  }, [store]);
+  /* ── Contextual Properties content (nav tabs / component / section / branding) ── */
+  const navTabs = data.navigation?.tabs || [];
+  const navStyle = data.navigation?.style || {};
+  const def = component ? getComponentType(component.type) : null;
+  const fields = def?.propFields || [];
+  const focusedField = component ? (def?.subElements?.find(s => focusSubKey?.compId === component.id && focusSubKey?.key === s.key)) : null;
+  const canAdd = !!section;
+  const addDisabled = !canAdd;
 
-  /* ── Bottom Navigation tabs ── */
+  let propertiesContent = (
+    <div style={{ textAlign: "center", padding: "24px 12px", color: theme.textMuted }}>
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 8, color: theme.textMuted }}><FileText size={24} /></div>
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, fontFamily: "'Inter',sans-serif" }}>No Selection</div>
+      <div style={{ fontSize: 11, lineHeight: 1.5, fontFamily: "'Inter',sans-serif" }}>
+        Select a section or component to edit its properties.
+      </div>
+    </div>
+  );
+
   if (navSelected) {
-    const tabs = data.navigation?.tabs || [];
-    const navStyle = data.navigation?.style || {};
-    return (
-      <div style={{ overflowY: "auto", background: theme.surface }}>
-        <AccPanel
-          id="nav"
-          open={accOpen === "nav" || accOpen === null}
-          onToggle={toggleAcc}
-          title="Bottom Navigation Tabs"
-          icon="\uD83D\uDDC2\uFE0F"
+    propertiesContent = (
+      <>
+        <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 10, fontFamily: "'Inter',sans-serif", lineHeight: 1.4 }}>
+          Tabs appear in the bottom bar. Add icons, colors and link each tab to a page.
+        </div>
+
+        {navTabs.length === 0 && (
+          <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 10, fontFamily: "'Inter',sans-serif" }}>
+            No tabs yet. Add one below.
+          </div>
+        )}
+
+        {navTabs.map((tab, i) => (
+          <TabEditorRow
+            key={tab.id || i}
+            index={i}
+            tab={tab}
+            screenIds={Object.keys(data.screens)}
+            screens={data.screens}
+            icons={TAB_ICONS}
+            onUpdate={(patch) => store.updateTab(i, patch)}
+            onRemove={() => store.removeTab(i)}
+            onReorder={(dir) => store.reorderTab(i, dir)}
+            isLast={i === navTabs.length - 1}
+            isFirst={i === 0}
+          />
+        ))}
+
+        <button
+          onClick={() => store.addTab({ label: "New Tab", icon: "\uD83D\uDCCB", screenId: "" })}
+          style={{
+            width: "100%", padding: "8px", borderRadius: theme.radius.md,
+            border: `1.5px dashed ${theme.border}`, background: "transparent",
+            color: theme.textSecondary, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            fontFamily: "'Inter',sans-serif", marginTop: 8, display: "flex", alignItems: "center",
+            justifyContent: "center", gap: 4, transition: `all ${theme.transition}`,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.color = theme.active; e.currentTarget.style.background = theme.hoverAmber; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textSecondary; e.currentTarget.style.background = "transparent"; }}
         >
-          <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 10, fontFamily: "'Inter',sans-serif", lineHeight: 1.4 }}>
-            Tabs appear in the bottom bar. Add icons, colors and link each tab to a page.
-          </div>
-
-          {tabs.length === 0 && (
-            <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 10, fontFamily: "'Inter',sans-serif" }}>
-              No tabs yet. Add one below.
-            </div>
-          )}
-
-          {tabs.map((tab, i) => (
-            <TabEditorRow
-              key={tab.id || i}
-              index={i}
-              tab={tab}
-              screenIds={Object.keys(data.screens)}
-              screens={data.screens}
-              icons={TAB_ICONS}
-              onUpdate={(patch) => store.updateTab(i, patch)}
-              onRemove={() => store.removeTab(i)}
-              onReorder={(dir) => store.reorderTab(i, dir)}
-              isLast={i === tabs.length - 1}
-              isFirst={i === 0}
-            />
-          ))}
-
-          <button
-            onClick={() => store.addTab({ label: "New Tab", icon: "\uD83D\uDCCB", screenId: "" })}
-            style={{
-              width: "100%", padding: "8px", borderRadius: theme.radius.md,
-              border: `1.5px dashed ${theme.border}`, background: "transparent",
-              color: theme.textSecondary, fontSize: 12, fontWeight: 600, cursor: "pointer",
-              fontFamily: "'Inter',sans-serif", marginTop: 8, display: "flex", alignItems: "center",
-              justifyContent: "center", gap: 4, transition: `all ${theme.transition}`,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.color = theme.active; e.currentTarget.style.background = theme.hoverAmber; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textSecondary; e.currentTarget.style.background = "transparent"; }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Tab
-          </button>
-        </AccPanel>
-
-        <AccPanel
-          id="navstyle"
-          open={accOpen === "navstyle"}
-          onToggle={toggleAcc}
-          title="Navigation Styles"
-          icon="\uD83C\uDFA8"
-        >
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>Bar Background</label>
-            <ColorInput value={navStyle.background || "#FFFFFF"} onChange={(v) => store.setNavigation({ style: { ...navStyle, background: v } })} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>Active Icon / Label Color</label>
-            <ColorInput value={navStyle.active || "#1A1A2E"} onChange={(v) => store.setNavigation({ style: { ...navStyle, active: v } })} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>Inactive Icon / Label Color</label>
-            <ColorInput value={navStyle.inactive || "#9CA3AF"} onChange={(v) => store.setNavigation({ style: { ...navStyle, inactive: v } })} />
-          </div>
-        </AccPanel>
-      </div>
-    );
-  }
-
-  /* ── Nothing selected — Branding hub ── */
-  if (!selectedSectionId && !selectedComponentId) {
-    return (
-      <div style={{ overflowY: "auto", background: theme.surface }}>
-        <AccPanel
-          id="branding"
-          open={accOpen === "branding" || accOpen === null}
-          onToggle={toggleAcc}
-          title="Branding"
-        >
-          {/* Logo */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>App Logo</label>
-            <div
-              onClick={() => logoRef.current?.click()}
-              style={{
-                width: 80, height: 80, borderRadius: theme.radius.xl,
-                border: `2px dashed ${theme.border}`, cursor: "pointer",
-                display: "flex", flexDirection: "column", alignItems: "center",
-                justifyContent: "center", gap: 4,
-                background: data.meta?.logo ? `url(${data.meta.logo}) center/cover no-repeat` : theme.hover,
-                transition: `border-color ${theme.transition}`,
-              }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = theme.active}
-              onMouseLeave={e => e.currentTarget.style.borderColor = theme.border}
-            >
-              {!data.meta?.logo && <><span style={{ fontSize: 24 }}>\uD83D\uDCF7</span><span style={{ fontSize: 10, color: theme.textMuted }}>Upload</span></>}
-            </div>
-            <input ref={logoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogoUpload} />
-            {data.meta?.logo && (
-              <button onClick={() => store.setMeta({ logo: null })}
-                style={{ marginTop: 6, fontSize: 12, padding: "4px 10px", border: `1px solid ${theme.dangerBorder}`, borderRadius: theme.radius.sm, background: theme.dangerLight, color: theme.danger, cursor: "pointer", transition: `all ${theme.transition}` }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FCA5A5"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = theme.dangerLight; e.currentTarget.style.borderColor = theme.dangerBorder; }}>
-                Remove logo
-              </button>
-            )}
-          </div>
-
-          {/* App Name */}
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>App Name</label>
-            <input value={data.meta?.appName || ""} onChange={e => store.setMeta({ appName: e.target.value })} style={textInput} placeholder="Your App" />
-          </div>
-
-          {/* Tagline */}
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>Tagline</label>
-            <input value={data.meta?.tagline || ""} onChange={e => store.setMeta({ tagline: e.target.value })} style={textInput} placeholder="Short description" />
-          </div>
-
-          {/* Primary Color */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Primary Color</label>
-            <ColorInput value={data.meta?.primaryColor || "#1A1A2E"} onChange={(v) => store.setMeta({ primaryColor: v })} />
-          </div>
-        </AccPanel>
-
-        <AccPanel
-          id="screen"
-          open={accOpen === "screen"}
-          onToggle={toggleAcc}
-          title="Screen Background"
-        >
-          <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Screen Background Color</label>
-            <ColorInput value={store.screen?.backgroundColor || "#FCF8FA"} onChange={(v) => store.setScreenBackgroundColor(store.currentScreenId, v)} />
-          </div>
-        </AccPanel>
-
-        <AccPanel
-          id="tips"
-          open={accOpen === "tips"}
-          onToggle={toggleAcc}
-          title="Tips"
-        >
-          <div style={{ background: theme.hoverAmber, borderRadius: theme.radius.md, padding: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#6B4200", marginBottom: 4 }}>Select a section or component from the left panel to edit its properties.</div>
-            <div style={{ fontSize: 11, color: "#92400E", lineHeight: 1.5 }}>
-              Add sections from the Layout panel above, then drop components into them from here.
-            </div>
-          </div>
-        </AccPanel>
-      </div>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Tab
+        </button>
+      </>
     );
   }
 
   /* ── Component editing ── */
-  if (selectedComponentId && component) {
-    const def = getComponentType(component.type);
-    const fields = def?.propFields || [];
-    const focusedField = def?.subElements?.find(s => focusSubKey?.compId === component.id && focusSubKey?.key === s.key);
-    return (
-      <div style={{ background: theme.surface }}>
-        <AccPanel
-          id="component"
-          open={accOpen === "component" || accOpen === null}
-          onToggle={toggleAcc}
-          title={def?.label || component.type}
-          icon={COMPONENT_ICONS[component.type] || "\uD83D\uDDC4\uFE0F"}
-        >
+  if (component) {
+    propertiesContent = (
+      <>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 18 }}>{COMPONENT_ICONS[component.type] || "\uD83D\uDDC4\uFE0F"}</span>
+              <span style={{ fontSize: 18 }}>{(() => { const Icon = COMPONENT_ICONS[component.type] || FileText; return typeof Icon === "function" ? <Icon size={18} /> : Icon; })()}</span>
               <div>
                 <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: theme.text }}>{def?.label || component.type}</div>
                 <div style={{ fontSize: 10, color: theme.textMuted }}>{component.id.slice(0, 12)}</div>
@@ -309,7 +199,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
               background: theme.hoverAmber, border: `1px solid ${theme.active}`,
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6B4200", fontWeight: 600, fontFamily: "'Inter',sans-serif" }}>
-                <span>{focusedField.icon || "\uD83C\uDF1F"}</span>
+                <span style={{ display: "flex", alignItems: "center" }}>{(() => { const Icon = focusedField.icon; return typeof Icon === "function" ? <Icon size={14} /> : <span>{Icon}</span>; })()}</span>
                 Editing: {focusedField.label}
               </div>
               <button
@@ -437,7 +327,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                   }}
                     onClick={() => onSelectComponent?.(selectedSectionId, child.id)}
                   >
-                    <span style={{ fontSize: 13 }}>{COMPONENT_ICONS[childDef?.type] || childDef?.icon || "\uD83D\uDDC4\uFE0F"}</span>
+                    <span style={{ fontSize: 13 }}>{COMPONENT_ICONS[childDef?.type] || childDef?.icon || FileText}</span>
                     <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: theme.text, fontWeight: 500, fontFamily: "'Inter',sans-serif" }}>
                       {childDef?.label || child.type}
                     </span>
@@ -467,7 +357,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                       onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.background = theme.hoverAmber; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface; }}
                     >
-                      <div style={{ fontSize: 15, marginBottom: 1 }}>{COMPONENT_ICONS[def2.type] || "\uD83D\uDDC4\uFE0F"}</div>
+                      <div style={{ display: "flex", justifyContent: "center", marginBottom: 1, color: theme.textMuted }}>{(() => { const Icon = COMPONENT_ICONS[def2.type] || FileText; return typeof Icon === "function" ? <Icon size={15} /> : Icon; })()}</div>
                       <div style={{ fontSize: 9, lineHeight: 1.2 }}>{def2.label}</div>
                     </button>
                   );
@@ -475,83 +365,14 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
               </div>
             </div>
           )}
-        </AccPanel>
-
-        {/* Visibility */}
-        <AccPanel
-          id="visibility"
-          title="Visibility"
-          open={accOpen === "visibility"}
-          onToggle={toggleAcc}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 500, color: theme.textSecondary, fontFamily: "'Inter',sans-serif", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-              <input type="checkbox" checked={component.visible !== false}
-                onChange={e => store.updateComponentInSection(selectedSectionId, component.id, { visible: e.target.checked })}
-                style={{ accentColor: theme.active }} />
-              Visible
-            </label>
-          </div>
-        </AccPanel>
-
-        {/* Spacing & Effects */}
-        <AccPanel
-          id="spacing"
-          title="Spacing & Effects"
-          open={accOpen === "spacing"}
-          onToggle={toggleAcc}
-        >
-          <div style={{ marginBottom: 10 }}>
-            <label style={labelStyle}>Margin (px)</label>
-            <SpacingEditor
-              value={component.props?.margin || {}}
-              onChange={(v) => store.updateProp(selectedSectionId, component.id, "margin", v)}
-            />
-          </div>
-
-          <div style={{ marginBottom: 10 }}>
-            <label style={labelStyle}>Padding (px)</label>
-            <SpacingEditor
-              value={component.props?.padding}
-              onChange={(v) => store.updateProp(selectedSectionId, component.id, "padding", v)}
-            />
-          </div>
-
-          <div style={{ marginBottom: 10 }}>
-            <label style={labelStyle}>Elevation (shadow)</label>
-            <select
-              value={component.props?.elevation || "none"}
-              onChange={e => store.updateProp(selectedSectionId, component.id, "elevation", e.target.value)}
-              style={{ ...textInput, cursor: "pointer" }}>
-              <option value="none">None</option>
-              <option value="soft">Soft</option>
-              <option value="medium">Medium</option>
-              <option value="raised">Raised</option>
-            </select>
-          </div>
-
-          <div style={{ marginBottom: 4 }}>
-            <label style={labelStyle}>Opacity</label>
-            <input type="number" min="0" max="100" value={component.props?.opacity ?? 100}
-              onChange={e => { const n = Number(e.target.value); store.updateProp(selectedSectionId, component.id, "opacity", Number.isFinite(n) ? n : 100); }}
-              style={textInput} />
-          </div>
-        </AccPanel>
-      </div>
+      </>
     );
   }
 
   /* ── Section editing ── */
-  if (selectedSectionId && section) {
-    return (
-      <div style={{ background: theme.surface }}>
-        <AccPanel
-          id="section"
-          open={accOpen === "section" || accOpen === null}
-          onToggle={toggleAcc}
-          title={section.name || section.type}
-          icon={section._link ? undefined : "\uD83D\uDCC4"}
-        >
+  if (!component && section) {
+    propertiesContent = (
+      <>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div style={{ fontSize: 10, color: theme.textMuted }}>{section.id.slice(0, 16)}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -608,81 +429,339 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
               ))}
             </div>
           </div>
-        </AccPanel>
-
-        {/* Add component */}
-        <AccPanel
-          id="components"
-          title="Add Component"
-          open={accOpen === "components"}
-          onToggle={toggleAcc}
-          badge={(section.components || []).length}
-        >
-          <input
-            value={addQuery}
-            onChange={e => setAddQuery(e.target.value)}
-            placeholder="Search components\u2026"
-            style={{ ...textInput, marginTop: 4 }}
-          />
-          <div style={{ marginTop: 8 }}>
-            {getComponentsByCategory().map(cat => {
-              const q = addQuery.trim().toLowerCase();
-              const items = cat.components.filter(d => {
-                if (!q) return true;
-                return (d.label || "").toLowerCase().includes(q) || (d.type || "").toLowerCase().includes(q);
-              });
-              if (items.length === 0) return null;
-              const searching = !!q;
-              const open = searching || catCollapsed[cat.key] !== true;
-              return (
-                <div key={cat.key} style={{ marginBottom: 10 }}>
-                  <button
-                    onClick={() => setCatCollapsed(p => ({ ...p, [cat.key]: p[cat.key] === undefined ? true : !p[cat.key] }))}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 6, width: "100%",
-                      background: "none", border: "none", cursor: "pointer", padding: "4px 2px",
-                      fontFamily: "'Inter',sans-serif", textAlign: "left",
-                    }}
-                  >
-                    <span style={{ fontSize: 10, color: theme.textMuted, transition: `transform ${theme.transition}`, transform: open ? "rotate(0deg)" : "rotate(-90deg)", display: "inline-flex" }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </span>
-                    <span style={{ flex: 1, fontSize: 10, fontWeight: 700, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      {cat.icon} {cat.label}
-                    </span>
-                    <span style={{ fontSize: 9, color: theme.textMuted, background: theme.hover, borderRadius: 8, padding: "0 6px" }}>{items.length}</span>
-                  </button>
-                  {open && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 6, paddingLeft: 1 }}>
-                      {items.map(def => (
-                        <button key={def.type} onClick={() => store.addComponentToSection(selectedSectionId, def.type, { ...def.defaultProps })}
-                          style={{
-                            padding: "6px 4px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface,
-                            cursor: "pointer", textAlign: "center", fontSize: 10, fontWeight: 500, color: theme.textSecondary,
-                            fontFamily: "'Inter',sans-serif", transition: `all ${theme.transition}`,
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.background = theme.hoverAmber; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface; }}
-                        >
-                          <div style={{ fontSize: 16, marginBottom: 1 }}>{COMPONENT_ICONS[def.type] || def.icon || "\uD83D\uDDC4\uFE0F"}</div>
-                          <div style={{ fontSize: 9, lineHeight: 1.2 }}>{def.label}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </AccPanel>
-      </div>
+      </>
     );
   }
 
-  return null;
+  // Helpers for General / Styling split
+  const q = propQuery.trim().toLowerCase();
+  const matchesQuery = (label, key) => !q || String(label || "").toLowerCase().includes(q) || String(key || "").toLowerCase().includes(q);
+  const STYLING_GROUP_ORDER = ["typography","colors","background","border","layout","effects"];
+  function isStylingField(f){ if(f.group && STYLING_GROUP_ORDER.includes(f.group)) return true; return groupForField(f)==="styling"; }
+  const generalFields = fields.filter(f => !isStylingField(f) && (q ? matchesQuery(f.label, f.key) : true));
+  const rawStylingFields = fields.filter(f => isStylingField(f) && (q ? matchesQuery(f.label, f.key) : true));
+  const STYLING_GROUP_META = {
+    typography: { label: "Typography", icon: Type },
+    colors: { label: "Colors", icon: Palette },
+    background: { label: "Background", icon: ImageIcon },
+    border: { label: "Border & Radius", icon: Square },
+    layout: { label: "Layout", icon: LayoutGrid },
+    effects: { label: "Effects", icon: Sparkles },
+  };
+  function getStylingGroup(field){
+    if (field.group && STYLING_GROUP_ORDER.includes(field.group)) return field.group;
+    const k = String(field.key||"");
+    if (field.type === "radius" || /radius|border/i.test(k)) return "border";
+    if (field.type === "bg" || /^(background|fill)$/i.test(k) || /background|fill/i.test(k) && !/color/i.test(k)) return "background";
+    if (field.type === "color" || /color/i.test(k)) return "colors";
+    if (/font|weight|fontStyle|lineHeight|letterSpacing|alignment|textTransform/i.test(k)) return "typography";
+    if (/shadow|elevation|opacity/i.test(k)) return "effects";
+    if (/size|width|height|fit|gap|columns|padding|variant|thickness/i.test(k)) return "layout";
+    return "layout";
+  }
+  function isRadiusField(field){ const k=String(field.key||""); return field.type==="radius" || /radius/i.test(k); }
+  const stylingGroups = (() => {
+    const m = {};
+    for (const f of rawStylingFields) { const g=getStylingGroup(f); (m[g] ||= []).push(f); }
+    return m;
+  })();
+  const stylingGroupKeys = STYLING_GROUP_ORDER.filter(k => (stylingGroups[k]||[]).length>0);
+  const [stylingOpen, setStylingOpen] = useState({});
+  useEffect(()=>{
+    const init={};
+    if(focusedField?.styleable && focusedField?.kind==="text") init["sub-text-style"]=true;
+    else if(stylingGroupKeys.length) stylingGroupKeys.forEach((k,i)=> init[k]= i===0);
+    // keep sub-text-style open even when other groups exist
+    if(focusedField?.styleable && focusedField?.kind==="text" && stylingGroupKeys.length) stylingGroupKeys.forEach((k,i)=> { if(init[k]===undefined) init[k]=false; });
+    setStylingOpen(init);
+  }, [selectedComponentId, selectedSectionId, navSelected, propQuery, focusedField?.key]);
+  const toggleStyling = (k)=> setStylingOpen(o=> ({...o, [k]: !o[k]}));
+
+  // Add Component content reused in General tab
+  const AddComponentContent = () => (
+    <div>
+      {!section && (
+        <div style={{ background: theme.hoverAmber, borderRadius: theme.radius.md, padding: 10, marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "#6B4200", marginBottom: 2 }}>Select a section first</div>
+          <div style={{ fontSize: 10, color: "#92400E", lineHeight: 1.4 }}>Click a section on the canvas or in the left panel to add components to it.</div>
+        </div>
+      )}
+      <input value={addQuery} onChange={e => setAddQuery(e.target.value)} placeholder="Search components…" style={{ ...textInput, marginBottom: 8 }} />
+      {getComponentsByCategory().map(cat => {
+        const cq = addQuery.trim().toLowerCase();
+        const items = cat.components.filter(d => !cq || (d.label || "").toLowerCase().includes(cq) || (d.type || "").toLowerCase().includes(cq));
+        if (items.length === 0) return null;
+        const open = cq ? true : catCollapsed[cat.key] !== true;
+        return (
+          <div key={cat.key} style={{ marginBottom: 10 }}>
+            <button onClick={() => setCatCollapsed(p => ({ ...p, [cat.key]: p[cat.key] === undefined ? true : !p[cat.key] }))} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", cursor: "pointer", padding: "4px 2px", fontFamily: "'Inter',sans-serif", textAlign: "left" }}>
+              <span style={{ fontSize: 10, color: theme.textMuted, transform: open ? "rotate(0deg)" : "rotate(-90deg)", display: "inline-flex" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg></span>
+              <span style={{ flex: 1, fontSize: 10, fontWeight: 700, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: "0.05em" }}>{(() => { const Icon = cat.icon; return typeof Icon === "function" ? <Icon size={12} style={{ flexShrink: 0 }} /> : <span>{Icon}</span>; })()} {cat.label}</span>
+              <span style={{ fontSize: 9, color: theme.textMuted, background: theme.hover, borderRadius: 8, padding: "0 6px" }}>{items.length}</span>
+            </button>
+            {open && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 6 }}>
+                {items.map(compDef => (
+                  <button key={compDef.type} onClick={() => section && store.addComponentToSection(selectedSectionId, compDef.type, { ...compDef.defaultProps })} disabled={addDisabled} style={{ padding: "6px 4px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: addDisabled ? "not-allowed" : "pointer", textAlign: "center", fontSize: 10, fontWeight: 500, color: theme.textSecondary, opacity: addDisabled ? 0.45 : 1 }}>
+                    <div style={{ fontSize: 16, marginBottom: 1 }}>{(() => { const Icon = COMPONENT_ICONS[compDef.type] || compDef.icon || FileText; return typeof Icon === "function" ? <Icon size={16} /> : Icon; })()}</div>
+                    <div style={{ fontSize: 9, lineHeight: 1.2 }}>{compDef.label}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: theme.surface }}>
+      {/* Top toggle - General / Styling */}
+      <div style={{ display: "flex", gap: 6, padding: "8px 8px 6px", borderBottom: `1px solid ${theme.border}`, flexShrink: 0, alignItems: "center", background: theme.surface, position: "sticky", top: 0, zIndex: 1 }}>
+        <div style={{ display: "flex", flex: 1, background: theme.hover, borderRadius: theme.radius.md, padding: 3 }}>
+          {[
+            { key: "general", label: "General" },
+            { key: "styling", label: "Styling" },
+          ].map(t => (
+            <button key={t.key} onClick={() => setActiveTab(t.key)} style={{ flex: 1, padding: "6px 0", border: "none", borderRadius: theme.radius.sm, cursor: "pointer", fontFamily: "'Sora',sans-serif", fontSize: 12, fontWeight: 700, background: activeTab === t.key ? theme.active : "transparent", color: activeTab === t.key ? "#5B3A00" : theme.textSecondary, transition: `all ${theme.transition}` }}>{t.label}</button>
+          ))}
+        </div>
+        <button onClick={() => setSearchOpen(o => !o)} title={searchOpen ? "Close search" : "Search"} style={{ ...iconBtn, padding: "7px 9px", flexShrink: 0, background: searchOpen ? theme.hoverAmber : theme.surface, borderColor: searchOpen ? theme.active : theme.border, color: searchOpen ? theme.active : theme.textSecondary }}>
+          <Search size={15} strokeWidth={2.2} />
+        </button>
+      </div>
+      {searchOpen && (
+        <div style={{ padding: "8px", borderBottom: `1px solid ${theme.border}`, background: theme.surface, flexShrink: 0 }}>
+          <div style={{ position: "relative" }}>
+            <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: theme.textMuted }} />
+            <input value={propQuery} onChange={e => setPropQuery(e.target.value)} placeholder="Search properties..." autoFocus style={{ ...textInput, paddingLeft: 30 }} />
+          </div>
+        </div>
+      )}
+
+      {/* Content */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "12px 10px", minHeight: 0 }}>
+        {activeTab === "general" ? (
+          <>
+            {/* General tab: name/title/content fields + section/component identity */}
+            {navSelected ? (
+              <>{propertiesContent}</>
+            ) : component ? (
+              <>
+                {/* Header stays in General */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>{(() => { const Icon = COMPONENT_ICONS[component.type] || FileText; return typeof Icon === "function" ? <Icon size={18} /> : Icon; })()}</span>
+                    <div>
+                      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: theme.text }}>{def?.label || component.type}</div>
+                      <div style={{ fontSize: 10, color: theme.textMuted }}>{component.id.slice(0, 12)}</div>
+                    </div>
+                  </div>
+                  <button onClick={() => { onClose?.(); store.removeComponentFromSection(selectedSectionId, component.id); }} style={iconBtnDanger}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg></button>
+                </div>
+                {focusedField && (
+                  <div style={{ marginBottom: 12, padding: "8px 10px", borderRadius: theme.radius.md, background: theme.hoverAmber, border: `1px solid ${theme.active}` }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: focusedField.styleable && focusedField.kind === "text" ? 8 : 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6B4200", fontWeight: 600 }}><span style={{ display: "flex", alignItems: "center" }}>{(() => { const Icon = focusedField.icon; return typeof Icon === "function" ? <Icon size={14} /> : <span>{Icon}</span>; })()}</span> Editing: {focusedField.label}{focusedField.styleable ? " · Text" : ""}</div>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button onClick={() => onSelectComponent?.(selectedSectionId, component.id)} style={{ fontSize: 11, padding: "4px 8px", border: `1px solid ${theme.border}`, borderRadius: theme.radius.sm, background: "#fff", color: theme.textSecondary, cursor: "pointer", fontWeight: 600 }}>Back</button>
+                        <button onClick={() => onClearProp?.(focusedField.key)} style={{ fontSize: 11, padding: "4px 8px", border: `1px solid ${theme.dangerBorder}`, borderRadius: theme.radius.sm, background: theme.dangerLight, color: theme.danger, cursor: "pointer", fontWeight: 600 }}>Remove</button>
+                      </div>
+                    </div>
+                    {focusedField.styleable && focusedField.kind === "text" && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "#6B4200", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>Content — double-click on canvas also edits</div>
+                        <input value={component.props?.[focusedField.key] || ""} onChange={e => store.updateProp(selectedSectionId, component.id, focusedField.key, e.target.value)} placeholder={focusedField.label} style={{ ...textInput, marginBottom: 6 }} />
+                        <div style={{ fontSize: 10, color: "#92400E", lineHeight: 1.4 }}>Select <b>Styling</b> tab to edit font for this text.</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  <button onClick={() => store.reorderComponent(selectedSectionId, component.id, "up")} style={{ ...iconBtn, flex: 1, gap: 4, padding: "6px 0" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15" /></svg><span style={{ fontSize: 11, fontWeight: 600 }}>Up</span></button>
+                  <button onClick={() => store.reorderComponent(selectedSectionId, component.id, "down")} style={{ ...iconBtn, flex: 1, gap: 4, padding: "6px 0" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg><span style={{ fontSize: 11, fontWeight: 600 }}>Down</span></button>
+                  <button onClick={() => store.duplicateComponentInSection(selectedSectionId, component.id)} style={{ ...iconBtn, flex: 1, gap: 4, padding: "6px 0" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg><span style={{ fontSize: 11, fontWeight: 600 }}>Dup</span></button>
+                </div>
+                {component.type === "image_block" && <ImageUploader currentSrc={component.props?.src} onUpload={(v) => store.updateProp(selectedSectionId, component.id, "src", v)} />}
+                {generalFields.length === 0 ? <div style={{ fontSize: 11, color: theme.textMuted, padding: 8, textAlign: "center" }}>No general properties{q ? ` for "${q}"` : ""}.</div> : generalFields.map(field => <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.values(data.screens).map(s => ({ id: s.id || s.name, name: s.name }))} />)}
+                {/* Container children - content structure */}
+                {def?.container && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${theme.borderLight}` }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, marginBottom: 8 }}>Children ({component.children?.length || 0})</div>
+                    {(component.children || []).map((child, i) => {
+                      const childDef = getComponentType(child.type);
+                      return (
+                        <div key={child.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, padding: "6px 8px", borderRadius: theme.radius.md, background: theme.hover, border: `1px solid ${theme.border}`, cursor: "pointer" }} onClick={() => onSelectComponent?.(selectedSectionId, child.id)}>
+                          <span style={{ fontSize: 13 }}>{COMPONENT_ICONS[childDef?.type] || FileText}</span>
+                          <span style={{ flex: 1, fontSize: 12, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{childDef?.label || child.type}</span>
+                          <button onClick={e => { e.stopPropagation(); store.removeComponentFromSection(selectedSectionId, child.id); }} style={iconBtnDanger}>x</button>
+                        </div>
+                      );
+                    })}
+                    <div style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, margin: "10px 0 6px" }}>Add child</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                      {getAllComponentTypes().slice(0, 6).map(def2 => (
+                        <button key={def2.type} onClick={() => store.addComponentToSection(selectedSectionId, def2.type, { ...def2.defaultProps }, component.id)} style={{ padding: "6px 4px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: "pointer", fontSize: 9 }}>{def2.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Visibility in General */}
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${theme.borderLight}` }}>
+                  <label style={labelStyle}>Visibility</label>
+                  <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}><input type="checkbox" checked={component.visible !== false} onChange={e => store.updateComponentInSection(selectedSectionId, component.id, { visible: e.target.checked })} style={{ accentColor: theme.active }} /> Visible</label>
+                </div>
+              </>
+            ) : section ? (
+              <>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, color: theme.textMuted }}>{section.id.slice(0, 16)}</div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {!section._link && <button onClick={() => store.saveSectionToLibrary(null, section.id)} style={{ ...iconBtn, marginRight: 4 }} title="Save to library"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /></svg></button>}
+                    <button onClick={() => { store.removeBodySection(null, section.id); onClose?.(); }} style={iconBtnDanger}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg></button>
+                  </div>
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={labelStyle}>Section Name</label>
+                  <input value={section.name || ""} onChange={e => store.renameSection(null, selectedSectionId, e.target.value)} style={textInput} />
+                </div>
+                <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Add Element</div>
+                  <AddComponentContent />
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ textAlign: "center", padding: "20px 12px", color: theme.textMuted }}>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 6, color: theme.textMuted }}><FileText size={22} /></div>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>No Selection</div>
+                  <div style={{ fontSize: 11, lineHeight: 1.5 }}>Select a section or component to edit its properties.</div>
+                </div>
+                <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: 12, marginTop: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Add Element</div>
+                  <AddComponentContent />
+                </div>
+                <div style={{ background: theme.hoverAmber, borderRadius: theme.radius.md, padding: 12, marginTop: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#6B4200", marginBottom: 4 }}>Tip</div>
+                  <div style={{ fontSize: 11, color: "#92400E", lineHeight: 1.5 }}>Pick an element on the canvas to see its editable fields here in General, and its appearance controls in Styling.</div>
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Styling tab: colors, typography, spacing, backgrounds */}
+            {navSelected ? (
+              <>
+                <div style={{ marginBottom: 12 }}><label style={labelStyle}>Bar Background</label><ColorInput value={navStyle.background || "#FFFFFF"} onChange={v => store.setNavigation({ style: { ...navStyle, background: v } })} /></div>
+                <div style={{ marginBottom: 12 }}><label style={labelStyle}>Active Color</label><ColorInput value={navStyle.active || "#1A1A2E"} onChange={v => store.setNavigation({ style: { ...navStyle, active: v } })} /></div>
+                <div style={{ marginBottom: 12 }}><label style={labelStyle}>Inactive Color</label><ColorInput value={navStyle.inactive || "#9CA3AF"} onChange={v => store.setNavigation({ style: { ...navStyle, inactive: v } })} /></div>
+              </>
+            ) : component ? (
+              <div style={{ margin: "-12px -10px 0", borderTop: `1px solid ${theme.borderLight}` }}>
+                {focusedField?.styleable && focusedField?.kind === "text" && (
+                  <AccPanel id="sub-text-style" open={stylingOpen["sub-text-style"] !== false} onToggle={toggleStyling} title={`Text: ${focusedField.label}`} icon={focusedField.icon || Type}>
+                    <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 8, lineHeight: 1.4 }}>Click the text on the canvas to select it. Double-click edits content.</div>
+                    {(() => {
+                      const subKey = focusedField.key;
+                      const bag = component.props?.textStyles?.[subKey] || {};
+                      const defaults = def?.defaultProps?.textStyles?.[subKey] || {};
+                      const getVal = (k, fb) => bag[k] ?? defaults[k] ?? fb;
+                      return (
+                        <>
+                          <div style={{ marginBottom: 10 }}>
+                            <label style={labelStyle}>Content</label>
+                            <input value={component.props?.[subKey] || ""} onChange={e => store.updateProp(selectedSectionId, component.id, subKey, e.target.value)} placeholder={focusedField.label} style={textInput} />
+                          </div>
+                          <div style={{ marginBottom: 10 }}><label style={labelStyle}>Font Family</label><select value={getVal("fontFamily","Inter")} onChange={e => store.updateTextStyle(selectedSectionId, component.id, subKey, "fontFamily", e.target.value)} style={{ ...textInput, cursor: "pointer" }}>{FONT_FAMILIES.map(f => <option key={f} value={f}>{f}</option>)}</select></div>
+                          <div style={{ marginBottom: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div><label style={labelStyle}>Font Size</label><input type="number" value={getVal("fontSize",14)} onChange={e => { const v=Number(e.target.value); store.updateTextStyle(selectedSectionId, component.id, subKey, "fontSize", Number.isFinite(v)?v:14); }} style={textInput} /></div>
+                            <div><label style={labelStyle}>Line Height</label><input type="number" step="0.1" value={getVal("lineHeight",1.4)} onChange={e => { const v=Number(e.target.value); store.updateTextStyle(selectedSectionId, component.id, subKey, "lineHeight", Number.isFinite(v)?v:1.4); }} style={textInput} /></div>
+                          </div>
+                          <div style={{ marginBottom: 10 }}><label style={labelStyle}>Font Weight</label><select value={String(getVal("fontWeight","400"))} onChange={e => store.updateTextStyle(selectedSectionId, component.id, subKey, "fontWeight", e.target.value)} style={{ ...textInput, cursor: "pointer" }}>{FONT_WEIGHTS.map(w => <option key={w} value={w}>{w}</option>)}</select></div>
+                          <div style={{ marginBottom: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div><label style={labelStyle}>Font Style</label><select value={getVal("fontStyle","normal")} onChange={e => store.updateTextStyle(selectedSectionId, component.id, subKey, "fontStyle", e.target.value)} style={{ ...textInput, cursor: "pointer" }}><option value="normal">Normal</option><option value="italic">Italic</option></select></div>
+                            <div><label style={labelStyle}>Transform</label><select value={getVal("textTransform","none")} onChange={e => store.updateTextStyle(selectedSectionId, component.id, subKey, "textTransform", e.target.value)} style={{ ...textInput, cursor: "pointer" }}><option value="none">None</option><option value="uppercase">UPPERCASE</option><option value="lowercase">lowercase</option><option value="capitalize">Capitalize</option></select></div>
+                          </div>
+                          <div style={{ marginBottom: 10 }}><label style={labelStyle}>Letter Spacing (px)</label><input type="number" step="0.5" value={getVal("letterSpacing",0)} onChange={e => { const v=Number(e.target.value); store.updateTextStyle(selectedSectionId, component.id, subKey, "letterSpacing", Number.isFinite(v)?v:0); }} style={textInput} /></div>
+                          <div style={{ marginBottom: 4 }}><label style={labelStyle}>Color</label><ColorInput value={getVal("color", "#1C1B1D")} onChange={v => store.updateTextStyle(selectedSectionId, component.id, subKey, "color", v)} /></div>
+                          <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
+                            <button onClick={() => onSelectComponent?.(selectedSectionId, component.id)} style={{ flex: 1, padding: "6px 0", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Back to component</button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </AccPanel>
+                )}
+                {stylingGroupKeys.length === 0 && !q ? (
+                  <div style={{ fontSize: 11, color: theme.textMuted, padding: 16, textAlign: "center" }}>No styling properties for this element.</div>
+                ) : stylingGroupKeys.length === 0 && q ? (
+                  <div style={{ fontSize: 11, color: theme.textMuted, padding: 16, textAlign: "center" }}>No styling matches &ldquo;{q}&rdquo;.</div>
+                ) : stylingGroupKeys.map(gk => (
+                  <AccPanel key={gk} id={gk} open={!!stylingOpen[gk]} onToggle={toggleStyling} title={STYLING_GROUP_META[gk].label} icon={STYLING_GROUP_META[gk].icon}>
+                    {stylingGroups[gk].map(field => (
+                      <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.values(data.screens).map(s => ({ id: s.id || s.name, name: s.name }))} />
+                    ))}
+                  </AccPanel>
+                ))}
+                {/* Spacing — component-level, shown for every component */}
+                <AccPanel id="spacing" open={!!stylingOpen.spacing} onToggle={toggleStyling} title="Spacing" icon={ArrowLeftRight}>
+                  <div style={{ marginBottom: 10 }}><label style={labelStyle}>Margin (px)</label><SpacingEditor value={component.props?.margin || {}} onChange={v => store.updateProp(selectedSectionId, component.id, "margin", v)} /></div>
+                  <div style={{ marginBottom: 4 }}><label style={labelStyle}>Padding (px)</label><SpacingEditor value={component.props?.padding} onChange={v => store.updateProp(selectedSectionId, component.id, "padding", v)} /></div>
+                </AccPanel>
+                <AccPanel id="effects" open={!!stylingOpen.effects} onToggle={toggleStyling} title="Effects" icon={Sparkles}>
+                  <div style={{ marginBottom: 10 }}><label style={labelStyle}>Elevation</label><select value={component.props?.elevation || "none"} onChange={e => store.updateProp(selectedSectionId, component.id, "elevation", e.target.value)} style={{ ...textInput, cursor: "pointer" }}><option value="none">None</option><option value="soft">Soft</option><option value="medium">Medium</option><option value="raised">Raised</option></select></div>
+                  <div style={{ marginBottom: 4 }}><label style={labelStyle}>Opacity</label><input type="number" min="0" max="100" value={component.props?.opacity ?? 100} onChange={e => { const n = Number(e.target.value); store.updateProp(selectedSectionId, component.id, "opacity", Number.isFinite(n) ? n : 100); }} style={textInput} /></div>
+                </AccPanel>
+              </div>
+            ) : section ? (
+              <div style={{ margin: "-12px -10px 0", borderTop: `1px solid ${theme.borderLight}` }}>
+                <AccPanel id="sec-bg" open={stylingOpen["sec-bg"] !== false} onToggle={toggleStyling} title="Background" icon={ImageIcon}>
+                  <div style={{ marginBottom: 12 }}><label style={labelStyle}>Background Color</label><ColorInput value={section.backgroundColor || "#FCF8FA"} onChange={v => store.setSectionColor(null, selectedSectionId, v)} /></div>
+                  <div style={{ marginBottom: 4 }}>
+                    <label style={labelStyle}>Quick Colors</label>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {QUICK_COLORS.map(c => (
+                        <div key={c} onClick={() => store.setSectionColor(null, selectedSectionId, c)} style={{ width: 26, height: 26, background: c, borderRadius: "50%", cursor: "pointer", border: section.backgroundColor === c ? `2px solid ${theme.active}` : "2px solid transparent", outline: section.backgroundColor === c ? `2px solid ${theme.active}` : "none", outlineOffset: 2 }} />
+                      ))}
+                    </div>
+                  </div>
+                </AccPanel>
+                <AccPanel id="sec-screen" open={!!stylingOpen["sec-screen"]} onToggle={toggleStyling} title="Screen Background" icon={Palette}>
+                  <ColorInput value={store.screen?.backgroundColor || "#FCF8FA"} onChange={v => store.setScreenBackgroundColor(store.currentScreenId, v)} />
+                </AccPanel>
+                <AccPanel id="sec-nav" open={!!stylingOpen["sec-nav"]} onToggle={toggleStyling} title="Navigation" icon={Compass}>
+                  <div style={{ marginBottom: 10 }}><label style={labelStyle}>Bar Background</label><ColorInput value={navStyle.background || "#FFFFFF"} onChange={v => store.setNavigation({ style: { ...navStyle, background: v } })} /></div>
+                  <div style={{ marginBottom: 10 }}><label style={labelStyle}>Active Color</label><ColorInput value={navStyle.active || "#1A1A2E"} onChange={v => store.setNavigation({ style: { ...navStyle, active: v } })} /></div>
+                  <div style={{ marginBottom: 4 }}><label style={labelStyle}>Inactive Color</label><ColorInput value={navStyle.inactive || "#9CA3AF"} onChange={v => store.setNavigation({ style: { ...navStyle, inactive: v } })} /></div>
+                </AccPanel>
+              </div>
+            ) : (
+              <div style={{ margin: "-12px -10px 0", borderTop: `1px solid ${theme.borderLight}` }}>
+                <AccPanel id="none-screen" open={stylingOpen["none-screen"] !== false} onToggle={toggleStyling} title="Screen Background" icon={Palette}>
+                  <ColorInput value={store.screen?.backgroundColor || "#FCF8FA"} onChange={v => store.setScreenBackgroundColor(store.currentScreenId, v)} />
+                </AccPanel>
+                <AccPanel id="none-nav" open={!!stylingOpen["none-nav"]} onToggle={toggleStyling} title="Navigation" icon={Compass}>
+                  <div style={{ marginBottom: 10 }}><label style={labelStyle}>Bar Background</label><ColorInput value={navStyle.background || "#FFFFFF"} onChange={v => store.setNavigation({ style: { ...navStyle, background: v } })} /></div>
+                  <div style={{ marginBottom: 10 }}><label style={labelStyle}>Active Icon / Label</label><ColorInput value={navStyle.active || "#1A1A2E"} onChange={v => store.setNavigation({ style: { ...navStyle, active: v } })} /></div>
+                  <div style={{ marginBottom: 4 }}><label style={labelStyle}>Inactive Icon / Label</label><ColorInput value={navStyle.inactive || "#9CA3AF"} onChange={v => store.setNavigation({ style: { ...navStyle, inactive: v } })} /></div>
+                </AccPanel>
+                <div style={{ background: theme.hoverAmber, borderRadius: theme.radius.md, padding: 12, margin: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#6B4200", marginBottom: 2 }}>Styling Tip</div>
+                  <div style={{ fontSize: 11, color: "#92400E", lineHeight: 1.5 }}>Colors, spacing, and shadows live here. Switch to General to edit content like text and actions.</div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function AccPanel({ id, open, onToggle, title, icon, badge, children }) {
+  const { theme } = useEditorTheme();
   return (
     <div style={{ borderBottom: `1px solid ${theme.border}` }}>
       <button
@@ -697,7 +776,7 @@ function AccPanel({ id, open, onToggle, title, icon, badge, children }) {
         <span style={{ fontSize: 11, color: open ? "#6B4200" : theme.textMuted, display: "inline-flex", transition: `transform ${theme.transition}`, transform: open ? "rotate(0deg)" : "rotate(-90deg)" }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </span>
-      {icon && <span style={{ fontSize: 13 }}>{icon}</span>}
+      {icon && <span style={{ display: "flex", alignItems: "center", color: open ? "#6B4200" : theme.textMuted }}>{typeof icon === "function" ? <IconRender icon={icon} size={13} /> : <span style={{ fontSize: 13 }}>{icon}</span>}</span>}
         <span style={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: open ? "#6B4200" : theme.text, textTransform: "uppercase", letterSpacing: "0.05em" }}>{title}</span>
         {badge && <span style={{ fontSize: 9, color: theme.textMuted, background: theme.hover, borderRadius: 8, padding: "0 6px" }}>{badge}</span>}
       </button>
@@ -707,6 +786,8 @@ function AccPanel({ id, open, onToggle, title, icon, badge, children }) {
 }
 
 function TabEditorRow({ tab, screenIds, screens, onUpdate, onRemove, onReorder, isFirst, isLast }) {
+  const { theme, textInput } = useEditorTheme();
+  const { iconBtn, iconBtnDanger } = useEditorTheme();
   const [iconOpen, setIconOpen] = useState(false);
   return (
     <div style={{
@@ -772,8 +853,8 @@ function TabEditorRow({ tab, screenIds, screens, onUpdate, onRemove, onReorder, 
 
       {/* Reorder */}
       <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-        <button onClick={() => onReorder("left")} disabled={isFirst} style={iconBtnSmallRe} title="Move up"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
-        <button onClick={() => onReorder("right")} disabled={isLast} style={iconBtnSmallRe} title="Move down"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <button onClick={() => onReorder("left")} disabled={isFirst} style={iconBtnSmallReStyle(theme, iconBtn)} title="Move up"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
+        <button onClick={() => onReorder("right")} disabled={isLast} style={iconBtnSmallReStyle(theme, iconBtn)} title="Move down"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
       </div>
 
       {/* Remove */}
@@ -783,6 +864,7 @@ function TabEditorRow({ tab, screenIds, screens, onUpdate, onRemove, onReorder, 
 }
 
 function ColorInputDot({ value, onChange }) {
+  const { theme } = useEditorTheme();
   return (
     <input
       type="color"
@@ -794,10 +876,11 @@ function ColorInputDot({ value, onChange }) {
   );
 }
 
-const iconBtnSmallRe = { ...iconBtn, padding: "1px", width: 18, height: 18, opacity: 0.9, cursor: "pointer" };
+function iconBtnSmallReStyle(theme, iconBtn){ return { ...iconBtn, padding: "1px", width: 18, height: 18, opacity: 0.9, cursor: "pointer" }; }
 
 /* ── General / Styling tab bar (optional search via lens icon) ── */
 function FieldTabBar({ activeTab, onTab, searchOpen, onToggleSearch, query, onQueryChange }) {
+  const { theme } = useEditorTheme();
   return (
     <div style={{ borderBottom: `1px solid ${theme.border}`, padding: "8px 12px 10px", background: theme.surface }}>
       <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: searchOpen ? 10 : 0 }}>
@@ -859,6 +942,8 @@ function groupForField(field) {
 
 /* Shared field editor used by General tab, Styling tab, and search results. */
 function FieldEditor({ field, value, onChange, focused, onClearProp, screens }) {
+  const { theme, textInput, labelStyle } = useEditorTheme();
+  const isRadius = field.type === "radius" || /radius/i.test(String(field.key||""));
   return (
     <div key={field.key} style={{ marginBottom: 12, padding: focused ? "8px" : 0, border: focused ? `1.5px solid ${theme.active}` : "none", borderRadius: theme.radius.md, transition: `all ${theme.transition}` }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -867,7 +952,9 @@ function FieldEditor({ field, value, onChange, focused, onClearProp, screens }) 
           <button onClick={() => onClearProp?.(field.key)} style={{ fontSize: 10, border: "none", background: "none", color: theme.danger, cursor: "pointer", padding: "0 2px", fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>Remove</button>
         )}
       </div>
-      {field.type === "list" ? (
+      {isRadius ? (
+        <RadiusEditor value={value} onChange={onChange} />
+      ) : field.type === "list" ? (
         <ListFieldEditor
           fields={field.fields}
           value={Array.isArray(value) ? value : []}
@@ -929,6 +1016,7 @@ function parsePreviewActionJson(value) {
 
 /* Friendly JSON action editor: preset chips + target screen dropdown, raw-JSON fallback. */
 function ActionEditor({ value = "", onChange, screens }) {
+  const { theme, textInput } = useEditorTheme();
   const [rawMode, setRawMode] = useState(false);
   const parsed = parsePreviewActionJson(value);
   const selectedType = parsed?.type || "";
@@ -1000,6 +1088,7 @@ function ActionEditor({ value = "", onChange, screens }) {
 }
 
 function SpacingEditor({ value, onChange }) {
+  const { theme, textInput } = useEditorTheme();
   const v = value && typeof value === "object" ? value : {};
   const set = (side, num) => onChange({ ...v, [side]: num });
   const SIDES = [
@@ -1022,28 +1111,60 @@ function SpacingEditor({ value, onChange }) {
   );
 }
 
-function ColorInput({ value, onChange }) {
-  const [focused, setFocused] = useState(false);
+function RadiusEditor({ value, onChange }) {
+  const { theme, textInput } = useEditorTheme();
+  const isObj = value && typeof value === "object" && !Array.isArray(value);
+  const nums = isObj ? {
+    tl: Number(value.tl ?? value.topLeft ?? 0),
+    tr: Number(value.tr ?? value.topRight ?? 0),
+    br: Number(value.br ?? value.bottomRight ?? 0),
+    bl: Number(value.bl ?? value.bottomLeft ?? 0),
+  } : { tl: Number(value) || 0, tr: Number(value) || 0, br: Number(value) || 0, bl: Number(value) || 0 };
+  const linkedInit = !isObj || (nums.tl===nums.tr && nums.tr===nums.br && nums.br===nums.bl);
+  const [unlinked, setUnlinked] = useState(!linkedInit);
+  useEffect(()=>{ const obj = value && typeof value==="object" && !Array.isArray(value); const n= obj? {tl:Number(value.tl??0),tr:Number(value.tr??0),br:Number(value.br??0),bl:Number(value.bl??0)}: null; const allEqual = obj && n.tl===n.tr && n.tr===n.br && n.br===n.bl; setUnlinked(!!obj && !allEqual); }, [value]);
+  const setAll = (n)=> onChange(n);
+  const setCorner = (k, n)=> {
+    const base = isObj ? { tl: nums.tl, tr: nums.tr, br: nums.br, bl: nums.bl } : { tl: Number(value)||0, tr: Number(value)||0, br: Number(value)||0, bl: Number(value)||0 };
+    onChange({ ...base, [k]: n });
+  };
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <input type="color" value={value || "#000000"}
-        onChange={e => onChange(e.target.value)}
-        style={{ width: 36, height: 36, borderRadius: theme.radius.sm, border: `1px solid ${theme.border}`, padding: 0, cursor: "pointer" }} />
-      <input value={value || ""}
-        onChange={e => onChange(e.target.value)}
-        style={{
-          ...textInput,
-          borderColor: focused ? theme.active : theme.border,
-          boxShadow: focused ? `0 0 0 2px ${theme.active}22` : "none",
-        }}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        placeholder="#000000" />
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <span style={{ fontSize: 10, color: theme.textMuted }}>{unlinked ? "Independent corners" : "All corners"}</span>
+        <button onClick={()=>{
+          if(unlinked){
+            const avg = Math.round((nums.tl+nums.tr+nums.br+nums.bl)/4);
+            setUnlinked(false); onChange(avg);
+          } else {
+            const n = Number(value)||0;
+            setUnlinked(true); onChange({ tl:n, tr:n, br:n, bl:n });
+          }
+        }} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, border: `1px solid ${theme.border}`, background: unlinked? theme.hoverAmber: theme.surface, color: unlinked? "#6B4200": theme.textSecondary, cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+          {unlinked ? <><Link size={11} /> Linked</> : <><Unlink size={11} /> Split</>}
+        </button>
+      </div>
+      {unlinked ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+          {[
+            { k:"tl", label:"Top Left" }, { k:"tr", label:"Top Right" },
+            { k:"bl", label:"Bottom Left" }, { k:"br", label:"Bottom Right" },
+          ].map(({k,label})=>(
+            <div key={k}>
+              <div style={{ fontSize: 9, color: theme.textMuted, marginBottom: 2 }}>{label}</div>
+              <input type="number" min="0" value={nums[k]} onChange={e=>{ const n=Number(e.target.value); setCorner(k, Number.isFinite(n)&&n>=0? n:0); }} style={{ ...textInput, textAlign:"center", padding:"5px 2px" }} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <input type="number" min="0" value={Number(value)||0} onChange={e=>{ const n=Number(e.target.value); setAll(Number.isFinite(n)&&n>=0? n:0); }} style={textInput} />
+      )}
     </div>
   );
 }
 
 function ImageUploader({ currentSrc, onUpload }) {
+  const { theme, textInput, labelStyle } = useEditorTheme();
   const fileRef = useRef(null);
   const [preview, setPreview] = useState(currentSrc);
 
@@ -1087,6 +1208,7 @@ function ImageUploader({ currentSrc, onUpload }) {
 }
 
 function CompactImageUploader({ value, onUpload, size }) {
+  const { theme } = useEditorTheme();
   const fileRef = useRef(null);
   const s = size || 38;
   return (
@@ -1117,6 +1239,7 @@ function CompactImageUploader({ value, onUpload, size }) {
 
 /* Figma-style fill editor: one picker that toggles between a solid color and an image. */
 function FillEditor({ value, onChange }) {
+  const { theme, textInput } = useEditorTheme();
   const isImage = !!(value && typeof value === "object" && value.type === "image" && value.value);
   const colorVal = isImage ? "" : (value && typeof value === "object" ? value.value : value) || "";
   const [mode, setMode] = useState(isImage ? "image" : "color");
@@ -1182,6 +1305,7 @@ function FillEditor({ value, onChange }) {
 }
 
 function ListFieldEditor({ fields, value, onChange }) {
+  const { theme, textInput, labelStyle, iconBtn, iconBtnDanger } = useEditorTheme();
   const items = value || [];
   const [openIdx, setOpenIdx] = useState(0);
 
