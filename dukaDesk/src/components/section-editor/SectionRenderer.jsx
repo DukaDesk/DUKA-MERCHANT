@@ -437,7 +437,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
                       onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.background = theme.hoverAmber; e.currentTarget.style.color = "#5B3A00"; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E1E3"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#6B7280"; }}
                     >
-                      <div style={{ fontSize: 14, marginBottom: 2 }}>{def2.icon || "▣"}</div>
+                      <div style={{ fontSize: 14, marginBottom: 2 }}>{def2.icon ? <def2.icon size={18} /> : "▣"}</div>
                       <div>{def2.label}</div>
                     </button>
                   ))}
