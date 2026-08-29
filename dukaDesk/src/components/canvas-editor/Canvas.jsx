@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { Grid3x3, Square } from "lucide-react";
 import CanvasComponent from "./CanvasComponent";
 import MultiSelectBox from "./MultiSelectBox";
 
@@ -343,8 +344,9 @@ export default function Canvas({
           background: snapEnabled ? "#FFF8ED" : "#fff",
           borderColor: snapEnabled ? "#F4A026" : "#D1D5DB",
           color: snapEnabled ? "#6B4200" : "#9CA3AF",
+          display: "flex", alignItems: "center", gap: 4,
         }}>
-          {snapEnabled ? "🔲 Snap On" : "⬜ Snap Off"}
+          {snapEnabled ? <><Grid3x3 size={12} /> Snap On</> : <><Square size={12} /> Snap Off</>}
         </button>
         <div
           onClick={() => bgInputRef.current?.click()}

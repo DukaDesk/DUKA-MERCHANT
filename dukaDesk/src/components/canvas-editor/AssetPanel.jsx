@@ -1,4 +1,5 @@
 import { useRef, useCallback } from "react";
+import { Folder } from "lucide-react";
 
 export default function AssetPanel({ assets, onAddAsset, onRemoveAsset }) {
   const fileRef = useRef(null);
@@ -38,7 +39,7 @@ export default function AssetPanel({ assets, onAddAsset, onRemoveAsset }) {
         onMouseEnter={e => { e.currentTarget.style.borderColor = "#F4A026"; e.currentTarget.style.background = "#FFF8ED"; }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = "#D1D5DB"; e.currentTarget.style.background = "#FAFAFA"; }}
       >
-        <div style={{ fontSize: 20, marginBottom: 4 }}>📁</div>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 4, color: "#9CA3AF" }}><Folder size={20} /></div>
         <div>Drop images or click to upload</div>
         <input
           ref={fileRef}

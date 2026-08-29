@@ -273,7 +273,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
                 color: comp.visible === false ? theme.textMuted : def?.category === "layout" || def?.category === "shapes" ? "#1D4ED8" : def?.category === "text" || def?.category === "inputs" ? "#15803D" : "#6B4200",
               }}
             >
-              {(() => { const Icon = def?.icon || (comp.type === "text_block" ? Type : COMPONENT_FALLBACK); return typeof Icon === "function" ? <Icon size={11} /> : <span style={{ fontSize: 10 }}>{Icon}</span>; })()}
+              {(() => { const Icon = def?.icon || (comp.type === "text_block" ? Type : COMPONENT_FALLBACK); return <Icon size={11} />; })()}
             </span>
             <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{compLabel(comp)}</span>
             {children.length > 0 && (
@@ -327,7 +327,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
                     }}
                   >
                     <span style={{ width: 15, height: 15, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: theme.hover, border: `1px solid ${theme.borderLight}`, color: "#6B7280" }}>
-                      {sub.kind === "color" ? <ColorDot color={comp.props?.[sub.key] || "#DDD"} /> : (() => { const Icon = sub.icon; return typeof Icon === "function" ? <Icon size={10} /> : <span style={{ fontSize: 9 }}>{Icon || "·"}</span>; })()}
+                      {sub.kind === "color" ? <ColorDot color={comp.props?.[sub.key] || "#DDD"} /> : (() => { const Icon = sub.icon; return <Icon size={10} />; })()}
                     </span>
                     <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub.label}</span>
                     <span style={{ fontSize: 9, color: theme.textMuted, maxWidth: 70, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 0 }}>{subPreview(sub, comp)}</span>

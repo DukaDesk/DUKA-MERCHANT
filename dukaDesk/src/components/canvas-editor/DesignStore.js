@@ -629,6 +629,31 @@ export function useDesignStore(initialData, options = {}) {
     });
   }, [updateData]);
 
+  const updateTextStyle = useCallback((sectionId, compId, subKey, field, value) => {
+    updateData(d => {
+      const sec = findSection(d, sectionId);
+      if (!sec || !sec.components) return;
+      const comp = findComponentDeep(sec.components, compId);
+      if (!comp) return;
+      if (!comp.props.textStyles) comp.props.textStyles = {};
+      if (!comp.props.textStyles[subKey]) comp.props.textStyles[subKey] = {};
+      comp.props.textStyles[subKey][field] = value;
+    });
+  }, [updateData]);
+
+  const clearTextStyle = useCallback((sectionId, compId, subKey, field) => {
+    updateData(d => {
+      const sec = findSection(d, sectionId);
+      if (!sec || !sec.components) return;
+      const comp = findComponentDeep(sec.components, compId);
+      if (!comp?.props?.textStyles?.[subKey]) return;
+      const def = getComponentType(comp.type);
+      const fallback = def?.defaultProps?.textStyles?.[subKey]?.[field];
+      if (fallback !== undefined) comp.props.textStyles[subKey][field] = fallback;
+      else delete comp.props.textStyles[subKey][field];
+    });
+  }, [updateData]);
+
   /* ── Screen background color ── */
   const setScreenBackgroundColor = useCallback((screenId, color) => {
     updateData(d => {
@@ -803,6 +828,7 @@ export function useDesignStore(initialData, options = {}) {
     insertComponentAt,
     duplicateComponentInSection,
     reorderComponent, updateComponentInSection, updateProp, clearProp,
+    updateTextStyle, clearTextStyle,
 
     // Navigation tabs
     addTab, addTabs, removeTab, updateTab, reorderTab,

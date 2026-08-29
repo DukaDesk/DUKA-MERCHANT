@@ -5,7 +5,7 @@ import { useEditorTheme, ColorInput } from "./editorTheme.jsx";
 
 function IconRender({ icon, size = 16, style }) {
   if (!icon) return null;
-  if (typeof icon === "function") {
+  if (icon && (typeof icon === "function" || typeof icon === "object")) {
     const Icon = icon;
     return <Icon size={size} style={style} />;
   }
@@ -178,7 +178,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
       <>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 18 }}>{(() => { const Icon = COMPONENT_ICONS[component.type] || FileText; return typeof Icon === "function" ? <Icon size={18} /> : Icon; })()}</span>
+              <span style={{ display: "flex", color: theme.textMuted }}><IconRender icon={COMPONENT_ICONS[component.type] || FileText} size={18} /></span>
               <div>
                 <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: theme.text }}>{def?.label || component.type}</div>
                 <div style={{ fontSize: 10, color: theme.textMuted }}>{component.id.slice(0, 12)}</div>
@@ -199,7 +199,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
               background: theme.hoverAmber, border: `1px solid ${theme.active}`,
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6B4200", fontWeight: 600, fontFamily: "'Inter',sans-serif" }}>
-                <span style={{ display: "flex", alignItems: "center" }}>{(() => { const Icon = focusedField.icon; return typeof Icon === "function" ? <Icon size={14} /> : <span>{Icon}</span>; })()}</span>
+                <span style={{ display: "flex", alignItems: "center" }}>{(() => { const Icon = focusedField.icon; return Icon ? <Icon size={14} /> : null; })()}</span>
                 Editing: {focusedField.label}
               </div>
               <button
@@ -327,7 +327,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                   }}
                     onClick={() => onSelectComponent?.(selectedSectionId, child.id)}
                   >
-                    <span style={{ fontSize: 13 }}>{COMPONENT_ICONS[childDef?.type] || childDef?.icon || FileText}</span>
+                    <span style={{ display: "flex", alignItems: "center", color: theme.textMuted }}>{(() => { const Icon = COMPONENT_ICONS[childDef?.type] || childDef?.icon || FileText; return <Icon size={13} />; })()}</span>
                     <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: theme.text, fontWeight: 500, fontFamily: "'Inter',sans-serif" }}>
                       {childDef?.label || child.type}
                     </span>
@@ -357,7 +357,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                       onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.background = theme.hoverAmber; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.surface; }}
                     >
-                      <div style={{ display: "flex", justifyContent: "center", marginBottom: 1, color: theme.textMuted }}>{(() => { const Icon = COMPONENT_ICONS[def2.type] || FileText; return typeof Icon === "function" ? <Icon size={15} /> : Icon; })()}</div>
+                      <div style={{ display: "flex", justifyContent: "center", marginBottom: 1, color: theme.textMuted }}>{(() => { const Icon = COMPONENT_ICONS[def2.type] || FileText; return Icon ? <Icon size={15} /> : null; })()}</div>
                       <div style={{ fontSize: 9, lineHeight: 1.2 }}>{def2.label}</div>
                     </button>
                   );
@@ -496,14 +496,14 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
           <div key={cat.key} style={{ marginBottom: 10 }}>
             <button onClick={() => setCatCollapsed(p => ({ ...p, [cat.key]: p[cat.key] === undefined ? true : !p[cat.key] }))} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", cursor: "pointer", padding: "4px 2px", fontFamily: "'Inter',sans-serif", textAlign: "left" }}>
               <span style={{ fontSize: 10, color: theme.textMuted, transform: open ? "rotate(0deg)" : "rotate(-90deg)", display: "inline-flex" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg></span>
-              <span style={{ flex: 1, fontSize: 10, fontWeight: 700, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: "0.05em" }}>{(() => { const Icon = cat.icon; return typeof Icon === "function" ? <Icon size={12} style={{ flexShrink: 0 }} /> : <span>{Icon}</span>; })()} {cat.label}</span>
+              <span style={{ flex: 1, fontSize: 10, fontWeight: 700, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: "0.05em" }}>{cat.label}</span>
               <span style={{ fontSize: 9, color: theme.textMuted, background: theme.hover, borderRadius: 8, padding: "0 6px" }}>{items.length}</span>
             </button>
             {open && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 6 }}>
                 {items.map(compDef => (
                   <button key={compDef.type} onClick={() => section && store.addComponentToSection(selectedSectionId, compDef.type, { ...compDef.defaultProps })} disabled={addDisabled} style={{ padding: "6px 4px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: addDisabled ? "not-allowed" : "pointer", textAlign: "center", fontSize: 10, fontWeight: 500, color: theme.textSecondary, opacity: addDisabled ? 0.45 : 1 }}>
-                    <div style={{ fontSize: 16, marginBottom: 1 }}>{(() => { const Icon = COMPONENT_ICONS[compDef.type] || compDef.icon || FileText; return typeof Icon === "function" ? <Icon size={16} /> : Icon; })()}</div>
+                    <div style={{ fontSize: 16, marginBottom: 1, color: theme.textMuted }}><IconRender icon={COMPONENT_ICONS[compDef.type] || compDef.icon || FileText} size={16} /></div>
                     <div style={{ fontSize: 9, lineHeight: 1.2 }}>{compDef.label}</div>
                   </button>
                 ))}
@@ -552,7 +552,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                 {/* Header stays in General */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 18 }}>{(() => { const Icon = COMPONENT_ICONS[component.type] || FileText; return typeof Icon === "function" ? <Icon size={18} /> : Icon; })()}</span>
+                    <span style={{ display: "flex", color: theme.textMuted }}><IconRender icon={COMPONENT_ICONS[component.type] || FileText} size={18} /></span>
                     <div>
                       <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: theme.text }}>{def?.label || component.type}</div>
                       <div style={{ fontSize: 10, color: theme.textMuted }}>{component.id.slice(0, 12)}</div>
@@ -563,7 +563,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                 {focusedField && (
                   <div style={{ marginBottom: 12, padding: "8px 10px", borderRadius: theme.radius.md, background: theme.hoverAmber, border: `1px solid ${theme.active}` }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: focusedField.styleable && focusedField.kind === "text" ? 8 : 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6B4200", fontWeight: 600 }}><span style={{ display: "flex", alignItems: "center" }}>{(() => { const Icon = focusedField.icon; return typeof Icon === "function" ? <Icon size={14} /> : <span>{Icon}</span>; })()}</span> Editing: {focusedField.label}{focusedField.styleable ? " · Text" : ""}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6B4200", fontWeight: 600 }}><span style={{ display: "flex", alignItems: "center" }}>{(() => { const Icon = focusedField.icon; return Icon ? <Icon size={14} /> : null; })()}</span> Editing: {focusedField.label}{focusedField.styleable ? " · Text" : ""}</div>
                       <div style={{ display: "flex", gap: 4 }}>
                         <button onClick={() => onSelectComponent?.(selectedSectionId, component.id)} style={{ fontSize: 11, padding: "4px 8px", border: `1px solid ${theme.border}`, borderRadius: theme.radius.sm, background: "#fff", color: theme.textSecondary, cursor: "pointer", fontWeight: 600 }}>Back</button>
                         <button onClick={() => onClearProp?.(focusedField.key)} style={{ fontSize: 11, padding: "4px 8px", border: `1px solid ${theme.dangerBorder}`, borderRadius: theme.radius.sm, background: theme.dangerLight, color: theme.danger, cursor: "pointer", fontWeight: 600 }}>Remove</button>
@@ -593,7 +593,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                       const childDef = getComponentType(child.type);
                       return (
                         <div key={child.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, padding: "6px 8px", borderRadius: theme.radius.md, background: theme.hover, border: `1px solid ${theme.border}`, cursor: "pointer" }} onClick={() => onSelectComponent?.(selectedSectionId, child.id)}>
-                          <span style={{ fontSize: 13 }}>{COMPONENT_ICONS[childDef?.type] || FileText}</span>
+                          <span style={{ display: "flex", alignItems: "center", color: theme.textMuted }}>{(() => { const Icon = COMPONENT_ICONS[childDef?.type] || FileText; return <Icon size={13} />; })()}</span>
                           <span style={{ flex: 1, fontSize: 12, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{childDef?.label || child.type}</span>
                           <button onClick={e => { e.stopPropagation(); store.removeComponentFromSection(selectedSectionId, child.id); }} style={iconBtnDanger}>x</button>
                         </div>
@@ -776,7 +776,7 @@ function AccPanel({ id, open, onToggle, title, icon, badge, children }) {
         <span style={{ fontSize: 11, color: open ? "#6B4200" : theme.textMuted, display: "inline-flex", transition: `transform ${theme.transition}`, transform: open ? "rotate(0deg)" : "rotate(-90deg)" }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </span>
-      {icon && <span style={{ display: "flex", alignItems: "center", color: open ? "#6B4200" : theme.textMuted }}>{typeof icon === "function" ? <IconRender icon={icon} size={13} /> : <span style={{ fontSize: 13 }}>{icon}</span>}</span>}
+      {icon && <span style={{ display: "flex", alignItems: "center", color: open ? "#6B4200" : theme.textMuted }}><IconRender icon={icon} size={13} /></span>}
         <span style={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: open ? "#6B4200" : theme.text, textTransform: "uppercase", letterSpacing: "0.05em" }}>{title}</span>
         {badge && <span style={{ fontSize: 9, color: theme.textMuted, background: theme.hover, borderRadius: 8, padding: "0 6px" }}>{badge}</span>}
       </button>

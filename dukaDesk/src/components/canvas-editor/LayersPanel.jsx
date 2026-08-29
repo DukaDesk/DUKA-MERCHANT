@@ -1,5 +1,12 @@
 import { useState, useCallback } from "react";
 import { getComponentType } from "./componentTypes";
+import { Eye, EyeOff, Lock, Unlock, Folder, Trash2, Copy, Ungroup, Square } from "lucide-react";
+
+function TypeIcon({ type, size = 14 }) {
+  const def = getComponentType(type);
+  const Icon = def?.icon || Square;
+  return <Icon size={size} />;
+}
 
 function LayerRow({ comp, def, isSelected, onSelect, onToggleVis, onToggleLock, onRename, onMoveLayer, onUngroup }) {
   const [editing, setEditing] = useState(false);
@@ -44,20 +51,20 @@ function LayerRow({ comp, def, isSelected, onSelect, onToggleVis, onToggleLock, 
     >
       <span
         onClick={(e) => { e.stopPropagation(); onToggleVis(comp.id); }}
-        style={{ fontSize: 11, cursor: "pointer", width: 16, textAlign: "center", flexShrink: 0, color: comp.visible ? "#6B7280" : "#D1D5DB" }}
+        style={{ cursor: "pointer", width: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: comp.visible ? "#6B7280" : "#D1D5DB" }}
         title={comp.visible ? "Hide" : "Show"}
       >
-        {comp.visible ? "👁" : "○"}
+        {comp.visible ? <Eye size={13} /> : <EyeOff size={13} />}
       </span>
       <span
         onClick={(e) => { e.stopPropagation(); onToggleLock(comp.id); }}
-        style={{ fontSize: 10, cursor: "pointer", width: 14, textAlign: "center", flexShrink: 0, color: comp.locked ? "#E74C3C" : "#D1D5DB" }}
+        style={{ cursor: "pointer", width: 14, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: comp.locked ? "#E74C3C" : "#D1D5DB" }}
         title={comp.locked ? "Unlock" : "Lock"}
       >
-        {comp.locked ? "🔒" : "○"}
+        {comp.locked ? <Lock size={12} /> : <Unlock size={12} />}
       </span>
-      <span style={{ fontSize: 13, width: 18, textAlign: "center", flexShrink: 0 }}>
-        {comp.isGroup ? "📁" : (def?.icon || "?")}
+      <span style={{ width: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#6B7280" }}>
+        {comp.isGroup ? <Folder size={14} /> : <TypeIcon type={comp.type} size={14} />}
       </span>
       {editing ? (
         <input
@@ -74,9 +81,9 @@ function LayerRow({ comp, def, isSelected, onSelect, onToggleVis, onToggleLock, 
           {def?.label || comp.type}
         </span>
       )}
-      <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+      <div style={{ display: "flex", gap: 2, flexShrink: 0, alignItems: "center" }}>
         {comp.isGroup && (
-          <button onClick={(e) => { e.stopPropagation(); onUngroup(comp.id); }} style={miniBtn} title="Ungroup">⊘</button>
+          <button onClick={(e) => { e.stopPropagation(); onUngroup(comp.id); }} style={miniBtn} title="Ungroup"><Ungroup size={12} /></button>
         )}
         <button onClick={(e) => { e.stopPropagation(); onMoveLayer(comp.id, "up"); }} style={miniBtn} title="Bring forward">↑</button>
         <button onClick={(e) => { e.stopPropagation(); onMoveLayer(comp.id, "down"); }} style={miniBtn} title="Send backward">↓</button>
@@ -116,12 +123,12 @@ export default function LayersPanel({
         </span>
         <div style={{ display: "flex", gap: 4 }}>
           {selectedIds.length > 1 && (
-            <button onClick={() => onGroup(selectedIds)} style={actionBtn} title="Group selection">📁 Group</button>
+            <button onClick={() => onGroup(selectedIds)} style={{ ...actionBtn, display: "flex", alignItems: "center", gap: 4 }} title="Group selection"><Folder size={12} /> Group</button>
           )}
           {selectedIds.length > 0 && (
             <>
-              <button onClick={() => onDuplicateComponents(selectedIds)} style={actionBtn} title="Duplicate">⧉</button>
-              <button onClick={() => onRemoveComponents(selectedIds)} style={{ ...actionBtn, color: "#E74C3C" }} title="Delete">🗑</button>
+              <button onClick={() => onDuplicateComponents(selectedIds)} style={{ ...actionBtn, display: "flex", alignItems: "center", justifyContent: "center" }} title="Duplicate"><Copy size={12} /></button>
+              <button onClick={() => onRemoveComponents(selectedIds)} style={{ ...actionBtn, color: "#E74C3C", display: "flex", alignItems: "center", justifyContent: "center" }} title="Delete"><Trash2 size={12} /></button>
             </>
           )}
         </div>

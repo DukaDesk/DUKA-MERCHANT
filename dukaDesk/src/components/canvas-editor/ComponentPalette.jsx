@@ -1,6 +1,16 @@
 import { useState, useCallback } from "react";
-import { getComponentsByCategory } from "./componentTypes";
+import { getComponentsByCategory, getComponentType } from "./componentTypes";
+import { Package, Square } from "lucide-react";
 import AssetPanel from "./AssetPanel";
+
+function RenderIcon({ icon, size = 16 }) {
+  if (!icon) return null;
+  if (icon && (typeof icon === "function" || typeof icon === "object")) {
+    const Icon = icon;
+    return <Icon size={size} style={{ flexShrink: 0 }} />;
+  }
+  return <span style={{ fontSize: size }}>{icon}</span>;
+}
 
 export default function ComponentPalette({ assets, onAddAsset, onRemoveAsset, componentLibrary, onRemoveFromLibrary, tokens }) {
   const [tab, setTab] = useState("components");
@@ -34,7 +44,7 @@ export default function ComponentPalette({ assets, onAddAsset, onRemoveAsset, co
             if (items.length === 0) return null;
             return (
               <div key={cat.key} style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.04em", padding: "4px 8px", marginBottom: 4 }}>{cat.icon} {cat.label}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.04em", padding: "4px 8px", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}><RenderIcon icon={cat.icon} size={13} /> {cat.label}</div>
                 {items.map(def => (
                   <div
                     key={def.type}
@@ -48,7 +58,7 @@ export default function ComponentPalette({ assets, onAddAsset, onRemoveAsset, co
                     onMouseEnter={e => { e.currentTarget.style.background = "#F3F4F6"; e.currentTarget.style.borderColor = "#E5E7EB"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
                   >
-                    <span style={{ fontSize: 18, width: 24, textAlign: "center", flexShrink: 0 }}>{def.icon}</span>
+                    <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#6B7280" }}><RenderIcon icon={def.icon} size={16} /></span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 500, color: "#1C1B1D", fontFamily: "'Inter',sans-serif" }}>{def.label}</div>
                       <div style={{ fontSize: 10, color: "#9CA3AF" }}>{def.type}</div>
@@ -99,7 +109,7 @@ export default function ComponentPalette({ assets, onAddAsset, onRemoveAsset, co
                     border: "1px solid #E5E7EB", background: "#FAFAFA",
                   }}
                 >
-                  <span style={{ fontSize: 14 }}>{item.component?.type === "button" ? "🔘" : "📦"}</span>
+                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#6B7280" }}>{(() => { const def = getComponentType(item.component?.type); const Icon = def?.icon || (item.component?.type === "button" ? Square : Package); return <RenderIcon icon={Icon} size={14} />; })()}</span>
                   <span style={{ flex: 1, fontWeight: 500, color: "#1C1B1D", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
                   <span style={{ fontSize: 10, color: "#9CA3AF" }}>{item.type}</span>
                   <button

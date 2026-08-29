@@ -1,4 +1,5 @@
 import { loadAllTemplateScreens } from "./TemplateLoader";
+import { getComponentType } from "../components/canvas-editor/componentTypes";
 
 const catalogCache = new Map();
 
@@ -100,21 +101,52 @@ export function getCachedTemplateCatalog() {
   return catalogCache.get("root") || null;
 }
 
+function normalizeTemplateProps(child, type) {
+  const def = getComponentType(type);
+  const raw = child.props || {};
+  const props = { ...(def?.defaultProps || {}), ...raw };
+
+  if (type === "hero_banner" && raw.image && !props.fill) {
+    props.fill = raw.image;
+  }
+
+  if (type === "menu_grid" && Array.isArray(props.items)) {
+    props.items = props.items.map((item) => {
+      if (item.img && !item.image) return { ...item, image: item.img };
+      return item;
+    });
+  }
+
+  if (type === "category_pills" && Array.isArray(raw.categories)) {
+    props.cats = raw.categories.map((label, i) => ({ label, active: i === 0 }));
+  }
+
+  if (child.actions && typeof child.actions === "object") {
+    props.actions = child.actions;
+  }
+
+  return props;
+}
+
 function buildComponents(screenId, children) {
-  return (Array.isArray(children) ? children : []).map((child, i) => ({
-    id: child.key || `comp_${screenId}_${i}`,
-    type: child.type || "text_block",
-    props: child.props || {},
-    fills: [{ type: "solid", color: "#E8E5E0", opacity: 100 }],
-    strokes: [],
-    effects: [],
-    cornerRadius: 0,
-    opacity: 1,
-    rotation: 0,
-    locked: false,
-    visible: true,
-    zIndex: i,
-  }));
+  return (Array.isArray(children) ? children : []).map((child, i) => {
+    const type = child.type || "text_block";
+    const props = normalizeTemplateProps(child, type);
+    return {
+      id: child.key || `comp_${screenId}_${i}`,
+      type,
+      props,
+      fills: [{ type: "solid", color: "#E8E5E0", opacity: 100 }],
+      strokes: [],
+      effects: [],
+      cornerRadius: props.radius ?? 0,
+      opacity: 1,
+      rotation: 0,
+      locked: false,
+      visible: true,
+      zIndex: i,
+    };
+  });
 }
 
 export function convertManifestToDesign(manifest, screens) {

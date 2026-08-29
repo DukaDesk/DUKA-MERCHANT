@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { getComponentType } from "./componentTypes";
+import { Star, Link, Unlink, ChevronRight, ChevronDown } from "lucide-react";
+import { getComponentType, FONT_FAMILIES, FONT_WEIGHTS, resolveTextStyle, applyTextStyle } from "./componentTypes";
 
 const inputStyle = {
   width: "100%", padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 6,
@@ -14,7 +15,7 @@ const addBtn = { background: "none", border: "1px dashed #D1D5DB", borderRadius:
 export default function PropertiesPanel({
   selectedComponent, selectedComps = [], onUpdateProp, onUpdateStyle, onUpdateComponent,
   onUpdateFills, onUpdateStrokes, onUpdateEffects, onUpdateRotation, onUpdateOpacity,
-  onSetLayout, onAddToken,
+  onSetLayout, onAddToken, onUpdateTextStyle,
 }) {
   const [collapsed, setCollapsed] = useState({});
   const toggle = (key) => setCollapsed(p => ({ ...p, [key]: !p[key] }));
@@ -124,8 +125,8 @@ export default function PropertiesPanel({
           ))}
           <button onClick={() => setFills([...fills, { type: "solid", color: "#E5E1E3", opacity: 1 }])} style={addBtn}>+ Add Fill</button>
           {fills.length > 0 && fills[0].color && (
-            <button onClick={() => onAddToken?.("colors", { color: fills[0].color, opacity: fills[0].opacity ?? 100, name: `Color ${fills[0].color}` })} style={addBtn}>
-              ★ Save as Style
+            <button onClick={() => onAddToken?.("colors", { color: fills[0].color, opacity: fills[0].opacity ?? 100, name: `Color ${fills[0].color}` })} style={{ ...addBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+              <Star size={12} /> Save as Style
             </button>
           )}
         </Collapsible>
@@ -175,7 +176,7 @@ export default function PropertiesPanel({
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input type="number" min={0} value={cornerRadius} onChange={e => onUpdateComponent(comp.id, { cornerRadius: Math.max(0, Number(e.target.value)) })} style={{ ...inputStyle, width: 80 }} />
               <input type="range" min={0} max={100} value={cornerRadius} onChange={e => onUpdateComponent(comp.id, { cornerRadius: Number(e.target.value) })} style={{ flex: 1 }} />
-              <button onClick={() => onUpdateComponent(comp.id, { cornerRadius: { tl: cornerRadius, tr: cornerRadius, br: cornerRadius, bl: cornerRadius } })} style={linkBtn} title="Edit individually">🔗</button>
+              <button onClick={() => onUpdateComponent(comp.id, { cornerRadius: { tl: cornerRadius, tr: cornerRadius, br: cornerRadius, bl: cornerRadius } })} style={{ ...linkBtn, display: "flex", alignItems: "center", justifyContent: "center" }} title="Edit individually"><Link size={12} /></button>
             </div>
           ) : (
             <div>
@@ -185,7 +186,7 @@ export default function PropertiesPanel({
                 <Field label="BR"><input type="number" min={0} value={cornerRadius.br ?? 0} onChange={e => onUpdateComponent(comp.id, { cornerRadius: { ...cornerRadius, br: Math.max(0, Number(e.target.value)) } })} style={inputStyle} /></Field>
                 <Field label="BL"><input type="number" min={0} value={cornerRadius.bl ?? 0} onChange={e => onUpdateComponent(comp.id, { cornerRadius: { ...cornerRadius, bl: Math.max(0, Number(e.target.value)) } })} style={inputStyle} /></Field>
               </div>
-              <button onClick={() => onUpdateComponent(comp.id, { cornerRadius: cornerRadius.tl })} style={linkBtn}>🔗 Unlink</button>
+              <button onClick={() => onUpdateComponent(comp.id, { cornerRadius: cornerRadius.tl })} style={{ ...linkBtn, display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}><Unlink size={12} /> Unlink</button>
             </div>
           )}
         </Collapsible>
@@ -224,6 +225,44 @@ export default function PropertiesPanel({
           </Collapsible>
         )}
 
+        {/* Per-text typography for styleable sub-elements */}
+        {def?.subElements?.some(s => s.styleable && s.kind === "text") && (
+          <Collapsible title="Text Styles" collapsed={collapsed.textStyles} onToggle={() => toggle("textStyles")}>
+            {def.subElements.filter(s => s.styleable && s.kind === "text").map(se => {
+              const bag = comp.props?.textStyles?.[se.key] || {};
+              const defaults = def?.defaultProps?.textStyles?.[se.key] || {};
+              const v = (k, fb) => bag[k] ?? defaults[k] ?? fb;
+              const upd = (field, val) => {
+                if (onUpdateTextStyle) onUpdateTextStyle(comp.id, se.key, field, val);
+                else {
+                  const next = { ...(comp.props.textStyles || {}) };
+                  next[se.key] = { ...(next[se.key] || {}), [field]: val };
+                  onUpdateProp(comp.id, "textStyles", next);
+                }
+              };
+              return (
+                <div key={se.key} style={{ marginBottom: 12, padding: "8px 8px", background: "#FAFAFA", borderRadius: 6, border: "1px solid #F3F4F6" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#374151", marginBottom: 6 }}>{se.icon} {se.label}</div>
+                  <Field label="Content"><input value={comp.props[se.key] || ""} onChange={e => onUpdateProp(comp.id, se.key, e.target.value)} style={inputStyle} /></Field>
+                  <Field label="Font Family"><select value={v("fontFamily","Inter")} onChange={e => upd("fontFamily", e.target.value)} style={inputStyle}>{FONT_FAMILIES.map(f => <option key={f} value={f}>{f}</option>)}</select></Field>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                    <Field label="Size"><input type="number" value={v("fontSize",14)} onChange={e => upd("fontSize", Number(e.target.value))} style={inputStyle} /></Field>
+                    <Field label="Line H"><input type="number" step="0.1" value={v("lineHeight",1.4)} onChange={e => upd("lineHeight", Number(e.target.value))} style={inputStyle} /></Field>
+                  </div>
+                  <Field label="Weight"><select value={String(v("fontWeight","400"))} onChange={e => upd("fontWeight", e.target.value)} style={inputStyle}>{FONT_WEIGHTS.map(w => <option key={w} value={w}>{w}</option>)}</select></Field>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                    <Field label="Style"><select value={v("fontStyle","normal")} onChange={e => upd("fontStyle", e.target.value)} style={inputStyle}><option value="normal">Normal</option><option value="italic">Italic</option></select></Field>
+                    <Field label="Transform"><select value={v("textTransform","none")} onChange={e => upd("textTransform", e.target.value)} style={inputStyle}><option value="none">None</option><option value="uppercase">UPPER</option><option value="lowercase">lower</option><option value="capitalize">Capitalize</option></select></Field>
+                  </div>
+                  <Field label="Letter Spacing"><input type="number" step="0.5" value={v("letterSpacing",0)} onChange={e => upd("letterSpacing", Number(e.target.value))} style={inputStyle} /></Field>
+                  <Field label="Color"><div style={{ display: "flex", gap: 6 }}><input type="color" value={v("color","#1C1B1D")} onChange={e => upd("color", e.target.value)} style={{ width: 36, height: 32, padding: 0, border: "1px solid #D1D5DB", borderRadius: 6, cursor: "pointer" }} /><input value={v("color","#1C1B1D")} onChange={e => upd("color", e.target.value)} style={{ flex: 1, ...inputStyle }} /></div></Field>
+                  <div style={{ marginTop: 4, padding: "6px 8px", background: "#fff", borderRadius: 4, border: "1px dashed #E5E7EB", fontSize: 12, ...applyTextStyle({ fontFamily: v("fontFamily","Inter"), fontSize: v("fontSize",14), fontWeight: v("fontWeight","400"), fontStyle: v("fontStyle","normal"), lineHeight: v("lineHeight",1.4), letterSpacing: v("letterSpacing",0), textTransform: v("textTransform","none"), color: v("color","#1C1B1D") }) }}>{comp.props[se.key] || se.label} — preview</div>
+                </div>
+              );
+            })}
+          </Collapsible>
+        )}
+
       </div>
     </div>
   );
@@ -234,7 +273,7 @@ function Collapsible({ title, collapsed, onToggle, children }) {
     <div style={{ marginBottom: 16 }}>
         <div onClick={onToggle} role="button" tabIndex={0} onKeyDown={e => e.key === "Enter" && onToggle?.()} style={{ ...sectionTitle, cursor: "pointer" }}>
         {title}
-        <span style={{ fontSize: 10, color: "#9CA3AF" }}>{collapsed ? "▶" : "▼"}</span>
+        <span style={{ color: "#9CA3AF", display: "flex" }}>{collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}</span>
       </div>
       {!collapsed && <div>{children}</div>}
     </div>

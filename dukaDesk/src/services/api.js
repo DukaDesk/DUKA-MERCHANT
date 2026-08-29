@@ -1186,3 +1186,8 @@ export async function getDeactivationStatus() {
     return null;
   }
 }
+
+export async function requestFeature(featureName) {
+  console.log("Feature requested:", featureName);
+  return { success: true, message: "Feature request submitted" };
+}

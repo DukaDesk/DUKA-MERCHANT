@@ -1,12 +1,14 @@
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ArrowLeftRight, ArrowDownUp, Minus } from "lucide-react";
+
 const alignments = [
-  { id: "alignLeft", icon: "⬅", label: "Align Left", shortcut: "Alt+1" },
-  { id: "alignCenter", icon: "⬇", label: "Align Center H", shortcut: "Alt+2" },
-  { id: "alignRight", icon: "➡", label: "Align Right", shortcut: "Alt+3" },
-  { id: "alignTop", icon: "⬆", label: "Align Top", shortcut: "Alt+4" },
-  { id: "alignMiddle", icon: "⬌", label: "Align Middle V", shortcut: "Alt+5" },
-  { id: "alignBottom", icon: "⬇", label: "Align Bottom", shortcut: "Alt+6" },
-  { id: "distributeH", icon: "⇔", label: "Distribute H", shortcut: "Alt+7" },
-  { id: "distributeV", icon: "⇅", label: "Distribute V", shortcut: "Alt+8" },
+  { id: "alignLeft", icon: ArrowLeft, label: "Align Left", shortcut: "Alt+1" },
+  { id: "alignCenter", icon: ArrowLeftRight, label: "Align Center H", shortcut: "Alt+2" },
+  { id: "alignRight", icon: ArrowRight, label: "Align Right", shortcut: "Alt+3" },
+  { id: "alignTop", icon: ArrowUp, label: "Align Top", shortcut: "Alt+4" },
+  { id: "alignMiddle", icon: ArrowDownUp, label: "Align Middle V", shortcut: "Alt+5" },
+  { id: "alignBottom", icon: ArrowDown, label: "Align Bottom", shortcut: "Alt+6" },
+  { id: "distributeH", icon: ArrowLeftRight, label: "Distribute H", shortcut: "Alt+7" },
+  { id: "distributeV", icon: ArrowDownUp, label: "Distribute V", shortcut: "Alt+8" },
 ];
 
 export default function AlignmentToolbar({ onAlign, hasMultiSelection }) {
@@ -27,7 +29,7 @@ export default function AlignmentToolbar({ onAlign, hasMultiSelection }) {
           onMouseEnter={e => { e.currentTarget.style.background = "#F3F4F6"; e.currentTarget.style.color = "#1C1B1D"; }}
           onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#6B7280"; }}
         >
-          {a.icon}
+          {(() => { const Icon = a.icon; return typeof Icon === "function" ? <Icon size={14} /> : Icon; })()}
         </button>
       ))}
     </div>

@@ -1,11 +1,13 @@
+import { MousePointer2, Square, Circle, Type, Minus, ArrowRight, Hand } from "lucide-react";
+
 const tools = [
-  { id: "select", label: "Select", shortcut: "V", icon: "⬚" },
-  { id: "rectangle", label: "Rectangle", shortcut: "R", icon: "▬" },
-  { id: "ellipse", label: "Ellipse", shortcut: "O", icon: "⬭" },
-  { id: "text", label: "Text", shortcut: "T", icon: "Aa" },
-  { id: "line", label: "Line", shortcut: "L", icon: "╱" },
-  { id: "arrow", label: "Arrow", shortcut: "A", icon: "→" },
-  { id: "hand", label: "Hand", shortcut: "H", icon: "✋" },
+  { id: "select", label: "Select", shortcut: "V", icon: MousePointer2 },
+  { id: "rectangle", label: "Rectangle", shortcut: "R", icon: Square },
+  { id: "ellipse", label: "Ellipse", shortcut: "O", icon: Circle },
+  { id: "text", label: "Text", shortcut: "T", icon: Type },
+  { id: "line", label: "Line", shortcut: "L", icon: Minus },
+  { id: "arrow", label: "Arrow", shortcut: "A", icon: ArrowRight },
+  { id: "hand", label: "Hand", shortcut: "H", icon: Hand },
 ];
 
 export default function Toolbar({ activeTool, onSetTool }) {
@@ -33,7 +35,7 @@ export default function Toolbar({ activeTool, onSetTool }) {
           onMouseEnter={e => { if (activeTool !== t.id) { e.currentTarget.style.background = "#F3F4F6"; }}}
           onMouseLeave={e => { if (activeTool !== t.id) { e.currentTarget.style.background = "transparent"; }}}
         >
-          {t.icon}
+          {(() => { const Icon = t.icon; return typeof Icon === "function" ? <Icon size={16} /> : Icon; })()}
         </button>
       ))}
     </div>

@@ -4,7 +4,7 @@ import { Lock, Store, LayoutGrid, BarChart3, MessageSquare, Link2, CreditCard, U
 import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
-import { getIntegrations, toggleIntegration, getMyApp, getIntegrationConfig, setIntegrationConfig } from "../../services/api";
+import { getIntegrations, toggleIntegration, getMyApp, getIntegrationConfig, setIntegrationConfig, requestFeature } from "../../services/api";
 import { INTEGRATION_BADGE_COLORS } from "../../config/integrations";
 import { getTemplateIntegrationNames } from "../../config/wizard";
 import { PRIMITIVES, PRIMITIVE_GROUPS } from "../../config/primitives";
@@ -306,7 +306,7 @@ export default function Integrations() {
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => {
                 if (!featureForm.title.trim()) { toast.error("Give your request a short title"); return; }
-                try { window.dispatchEvent(new CustomEvent("feature:requested", { detail: { ...featureForm } })); } catch { /* noop */ }
+                try { requestFeature(featureForm); } catch { /* handled below */ }
                 setFeatureForm({ title: "", desc: "" });
                 setFeatureOpen(false);
                 toast.success("Request received! We'll keep you posted.");

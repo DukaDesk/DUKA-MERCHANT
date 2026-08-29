@@ -9,43 +9,23 @@
       {
         "type": "section_header",
         "key": "pickup-header",
-        "props": { "children": "Delivery Address" }
+        "props": { "children": "Schedule Home Pickup & Delivery" }
       },
       {
-        "type": "address_form",
-        "key": "pickup-address",
-        "props": {},
-        "actions": { "submit": { "type": "filter", "payload": { "source": "address" } } }
-      },
-      {
-        "type": "section_header",
-        "key": "date-header",
-        "props": { "children": "Pickup Date" }
-      },
-      {
-        "type": "calendar_strip",
-        "key": "pickup-date",
-        "props": { "minDate": "today", "maxDate": "+30", "variant": "default" },
-        "actions": { "selectDate": { "type": "filter", "payload": { "source": "date" } } }
-      },
-      {
-        "type": "section_header",
-        "key": "time-header",
-        "props": { "children": "Preferred Time" }
-      },
-      {
-        "type": "slot_grid",
-        "key": "pickup-time",
-        "props": { "duration": 60, "variant": "default" },
-        "actions": { "selectSlot": { "type": "filter", "payload": { "source": "slot" } } }
-      },
-      {
-        "type": "booking_summary",
-        "key": "pickup-summary",
+        "type": "laundry_booking",
+        "key": "laundry-booking",
         "props": {
           "service": "Wash & Fold",
-          "subtitle": "Free pickup between 9:00 AM - 6:00 PM",
-          "total": 4500
+          "price": 2500,
+          "unitLabel": "kg",
+          "services": [
+            { "name": "Wash & Fold", "price": 2500, "unitLabel": "kg" },
+            { "name": "Dry Cleaning", "price": 3500, "unitLabel": "item" },
+            { "name": "Iron Only", "price": 1000, "unitLabel": "item" },
+            { "name": "Express Wash", "price": 5000, "unitLabel": "bundle" },
+            { "name": "Shoe Care", "price": 4000, "unitLabel": "pair" },
+            { "name": "Blankets & Curtains", "price": 6000, "unitLabel": "piece" }
+          ]
         },
         "actions": { "confirm": { "type": "navigate", "payload": { "push": "/orders" } } }
       }
