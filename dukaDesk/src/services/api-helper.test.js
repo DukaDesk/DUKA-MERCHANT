@@ -59,7 +59,7 @@ describe("api helpers (tenant config-based)", () => {
       const result = await getIntegrationConfig("Paystack");
 
       expect(result).toEqual({ apiKey: "sk_test_123" });
-      expect(mockHttpClient.get).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`);
+      expect(mockHttpClient.get).toHaveBeenCalledWith(`/api/v1/merchants/${TENANT_ID}/config`);
     });
 
     it("returns null when integration not configured", async () => {
@@ -86,7 +86,7 @@ describe("api helpers (tenant config-based)", () => {
 
       await setIntegrationConfig("Paystack", { apiKey: "sk_test_456" });
 
-      expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`, expect.objectContaining({
+      expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/merchants/${TENANT_ID}/config`, expect.objectContaining({
         config: expect.objectContaining({
           integrationConfigs: expect.objectContaining({
             ExistingInt: { key: "val" },
@@ -127,7 +127,7 @@ describe("api helpers (tenant config-based)", () => {
 
       await saveDesignData({ screens: { home: {} } });
 
-      expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`, expect.objectContaining({
+      expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/merchants/${TENANT_ID}/config`, expect.objectContaining({
         config: expect.objectContaining({
           businessName: "Test",
           design: { screens: { home: {} } },
@@ -188,7 +188,7 @@ describe("api helpers (tenant config-based)", () => {
 
       await saveDeployment({ version: "2.0.0", status: "published" });
 
-      expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`, expect.objectContaining({
+      expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/merchants/${TENANT_ID}/config`, expect.objectContaining({
         config: expect.objectContaining({
           deployed: { version: "2.0.0", status: "published" },
         }),
@@ -305,7 +305,7 @@ describe("dashboard modules (primitives)", () => {
     expect(setup.modules).toEqual(["analytics", "billing"]);
     const merchant = JSON.parse(localStorage.getItem("dd_merchant"));
     expect(merchant.modules).toEqual(["analytics", "billing"]);
-    expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`, expect.objectContaining({
+    expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/merchants/${TENANT_ID}/config`, expect.objectContaining({
       config: expect.objectContaining({
         app: expect.objectContaining({ modules: ["analytics", "billing"] }),
       }),
@@ -341,7 +341,7 @@ describe("ensureTenant / deployApp", () => {
     const id = await ensureTenant("Ada's Kitchen");
 
     expect(id).toBe("tenant_new");
-    expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/tenants", expect.objectContaining({
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/merchants", expect.objectContaining({
       name: "Ada's Kitchen",
       slug: "adas-kitchen",
     }));
@@ -360,12 +360,12 @@ describe("ensureTenant / deployApp", () => {
     const result = await deployApp({ appName: "Tasty Bites", category: "Restaurant" });
 
     expect(result.app.slug).toBe("tasty-bites");
-    expect(mockHttpClient.put).toHaveBeenCalledWith("/api/v1/tenants/tenant_new/config", expect.objectContaining({
+    expect(mockHttpClient.put).toHaveBeenCalledWith("/api/v1/merchants/tenant_new/config", expect.objectContaining({
       config: expect.objectContaining({
         app: expect.objectContaining({ appName: "Tasty Bites", status: "live" }),
       }),
     }));
-    expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/tenants/tenant_new/publish");
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/merchants/tenant_new/publish");
   });
 
   it("deployApp reuses existing tenant", async () => {
@@ -376,7 +376,7 @@ describe("ensureTenant / deployApp", () => {
 
     await deployApp({ appName: "Tasty Bites" });
 
-    expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/config`, expect.anything());
-    expect(mockHttpClient.post).toHaveBeenCalledWith(`/api/v1/tenants/${TENANT_ID}/publish`);
+    expect(mockHttpClient.put).toHaveBeenCalledWith(`/api/v1/merchants/${TENANT_ID}/config`, expect.anything());
+    expect(mockHttpClient.post).toHaveBeenCalledWith(`/api/v1/merchants/${TENANT_ID}/publish`);
   });
 });

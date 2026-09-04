@@ -49,7 +49,7 @@ export async function publishProject(projectData) {
 
   // ── Generation: compile SDUI manifest for mobile BFF ──
   // The canvas design already is the SDUI manifest shape { meta, navigation, screens, shared, savedSections }.
-  // We enrich it with deployment metadata so mobile can consume via GET /api/v1/tenants/:id/definition
+  // We enrich it with deployment metadata so mobile can consume via GET /api/v1/merchants/:id/definition
   // or BFF GET /api/v1/bff/mobile/tenant/:slug/manifest
   const manifest = {
     ...JSON.parse(JSON.stringify(projectData)),
@@ -59,7 +59,7 @@ export async function publishProject(projectData) {
   };
 
   try {
-    // 1) Persist design to tenant config (PUT /api/v1/tenants/:id/config with { design })
+    // 1) Persist design to tenant config (PUT /api/v1/merchants/:id/config with { design })
     //    In demo mode this writes to localStorage; with real backend it hits the API.
     await saveDesignData(projectData);
 
@@ -70,15 +70,15 @@ export async function publishProject(projectData) {
     await saveDeployment(manifest);
 
     // 3) Try to publish to real backend publishing pipeline
-    //    POST /api/v1/tenants/:id/publishing/publish  (ADR-010)
-    //    Fallback to POST /api/v1/tenants/:id/publish  and PUT /api/v1/tenants/:id/config
+    //    POST /api/v1/merchants/:id/publishing/publish  (ADR-010)
+    //    Fallback to POST /api/v1/merchants/:id/publish  and PUT /api/v1/merchants/:id/config
     const merchant = getMerchant();
-    const tenantId = merchant?.tenantId;
-    const slug = merchant?.tenantSlug || projectData?.meta?.appName?.toLowerCase().replace(/\s+/g, "-") || "demo";
-    if (tenantId) {
+    const merchantId = merchant?.merchantId || merchant?.tenantId;
+    const slug = merchant?.merchantSlug || merchant?.tenantSlug || projectData?.meta?.appName?.toLowerCase().replace(/\s+/g, "-") || "demo";
+    if (merchantId) {
       // Attempt SDUI publishing pipeline (primary)
       try {
-        await httpClient.post(`/api/v1/tenants/${tenantId}/publishing/publish`, {
+        await httpClient.post(`/api/v1/merchants/${merchantId}/publishing/publish`, {
           version,
           manifest,
           design: projectData,
@@ -92,9 +92,9 @@ export async function publishProject(projectData) {
         console.warn("[publishProject] publishing/publish failed (demo fallback):", e?.message || e);
       }
 
-      // Also ensure tenant config has the deployed manifest for GET /api/v1/tenants/:id/definition
+      // Also ensure tenant config has the deployed manifest for GET /api/v1/merchants/:id/definition
       try {
-        await httpClient.put(`/api/v1/tenants/${tenantId}/config`, {
+        await httpClient.put(`/api/v1/merchants/${merchantId}/config`, {
           config: {
             design: projectData,
             deployed: manifest,
@@ -108,7 +108,7 @@ export async function publishProject(projectData) {
 
       // Also publish tenant (sets status live)
       try {
-        await httpClient.post(`/api/v1/tenants/${tenantId}/publish`);
+        await httpClient.post(`/api/v1/merchants/${merchantId}/publish`);
       } catch (e) {
         console.warn("[publishProject] tenant publish failed (demo fallback):", e?.message || e);
       }

@@ -64,6 +64,14 @@ const DEMO_PLANS = [
 
 function demoSeed() {
   return {
+    merchant: {
+      id: "merchant_demo_001",
+      name: "Ada's Kitchen",
+      slug: "adas-kitchen",
+      category: "Restaurant",
+      status: "active",
+      createdAt: new Date().toISOString(),
+    },
     tenant: {
       id: "tenant_demo_001",
       name: "Ada's Kitchen",
@@ -141,7 +149,13 @@ function demoSeed() {
 function demoStore() {
   try {
     const raw = localStorage.getItem(DEMO_STORE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migration: ensure both merchant and tenant exist (merchants rename)
+      if (parsed.tenant && !parsed.merchant) parsed.merchant = { ...parsed.tenant, id: parsed.tenant.id.replace('tenant_', 'merchant_') };
+      if (parsed.merchant && !parsed.tenant) parsed.tenant = { ...parsed.merchant, id: parsed.merchant.id.replace('merchant_', 'tenant_') };
+      return parsed;
+    }
   } catch { /* ignore */ }
   const seed = demoSeed();
   try { localStorage.setItem(DEMO_STORE_KEY, JSON.stringify(seed)); } catch { /* ignore */ }
@@ -170,11 +184,11 @@ async function fetchTenantSilently(tenantId = null) {
   // const base = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
   // try {
   //   if (tenantId) {
-  //     const res = await axios.get(`${base}/api/v1/tenants/${tenantId}`, { headers });
+  //     const res = await axios.get(`${base}/api/v1/merchants/${tenantId}`, { headers });
   //     const body = res.data?.data ?? res.data;
   //     return body?.name ? body : null;
   //   }
-  //   const res = await axios.get(`${base}/api/v1/tenants/my`, { headers });
+  //   const res = await axios.get(`${base}/api/v1/merchants/my`, { headers });
   //   const body = res.data?.tenants ?? res.data?.data ?? res.data;
   //   const tenants = Array.isArray(body) ? body : [];
   //   return tenants.length > 0 ? tenants[0] : null;
@@ -206,7 +220,7 @@ export async function uploadComplianceDocument(tenantId, file) {
   // [DEMO] Real upload commented out (backend unavailable) — documents are recorded as "pending":
   // const form = new FormData();
   // form.append("file", dataUrlToBlob(file.data), file.name);
-  // const res = await httpClient.post(`/api/v1/tenants/${tenantId}/media/upload`, form, {
+  // const res = await httpClient.post(`/api/v1/merchants/${tenantId}/media/upload`, form, {
   //   headers: { "Content-Type": undefined },
   // });
   // return res.data || res;
@@ -577,8 +591,12 @@ export async function getActivity() {
    ═══════════════════════════════════════════════════════════════════ */
 
 // eslint-disable-next-line no-unused-vars -- used by the commented-out tenant API calls (restore path)
+function merchantPath(merchantId) {
+  return merchantId ? `/api/v1/merchants/${merchantId}` : "";
+}
+
 function tenantPath(tenantId) {
-  return tenantId ? `/api/v1/tenants/${tenantId}` : "";
+  return merchantPath(tenantId);
 }
 
 export async function getProducts() {
@@ -895,42 +913,61 @@ export async function getAnalyticsSummary() {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function createTenant(body) {
-  // [DEMO] const res = await httpClient.post("/api/v1/tenants", body);
-  // [DEMO] return res.data || res;
+  try {
+    const res = await httpClient.post("/api/v1/merchants", body);
+    return res.data || res;
+  } catch (e) {
+    console.warn("[createTenant] backend unavailable, demo fallback", e?.message);
+  }
   const store = demoStore();
   const slug = body?.slug || (body?.name || "my-business").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/g, "") || "my-business";
   store.tenant = { id: `tenant_${Date.now()}`, name: body?.name || "My Business", slug, category: body?.category || "Restaurant", status: "active", createdAt: new Date().toISOString() };
+  store.merchant = store.tenant;
   demoSave(store);
   return { ...store.tenant };
 }
 
 export async function getTenant(id) {
-  // [DEMO] const res = await httpClient.get(`/api/v1/tenants/${id}`);
-  // [DEMO] return res.data || res;
+  try {
+    const res = await httpClient.get(`/api/v1/merchants/${id}`);
+    return res.data || res;
+  } catch (e) {
+    console.warn("[getTenant] backend unavailable, demo fallback", e?.message);
+  }
   const store = demoStore();
   return store.tenant.id === id ? { ...store.tenant } : null;
 }
 
 export async function suspendTenant(id) {
-  // [DEMO] const res = await httpClient.post(`/api/v1/tenants/${id}/suspend`);
-  // [DEMO] return res.data || res;
+  try {
+    const res = await httpClient.post(`/api/v1/merchants/${id}/suspend`);
+    return res.data || res;
+  } catch (e) {
+    console.warn("[suspendTenant] backend unavailable, demo fallback", e?.message);
+  }
   const store = demoStore();
   store.tenant = { ...store.tenant, status: "suspended" };
+  store.merchant = store.tenant;
   demoSave(store);
   return { id, status: "suspended" };
 }
 
 export async function updateTenant(id, body) {
-  // [DEMO] const res = await httpClient.put(`/api/v1/tenants/${id}`, body);
-  // [DEMO] const data = res.data || res;
-  // [DEMO] const m = getMerchant();
-  // [DEMO] if (m && data) {
-  // [DEMO]   const updated = { ...m, business: data.name || m.business };
-  // [DEMO]   setMerchant(updated);
-  // [DEMO] }
-  // [DEMO] return data;
+  try {
+    const res = await httpClient.put(`/api/v1/merchants/${id}`, body);
+    const data = res.data || res;
+    const m = getMerchant();
+    if (m && data) {
+      const updated = { ...m, business: data.name || m.business };
+      setMerchant(updated);
+    }
+    return data;
+  } catch (e) {
+    console.warn("[updateTenant] backend unavailable, demo fallback", e?.message);
+  }
   const store = demoStore();
   store.tenant = { ...store.tenant, ...body };
+  store.merchant = store.tenant;
   demoSave(store);
   const m = getMerchant();
   if (m) setMerchant({ ...m, business: body?.name || m.business });
@@ -938,15 +975,23 @@ export async function updateTenant(id, body) {
 }
 
 export async function getTenantConfig(id) {
-  // [DEMO] const res = await httpClient.get(`/api/v1/tenants/${id}/config`);
-  // [DEMO] return res.data || res;
+  try {
+    const res = await httpClient.get(`/api/v1/merchants/${id}/config`);
+    return res.data || res;
+  } catch (e) {
+    console.warn("[getTenantConfig] backend unavailable, demo fallback", e?.message);
+  }
   const store = demoStore();
   return { id, config: store.config || {} };
 }
 
 export async function updateTenantConfig(id, body) {
-  // [DEMO] const res = await httpClient.put(`/api/v1/tenants/${id}/config`, body);
-  // [DEMO] return res.data || res;
+  try {
+    const res = await httpClient.put(`/api/v1/merchants/${id}/config`, body);
+    return res.data || res;
+  } catch (e) {
+    console.warn("[updateTenantConfig] backend unavailable, demo fallback", e?.message);
+  }
   const store = demoStore();
   store.config = { ...(store.config || {}), ...(body?.config || {}) };
   demoSave(store);
@@ -954,48 +999,21 @@ export async function updateTenantConfig(id, body) {
 }
 
 export async function publishTenant(id) {
-  // [DEMO] const res = await httpClient.post(`/api/v1/tenants/${id}/publish`);
-  // [DEMO] return res.data || res;
+  try {
+    const res = await httpClient.post(`/api/v1/merchants/${id}/publish`);
+    return res.data || res;
+  } catch (e) {
+    console.warn("[publishTenant] backend unavailable, demo fallback", e?.message);
+  }
   const store = demoStore();
   if (store.config?.app) store.config.app.status = "live";
   demoSave(store);
   return { id, published: true };
 }
 
-/* ───── Tenant config (backend contract) ─────
-   The backend stores runtime config in a Prisma `tenantConfig` table. The generic
-   JSON payload lives in the `config` column (app, design, compliance, releases,
-   integrationConfigs, …). Top-level columns are scalars only (languages, currency,
-   timezone, region, offlinePolicy, searchSettings, notificationPrefs). */
-
-const CONFIG_COLUMNS = ["languages", "currency", "timezone", "region", "offlinePolicy", "searchSettings", "notificationPrefs"];
-
-function configRow(cfg) {
-  if (!cfg) return {};
-  if (cfg.data && typeof cfg.data === "object") return cfg.data;
-  return cfg;
-}
-
-async function readConfig(tenantId) {
-  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
-  const row = configRow(cfg);
-  return { row, data: row.config && typeof row.config === "object" ? row.config : {} };
-}
-
-async function writeConfig(tenantId, patch) {
-  const { row, data } = await readConfig(tenantId);
-  const body = { config: { ...data, ...patch } };
-  CONFIG_COLUMNS.forEach(k => {
-    if (row[k] !== undefined) body[k] = row[k];
-  });
-  return updateTenantConfig(tenantId, body);
-}
-
-/* Create a tenant on first use (fresh signups have no tenant) and persist its id
-   back onto the merchant so every tenant-scoped API call has a valid tenantId. */
 export async function ensureTenant(name) {
   const merchant = getMerchant() || {};
-  if (merchant.tenantId) return merchant.tenantId;
+  if (merchant.merchantId || merchant.tenantId) return merchant.merchantId || merchant.tenantId;
 
   const baseName = (name || merchant.business || merchant.name || "My Business").trim() || "My Business";
   const slugBase = baseName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/g, "").slice(0, 40);
@@ -1013,9 +1031,9 @@ export async function ensureTenant(name) {
     }
   }
 
-  const tenantId = tenant?.id || tenant?.tenantId;
+  const tenantId = tenant?.id || tenant?.tenantId || tenant?.merchantId;
   if (!tenantId) throw new Error("Failed to create tenant");
-  setMerchant({ ...merchant, tenantId, tenantSlug: tenant.slug || candidate });
+  setMerchant({ ...merchant, tenantId, merchantId: tenantId, tenantSlug: tenant.slug || candidate, merchantSlug: tenant.slug || candidate });
   return tenantId;
 }
 
@@ -1191,3 +1209,30 @@ export async function requestFeature(featureName) {
   console.log("Feature requested:", featureName);
   return { success: true, message: "Feature request submitted" };
 }
+
+// Alias for merchants migration
+const createMerchant = createTenant;
+
+// Alias for merchants migration
+const getMerchantById = getTenant;
+
+// Alias for merchants migration
+const suspendMerchant = suspendTenant;
+
+// Alias for merchants migration
+const getMerchantConfig = getTenantConfig;
+
+// Alias for merchants migration
+const updateMerchantConfig = updateTenantConfig;
+
+// Alias for merchants migration
+const updateMerchant = updateTenant;
+
+// Alias for merchants migration
+const publishMerchant = publishTenant;
+
+// Alias for merchants migration
+const ensureMerchant = ensureTenant;
+
+// Alias for merchants migration
+const fetchMerchantSilently = fetchTenantSilently;
