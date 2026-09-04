@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { getComponentType } from "./componentTypes";
-import { Eye, EyeOff, Lock, Unlock, Folder, Trash2, Copy, Ungroup, Square } from "lucide-react";
+import { Eye, EyeOff, Lock, Unlock, Folder, Trash2, Copy, Ungroup, Square, ArrowUp, ArrowDown } from "lucide-react";
 
 function TypeIcon({ type, size = 14 }) {
   const def = getComponentType(type);
@@ -85,8 +85,8 @@ function LayerRow({ comp, def, isSelected, onSelect, onToggleVis, onToggleLock, 
         {comp.isGroup && (
           <button onClick={(e) => { e.stopPropagation(); onUngroup(comp.id); }} style={miniBtn} title="Ungroup"><Ungroup size={12} /></button>
         )}
-        <button onClick={(e) => { e.stopPropagation(); onMoveLayer(comp.id, "up"); }} style={miniBtn} title="Bring forward">↑</button>
-        <button onClick={(e) => { e.stopPropagation(); onMoveLayer(comp.id, "down"); }} style={miniBtn} title="Send backward">↓</button>
+        <button onClick={(e) => { e.stopPropagation(); onMoveLayer(comp.id, "up"); }} style={{ ...miniBtn, display: "inline-flex", alignItems: "center", justifyContent: "center" }} title="Bring forward"><ArrowUp size={12} /></button>
+        <button onClick={(e) => { e.stopPropagation(); onMoveLayer(comp.id, "down"); }} style={{ ...miniBtn, display: "inline-flex", alignItems: "center", justifyContent: "center" }} title="Send backward"><ArrowDown size={12} /></button>
       </div>
     </div>
   );

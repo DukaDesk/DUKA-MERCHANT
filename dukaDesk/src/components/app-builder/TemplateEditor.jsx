@@ -305,7 +305,7 @@ export default function TemplateEditor({ templateId }) {
               <div style={{ fontWeight: 700, color: NAVY, fontSize: 14, textTransform: "capitalize" }}>{selectedNode.type.replace(/_/g, ' ')}</div>
               <div style={{ fontSize: 11, color: "#9CA3AF" }}>{selectedNode.key}</div>
             </div>
-            <button onClick={() => setEditSidebar(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+            <button onClick={() => setEditSidebar(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}><X size={18} /></button>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
             <div style={{ marginBottom: 16 }}>
@@ -349,7 +349,7 @@ export default function TemplateEditor({ templateId }) {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", flexDirection: "column" }}>
           <div style={{ padding: "16px 24px", background: "#1A1A2E", borderBottom: "1px solid #374151", display: "flex", alignItems: "center", justifyContent: "space-between", color: "#fff" }}>
             <span style={{ fontWeight: 600 }}>Screen JSON — {currentScreenId}</span>
-            <button onClick={() => setShowCode(false)} style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: 20, cursor: "pointer" }}>✕</button>
+            <button onClick={() => setShowCode(false)} style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: 20, cursor: "pointer" }}><X size={18} /></button>
           </div>
           <div style={{ flex: 1, overflow: "auto", padding: 24 }}>
             <pre style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "#D1D5DB", background: "#0F0F1A", padding: 20, borderRadius: 8, overflow: "auto", margin: 0 }}>

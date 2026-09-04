@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Undo2, Redo2, Circle } from "lucide-react";
 
 export default function HistoryPanel({ onUndo, onRedo, canUndo, canRedo }) {
   const [expanded, setExpanded] = useState(false);
@@ -24,8 +25,8 @@ export default function HistoryPanel({ onUndo, onRedo, canUndo, canRedo }) {
         }}
         title="History"
       >
-        <span style={{ fontSize: 14 }}>↩</span>
-        <span style={{ fontSize: 10 }}>{canUndo ? "●" : "○"}</span>
+        <Undo2 size={14} />
+        <Circle size={8} fill={canUndo ? "#F4A026" : "transparent"} stroke={canUndo ? "#F4A026" : "#D1D5DB"} />
       </button>
       {expanded && (
         <div style={{
@@ -38,12 +39,12 @@ export default function HistoryPanel({ onUndo, onRedo, canUndo, canRedo }) {
             onClick={() => { onUndo(); setExpanded(false); }}
             disabled={!canUndo}
             style={historyBtn(canUndo)}
-          >↩ Undo (Ctrl+Z)</button>
+          ><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Undo2 size={12} /> Undo (Ctrl+Z)</span></button>
           <button
             onClick={() => { onRedo(); setExpanded(false); }}
             disabled={!canRedo}
             style={historyBtn(canRedo)}
-          >↪ Redo (Ctrl+Shift+Z)</button>
+          ><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Redo2 size={12} /> Redo (Ctrl+Shift+Z)</span></button>
         </div>
       )}
     </div>

@@ -869,9 +869,9 @@ export async function getTopProducts() {
   // [DEMO] const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
   // [DEMO] return unwrapList(res);
   return [
-    { name: "Jollof Rice & Chicken", views: 1240, orders: 86, revenue: 215000, trend: "↑" },
-    { name: "Egusi Soup + Eba", views: 980, orders: 54, revenue: 172800, trend: "↑" },
-    { name: "Peppered Gizzard", views: 720, orders: 41, revenue: 73800, trend: "↓" },
+    { name: "Jollof Rice & Chicken", views: 1240, orders: 86, revenue: 215000, trend: "up" },
+    { name: "Egusi Soup + Eba", views: 980, orders: 54, revenue: 172800, trend: "up" },
+    { name: "Peppered Gizzard", views: 720, orders: 41, revenue: 73800, trend: "down" },
   ];
 }
 

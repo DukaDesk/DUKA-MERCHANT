@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Download, ChevronDown } from "lucide-react";
 import { generateReactCode, generateHTMLCode, generateJSON } from "./codegen";
 
 export default function ExportMenu({ designJSON }) {
@@ -33,8 +34,9 @@ export default function ExportMenu({ designJSON }) {
         padding: "6px 12px", borderRadius: 6, border: "1px solid #E5E7EB",
         background: "#F3F4F6", cursor: "pointer", fontSize: 12, fontWeight: 600,
         color: "#374151", fontFamily: "'Inter',sans-serif",
+        display: "inline-flex", alignItems: "center", gap: 6,
       }}>
-        ⬇ Export ▾
+        <Download size={14} /> Export <ChevronDown size={12} />
       </button>
       {open && (
         <div style={{

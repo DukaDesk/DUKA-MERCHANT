@@ -87,7 +87,7 @@ export default function Customers() {
 
       {filtered.length === 0 && (
         <div style={{ padding: 60, textAlign: "center", color: "#9CA3AF" }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}><Search size={40} color="#9CA3AF" /></div>
           <div style={{ fontSize: 14, fontWeight: 500 }}>No customers match your search</div>
         </div>
       )}

@@ -221,7 +221,7 @@ export default function ElementGallery({ browseType, store, selectedSectionId, o
   const addScreenLayout = (variant) => {
     const sid = store.addScreen(null, variant.label);
     store.addBodySection(sid, { name: variant.label, components: variant.build() });
-    store.addTab({ label: variant.label, icon: "📱", screenId: sid });
+    store.addTab({ label: variant.label, icon: "Smartphone", screenId: sid });
     if (store.setCurrentScreenId) store.setCurrentScreenId(sid);
     toast.success(`${variant.label} screen added`);
   };

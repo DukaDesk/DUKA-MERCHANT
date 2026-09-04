@@ -94,7 +94,7 @@ export default function Dashboard() {
 
   if (loading) return <Loading message="Loading dashboard..." />;
   if (error) return <ErrorState message={error} onRetry={loadDashboard} />;
-  if (!stats) return <Empty icon="📊" message="No dashboard data yet" sub={setup ? "Setup data saved. Complete your app setup to see stats here." : "Complete your app setup to see stats here"} action={<button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{setup ? "Continue Setup →" : "Setup Your App →"}</button>} />;
+  if (!stats) return <Empty icon="BarChart3" message="No dashboard data yet" sub={setup ? "Setup data saved. Complete your app setup to see stats here." : "Complete your app setup to see stats here"} action={<button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{setup ? "Continue Setup →" : "Setup Your App →"}</button>} />;
 
   const statField = { customers: "customers", revenue: "revenue", orders: "orders", rating: "avgRating", attendance: "attendance", booking: "orders", fees: "revenue", giving: "revenue" };
   const iconMap = { Users, DollarSign, MessageSquare, Star, ShoppingCart: Package, HandCoins, CalendarCheck, Wallet, CalendarClock, HeartHandshake, Receipt, Megaphone, Ticket, Briefcase, Inbox, Sparkles };

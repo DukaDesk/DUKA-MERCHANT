@@ -37,7 +37,7 @@ export default function Billing() {
     setPayStep(2);
     try {
       await upgradePlan({ planName: upgradeModal.name, cardNumber: cardNum, expiry, cvv });
-      setTimeout(() => { setUpgradeModal(null); setPayStep(0); toast.success(`Upgraded to ${upgradeModal.name} plan! 🎉`); }, 1500);
+      setTimeout(() => { setUpgradeModal(null); setPayStep(0); toast.success(`Upgraded to ${upgradeModal.name} plan! `); }, 1500);
     } catch { toast.error("Upgrade failed. Please try again."); setPayStep(0); }
   };
 

@@ -183,12 +183,24 @@ export default function SectionEditor({ store, onBack }) {
 
   const handlePublish = useCallback(async () => {
     const design = store.getDesignJSON();
+    // Kickstart generation: ensure design is saved before publish so preview/mobile sees latest
+    try {
+      await store.saveToServer();
+    } catch { /* best-effort */ }
+    toast.info("Generating app manifest…");
     const result = await publishProject(design);
     if (result.success) {
-      toast.success("Published successfully!");
+      toast.success(`Published v${result.version} — mobile manifest updated!`);
+      // Also persist to backend via direct config write so MiniAppPreview / BFF mobile can fetch immediately
+      // (publishProject already does this, but we double-ensure for demo mode)
+      try {
+        const { updateApp } = await import("../../services/api");
+        await updateApp({ templateConfig: result.manifest || design, lastPublishedAt: new Date().toISOString(), lastPublishedVersion: result.version });
+      } catch { /* ignore */ }
       setTimeout(() => onBack?.(), 1200);
     } else {
       setValidationErrors(result.validation);
+      if (result.error) toast.error(result.error);
     }
   }, [store, onBack]);
 

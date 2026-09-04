@@ -1,4 +1,5 @@
 import { Component } from "react";
+import { TriangleAlert } from "lucide-react";
 import { NAVY, AMBER } from "../../theme";
 
 export default class ErrorBoundary extends Component {
@@ -15,7 +16,7 @@ export default class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div style={{ padding: 60, textAlign: "center" }}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>⚠️</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><TriangleAlert size={56} color="#E74C3C" /></div>
           <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24, color: NAVY, marginBottom: 8 }}>Something went wrong</h2>
           <p style={{ color: "#6B7280", marginBottom: 24, fontSize: 14 }}>
             {this.state.error?.message || "An unexpected error occurred. Please try again."}

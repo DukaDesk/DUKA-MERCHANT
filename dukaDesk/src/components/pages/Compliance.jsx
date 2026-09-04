@@ -119,7 +119,7 @@ export default function Compliance() {
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: NAVY, margin: "0 0 8px" }}>Compliance Verified</h2>
         <p style={{ color: "#6B7280", fontSize: 15, marginBottom: 28 }}>Your business verification is complete. You can now design your app.</p>
         <button onClick={() => navigate("/desk-design")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "12px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-          Go to Desk Design →
+          Go to Desk Design
         </button>
         <button onClick={() => navigate("/dashboard")} style={{ display: "block", margin: "12px auto 0", background: "none", border: "none", color: "#6B7280", fontSize: 14, cursor: "pointer" }}>
           Back to Dashboard

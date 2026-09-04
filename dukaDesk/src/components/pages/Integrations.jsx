@@ -141,7 +141,7 @@ export default function Integrations() {
                       </div>
                       <div style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.4, marginBottom: 12 }}>{p.desc}</div>
                       <button onClick={() => toggleModule(p.id)} disabled={savingModules || core} style={{ width: "100%", background: active ? "#2ECC71" : AMBER, color: active ? "#fff" : NAVY, border: "none", borderRadius: 20, padding: "8px 0", fontSize: 13, fontWeight: 600, cursor: savingModules || core ? (core ? "not-allowed" : "not-allowed") : "pointer", opacity: core ? 0.7 : 1 }}>
-                        {core ? (active ? "Core ✓" : "Core") : active ? "Installed ✓" : "Add to desk →"}
+                        {core ? (active ? "Core" : "Core") : active ? "Installed" : "Add to desk"}
                       </button>
                     </div>
                   );

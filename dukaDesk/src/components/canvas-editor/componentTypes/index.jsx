@@ -253,7 +253,7 @@ registerComponentType("menu_item", {
   category: "commerce",
   defaultWidth: 358,
   defaultHeight: 80,
-  defaultProps: { name: "Jollof Rice", price: "₦2,500", desc: "Rich, smoky jollof rice", emoji: "🍛",
+  defaultProps: { name: "Jollof Rice", price: "₦2,500", desc: "Rich, smoky jollof rice", emoji: "Utensils",
     textStyles: {
       name: { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#1C1B1D" },
       price: { fontFamily: "Sora", fontSize: 14, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#1A1A2E" },
@@ -279,7 +279,7 @@ registerComponentType("menu_item", {
     const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : "100%";
     return (
     <div style={{ display: "flex", gap: 12, padding: "12px 16px", background: "#FCF8FA", borderRadius: 12, boxShadow: "0px 2px 12px rgba(0,0,0,0.08)", border: "1px solid rgba(200,197,205,0.3)", width: w, height: h, alignItems: "center" }}>
-      <div style={{ width: 48, height: 48, background: "#F1EDEF", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{props.emoji || "🍽️"}</div>
+      <div style={{ width: 48, height: 48, background: "#F1EDEF", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{props.emoji || "Utensils"}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "name", { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#1C1B1D" })), { marginBottom: 2 })}>{props.name}</div>
         {props.desc && <div style={applyTextStyle(resolveTextStyle(props, "desc", { fontFamily: "Inter", fontSize: 11, fontWeight: "400", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#6B7280" }))}>{props.desc}</div>}
@@ -700,10 +700,10 @@ registerComponentType("menu_grid", {
     textColor: "#1C1B1D",
     priceColor: "#F4A026",
     items: [
-      { name: "Jollof Rice", price: "₦2,500", oldPrice: "", badge: "", desc: "Rich, smoky jollof rice", image: "", emoji: "🍛", background: { type: "color", value: "#FCF8FA" } },
-      { name: "Grilled Chicken", price: "₦3,000", oldPrice: "", badge: "Popular", desc: "Char-grilled, spicy", image: "", emoji: "🍗", background: { type: "color", value: "#FCF8FA" } },
-      { name: "Chapman", price: "₦1,500", oldPrice: "", badge: "", desc: "Classic mocktail", image: "", emoji: "🥤", background: { type: "color", value: "#FCF8FA" } },
-      { name: "Fruit Juice", price: "₦1,200", oldPrice: "", badge: "", desc: "Fresh & chilled", image: "", emoji: "🍹", background: { type: "color", value: "#FCF8FA" } },
+      { name: "Jollof Rice", price: "₦2,500", oldPrice: "", badge: "", desc: "Rich, smoky jollof rice", image: "", emoji: "Utensils", background: { type: "color", value: "#FCF8FA" } },
+      { name: "Grilled Chicken", price: "₦3,000", oldPrice: "", badge: "Popular", desc: "Char-grilled, spicy", image: "", emoji: "Drumstick", background: { type: "color", value: "#FCF8FA" } },
+      { name: "Chapman", price: "₦1,500", oldPrice: "", badge: "", desc: "Classic mocktail", image: "", emoji: "CupSoda", background: { type: "color", value: "#FCF8FA" } },
+      { name: "Fruit Juice", price: "₦1,200", oldPrice: "", badge: "", desc: "Fresh & chilled", image: "", emoji: "GlassWater", background: { type: "color", value: "#FCF8FA" } },
     ],
   },
   subElements: [
@@ -734,7 +734,7 @@ registerComponentType("menu_grid", {
         { key: "oldPrice", label: "Old Price", type: "text" },
         { key: "desc", label: "Description", type: "text" },
         { key: "badge", label: "Badge / Tag", type: "text", placeholder: "e.g. Special" },
-        { key: "emoji", label: "Emoji", type: "text", placeholder: "🍛" },
+        { key: "emoji", label: "Emoji", type: "text", placeholder: "Utensils" },
         { key: "image", label: "Image", type: "image" },
         { key: "background", label: "Card Background", type: "bg" },
       ],
@@ -758,10 +758,10 @@ registerComponentType("menu_grid", {
     const items = Array.isArray(props.items) && props.items.length
       ? props.items
       : [
-          { name: "Jollof Rice", price: "₦2,500", desc: "Smoky, rich", emoji: "🍛" },
-          { name: "Grilled Chicken", price: "₦3,000", desc: "Char-grilled", emoji: "🍗" },
-          { name: "Chapman", price: "₦1,500", desc: "Classic mocktail", emoji: "🥤" },
-          { name: "Fruit Juice", price: "₦1,200", desc: "Fresh & chilled", emoji: "🍹" },
+          { name: "Jollof Rice", price: "₦2,500", desc: "Smoky, rich", emoji: "Utensils" },
+          { name: "Grilled Chicken", price: "₦3,000", desc: "Char-grilled", emoji: "Drumstick" },
+          { name: "Chapman", price: "₦1,500", desc: "Classic mocktail", emoji: "CupSoda" },
+          { name: "Fruit Juice", price: "₦1,200", desc: "Fresh & chilled", emoji: "GlassWater" },
         ];
     return (
       <div style={{
@@ -814,7 +814,7 @@ registerComponentType("menu_grid", {
                   marginLeft: imageWidth > 0 ? "auto" : 0,
                   marginRight: imageWidth > 0 ? "auto" : 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                }}>{it.emoji || "🍽️"}</div>
+                }}>{it.emoji || "Utensils"}</div>
               )}
               <div style={{ fontSize: 12, fontWeight: 600, color: props.textColor || "#1C1B1D", lineHeight: 1.25 }}>{it.name || "Item"}</div>
               {it.desc && <div style={{ fontSize: 10.5, color: "#6B7280", lineHeight: 1.3, marginTop: 2 }}>{it.desc}</div>}
@@ -964,9 +964,9 @@ registerComponentType("promotion_list", {
     titleColor: "#1A1A2E",
     subtitleColor: "#6B7280",
     offers: [
-      { title: "50% Off Lunch", subtitle: "Rich, smoky jollof rice every Friday", badge: "50% OFF", emoji: "🍛", image: "", background: { type: "color", value: "#FFF3E0" } },
-      { title: "Buy 1 Get 1", subtitle: "On all char-grilled chicken", badge: "BOGO", emoji: "🍗", image: "", background: { type: "color", value: "#FFE8E8" } },
-      { title: "Free Delivery", subtitle: "On orders above ₦5,000", badge: "FREE", emoji: "🛵", image: "", background: { type: "color", value: "#E6F4EC" } },
+      { title: "50% Off Lunch", subtitle: "Rich, smoky jollof rice every Friday", badge: "50% OFF", emoji: "Utensils", image: "", background: { type: "color", value: "#FFF3E0" } },
+      { title: "Buy 1 Get 1", subtitle: "On all char-grilled chicken", badge: "BOGO", emoji: "Drumstick", image: "", background: { type: "color", value: "#FFE8E8" } },
+      { title: "Free Delivery", subtitle: "On orders above ₦5,000", badge: "FREE", emoji: "Bike", image: "", background: { type: "color", value: "#E6F4EC" } },
     ],
   },
   subElements: [
@@ -996,7 +996,7 @@ registerComponentType("promotion_list", {
         { key: "title", label: "Title", type: "text" },
         { key: "subtitle", label: "Subtitle", type: "text" },
         { key: "badge", label: "Badge", type: "text", placeholder: "e.g. 50% OFF" },
-        { key: "emoji", label: "Emoji", type: "text", placeholder: "🍛" },
+        { key: "emoji", label: "Emoji", type: "text", placeholder: "Utensils" },
         { key: "image", label: "Image", type: "image" },
         { key: "background", label: "Image Card Tone", type: "bg" },
       ],
@@ -1049,7 +1049,7 @@ registerComponentType("promotion_list", {
           }}>
             {hasImage
               ? <img src={of.image} alt="" style={{ width: "100%", height: "100%", objectFit: fit, display: "block" }} />
-              : <span style={{ fontSize: 36, opacity: 0.9 }}>{of.emoji || "🎁"}</span>}
+              : <span style={{ fontSize: 36, opacity: 0.9 }}>{of.emoji || "Gift"}</span>}
             {of.badge && (
               <span style={{
                 position: "absolute", top: 8, left: 8, background: accent, color: "#5B3A00",
@@ -1112,7 +1112,7 @@ registerComponentType("card", {
     shadow: "soft",
     border: "soft",
     image: "",
-    emoji: "🌞",
+    emoji: "Sun",
     imageWidth: 0,
     imageHeight: 150,
     imageFit: "cover",
@@ -1148,7 +1148,7 @@ registerComponentType("card", {
     { key: "shadow", label: "Shadow", type: "select", options: ["none", "soft", "raised"] },
     { key: "border", label: "Border", type: "select", options: ["none", "soft", "strong"] },
     { key: "image", label: "Cover Image", type: "image" },
-    { key: "emoji", label: "Emoji", type: "text", placeholder: "🌞" },
+    { key: "emoji", label: "Emoji", type: "text", placeholder: "Sun" },
     { key: "imageWidth", label: "Image Width (0 = full)", type: "number" },
     { key: "imageHeight", label: "Image Height", type: "number" },
     { key: "imageFit", label: "Image Fit", type: "select", options: ["cover", "contain", "fill"] },
@@ -1204,7 +1204,7 @@ registerComponentType("card", {
       }}>
         {hasImage
           ? <img src={props.image} alt="" style={{ width: "100%", height: "100%", objectFit: fit, display: "block" }} />
-          : <span>{props.emoji || "🖼️"}</span>}
+          : <span>{props.emoji || "Image"}</span>}
       </div>
     );
 

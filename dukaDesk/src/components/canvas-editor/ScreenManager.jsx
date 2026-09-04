@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FileText, Link, Circle, X } from "lucide-react";
 
 export default function ScreenManager({ data, currentScreenId, setCurrentScreenId, addScreen, removeScreen, renameScreen }) {
   const [editingId, setEditingId] = useState(null);
@@ -24,7 +25,7 @@ export default function ScreenManager({ data, currentScreenId, setCurrentScreenI
       window.__canvasSetTabs?.(newTabs);
     } else {
       const screen = data.screens[screenId];
-      const newTabs = [...tabs, { label: screen?.name || "Screen", icon: "📄", screenId }];
+      const newTabs = [...tabs, { label: screen?.name || "Screen", icon: "FileText", screenId }];
       window.__canvasSetTabs?.(newTabs);
     }
   };
@@ -51,7 +52,7 @@ export default function ScreenManager({ data, currentScreenId, setCurrentScreenI
                 border: currentScreenId === id ? "1px solid #F4A026" : "1px solid transparent",
               }}
             >
-              <span style={{ fontSize: 14 }}>📄</span>
+              <FileText size={14} style={{ color: "#6B7280" }} />
               {editingId === id ? (
                 <input
                   autoFocus
@@ -71,15 +72,15 @@ export default function ScreenManager({ data, currentScreenId, setCurrentScreenI
               )}
               <span
                 onClick={() => toggleTab(id)}
-                style={{ fontSize: 12, cursor: "pointer", opacity: tabs.find(t => t.screenId === id) ? 1 : 0.3 }}
+                style={{ cursor: "pointer", opacity: tabs.find(t => t.screenId === id) ? 1 : 0.3, display: "inline-flex" }}
                 title={tabs.find(t => t.screenId === id) ? "Remove from nav" : "Add to nav"}
-              >{tabs.find(t => t.screenId === id) ? "🔗" : "○"}</span>
+              >{tabs.find(t => t.screenId === id) ? <Link size={12} /> : <Circle size={12} />}</span>
               {screens.length > 1 && (
                 <span
                   onClick={() => removeScreen(id)}
-                  style={{ fontSize: 12, cursor: "pointer", opacity: 0.3, color: "#E74C3C" }}
+                  style={{ cursor: "pointer", opacity: 0.3, color: "#E74C3C", display: "inline-flex" }}
                   title="Delete screen"
-                >✕</span>
+                ><X size={12} /></span>
               )}
             </div>
           </div>

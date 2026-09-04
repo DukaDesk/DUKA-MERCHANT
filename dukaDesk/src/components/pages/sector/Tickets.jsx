@@ -62,7 +62,7 @@ export default function Tickets() {
       <div style={{ ...cardStyle }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Recent Sales</div>
         {filtered.length === 0 ? (
-          <Empty icon="🎟️" message="No tickets sold yet" sub="Ticket purchases will appear here." />
+          <Empty icon="Ticket" message="No tickets sold yet" sub="Ticket purchases will appear here." />
         ) : (
           filtered.slice(0, 12).map((o, i) => {
             const checked = o.status === "Completed";

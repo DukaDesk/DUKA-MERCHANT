@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
+import { Check } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../../theme";
 import {
@@ -117,7 +118,7 @@ export function SetupWizard({
             const current = i === step;
             return (
               <div key={i} style={isMobile ? mobileStepStyle(done, current, i) : stepStyle(done, current, i)}>
-                <div style={stepNumberStyle(done, current)}>{done ? "✓" : i + 1}</div>
+                <div style={stepNumberStyle(done, current)}>{done ? <Check size={14} color="#fff" /> : i + 1}</div>
                 {!isMobile && <span style={stepLabelStyle(current, done)}>{s}</span>}
               </div>
             );
@@ -347,7 +348,7 @@ function SetupBranding({ data, setData, errors, setErrors, isMobile }) {
             justifyContent: "center", cursor: "pointer",
             background: data.logo ? `url(${data.logo}) center/cover no-repeat` : "#FAFAFA", gap: 8,
           }}>
-            {!data.logo && <><span style={{ fontSize: isMobile ? 28 : 32 }}>📷</span>
+            {!data.logo && <><span style={{ fontSize: isMobile ? 28 : 32 }}>Camera</span>
             <span style={{ fontSize: 13, color: "#9CA3AF" }}>Upload Logo</span>
             <span style={{ fontSize: 11, color: "#D1D5DB" }}>PNG \u00B7 Max 5MB</span></>}
           </div>
@@ -378,7 +379,7 @@ function SetupBranding({ data, setData, errors, setErrors, isMobile }) {
                 outline: data.color === c ? `2px solid ${AMBER}` : "none", outlineOffset: 2,
                 display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s",
               }}>
-                {data.color === c && <span style={{ color: c === "#fff" ? NAVY : "#fff", fontSize: 14, fontWeight: 700 }}>✓</span>}
+                {data.color === c && <Check size={14} color={c === "#fff" ? NAVY : "#fff"} />}
               </div>
             ))}
           </div>

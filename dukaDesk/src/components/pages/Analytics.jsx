@@ -40,7 +40,7 @@ export default function Analytics() {
   const metrics = [
     { icon: DollarSign, label: "Revenue", value: `₦${totalRevenue.toLocaleString()}`, trend: "+18%", up: true, color: AMBER },
     { icon: TrendingUp, label: "Orders", value: orders.reduce((a, o) => a + o.value, 0).toString(), trend: "This period", up: null, color: "#3B82F6" },
-    { icon: Star, label: "Avg Rating", value: "4.8 ⭐", trend: "(234 reviews)", up: null, color: "#EC4899" },
+    { icon: Star, label: "Avg Rating", value: "4.8", trend: "(234 reviews)", up: null, color: "#EC4899" },
   ];
 
   return (
@@ -79,7 +79,7 @@ export default function Analytics() {
             </div>
             <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 4 }}>{m.label}</div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 20, color: NAVY }}>{m.value}</div>
-            <div style={{ fontSize: 12, color: m.up === true ? "#2ECC71" : m.up === false ? "#E74C3C" : AMBER, marginTop: 2 }}>{m.up === true ? "↑ " : ""}{m.trend}</div>
+            <div style={{ fontSize: 12, color: m.up === true ? "#2ECC71" : m.up === false ? "#E74C3C" : AMBER, marginTop: 2 }}>{m.up === true ? "up " : ""}{m.trend}</div>
           </div>
         ))}
       </div>
@@ -87,7 +87,7 @@ export default function Analytics() {
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "3fr 2fr", gap: 18, marginBottom: 20 }}>
         <div style={{ ...cardStyle }}>
           <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 20 }}>Revenue Over Time</div>
-          {rev.length === 0 ? <Empty icon="📈" message="No revenue data yet" /> : (
+          {rev.length === 0 ? <Empty icon="TrendingUp" message="No revenue data yet" /> : (
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={rev}>
               <defs><linearGradient id="revGrad2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={AMBER} stopOpacity={0.3}/><stop offset="100%" stopColor={AMBER} stopOpacity={0}/></linearGradient></defs>
@@ -102,7 +102,7 @@ export default function Analytics() {
         </div>
         <div style={{ ...cardStyle }}>
           <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 20 }}>Orders Breakdown</div>
-          {orders.length === 0 ? <Empty icon="📦" message="No orders yet" /> : (
+          {orders.length === 0 ? <Empty icon="Package" message="No orders yet" /> : (
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               <Pie data={orders} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
@@ -119,7 +119,7 @@ export default function Analytics() {
       <div style={{ ...cardStyle }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 4 }}>Top Products</div>
         <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>Best performing items this period</div>
-        {products.length === 0 ? <Empty icon="🏆" message="No product data yet" sub="Sales data will appear once you start receiving orders" /> : (
+        {products.length === 0 ? <Empty icon="Trophy" message="No product data yet" sub="Sales data will appear once you start receiving orders" /> : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 500 }}>
             <thead><tr style={{ background: "#F9FAFB" }}>{["#","Product","Views","Orders","Revenue","Trend"].map(h => (
@@ -132,7 +132,7 @@ export default function Analytics() {
                 <td style={{ padding:"12px 14px", fontSize:14, color:"#6B7280" }}>{p.views}</td>
                 <td style={{ padding:"12px 14px", fontSize:14, color:"#6B7280" }}>{p.orders}</td>
                 <td style={{ padding:"12px 14px", fontSize:14, fontWeight:700, color:AMBER }}>₦{p.revenue.toLocaleString()}</td>
-                <td style={{ padding:"12px 14px", fontSize:16, color: p.trend==="↑"?"#2ECC71":p.trend==="↓"?"#E74C3C":"#6B7280" }}>{p.trend}</td>
+                <td style={{ padding:"12px 14px", fontSize:16, color: p.trend==="up"?"#2ECC71":p.trend==="down"?"#E74C3C":"#6B7280" }}>{p.trend}</td>
               </tr>
             ))}</tbody>
           </table>

@@ -64,7 +64,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Paystack":
         return (<>
           <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#92400E" }}>🔒 Your keys are encrypted at rest. Never share your secret key.</div>
+            <div style={{ fontSize: 13, color: "#92400E" }}> Your keys are encrypted at rest. Never share your secret key.</div>
           </div>
           {input("Business Name", "businessName", merchant?.business || "My Store")}
           {input("Public Key", "publicKey", "pk_live_xxxxxxxxxxxx")}
@@ -93,7 +93,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Flutterwave":
         return (<>
           <div style={{ background: "#EEF2FF", border: "1px solid #A5B4FC", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#312E81" }}>🌍 Pan-African payments — accept cards, mobile money & bank transfer.</div>
+            <div style={{ fontSize: 13, color: "#312E81" }}> Pan-African payments — accept cards, mobile money & bank transfer.</div>
           </div>
           {input("Business Name", "businessName", merchant?.business || "My Store")}
           {input("Public Key", "publicKey", "FLWPUBK-xxxxxxxxxxxx")}
@@ -118,7 +118,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Bank Transfer":
         return (<>
           <div style={{ background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#065F46" }}>🏦 Customers will see these bank details at checkout.</div>
+            <div style={{ fontSize: 13, color: "#065F46" }}> Customers will see these bank details at checkout.</div>
           </div>
           {input("Bank Name", "bankName", "GTBank")}
           {input("Account Name", "accountName", merchant?.business || "My Store")}
@@ -133,7 +133,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Product Cart":
         return (<>
           <div style={{ background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#92400E" }}>🛒 Configure how customers add items and checkout.</div>
+            <div style={{ fontSize: 13, color: "#92400E" }}> Configure how customers add items and checkout.</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
@@ -157,7 +157,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Discount Codes":
         return (<>
           <div style={{ background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#065F46" }}>🏷️ Create promo codes to attract and retain customers.</div>
+            <div style={{ fontSize: 13, color: "#065F46" }}> Create promo codes to attract and retain customers.</div>
           </div>
           {input("Discount Code", "code", "e.g. WELCOME10")}
           <div style={fieldStyle}>
@@ -194,16 +194,16 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Order Tracking":
         return (<>
           <div style={{ background: "#EFF6FF", border: "1px solid #93C5FD", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#1E40AF" }}>📦 Keep customers informed about their order status.</div>
+            <div style={{ fontSize: 13, color: "#1E40AF" }}> Keep customers informed about their order status.</div>
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Order Status Flow</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {["Pending → Confirmed → Preparing → Ready → Delivered"].map((flow, i) => (
+              {["Pending > Confirmed > Preparing > Ready > Delivered"].map((flow, i) => (
                 <label key={i} onClick={() => setVal("statusFlow", flow)} style={{
                   padding: "8px 12px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 500,
-                  border: `1px solid ${getVal("statusFlow", "Pending → Confirmed → Preparing → Ready → Delivered") === flow ? AMBER : "#E5E7EB"}`,
-                  background: getVal("statusFlow", "Pending → Confirmed → Preparing → Ready → Delivered") === flow ? "#FFF8ED" : "#F9FAFB",
+                  border: `1px solid ${getVal("statusFlow", "Pending > Confirmed > Preparing > Ready > Delivered") === flow ? AMBER : "#E5E7EB"}`,
+                  background: getVal("statusFlow", "Pending > Confirmed > Preparing > Ready > Delivered") === flow ? "#FFF8ED" : "#F9FAFB",
                   color: NAVY,
                 }}>{flow}</label>
               ))}
@@ -220,10 +220,10 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Wishlist":
         return (<>
           <div style={{ background: "#FDF2F8", border: "1px solid #FBCFE8", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#9D174D" }}>❤️ Let customers save products for later.</div>
+            <div style={{ fontSize: 13, color: "#9D174D" }}> Let customers save products for later.</div>
           </div>
           <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <span style={{ fontSize: 64 }}>❤️</span>
+            <Heart size={64} color="#E11D48" />
             <div style={{ fontWeight: 600, fontSize: 16, color: NAVY, marginTop: 8 }}>Wishlist</div>
             <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>Customers can save items and come back later</div>
           </div>
@@ -235,7 +235,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Appointment Calendar":
         return (<>
           <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#0369A1" }}>📅 Let customers book appointments directly from your app.</div>
+            <div style={{ fontSize: 13, color: "#0369A1" }}> Let customers book appointments directly from your app.</div>
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Business Hours</label>
@@ -303,10 +303,10 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Waitlist":
         return (<>
           <div style={{ background: "#FFF8ED", border: "1px solid #FDE68A", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#92400E" }}>📋 When you're fully booked, customers can join the waitlist.</div>
+            <div style={{ fontSize: 13, color: "#92400E" }}> When you're fully booked, customers can join the waitlist.</div>
           </div>
           <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <span style={{ fontSize: 64 }}>📋</span>
+            <Heart size={64} color="#E11D48" />
             <div style={{ fontWeight: 600, fontSize: 16, color: NAVY, marginTop: 8 }}>Waitlist Queue</div>
             <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>Customers queue up when slots are full</div>
           </div>
@@ -348,7 +348,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Push Notifications":
         return (<>
           <div style={{ background: "#EFF6FF", border: "1px solid #93C5FD", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#1E40AF" }}>🔔 Send instant updates to your customers' phones.</div>
+            <div style={{ fontSize: 13, color: "#1E40AF" }}> Send instant updates to your customers' phones.</div>
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>FCM Server Key</label>
@@ -374,7 +374,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Referral Program":
         return (<>
           <div style={{ background: "linear-gradient(135deg, #1A1A2E, #2D2D5E)", borderRadius: 8, padding: 16, marginBottom: 20 }}>
-            <div style={{ color: AMBER, fontSize: 13, fontWeight: 600 }}>👥 Premium Integration</div>
+            <div style={{ color: AMBER, fontSize: 13, fontWeight: 600 }}> Premium Integration</div>
             <div style={{ color: "#fff", fontSize: 12, marginTop: 4 }}>Referral programs drive word-of-mouth growth.</div>
           </div>
           {select("Reward type", "rewardType", ["Discount", "Points", "Cash"])}
@@ -389,14 +389,14 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
             </div>
           </div>
           {input("Referrer reward", "referrerReward", "200")}
-          {textarea("Share message", "shareMsg", `Hey! Check out ${merchant?.business || "my store"} on DukaDesk. Use my referral link to get ₦500 off your first order! 🎉`)}
+          {textarea("Share message", "shareMsg", `Hey! Check out ${merchant?.business || "my store"} on DukaDesk. Use my referral link to get ₦500 off your first order! `)}
           {toggle("Active", "active", true)}
         </>);
 
       case "In-App Messaging":
         return (<>
           <div style={{ background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#065F46" }}>💬 Chat with customers in real-time from your dashboard.</div>
+            <div style={{ fontSize: 13, color: "#065F46" }}> Chat with customers in real-time from your dashboard.</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
@@ -414,7 +414,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
               {["Instant", "5 min", "15 min", "30 min", "1 hour", "2 hours"].map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
-          {textarea("Auto-reply message", "autoReply", `Hi! 👋 Thanks for reaching out to ${merchant?.business || "our store"}. We'll respond shortly.`)}
+          {textarea("Auto-reply message", "autoReply", `Hi!  Thanks for reaching out to ${merchant?.business || "our store"}. We'll respond shortly.`)}
           {textarea("Away message", "awayMsg", `We're currently closed. We'll reply as soon as we reopen during business hours.`)}
           {toggle("Show typing indicator", "typingIndicator", true)}
           {toggle("Read receipts", "readReceipts", true)}
@@ -424,10 +424,10 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "WhatsApp Link":
         return (<>
           <div style={{ background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#065F46" }}>📱 Connect with customers directly on WhatsApp.</div>
+            <div style={{ fontSize: 13, color: "#065F46" }}> Connect with customers directly on WhatsApp.</div>
           </div>
           <div style={{ textAlign: "center", padding: "12px 0" }}>
-            <span style={{ fontSize: 56 }}>📱</span>
+            <Smartphone size={56} color="#065F46" />
           </div>
           {input("WhatsApp Number", "phone", "+2348012345678")}
           {textarea("Pre-filled message", "prefillMsg", `Hi! I'm interested in ${merchant?.business || "your store"}. Can you help?`)}
@@ -439,7 +439,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Email Capture":
         return (<>
           <div style={{ background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#065F46" }}>📧 Build your email subscriber list directly from your app.</div>
+            <div style={{ fontSize: 13, color: "#065F46" }}> Build your email subscriber list directly from your app.</div>
           </div>
           {input("List name", "listName", `${merchant?.business || "Store"} Subscribers`)}
           <div style={fieldStyle}>
@@ -448,7 +448,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
               {["On page load", "After 5 seconds", "On scroll", "On exit intent"].map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
-          {textarea("Thank you message", "thankYouMsg", `Thanks for subscribing! We'll keep you posted on new items and offers. 🎉`)}
+          {textarea("Thank you message", "thankYouMsg", `Thanks for subscribing! We'll keep you posted on new items and offers. `)}
           {toggle("Send welcome email", "welcomeEmail", true)}
           {toggle("Double opt-in", "doubleOptIn", false)}
           {toggle("GDPR consent checkbox", "gdprConsent", true)}
@@ -457,7 +457,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "FAQ Widget":
         return (<>
           <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#6B7280" }}>❓ Answer common questions before customers ask.</div>
+            <div style={{ fontSize: 13, color: "#6B7280" }}> Answer common questions before customers ask.</div>
           </div>
           {input("Header title", "headerTitle", "Frequently Asked Questions")}
           <div style={fieldStyle}>
@@ -490,7 +490,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       case "Live Chat Support":
         return (<>
           <div style={{ background: "linear-gradient(135deg, #1A1A2E, #2D2D5E)", borderRadius: 8, padding: 16, marginBottom: 20 }}>
-            <div style={{ color: AMBER, fontSize: 13, fontWeight: 600 }}>💁 Premium Integration</div>
+            <div style={{ color: AMBER, fontSize: 13, fontWeight: 600 }}> Premium Integration</div>
             <div style={{ color: "#fff", fontSize: 12, marginTop: 4 }}>Offer real-time support with a dedicated chat widget.</div>
           </div>
           {input("Agent display name", "agentName", merchant?.name || "Support Team")}
@@ -513,7 +513,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       default:
         return (
           <div style={{ textAlign: "center", padding: "40px 0", color: "#9CA3AF" }}>
-            <span style={{ fontSize: 48 }}>{integration.icon || "🔌"}</span>
+            <span style={{ fontSize: 48 }}>{integration.icon || ""}</span>
             <div style={{ fontSize: 16, fontWeight: 600, color: NAVY, marginTop: 12 }}>{integration.name}</div>
             <div style={{ fontSize: 13, marginTop: 4 }}>Configuration for this integration is coming soon.</div>
           </div>
@@ -530,7 +530,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
             <span style={{ fontSize: 32 }}>{integration.icon}</span>
             <div>
               <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: NAVY, margin: 0 }}>Configure {integration.name}</h3>
-              <span style={{ fontSize: 12, color: "#2ECC71", fontWeight: 500 }}>🟢 Connected</span>
+              <span style={{ fontSize: 12, color: "#2ECC71", fontWeight: 500 }}> Connected</span>
             </div>
           </div>
           <button onClick={() => onSave(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}>

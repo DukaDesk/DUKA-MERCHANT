@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { GripVertical, Trash2, Edit3, Copy, Eye, MousePointer, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
+import {GripVertical, Trash2, Edit3, Copy, Eye, MousePointer, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X} from "lucide-react";
 import { AMBER, NAVY, cardStyle } from "../../theme";
 
 export function DraggableComponent({ 
@@ -319,7 +319,7 @@ export function PropertyEditor({ node, onUpdate, onClose }) {
           <div style={{ fontWeight: 700, color: NAVY, fontSize: 14, textTransform: "capitalize" }}>{node.type.replace(/_/g, ' ')}</div>
           <div style={{ fontSize: 11, color: "#9CA3AF" }}>{node.key}</div>
         </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}><X size={18} /></button>
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
         <div style={{ marginBottom: 16 }}>

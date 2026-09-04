@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Star, Link, Unlink, ChevronRight, ChevronDown } from "lucide-react";
+import { Star, Link, Unlink, ChevronRight, ChevronDown, X } from "lucide-react";
 import { getComponentType, FONT_FAMILIES, FONT_WEIGHTS, resolveTextStyle, applyTextStyle } from "./componentTypes";
 
 const inputStyle = {
@@ -85,8 +85,8 @@ export default function PropertiesPanel({
   return (
     <div style={{ width: 280, background: "#fff", borderLeft: "1px solid #E5E7EB", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ padding: "14px 16px", borderBottom: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-        <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: "#0F0F1A" }}>
-          {def?.icon} {def?.label || comp.type}
+        <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: "#0F0F1A", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {def?.icon && (() => { const I = def.icon; return (typeof I === "function" || typeof I === "object") ? <I size={14} /> : null; })()} {def?.label || comp.type}
         </span>
         <span style={{ fontSize: 11, color: "#9CA3AF", fontFamily: "'Fira Code',monospace" }}>{comp.type}</span>
       </div>
@@ -154,8 +154,8 @@ export default function PropertiesPanel({
               <div style={{ marginBottom: 6 }}>
                 <label style={labelStyle}>Direction</label>
                 <select value={comp.layoutDirection || "horizontal"} onChange={e => onSetLayout?.(comp.id, { layoutDirection: e.target.value })} style={inputStyle}>
-                  <option value="horizontal">Left → Right</option>
-                  <option value="vertical">Top → Bottom</option>
+                  <option value="horizontal">Left to Right</option>
+                  <option value="vertical">Top to Bottom</option>
                 </select>
               </div>
               <div style={{ marginBottom: 6 }}>
@@ -242,7 +242,7 @@ export default function PropertiesPanel({
               };
               return (
                 <div key={se.key} style={{ marginBottom: 12, padding: "8px 8px", background: "#FAFAFA", borderRadius: 6, border: "1px solid #F3F4F6" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#374151", marginBottom: 6 }}>{se.icon} {se.label}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#374151", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>{se.icon && (() => { const I = se.icon; return (typeof I === "function" || typeof I === "object") ? <I size={12} /> : null; })()} {se.label}</div>
                   <Field label="Content"><input value={comp.props[se.key] || ""} onChange={e => onUpdateProp(comp.id, se.key, e.target.value)} style={inputStyle} /></Field>
                   <Field label="Font Family"><select value={v("fontFamily","Inter")} onChange={e => upd("fontFamily", e.target.value)} style={inputStyle}>{FONT_FAMILIES.map(f => <option key={f} value={f}>{f}</option>)}</select></Field>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -320,7 +320,7 @@ function FillRow({ fill, index, fills, onChange }) {
         ) : (
           <span style={{ fontSize: 11, color: "#6B7280", flex: 1 }}>Image fill</span>
         )}
-        <button onClick={() => onChange(fills.filter((_, i) => i !== index))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#E74C3C", padding: 0, lineHeight: 1 }}>×</button>
+        <button onClick={() => onChange(fills.filter((_, i) => i !== index))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E74C3C", padding: 2, lineHeight: 1, display: "inline-flex" }}><X size={12} /></button>
       </div>
       {isImage && (
         <div style={{ marginTop: 6, display: "flex", gap: 6, alignItems: "center" }}>
@@ -350,7 +350,7 @@ function StrokeRow({ stroke, index, strokes, onChange }) {
           <option value="inside">Inside</option>
           <option value="outside">Outside</option>
         </select>
-        <button onClick={() => onChange(strokes.filter((_, i) => i !== index))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#E74C3C", padding: 0, lineHeight: 1 }}>×</button>
+        <button onClick={() => onChange(strokes.filter((_, i) => i !== index))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E74C3C", padding: 2, lineHeight: 1, display: "inline-flex" }}><X size={12} /></button>
       </div>
       <input placeholder="Dash pattern (comma-separated)" value={stroke.dashPattern || ""} onChange={e => update({ dashPattern: e.target.value })} style={{ ...inputStyle, fontSize: 11 }} />
     </div>
@@ -371,7 +371,7 @@ function EffectRow({ effect, index, effects, onChange }) {
           <option value="inner-shadow">Inner Shadow</option>
           <option value="blur">Blur</option>
         </select>
-        <button onClick={() => onChange(effects.filter((_, i) => i !== index))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#E74C3C", padding: 0, lineHeight: 1 }}>×</button>
+        <button onClick={() => onChange(effects.filter((_, i) => i !== index))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E74C3C", padding: 2, lineHeight: 1, display: "inline-flex" }}><X size={12} /></button>
       </div>
       {effect.type !== "blur" && (
         <>

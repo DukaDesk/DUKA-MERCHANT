@@ -63,7 +63,7 @@ export default function Attendance() {
       <div style={{ ...cardStyle }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Today&apos;s Check-ins</div>
         {filtered.length === 0 ? (
-          <Empty icon="📋" message="No check-ins recorded" sub="Members check in when they open your app and place activity." />
+          <Empty icon="ClipboardList" message="No check-ins recorded" sub="Members check in when they open your app and place activity." />
         ) : (
           filtered.slice(0, 10).map((r, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < Math.min(filtered.length, 10) - 1 ? "1px solid #F3F4F6" : "none" }}>

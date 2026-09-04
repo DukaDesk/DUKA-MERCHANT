@@ -451,7 +451,7 @@ export default function TemplateEditor({ templateId }) {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", flexDirection: "column" }}>
           <div style={{ padding: "16px 24px", background: "#1A1A2E", borderBottom: "1px solid #374151", display: "flex", alignItems: "center", justifyContent: "space-between", color: "#fff" }}>
             <span style={{ fontWeight: 600 }}>Screen JSON — {currentScreenId}</span>
-            <button onClick={() => setShowCode(false)} style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: 24, cursor: "pointer" }}>✕</button>
+            <button onClick={() => setShowCode(false)} style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: 24, cursor: "pointer" }}><X size={18} /></button>
           </div>
           <div style={{ flex: 1, overflow: "auto", padding: 24 }}>
             <pre style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "#D1D5DB", background: "#0F0F1A", padding: 20, borderRadius: 8, overflow: "auto", margin: 0 }}>
@@ -499,7 +499,7 @@ function PropertyEditor({ node, screens = [], onUpdate, onClose }) {
       { key: "variant", label: "Variant", type: "select", options: ["default", "dark"] },
     ],
     info_list: [
-      { key: "items", label: "Items (JSON)", type: "json", placeholder: '[{"icon":"📞","label":"Call","value":"+234..."}]' },
+      { key: "items", label: "Items (JSON)", type: "json", placeholder: '[{"icon":"Phone","label":"Call","value":"+234..."}]' },
       { key: "variant", label: "Variant", type: "select", options: ["default", "dark"] },
     ],
     report_action: [
@@ -638,7 +638,7 @@ function PropertyEditor({ node, screens = [], onUpdate, onClose }) {
           <span style={{ background: AMBER + "20", color: AMBER, padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: "capitalize" }}>{node.type.replace(/_/g, ' ')}</span>
           <span style={{ color: "#6B7280", fontSize: 12 }}>{node.key}</span>
         </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}><X size={18} /></button>
       </div>
 
       <div style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "1px solid #E5E7EB", paddingBottom: 8 }}>
@@ -774,7 +774,7 @@ function ScreenSettings({ screenId, settings = {}, onChange }) {
   );
 }
 
-/* Interactive editor for the button → action → page relationships of a component.
+/* Interactive editor for the button to action to page relationships of a component.
    Mirrors the Action System in knowledge-base (ADR-003): each trigger key on a
    node maps to an ActionDef `{ type, payload }`; navigation actions select a
    target screen from the template. */
@@ -815,8 +815,8 @@ function ActionRelationshipsEditor({ node, screens = [], onUpdate }) {
   const screenOptions = screens.map(s => (typeof s === "string" ? s : (s.id || s.screenId)));
 
   const ACTION_TYPES = [
-    { value: "navigate", label: "Navigate → page" },
-    { value: "pop", label: "Back → previous page" },
+    { value: "navigate", label: "Navigate to page" },
+    { value: "pop", label: "Back to previous page" },
     { value: "switch_screen", label: "Switch tab" },
     { value: "add_to_cart", label: "Add to cart" },
     { value: "remove_from_cart", label: "Remove from cart" },

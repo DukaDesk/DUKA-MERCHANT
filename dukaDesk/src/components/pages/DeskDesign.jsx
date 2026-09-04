@@ -77,7 +77,7 @@ export default function DeskDesign() {
             cursor: saving ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 6,
             fontFamily: "'Sora',sans-serif",
           }}>
-            <Store size={16} /> {saving ? "Applying..." : "Apply Template →"}
+            <Store size={16} /> {saving ? "Applying..." : "Apply Template"}
           </button>
         </div>
       )}

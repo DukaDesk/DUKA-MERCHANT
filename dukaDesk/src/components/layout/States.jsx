@@ -1,3 +1,4 @@
+import { TriangleAlert, Inbox } from "lucide-react";
 import { NAVY, AMBER, font } from "../../theme";
 
 export function Loading({ message = "Loading..." }) {
@@ -35,10 +36,12 @@ export function CardSkeleton() {
   );
 }
 
-export function Empty({ icon = "📭", message = "Nothing here yet", sub, action }) {
+export function Empty({ icon = "Inbox", message = "Nothing here yet", sub, action }) {
+  const iconMap = { Inbox, Package: Inbox, BarChart3: Inbox, TrendingUp: Inbox, Search: Inbox, FileText: Inbox, Trophy: Inbox, Calendar: Inbox, ClipboardList: Inbox, CreditCard: Inbox, Ticket: Inbox };
+  const Icon = typeof icon === "string" ? (iconMap[icon] || Inbox) : (typeof icon === "function" || typeof icon === "object" ? icon : Inbox);
   return (
     <div style={{ padding: 60, textAlign: "center" }}>
-      <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.6, animation: "fadeScaleIn 0.4s ease" }}>{icon}</div>
+      <div style={{ marginBottom: 16, opacity: 0.6, animation: "fadeScaleIn 0.4s ease", display: "flex", justifyContent: "center" }}>{Icon ? <Icon size={48} color="#9CA3AF" /> : <span style={{ fontSize: 48 }}>{icon}</span>}</div>
       <div style={{ fontSize: 16, fontWeight: 600, color: NAVY, marginBottom: 6, fontFamily: font.display }}>{message}</div>
       {sub && <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 20, maxWidth: 320, margin: "0 auto 20px" }}>{sub}</div>}
       {action && <div style={{ animation: "fadeIn 0.3s ease 0.2s both" }}>{action}</div>}
@@ -49,7 +52,7 @@ export function Empty({ icon = "📭", message = "Nothing here yet", sub, action
 export function ErrorState({ message = "Something went wrong", sub, onRetry }) {
   return (
     <div style={{ padding: 60, textAlign: "center" }}>
-      <div style={{ width: 64, height: 64, background: "#FEF2F2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28 }}>⚠️</div>
+      <div style={{ width: 64, height: 64, background: "#FEF2F2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}><TriangleAlert size={28} color="#DC2626" /></div>
       <div style={{ fontSize: 16, fontWeight: 600, color: NAVY, marginBottom: 6 }}>{message}</div>
       {sub && <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 20 }}>{sub}</div>}
       {onRetry && (

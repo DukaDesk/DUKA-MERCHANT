@@ -63,7 +63,7 @@ export default function Memberships() {
       <div style={{ ...cardStyle }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Members</div>
         {filtered.length === 0 ? (
-          <Empty icon="💳" message="No members yet" sub="Subscribers and plan holders will appear here." />
+          <Empty icon="CreditCard" message="No members yet" sub="Subscribers and plan holders will appear here." />
         ) : (
           filtered.slice(0, 12).map((o, i) => {
             const paid = o.status === "Completed";

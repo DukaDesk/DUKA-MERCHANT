@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, KeyRound, AlertCircle, AlertTriangle, CheckCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, ArrowRight, KeyRound, AlertCircle, AlertTriangle, CheckCircle, Link, Check, Smartphone, TabletSmartphone, BarChart3 } from "lucide-react";
 import PropTypes from "prop-types";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { toast } from "react-toastify";
@@ -42,7 +42,7 @@ Auth.propTypes = { onAuth: PropTypes.func.isRequired };
 function LeftPanel({ page, isMobile }) {
   const copy = {
     login: { headline: "Welcome back.", sub: "Your apps, orders, and customers are waiting.", stats: ["2,000+ Merchants", "10,000+ Consumers", "500+ Apps Live"] },
-    signup: { headline: "Launch your mobile app in days.", sub: "No developers. No agencies. Just build, scan, and go live.", props: [{ icon: "📱", text: "Your business gets a real mobile app" }, { icon: "📲", text: "Customers scan your QR code to access it" }, { icon: "📊", text: "Manage everything from this dashboard" }] },
+    signup: { headline: "Launch your mobile app in days.", sub: "No developers. No agencies. Just build, scan, and go live.", props: [{ Icon: Smartphone, text: "Your business gets a real mobile app" }, { Icon: TabletSmartphone, text: "Customers scan your QR code to access it" }, { Icon: BarChart3, text: "Manage everything from this dashboard" }] },
     forgot: { headline: "We've got you.", sub: "Password resets are quick and secure." },
     "reset-password": { headline: "Almost there.", sub: "Enter the OTP and your new password." },
   };
@@ -67,7 +67,7 @@ function LeftPanel({ page, isMobile }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {c.props.map((p, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ width: 40, height: 40, background: "rgba(255,255,255,0.06)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{p.icon}</div>
+                <div style={{ width: 40, height: 40, background: "rgba(255,255,255,0.06)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>{p.Icon ? <p.Icon size={20} color="#fff" /> : p.icon}</div>
                 <span style={{ color: "#D1D5DB", fontSize: 15 }}>{p.text}</span>
               </div>
             ))}
@@ -173,7 +173,7 @@ function LoginForm({ onAuth, setPage }) {
       />
       <p style={{ textAlign: "center", marginTop: 24, fontSize: 14, color: "#6B7280" }}>
         Don't have an account?{" "}
-        <button onClick={() => setPage("/signup")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer" }}>Sign up →</button>
+        <button onClick={() => setPage("/signup")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}>Sign up <ArrowRight size={14} /></button>
       </p>
     </>
   );
@@ -324,7 +324,7 @@ function SignupForm({ onAuth, setPage }) {
       />
       <p style={{ textAlign: "center", marginTop: 24, fontSize: 14, color: "#6B7280" }}>
         Already have an account?{" "}
-        <button onClick={() => setPage("/login")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer" }}>Log in →</button>
+        <button onClick={() => setPage("/login")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}>Log in <ArrowRight size={14} /></button>
       </p>
     </>
   );
@@ -379,7 +379,7 @@ function ForgotForm({ setPage }) {
 
   if (sent) return (
     <div style={{ textAlign: "center", animation: "fadeIn 0.4s ease" }}>
-      <div style={{ width: 80, height: 80, background: "#F0FDF4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: 36 }}>✉️</div>
+      <div style={{ width: 80, height: 80, background: "#F0FDF4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}><Mail size={36} color={NAVY} /></div>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 8 }}>Check your inbox</h2>
       <p style={{ color: "#6B7280", marginBottom: 28, fontSize: 15 }}>We sent a reset link to <strong>{email}</strong>. It expires in 15 minutes.</p>
       <button onClick={handleResend} disabled={resendCooldown > 0} style={{ background: "none", border: "1px solid #E8E8F0", borderRadius: 10, padding: "12px 28px", fontSize: 14, cursor: resendCooldown > 0 ? "not-allowed" : "pointer", color: resendCooldown > 0 ? "#9CA3AF" : NAVY, fontWeight: 600 }}>
@@ -394,7 +394,7 @@ function ForgotForm({ setPage }) {
   return (
     <div style={{ animation: "fadeIn 0.4s ease" }}>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <div style={{ width: 72, height: 72, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 32 }}>🔒</div>
+        <div style={{ width: 72, height: 72, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}><Lock size={32} color={NAVY} /></div>
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 6 }}>Reset your password</h2>
         <p style={{ color: "#6B7280", fontSize: 15 }}>Enter your email and we'll send a reset link.</p>
       </div>
@@ -433,10 +433,10 @@ function ResetPasswordForm({ token, setPage }) {
   if (!token) {
     return (
       <div style={{ textAlign: "center", animation: "fadeIn 0.4s ease" }}>
-        <div style={{ width: 80, height: 80, background: "#FEF2F2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: 36 }}>🔗</div>
+        <div style={{ width: 80, height: 80, background: "#FEF2F2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}><Link size={36} color="#DC2626" /></div>
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 8 }}>Invalid reset link</h2>
         <p style={{ color: "#6B7280", marginBottom: 28, fontSize: 15 }}>This password reset link is invalid or expired. Request a new one.</p>
-        <button onClick={() => setPage("/forgot")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "12px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Request new link →</button>
+        <button onClick={() => setPage("/forgot")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "12px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>Request new link <ArrowRight size={16} /></button>
         <button onClick={() => setPage("/login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
           <ArrowLeft size={14} style={{ verticalAlign: "middle", marginRight: 4 }} /> Back to login
         </button>
@@ -484,17 +484,17 @@ function ResetPasswordForm({ token, setPage }) {
 
   if (success) return (
     <div style={{ textAlign: "center", animation: "fadeIn 0.4s ease" }}>
-      <div style={{ width: 80, height: 80, background: "#F0FDF4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: 36 }}>✓</div>
+      <div style={{ width: 80, height: 80, background: "#F0FDF4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}><Check size={36} color="#16A34A" /></div>
       <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 8 }}>Password reset!</h2>
       <p style={{ color: "#6B7280", marginBottom: 28, fontSize: 15 }}>Your password has been updated successfully.</p>
-      <button onClick={() => setPage("/login")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "12px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Log in →</button>
+      <button onClick={() => setPage("/login")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "12px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>Log in <ArrowRight size={16} /></button>
     </div>
   );
 
   return (
     <div style={{ animation: "fadeIn 0.4s ease" }}>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <div style={{ width: 72, height: 72, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 32 }}>{step === "otp" ? "🔑" : "🔒"}</div>
+        <div style={{ width: 72, height: 72, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>{step === "otp" ? <KeyRound size={32} color={NAVY} /> : <Lock size={32} color={NAVY} />}</div>
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 6 }}>
           {step === "otp" ? "Enter reset code" : otpError ? "Invalid OTP" : "Choose new password"}
         </h2>
@@ -536,7 +536,7 @@ function ResetPasswordForm({ token, setPage }) {
             <Field label="Confirm password" type={showPw ? "text" : "password"} value={confirm} onChange={e => { setConfirm(e.target.value); setError(""); }} placeholder="Repeat password" icon={<Lock size={18} />} />
           </>
         )}
-        <PrimaryBtn loading={loading}>{loading ? "Processing..." : step === "otp" ? "Continue →" : "Reset password"}</PrimaryBtn>
+        <PrimaryBtn loading={loading}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{loading ? "Processing..." : step === "otp" ? <>Continue <ArrowRight size={14} /></> : "Reset password"}</span></PrimaryBtn>
       </form>
       <button onClick={() => setPage("/login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
         <ArrowLeft size={14} style={{ verticalAlign: "middle", marginRight: 4 }} /> Back to login

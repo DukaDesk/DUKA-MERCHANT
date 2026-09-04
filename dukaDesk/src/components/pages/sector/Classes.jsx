@@ -63,7 +63,7 @@ export default function Classes() {
       <div style={{ ...cardStyle }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Class Rosters</div>
         {filtered.length === 0 ? (
-          <Empty icon="🏋️" message="No classes scheduled" sub="Class sign-ups and rosters will appear here." />
+          <Empty icon="Dumbbell" message="No classes scheduled" sub="Class sign-ups and rosters will appear here." />
         ) : (
           filtered.slice(0, 12).map((c, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < Math.min(filtered.length, 12) - 1 ? "1px solid #F3F4F6" : "none" }}>

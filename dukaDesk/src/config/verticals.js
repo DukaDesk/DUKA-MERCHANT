@@ -39,7 +39,7 @@ const DEFAULT_QUICK_ACTIONS = [
 
 const DEFAULT_EMPTY = {
   title: "No items yet",
-  cta: "Add your first item →",
+  cta: "Add your first item",
   target: "products",
 };
 
@@ -59,7 +59,7 @@ export const VERTICALS = {
     ],
     kpis: DEFAULT_KPIS,
     quickActions: DEFAULT_QUICK_ACTIONS,
-    emptyState: { ...DEFAULT_EMPTY, title: "No products yet", cta: "Add your first product →" },
+    emptyState: { ...DEFAULT_EMPTY, title: "No products yet", cta: "Add your first product" },
     topbarTitles: { products: "Products", orders: "Orders", customers: "Customers", inventory: "Inventory" },
     excludedModules: [],
     adminPages: [],
@@ -90,7 +90,7 @@ export const VERTICALS = {
       { label: "Messages", icon: "MessageSquare", page: "messages", outline: true },
       { label: "Analytics", icon: "BarChart3", page: "analytics", outline: true },
     ],
-    emptyState: { ...DEFAULT_EMPTY, title: "No products yet", cta: "Add your first product →" },
+    emptyState: { ...DEFAULT_EMPTY, title: "No products yet", cta: "Add your first product" },
     topbarTitles: { products: "Products", orders: "Orders", customers: "Customers", inventory: "Stock" },
     excludedModules: [],
     adminPages: [
@@ -117,7 +117,7 @@ export const VERTICALS = {
       { label: "Messages", icon: "MessageSquare", page: "messages", outline: true },
       { label: "Analytics", icon: "BarChart3", page: "analytics", outline: true },
     ],
-    emptyState: { ...DEFAULT_EMPTY, title: "No products yet", cta: "Add your first product →" },
+    emptyState: { ...DEFAULT_EMPTY, title: "No products yet", cta: "Add your first product" },
     topbarTitles: { products: "Products", orders: "Orders", customers: "Customers" },
     excludedModules: ["inventory"],
     adminPages: [
@@ -145,7 +145,7 @@ export const VERTICALS = {
       { label: "Messages", icon: "MessageSquare", page: "messages", outline: true },
       { label: "Analytics", icon: "BarChart3", page: "analytics", outline: true },
     ],
-    emptyState: { ...DEFAULT_EMPTY, title: "No products yet", cta: "Add your first product →" },
+    emptyState: { ...DEFAULT_EMPTY, title: "No products yet", cta: "Add your first product" },
     topbarTitles: { products: "Products", orders: "Orders", customers: "Customers", inventory: "Stock" },
     excludedModules: [],
     adminPages: [],
@@ -176,7 +176,7 @@ export const VERTICALS = {
       { label: "Announcements", icon: "Megaphone", page: "messages", outline: true },
       { label: "Members", icon: "Users", page: "customers", outline: true },
     ],
-    emptyState: { ...DEFAULT_EMPTY, title: "No donation records yet", cta: "Record your first donation →" },
+    emptyState: { ...DEFAULT_EMPTY, title: "No donation records yet", cta: "Record your first donation" },
     topbarTitles: { products: "Resources", orders: "Donations", customers: "Members", messages: "Announcements" },
     excludedModules: ["inventory", "marketing"],
     adminPages: [
@@ -210,7 +210,7 @@ export const VERTICALS = {
       { label: "Parent Comms", icon: "Megaphone", page: "messages", outline: true },
       { label: "Students", icon: "Users", page: "customers", outline: true },
     ],
-    emptyState: { ...DEFAULT_EMPTY, title: "No timetable yet", cta: "Add your first class →" },
+    emptyState: { ...DEFAULT_EMPTY, title: "No timetable yet", cta: "Add your first class" },
     topbarTitles: { products: "Timetable", orders: "Fees", customers: "Students", messages: "Parent Comms" },
     excludedModules: ["inventory", "marketing"],
     adminPages: [
@@ -244,7 +244,7 @@ export const VERTICALS = {
       { label: "Messages", icon: "MessageSquare", page: "messages", outline: true },
       { label: "Analytics", icon: "BarChart3", page: "analytics", outline: true },
     ],
-    emptyState: { ...DEFAULT_EMPTY, title: "No services yet", cta: "Add your first service →" },
+    emptyState: { ...DEFAULT_EMPTY, title: "No services yet", cta: "Add your first service" },
     topbarTitles: { products: "Services", orders: "Appointments", customers: "Customers" },
     excludedModules: ["inventory"],
     adminPages: [
@@ -278,7 +278,7 @@ export const VERTICALS = {
       { label: "Attendees", icon: "Users", page: "customers", outline: true },
       { label: "Updates", icon: "Megaphone", page: "messages", outline: true },
     ],
-    emptyState: { ...DEFAULT_EMPTY, title: "No events yet", cta: "Create your first event →" },
+    emptyState: { ...DEFAULT_EMPTY, title: "No events yet", cta: "Create your first event" },
     topbarTitles: { products: "Events", orders: "Tickets", customers: "Attendees", messages: "Updates" },
     excludedModules: ["inventory", "marketing"],
     adminPages: [
@@ -311,7 +311,7 @@ export const VERTICALS = {
       { label: "Messages", icon: "MessageSquare", page: "messages", outline: true },
       { label: "Clients", icon: "Users", page: "customers", outline: true },
     ],
-    emptyState: { ...DEFAULT_EMPTY, title: "No services yet", cta: "Add your first service →" },
+    emptyState: { ...DEFAULT_EMPTY, title: "No services yet", cta: "Add your first service" },
     topbarTitles: { products: "Services", orders: "Invoices", customers: "Clients", messages: "Messages" },
     excludedModules: ["inventory", "marketing"],
     adminPages: [],
@@ -342,7 +342,7 @@ export const VERTICALS = {
       { label: "Supporters", icon: "Users", page: "customers", outline: true },
       { label: "Updates", icon: "Megaphone", page: "messages", outline: true },
     ],
-    emptyState: { ...DEFAULT_EMPTY, title: "No campaigns yet", cta: "Start your first campaign →" },
+    emptyState: { ...DEFAULT_EMPTY, title: "No campaigns yet", cta: "Start your first campaign" },
     topbarTitles: { products: "Campaigns", orders: "Donations", customers: "Supporters", messages: "Updates" },
     excludedModules: ["inventory", "marketing"],
     adminPages: [],
@@ -373,7 +373,7 @@ export const VERTICALS = {
       { label: "Messages", icon: "MessageSquare", page: "messages", outline: true },
       { label: "Contacts", icon: "Users", page: "customers", outline: true },
     ],
-    emptyState: { ...DEFAULT_EMPTY, title: "No showcase items yet", cta: "Add your first item →" },
+    emptyState: { ...DEFAULT_EMPTY, title: "No showcase items yet", cta: "Add your first item" },
     topbarTitles: { products: "Showcase", orders: "Inquiries", customers: "Contacts", messages: "Messages" },
     excludedModules: ["inventory", "marketing"],
     adminPages: [],
@@ -393,7 +393,7 @@ export const DEFAULT_VERTICAL = {
   ],
   kpis: DEFAULT_KPIS,
   quickActions: DEFAULT_QUICK_ACTIONS,
-  emptyState: { ...DEFAULT_EMPTY, title: "No items yet", cta: "Add your first item →" },
+  emptyState: { ...DEFAULT_EMPTY, title: "No items yet", cta: "Add your first item" },
   topbarTitles: {},
   excludedModules: [],
   adminPages: [],

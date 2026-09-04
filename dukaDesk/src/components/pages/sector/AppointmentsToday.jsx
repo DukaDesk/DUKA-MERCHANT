@@ -56,7 +56,7 @@ export default function AppointmentsToday() {
       <div style={{ ...cardStyle }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Today&apos;s Bookings</div>
         {today.length === 0 ? (
-          <Empty icon="📅" message="No bookings today" sub="Customer appointments will appear here." />
+          <Empty icon="Calendar" message="No bookings today" sub="Customer appointments will appear here." />
         ) : (
           today.slice(0, 12).map((o, i) => {
             const done = o.status === "Completed";

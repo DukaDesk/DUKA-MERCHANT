@@ -62,7 +62,7 @@ export default function Fees() {
       <div style={{ ...cardStyle }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Payment Records</div>
         {filtered.length === 0 ? (
-          <Empty icon="📄" message="No fee records yet" sub="Student fee payments will appear here." />
+          <Empty icon="FileText" message="No fee records yet" sub="Student fee payments will appear here." />
         ) : (
           filtered.slice(0, 12).map((o, i) => {
             const paid = o.status === "Completed";

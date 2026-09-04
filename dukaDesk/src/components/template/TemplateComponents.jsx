@@ -155,7 +155,7 @@ export function MenuGrid({ items = [], columns = 2, variant = "default", style =
               style={{ width: "100%", height: 96, objectFit: "cover", borderRadius: 10, display: "block" }}
             />
           ) : (
-            <div style={{ fontSize: 32, textAlign: "center" }}>{item.emoji || item.img || "🍽️"}</div>
+            <div style={{ fontSize: 32, textAlign: "center" }}>{item.emoji || item.img || "Utensils"}</div>
           )}
           <div style={{ fontWeight: 700, fontSize: 14, color: brand.NAVY || '#0F0F1A' }}>{item.name}</div>
           {item.desc && <div style={{ fontSize: 12, color: brand.GRAY?.[500] || '#6B7280' }}>{item.desc}</div>}
@@ -320,7 +320,7 @@ export function NotificationList({ notifications = [], style = {}, onAction }) {
           }}
           onClick={() => onAction?.("tap", { notification: n, index: i })}
         >
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${brand.AMBER}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{n.icon || "🔔"}</div>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${brand.AMBER}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{n.icon || "Bell"}</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, color: brand.NAVY }}>{n.title}</div>
             <div style={{ fontSize: 13, color: brand.GRAY?.[500], marginTop: 2 }}>{n.message}</div>
@@ -545,7 +545,7 @@ export function LaundryBooking({ service = "Wash & Fold", price = 2500, unitLabe
 export function CartSummary({ items = [], style = {}, onAction }) {
   const brand = useBrand();
   const cartItems = items.length ? items : [
-    { id: 1, name: "Jollof Rice & Chicken", price: 2500, qty: 2, img: "🍛" }
+    { id: 1, name: "Jollof Rice & Chicken", price: 2500, qty: 2, img: "Utensils" }
   ];
   const subtotal = cartItems.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0);
   const delivery = items.length ? 500 : 500;
@@ -559,7 +559,7 @@ export function CartSummary({ items = [], style = {}, onAction }) {
             {isImageUrl(item.img) ? (
               <img src={item.img} alt={item.name} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
             ) : (
-              <div style={{ fontSize: 24 }}>{item.img || "🛍️"}</div>
+              <div style={{ fontSize: 24 }}>{item.img || "ShoppingBag"}</div>
             )}
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, color: brand.NAVY }}>{item.name}</div>
@@ -660,7 +660,7 @@ export function PromotionList({ offers = [], style = {}, onAction }) {
           onClick={() => onAction?.("tap", { offer, index: i })}
         >
           <div style={{ height: 120, background: offer.image ? `url(${offer.image}) center/cover` : `linear-gradient(135deg, ${brand.AMBER}, ${brand.NAVY})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 18 }}>
-            {offer.icon || "🎉"}
+            {offer.icon || "PartyPopper"}
           </div>
           <div style={{ padding: 16 }}>
             <div style={{ fontWeight: 700, fontSize: 15, color: brand.NAVY, marginBottom: 4 }}>{offer.title}</div>

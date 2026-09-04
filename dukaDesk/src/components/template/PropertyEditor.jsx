@@ -42,7 +42,7 @@ export function PropertyEditor({ node, onUpdate, onClose }) {
       { key: "variant", label: "Variant", type: "select", options: ["default", "dark"] },
     ],
     info_list: [
-      { key: "items", label: "Items (JSON)", type: "json", placeholder: '[{"icon":"📞","label":"Call","value":"+234..."}]' },
+      { key: "items", label: "Items (JSON)", type: "json", placeholder: '[{"icon":"Phone","label":"Call","value":"+234..."}]' },
       { key: "variant", label: "Variant", type: "select", options: ["default", "dark"] },
     ],
     report_action: [
@@ -181,7 +181,7 @@ export function PropertyEditor({ node, onUpdate, onClose }) {
           <span style={{ background: AMBER + "20", color: AMBER, padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: "capitalize" }}>{node.type.replace(/_/g, ' ')}</span>
           <span style={{ color: "#6B7280", fontSize: 12 }}>{node.key}</span>
         </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: 20, cursor: "pointer" }}>✕</button>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: 20, cursor: "pointer" }}><X size={18} /></button>
       </div>
 
       <div style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 }}>

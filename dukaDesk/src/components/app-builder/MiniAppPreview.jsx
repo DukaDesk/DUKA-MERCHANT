@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Palette, SlidersHorizontal, MousePointer } from "lucide-react";
+import { ArrowLeft, Palette, SlidersHorizontal, MousePointer, ArrowRight, X, Home, Package, Calendar, Info, ShoppingCart, Circle, Star } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useAuth } from "../../contexts";
 import { getMyApp, getSetupData, getProducts, updateApp } from "../../services/api";
@@ -11,10 +11,10 @@ import { generateShopTemplate } from "../../services/TemplateGenerator";
 
 const FALLBACK_COLOR = "#1B4332";
 const FALLBACK_ITEMS = [
-  { id: 1, name: "Jollof Rice & Chicken", desc: "Rich, smoky jollof with tender grilled chicken", price: 2500, img: "🍛", cat: "Popular" },
-  { id: 2, name: "Peppered Gizzard", desc: "Spicy peppered gizzard with fried plantain", price: 1800, img: "🍗", cat: "Popular" },
-  { id: 3, name: "Grilled Tilapia", desc: "Fresh tilapia grilled with peppers & spices", price: 4500, img: "🐟", cat: "Mains" },
-  { id: 4, name: "Egusi Soup + Eba", desc: "Thick egusi soup with eba or pounded yam", price: 3200, img: "🥣", cat: "Mains" },
+  { id: 1, name: "Jollof Rice & Chicken", desc: "Rich, smoky jollof with tender grilled chicken", price: 2500, img: "Utensils", cat: "Popular" },
+  { id: 2, name: "Peppered Gizzard", desc: "Spicy peppered gizzard with fried plantain", price: 1800, img: "Drumstick", cat: "Popular" },
+  { id: 3, name: "Grilled Tilapia", desc: "Fresh tilapia grilled with peppers & spices", price: 4500, img: "Fish", cat: "Mains" },
+  { id: 4, name: "Egusi Soup + Eba", desc: "Thick egusi soup with eba or pounded yam", price: 3200, img: "Soup", cat: "Mains" },
 ];
 
 export default function MiniAppPreview() {
@@ -111,7 +111,7 @@ export default function MiniAppPreview() {
 
   const hasRenderableTemplate = Boolean(templateManifest && configScreens && Object.keys(configScreens).length > 0);
   const menuItems = products?.length > 0 ? products.map(p => ({
-    id: p.id, name: p.name, desc: p.cat || "", price: p.price, img: p.img || "🍛", cat: p.cat || "Mains",
+    id: p.id, name: p.name, desc: p.cat || "", price: p.price, img: p.img || "Utensils", cat: p.cat || "Mains",
   })) : FALLBACK_ITEMS;
 
   const cats = ["All", ...new Set(menuItems.map(m => m.cat))];
@@ -217,7 +217,7 @@ export default function MiniAppPreview() {
               <>
                 <div style={{ background: `linear-gradient(180deg, ${brandColor} 0%, ${brandColor}DD 100%)`, padding: "48px 16px 16px", minHeight: isMobile ? 130 : 160, position: "relative" }}>
                   <div style={{ position: "absolute", inset: 0, backgroundImage: "url('data:image/svg+xml,%3Csvg width=\\'60\\' height=\\'60\\' viewBox=\\'0 0 60 60\\' xmlns=\\'http://www.w3.org/2000/svg\\'%3E%3Cg fill=\\'none\\' fill-rule=\\'evenodd\\'%3E%3Cg fill=\\'%23ffffff\\' fill-opacity=\\'0.03\\'%3E%3Cpath d=\\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }} />
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>🟢 Open Now · 4.8 ⭐</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}><Circle size={8} fill="#22C55E" stroke="#22C55E" /> Open Now · 4.8 <Star size={10} fill="#FACC15" stroke="#FACC15" /></div>
                   <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 18 : 22, color: "#fff", marginBottom: 10 }}>{storeName}</div>
                   {app?.tagline && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 10 }}>{app.tagline}</div>}
                   <div style={{ display: "flex", gap: 8 }}>
@@ -228,7 +228,7 @@ export default function MiniAppPreview() {
                 </div>
 
                 <div style={{ padding: "12px 12px 4px", display: "flex", gap: 8, overflowX: "auto", background: "#fff", borderBottom: "1px solid #F3F4F6" }}>
-                  <button onClick={() => setActiveCat("All")} style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${activeCat === "All" ? brandColor : "#E5E7EB"}`, background: activeCat === "All" ? brandColor : "#fff", color: activeCat === "All" ? "#fff" : "#6B7280", fontSize: 12, fontWeight: activeCat === "All" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}>🔥 All</button>
+                  <button onClick={() => setActiveCat("All")} style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${activeCat === "All" ? brandColor : "#E5E7EB"}`, background: activeCat === "All" ? brandColor : "#fff", color: activeCat === "All" ? "#fff" : "#6B7280", fontSize: 12, fontWeight: activeCat === "All" ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}>All</button>
                   {cats.map(c => (
                     <button key={c} onClick={() => setActiveCat(c)} style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${activeCat === c ? brandColor : "#E5E7EB"}`, background: activeCat === c ? brandColor : "#fff", color: activeCat === c ? "#fff" : "#6B7280", fontSize: 12, fontWeight: activeCat === c ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}>{c}</button>
                   ))}
@@ -255,17 +255,17 @@ export default function MiniAppPreview() {
                 {cartCount > 0 && (
                   <div style={{ position: "absolute", bottom: 56, left: 0, right: 0, zIndex: 50, padding: "0 12px" }}>
                     <div style={{ background: AMBER, borderRadius: 14, padding: "14px 18px", display: "flex", alignItems: "center", boxShadow: "0 8px 24px rgba(244,160,38,0.4)" }}>
-                      <span style={{ fontSize: 18, marginRight: 8 }}>🛒</span>
+                      <ShoppingCart size={18} style={{ marginRight: 8, color: NAVY }} />
                       <span style={{ fontWeight: 600, fontSize: 13, color: NAVY, flex: 1 }}>{cartCount} {cartCount === 1 ? "item" : "items"} · ₦{cartTotal.toLocaleString()}</span>
-                      <span onClick={() => setShowCartModal(true)} style={{ fontWeight: 700, fontSize: 13, color: NAVY, cursor: "pointer" }}>View Cart →</span>
+                      <span onClick={() => setShowCartModal(true)} style={{ fontWeight: 700, fontSize: 13, color: NAVY, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}>View Cart <ArrowRight size={14} /></span>
                     </div>
                   </div>
                 )}
 
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 52, background: "#fff", borderTop: "1px solid #E5E7EB", display: "flex", zIndex: 40 }}>
-                  {[{ id:"menu", icon: "🏠", label: "Menu" }, { id:"orders", icon: "📦", label: "Orders" }, { id:"reserve", icon: "📅", label: "Reserve" }, { id:"info", icon: "ℹ️", label: "Info" }].map(t => (
+                  {[{ id:"menu", Icon: Home, label: "Menu" }, { id:"orders", Icon: Package, label: "Orders" }, { id:"reserve", Icon: Calendar, label: "Reserve" }, { id:"info", Icon: Info, label: "Info" }].map(t => (
                     <div key={t.id} onClick={() => setView(t.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "pointer" }}>
-                      <span style={{ fontSize: 16 }}>{t.icon}</span>
+                      <t.Icon size={16} color={view === t.id ? brandColor : "#9CA3AF"} />
                       <span style={{ fontSize: 9, color: view === t.id ? brandColor : "#9CA3AF", fontWeight: view === t.id ? 700 : 400 }}>{t.label}</span>
                     </div>
                   ))}
@@ -276,7 +276,7 @@ export default function MiniAppPreview() {
                     <div style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxHeight: "70%", overflowY: "auto", padding: "20px 16px", animation: "fadeIn 0.2s ease" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                         <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY }}>Your Cart ({cartCount})</span>
-                        <button onClick={() => setShowCartModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#6B7280" }}>✕</button>
+                        <button onClick={() => setShowCartModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "inline-flex" }}><X size={20} /></button>
                       </div>
                       {Object.entries(cart).filter(([,q]) => q > 0).map(([id, qty]) => {
                         const item = menuItems.find(m => String(m.id) === String(id));
