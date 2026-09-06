@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Layout, ClipboardList, PanelTop, ChevronDown, Type, AlignLeft, Square, List, Star, Minus, Image as ImageIcon, Video, SquareStack, Monitor, FileText, ShoppingBag, Tag, Info, Package, ShoppingCart, BarChart3, Scissors, Phone, Sparkles, Construction } from "lucide-react";
+import { Layout, ClipboardList, PanelTop, ChevronDown, Type, AlignLeft, Square, List, Star, Minus, Image as ImageIcon, Video, SquareStack, Monitor, FileText, ShoppingBag, Tag, Info, Package, ShoppingCart, BarChart3, Scissors, Phone, Sparkles, Construction, Upload, Trash2, Home, Search, User, Settings } from "lucide-react";
 import { useEditorTheme, ColorInput } from "./editorTheme.jsx";
-import { getComponentType } from "../canvas-editor/componentTypes";
+import { getComponentType, getLucideIcon, ICON_LIBRARY } from "../canvas-editor/componentTypes";
 import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
 import { toast } from "react-toastify";
@@ -357,8 +357,124 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
     });
   };
 
+  // ── Splash: editable background (color or image) with centered logo (always shown on app entry, never on tabs)
+  const splash = store.data.splash || { backgroundColor: "#1A1A2E", backgroundImage: "", logo: store.data.meta?.logo || null };
+  const splashBg = splash.backgroundImage ? `url(${splash.backgroundImage}) center/cover no-repeat` : splash.backgroundColor || "#1A1A2E";
+  const splashLogo = splash.logo || store.data.meta?.logo || null;
+
+  const renderSplashCard = () => (
+    <div style={{ marginBottom: 14, border: `1px solid ${theme.border}`, borderRadius: theme.radius.md, overflow: "hidden", background: theme.surface }}>
+      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 10, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", padding: "8px 10px 6px", borderBottom: `1px solid ${theme.borderLight}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span>Splash Screen — shows on every app entry (not a tab)</span>
+        <span style={{ fontSize: 9, background: "#EEF2FF", color: "#3730A3", padding: "2px 6px", borderRadius: 999, fontWeight: 700 }}>ENTRY</span>
+      </div>
+      <div style={{ height: 140, background: splashBg, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", borderBottom: `1px solid ${theme.borderLight}` }}>
+        {splashLogo ? (
+          <img src={splashLogo} alt="logo" style={{ width: 64, height: 64, borderRadius: 16, objectFit: "cover", boxShadow: "0 8px 24px rgba(0,0,0,0.25)", background: "#fff" }} />
+        ) : (
+          <div style={{ width: 64, height: 64, borderRadius: 16, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 800, color: theme.text, boxShadow: "0 8px 24px rgba(0,0,0,0.25)" }}>
+            {(store.data.meta?.appName || "D").charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div style={{ position: "absolute", bottom: 6, left: 8, right: 8, textAlign: "center", fontSize: 9, color: "rgba(255,255,255,0.85)", textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}>Logo always centered</div>
+      </div>
+      <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Background</div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <ColorInput value={splash.backgroundColor || "#1A1A2E"} onChange={(v) => store.setSplash({ backgroundColor: v, backgroundImage: "" })} />
+            <span style={{ fontSize: 11, color: theme.textMuted }}>or</span>
+            <button onClick={() => document.getElementById("splash-bg-upload")?.click()} style={{ ...iconBtn, padding: "5px 8px", fontSize: 11, gap: 4 }}>
+              <Upload size={12} /> {splash.backgroundImage ? "Change image" : "Upload image"}
+            </button>
+            {splash.backgroundImage && (
+              <button onClick={() => store.setSplash({ backgroundImage: "" })} style={{ ...iconBtn, padding: "5px 8px", fontSize: 11, color: theme.danger, borderColor: theme.dangerBorder }}>
+                <Trash2 size={12} /> Remove
+              </button>
+            )}
+          </div>
+          <input id="splash-bg-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => store.setSplash({ backgroundImage: ev.target.result, backgroundColor: splash.backgroundColor });
+            reader.readAsDataURL(file);
+            e.target.value = "";
+          }} />
+        </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Center Logo</div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <button onClick={() => document.getElementById("splash-logo-upload")?.click()} style={{ ...iconBtn, padding: "5px 8px", fontSize: 11, gap: 4 }}>
+              <Upload size={12} /> {splashLogo ? "Change logo" : "Upload logo"}
+            </button>
+            {splash.logo && (
+              <button onClick={() => store.setSplash({ logo: null })} style={{ ...iconBtn, padding: "5px 8px", fontSize: 11, color: theme.danger, borderColor: theme.dangerBorder }}>
+                <Trash2 size={12} /> Remove
+              </button>
+            )}
+          </div>
+          <input id="splash-logo-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => store.setSplash({ logo: ev.target.result });
+            reader.readAsDataURL(file);
+            e.target.value = "";
+          }} />
+          <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4 }}>Logo is always centered on splash. Uses app logo if none set.</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Tabs: shown under page content in this panel (lucide icons, not special characters)
+  const navTabs = store.data.navigation?.tabs || [];
+  const TAB_LUCIDE_OPTIONS = ["Home", "Search", "ShoppingBag", "ShoppingCart", "User", "Settings", "Heart", "Bell", "Store", "Tag", "Calendar", "Info", "Phone", "Star", "Package"];
+  const renderTabsUnderContent = () => (
+    <div style={{ marginTop: 16, borderTop: `1px solid ${theme.borderLight}`, paddingTop: 12 }}>
+      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 11, color: theme.text, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span>Bottom Tabs</span>
+        <span style={{ fontSize: 10, color: theme.textMuted, fontWeight: 400 }}>{navTabs.length} tabs</span>
+      </div>
+      <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 8, lineHeight: 1.4 }}>Tabs live under page content. Icons are lucide (mobile-definable).</div>
+      {navTabs.length === 0 && (
+        <div style={{ fontSize: 11, color: theme.textMuted, padding: "8px 0" }}>No tabs yet. Add one below.</div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {navTabs.map((tab, i) => {
+          const Icon = getLucideIcon(tab.icon) || Home;
+          return (
+            <div key={tab.id || i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface }}>
+              <div style={{ position: "relative" }}>
+                <button onClick={() => {
+                  const next = window.prompt(`Pick icon (${TAB_LUCIDE_OPTIONS.join(", ")}):`, tab.icon || "Home");
+                  if (next && TAB_LUCIDE_OPTIONS.includes(next)) store.updateTab(i, { icon: next });
+                }} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.hover, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: theme.textSecondary }} title="Pick lucide icon">
+                  <Icon size={14} />
+                </button>
+              </div>
+              <input value={tab.label || ""} onChange={e => store.updateTab(i, { label: e.target.value })} placeholder="Label" style={{ flex: 1, border: `1px solid ${theme.border}`, borderRadius: 6, padding: "5px 7px", fontSize: 12, outline: "none" }} />
+              <select value={tab.screenId || ""} onChange={e => store.updateTab(i, { screenId: e.target.value })} style={{ fontSize: 11, padding: "4px 6px", borderRadius: 6, border: `1px solid ${theme.border}`, maxWidth: 110 }}>
+                <option value="">— page —</option>
+                {Object.entries(store.data.screens).map(([id, sc]) => (
+                  <option key={id} value={id}>{sc.name || id}</option>
+                ))}
+              </select>
+              <button onClick={() => store.removeTab(i)} style={{ ...iconBtn, padding: "4px", color: theme.danger, borderColor: theme.dangerBorder }} title="Remove tab"><Trash2 size={12} /></button>
+            </div>
+          );
+        })}
+      </div>
+      <button onClick={() => store.addTab({ label: "New Tab", icon: "Home", screenId: "" })} style={{ width: "100%", marginTop: 8, padding: "8px", borderRadius: theme.radius.md, border: `1.5px dashed ${theme.border}`, background: "transparent", color: theme.textSecondary, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+        <Layout size={12} /> Add Tab
+      </button>
+    </div>
+  );
+
   const renderPageContent = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {renderSplashCard()}
       <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 11, color: theme.text, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span>{screen.name || "Screen"} sections</span>
         <span style={{ fontSize: 10, color: theme.textMuted, fontWeight: 400 }}>{bodySections.length}</span>
@@ -454,8 +570,9 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
               </div>
             )}
           </div>
-        );
+          );
       })}
+      {renderTabsUnderContent()}
     </div>
   );
 

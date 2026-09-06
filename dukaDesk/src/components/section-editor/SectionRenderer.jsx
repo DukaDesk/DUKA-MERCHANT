@@ -686,12 +686,13 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
               const color = isActive
                 ? (tab.color || data.navigation?.style?.active || "#1A1A2E")
                 : (data.navigation?.style?.inactive || "#9CA3AF");
+              const Icon = getLucideIcon(tab.icon);
               return (
                 <div key={tab.id} style={{
                   display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
                   padding: "2px 14px", color,
                 }}>
-                  <span style={{ fontSize: 19, lineHeight: 1, opacity: isActive ? 1 : 0.65 }}>{tab.icon || "\u25CB"}</span>
+                  <span style={{ lineHeight: 1, opacity: isActive ? 1 : 0.65, display: "flex" }}>{Icon ? <Icon size={19} color={color} /> : null}</span>
                   <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 500, color, fontFamily: "'Inter',sans-serif" }}>{tab.label || "Tab"}</span>
                 </div>
               );

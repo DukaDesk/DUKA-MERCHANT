@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useEditorTheme } from "./editorTheme.jsx";
+import { getLucideIcon } from "../canvas-editor/componentTypes";
 
 export default function ScreenSwitcher({ store }) {
   const { theme, iconBtn, iconBtnDanger } = useEditorTheme();
@@ -144,9 +145,9 @@ export default function ScreenSwitcher({ store }) {
                   style={{ flex: 1, padding: "4px 8px", borderRadius: 4, border: `1px solid ${theme.active}`, fontSize: 13, outline: "none" }}
                 />
               ) : (
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: theme.text, cursor: "pointer" }}
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: theme.text, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
                   onClick={() => { setEditingTabIdx(i); setTabLabelInput(tab.label); }}
-                >{tab.icon} {tab.label}</span>
+                >{(() => { const I = getLucideIcon(tab.icon); return I ? <I size={14} /> : null; })()} {tab.label}</span>
               )}
               <select
                 value={tab.screenId}
@@ -170,7 +171,7 @@ export default function ScreenSwitcher({ store }) {
             </div>
           ))}
           <button
-            onClick={() => store.addTab({ label: "New Tab", icon: "\uD83D\uDCCB", screenId: screenIds[0] || "" })}
+            onClick={() => store.addTab({ label: "New Tab", icon: "Home", screenId: screenIds[0] || "" })}
             style={{ width: "100%", padding: "8px", borderRadius: theme.radius.md, border: `1.5px dashed ${theme.border}`, background: "transparent", color: theme.textSecondary, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Inter',sans-serif", marginTop: 8, transition: `all ${theme.transition}`, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.color = theme.active; e.currentTarget.style.background = theme.hoverAmber; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textSecondary; e.currentTarget.style.background = "transparent"; }}

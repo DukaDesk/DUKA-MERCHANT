@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Search, Type, Palette, Image as ImageIcon, Square, LayoutGrid, Sparkles, Compass, FileText, Tag, ShoppingBag, ClipboardList, PanelTop, Star, Minus, Plus, Pencil, Boxes, GalleryHorizontal, CreditCard, ShoppingCart, Calendar, Clock, Bell, MapPin, BarChart3, Scissors, Phone, ToggleLeft, CheckSquare, User, ArrowLeftRight, ArrowDownUp, Zap, Hash, Circle, Construction, Link, Unlink } from "lucide-react";
-import { getComponentType, getAllComponentTypes, getComponentsByCategory, FONT_FAMILIES, FONT_WEIGHTS, resolveTextStyle, applyTextStyle } from "../canvas-editor/componentTypes";
+import { getComponentType, getAllComponentTypes, getComponentsByCategory, FONT_FAMILIES, FONT_WEIGHTS, resolveTextStyle, applyTextStyle, getLucideIcon } from "../canvas-editor/componentTypes";
 import { useEditorTheme, ColorInput } from "./editorTheme.jsx";
 
 function IconRender({ icon, size = 16, style }) {
@@ -45,11 +45,8 @@ const COMPONENT_ICONS = {
 const QUICK_COLORS = ["#FCF8FA", "#1A1A2E", "#F4A026", "#2ECC71", "#E74C3C", "#7C3AED", "#0D9488", "#EA580C", "#EC4899", "#000000"];
 
 const TAB_ICONS = [
-  "\uD83C\uDFE0", "\uD83C\uDF5F", "\uD83C\uDF7D\uFE0F", "\uD83D\uDCCB", "\uD83D\uDED2",
-  "\uD83C\uDF54", "\uD83C\uDF5B", "\uD83C\uDF73", "\uD83C\uDF55", "\uD83C\uDF89",
-  "\u2600\uFE0F", "\uD83C\uDF0D", "\uD83D\uDCCD", "\uD83D\uDCDE", "\uD83D\uDCA1",
-  "\uD83D\uDD0D", "\u2B50", "\uD83D\uDC96", "\uD83D\uDC64", "\uD83D\uDC65",
-  "\uD83D\uDD25", "\uD83C\uDF45", "\uD83C\uDF71", "\uD83D\uDDAA",
+  "Home", "Search", "ShoppingBag", "ShoppingCart", "Store", "Tag", "Calendar", "Info", "Phone", "Star",
+  "Heart", "Bell", "User", "Settings", "Package", "ClipboardList", "Trophy", "Megaphone", "BookOpen", "Video",
 ];
 
 export default function PropertiesPanel({ store, selectedSectionId, selectedComponentId, navSelected, onClose, focusSubKey, onClearProp, onSelectComponent }) {
@@ -154,7 +151,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
         ))}
 
         <button
-          onClick={() => store.addTab({ label: "New Tab", icon: "\uD83D\uDCCB", screenId: "" })}
+          onClick={() => store.addTab({ label: "New Tab", icon: "Home", screenId: "" })}
           style={{
             width: "100%", padding: "8px", borderRadius: theme.radius.md,
             border: `1.5px dashed ${theme.border}`, background: "transparent",
@@ -799,9 +796,9 @@ function TabEditorRow({ tab, screenIds, screens, onUpdate, onRemove, onReorder, 
       <div style={{ position: "relative" }}>
         <button
           onClick={() => setIconOpen(o => !o)}
-          style={{ width: 30, height: 30, fontSize: 16, borderRadius: theme.radius.sm, border: `1px solid ${theme.border}`, background: theme.surface, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ width: 30, height: 30, borderRadius: theme.radius.sm, border: `1px solid ${theme.border}`, background: theme.surface, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: theme.textSecondary }}
           title="Pick icon"
-        >{tab.icon || "\uD83D\uDCCB"}</button>
+        >{(() => { const I = getLucideIcon(tab.icon) || getLucideIcon("Home"); return I ? <I size={16} /> : null; })()}</button>
         {iconOpen && (
           <>
             <div style={{ position: "fixed", inset: 0, zIndex: 39 }} onClick={() => setIconOpen(false)} />
@@ -811,18 +808,21 @@ function TabEditorRow({ tab, screenIds, screens, onUpdate, onRemove, onReorder, 
               border: `1px solid ${theme.border}`, padding: 8, display: "grid",
               gridTemplateColumns: "repeat(6, 1fr)", gap: 4, width: 200,
             }}>
-              {TAB_ICONS.map(ic => (
-                <button key={ic} onClick={() => { onUpdate({ icon: ic }); setIconOpen(false); }}
-                  style={{
-                    fontSize: 15, background: tab.icon === ic ? theme.hoverAmber : "transparent",
-                    border: tab.icon === ic ? `1px solid ${theme.active}` : "1px solid transparent",
-                    borderRadius: theme.radius.sm, cursor: "pointer", padding: 3,
-                    transition: `all ${theme.transition}`,
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = theme.hover; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = tab.icon === ic ? theme.hoverAmber : "transparent"; }}
-                >{ic}</button>
-              ))}
+              {TAB_ICONS.map(ic => {
+                const I = getLucideIcon(ic) || getLucideIcon("Home");
+                return (
+                  <button key={ic} onClick={() => { onUpdate({ icon: ic }); setIconOpen(false); }}
+                    style={{
+                      background: tab.icon === ic ? theme.hoverAmber : "transparent",
+                      border: tab.icon === ic ? `1px solid ${theme.active}` : "1px solid transparent",
+                      borderRadius: theme.radius.sm, cursor: "pointer", padding: 6, display: "flex", alignItems: "center", justifyContent: "center", color: theme.textSecondary,
+                      transition: `all ${theme.transition}`,
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = theme.hover; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = tab.icon === ic ? theme.hoverAmber : "transparent"; }}
+                  >{I ? <I size={16} /> : null}</button>
+                );
+              })}
             </div>
           </>
         )}

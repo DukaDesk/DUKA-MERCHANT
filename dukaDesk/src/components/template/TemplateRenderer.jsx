@@ -196,12 +196,15 @@ function AppSplash({ manifest }) {
 
   if (done) return null;
 
+  const splash = manifest?.splash || {};
   const brandColor = manifest?.theme?.primaryColor || "#1B4332";
-  const bgColor = manifest?.theme?.bgColor || manifest?.theme?.backgroundColor || "#FFFFFF";
-  const logo = manifest?.assets?.logo || manifest?.assets?.icon;
-  const name = manifest?.branding?.appName || manifest?.name || "My App";
+  const bgColor = splash.backgroundColor || manifest?.theme?.bgColor || manifest?.theme?.backgroundColor || "#1A1A2E";
+  const bgImage = splash.backgroundImage || "";
+  const logo = splash.logo || manifest?.meta?.logo || manifest?.assets?.logo || manifest?.assets?.icon;
+  const name = manifest?.meta?.appName || manifest?.branding?.appName || manifest?.name || "My App";
   const tagline = manifest?.branding?.tagline || "Tap to explore";
   const isImage = typeof logo === "string" && /^(https?:|data:)/.test(logo);
+  const background = bgImage ? `url(${bgImage}) center/cover no-repeat` : bgColor;
 
   return (
     <div style={{
@@ -213,7 +216,7 @@ function AppSplash({ manifest }) {
       alignItems: "center",
       justifyContent: "center",
       gap: 16,
-      background: bgColor,
+      background: background,
       transition: "opacity 0.3s ease",
       opacity: leaving ? 0 : 1,
       fontFamily: "'Sora', sans-serif",

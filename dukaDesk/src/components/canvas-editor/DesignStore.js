@@ -45,6 +45,17 @@ function findSectionById(data, sectionId) {
 
 function migrateScreens(data) {
   Object.values(data.screens || {}).forEach(s => ensureChrome(s));
+  ensureSplash(data);
+  // Remove splash screen from tabs if it somehow got added (splash is never on tabs)
+  if (data.splash && Array.isArray(data.navigation?.tabs)) {
+    const splashIds = Object.keys(data.screens).filter(id => {
+      const sc = data.screens[id];
+      return sc.name?.toLowerCase() === "splash" || id === "splash";
+    });
+    if (splashIds.length > 0) {
+      data.navigation.tabs = data.navigation.tabs.filter(t => !splashIds.includes(t.screenId));
+    }
+  }
   return data;
 }
 
@@ -63,6 +74,11 @@ function ensureChrome(screen) {
 export function getDefaultData() {
   return {
     meta: { category: "", appName: "", primaryColor: "#1A1A2E", logo: null },
+    splash: {
+      backgroundColor: "#1A1A2E",
+      backgroundImage: "",
+      logo: null,
+    },
     navigation: { initialScreen: "screen_1", tabs: [] },
     shared: {
       header: { id: "section_header", type: "header", name: "Header", backgroundColor: "#FCF8FA", components: [] },
@@ -73,6 +89,13 @@ export function getDefaultData() {
     },
     savedSections: [],
   };
+}
+
+function ensureSplash(data) {
+  if (!data.splash) {
+    data.splash = { backgroundColor: "#1A1A2E", backgroundImage: "", logo: null };
+  }
+  return data.splash;
 }
 
 function loadLocalFallback() {
@@ -681,7 +704,7 @@ export function useDesignStore(initialData, options = {}) {
   const addTab = useCallback((tab) => {
     updateData(d => {
       if (!d.navigation.tabs) d.navigation.tabs = [];
-      d.navigation.tabs.push({ id: `tab_${Date.now()}`, label: tab.label || "New Tab", icon: tab.icon || "\uD83D\uDCCB", screenId: tab.screenId || "" });
+      d.navigation.tabs.push({ id: `tab_${Date.now()}`, label: tab.label || "New Tab", icon: tab.icon || "Home", screenId: tab.screenId || "" });
     });
   }, [updateData]);
 
@@ -693,7 +716,7 @@ export function useDesignStore(initialData, options = {}) {
       const next = tabs.map((t, i) => ({
         id: `tab_${Date.now()}_${i}`,
         label: t.label || `Tab ${startIdx + i + 1}`,
-        icon: t.icon || "\uD83D\uDCCB",
+        icon: t.icon || "Home",
         screenId: t.screenId || "",
       }));
       d.navigation.tabs = [...existing, ...next];
@@ -723,9 +746,16 @@ export function useDesignStore(initialData, options = {}) {
     });
   }, [updateData]);
 
-  /* ── Meta ── */
+  /* ── Meta & Splash ── */
   const setMeta = useCallback((patch) => {
     updateData(d => { Object.assign(d.meta, patch); });
+  }, [updateData]);
+
+  const setSplash = useCallback((patch) => {
+    updateData(d => {
+      ensureSplash(d);
+      Object.assign(d.splash, patch);
+    });
   }, [updateData]);
 
   const setNavigation = useCallback((patch) => {
@@ -833,8 +863,8 @@ export function useDesignStore(initialData, options = {}) {
     // Navigation tabs
     addTab, addTabs, removeTab, updateTab, reorderTab,
 
-    // Meta / Navigation
-    setMeta, setNavigation,
+    // Meta / Splash / Navigation
+    setMeta, setSplash, setNavigation,
 
     // Undo / Redo
     undo, redo,

@@ -219,9 +219,17 @@ export default function ElementGallery({ browseType, store, selectedSectionId, o
   };
 
   const addScreenLayout = (variant) => {
+    if (variant.id === "splash") {
+      // Splash is never on tabs — it shows on app entry with centered logo and editable bg
+      const splashBg = store.data.splash?.backgroundColor || store.data.meta?.primaryColor || "#1A1A2E";
+      store.setSplash({ backgroundColor: splashBg });
+      // Ensure no tab is created for splash; switch to splash editing if needed
+      toast.success(`Splash screen configured — edit its background and logo in Page Content`);
+      return;
+    }
     const sid = store.addScreen(null, variant.label);
     store.addBodySection(sid, { name: variant.label, components: variant.build() });
-    store.addTab({ label: variant.label, icon: "Smartphone", screenId: sid });
+    store.addTab({ label: variant.label, icon: "Home", screenId: sid });
     if (store.setCurrentScreenId) store.setCurrentScreenId(sid);
     toast.success(`${variant.label} screen added`);
   };
