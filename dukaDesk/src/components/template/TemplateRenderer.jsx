@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { LayoutRenderer, ScreenRenderer } from "../../runtime/layouts";
 import { RuntimeContext } from "../../runtime/RuntimeContext";
 import { Home, Calendar, ClipboardList, ShoppingCart, User, Store, Tag, Utensils, Info, Megaphone, Trophy, Heart, BookOpen, Users, Briefcase, CreditCard, ShoppingBag, Video, Phone } from "lucide-react";
+import { getLucideIcon } from "../canvas-editor/componentTypes";
 import { TemplateComponents } from "./TemplateComponents";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";
 function getScreenPreviewData() {
@@ -393,6 +394,11 @@ function TabIcon({ icon, active, color }) {
     const Icon = TAB_ICONS[icon];
     if (Icon) {
       return <Icon size={20} strokeWidth={active ? 2.4 : 1.8} color={color} />;
+    }
+    // Fallback: try getLucideIcon for any icon name not explicitly mapped
+    const LucidIcon = getLucideIcon(icon);
+    if (LucidIcon && LucidIcon !== Circle) {
+      return <LucidIcon size={20} color={color} strokeWidth={active ? 2.4 : 1.8} />;
     }
     return <span style={{ fontSize: 18, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon || "•"}</span>;
   }
