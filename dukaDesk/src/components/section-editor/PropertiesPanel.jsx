@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Search, Type, Palette, Image as ImageIcon, Square, LayoutGrid, Sparkles, Compass, FileText, Tag, ShoppingBag, ClipboardList, PanelTop, Star, Minus, Plus, Pencil, Boxes, GalleryHorizontal, CreditCard, ShoppingCart, Calendar, Clock, Bell, MapPin, BarChart3, Scissors, Phone, ToggleLeft, CheckSquare, User, ArrowLeftRight, ArrowDownUp, Zap, Hash, Circle, Construction, Link, Unlink } from "lucide-react";
-import { getComponentType, getAllComponentTypes, getComponentsByCategory, FONT_FAMILIES, FONT_WEIGHTS, resolveTextStyle, applyTextStyle, getLucideIcon } from "../canvas-editor/componentTypes";
+import { getComponentType, getAllComponentTypes, getComponentsByCategory, FONT_FAMILIES, FONT_WEIGHTS, resolveTextStyle, applyTextStyle, getLucideIcon, ICON_LIBRARY } from "../canvas-editor/componentTypes";
 import { useEditorTheme, ColorInput } from "./editorTheme.jsx";
 
 function IconRender({ icon, size = 16, style }) {
@@ -44,10 +44,7 @@ const COMPONENT_ICONS = {
 
 const QUICK_COLORS = ["#FCF8FA", "#1A1A2E", "#F4A026", "#2ECC71", "#E74C3C", "#7C3AED", "#0D9488", "#EA580C", "#EC4899", "#000000"];
 
-const TAB_ICONS = [
-  "Home", "Search", "ShoppingBag", "ShoppingCart", "Store", "Tag", "Calendar", "Info", "Phone", "Star",
-  "Heart", "Bell", "User", "Settings", "Package", "ClipboardList", "Trophy", "Megaphone", "BookOpen", "Video",
-];
+const TAB_ICONS = Object.keys(ICON_LIBRARY);
 
 export default function PropertiesPanel({ store, selectedSectionId, selectedComponentId, navSelected, onClose, focusSubKey, onClearProp, onSelectComponent }) {
   const { theme, iconBtn, iconBtnDanger, textInput, labelStyle } = useEditorTheme();

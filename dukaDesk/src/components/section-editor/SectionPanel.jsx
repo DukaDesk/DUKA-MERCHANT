@@ -160,6 +160,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
   const [addQuery, setAddQuery] = useState("");
   const [groupOpen, setGroupOpen] = useState({});
   const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [tabIconPickerIdx, setTabIconPickerIdx] = useState(null);
   const [localReleases, setLocalReleases] = useState([
     { id: "rel_001", version: "1.0.2", timestamp: Date.now() - 1000 * 60 * 60 * 2, status: "published", changes: "Added hero banner and menu grid" },
     { id: "rel_002", version: "1.0.1", timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, status: "published", changes: "Initial publish" },
@@ -425,31 +426,42 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
     </div>
   );
 
-  // ── Tabs: shown under page content in this panel (lucide icons, not special characters)
+  // ── Tabs: shown under page content in this panel (lucide icons from components icon bank)
   const navTabs = store.data.navigation?.tabs || [];
-  const TAB_LUCIDE_OPTIONS = ["Home", "Search", "ShoppingBag", "ShoppingCart", "User", "Settings", "Heart", "Bell", "Store", "Tag", "Calendar", "Info", "Phone", "Star", "Package"];
   const renderTabsUnderContent = () => (
     <div style={{ marginTop: 16, borderTop: `1px solid ${theme.borderLight}`, paddingTop: 12 }}>
-      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 11, color: theme.text, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 11, color: theme.text, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span>Bottom Tabs</span>
         <span style={{ fontSize: 10, color: theme.textMuted, fontWeight: 400 }}>{navTabs.length} tabs</span>
       </div>
-      <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 8, lineHeight: 1.4 }}>Tabs live under page content. Icons are lucide (mobile-definable).</div>
       {navTabs.length === 0 && (
         <div style={{ fontSize: 11, color: theme.textMuted, padding: "8px 0" }}>No tabs yet. Add one below.</div>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {navTabs.map((tab, i) => {
           const Icon = getLucideIcon(tab.icon) || Home;
+          const isPickerOpen = tabIconPickerIdx === i;
           return (
             <div key={tab.id || i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface }}>
               <div style={{ position: "relative" }}>
-                <button onClick={() => {
-                  const next = window.prompt(`Pick icon (${TAB_LUCIDE_OPTIONS.join(", ")}):`, tab.icon || "Home");
-                  if (next && TAB_LUCIDE_OPTIONS.includes(next)) store.updateTab(i, { icon: next });
-                }} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.hover, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: theme.textSecondary }} title="Pick lucide icon">
+                <button onClick={() => setTabIconPickerIdx(isPickerOpen ? null : i)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.hover, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: theme.textSecondary }} title="Pick icon from bank">
                   <Icon size={14} />
                 </button>
+                {isPickerOpen && (
+                  <>
+                    <div style={{ position: "fixed", inset: 0, zIndex: 39 }} onClick={() => setTabIconPickerIdx(null)} />
+                    <div style={{ position: "absolute", zIndex: 40, bottom: "100%", left: 0, marginBottom: 6, background: theme.surface, borderRadius: theme.radius.md, boxShadow: theme.shadowLg, border: `1px solid ${theme.border}`, padding: 8, display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 4, width: 220 }}>
+                      {Object.keys(ICON_LIBRARY).map(name => {
+                        const I = ICON_LIBRARY[name];
+                        return (
+                          <button key={name} onClick={() => { store.updateTab(i, { icon: name }); setTabIconPickerIdx(null); }} style={{ background: tab.icon === name ? theme.hoverAmber : "transparent", border: tab.icon === name ? `1px solid ${theme.active}` : "1px solid transparent", borderRadius: 6, cursor: "pointer", padding: 6, display: "flex", alignItems: "center", justifyContent: "center", color: theme.textSecondary }} title={name}>
+                            <I size={16} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
               <input value={tab.label || ""} onChange={e => store.updateTab(i, { label: e.target.value })} placeholder="Label" style={{ flex: 1, border: `1px solid ${theme.border}`, borderRadius: 6, padding: "5px 7px", fontSize: 12, outline: "none" }} />
               <select value={tab.screenId || ""} onChange={e => store.updateTab(i, { screenId: e.target.value })} style={{ fontSize: 11, padding: "4px 6px", borderRadius: 6, border: `1px solid ${theme.border}`, maxWidth: 110 }}>
