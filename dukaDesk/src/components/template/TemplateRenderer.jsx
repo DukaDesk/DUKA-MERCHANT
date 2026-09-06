@@ -189,8 +189,8 @@ function AppSplash({ manifest }) {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setLeaving(true), 1400);
-    const t2 = setTimeout(() => setDone(true), 1700);
+    const t1 = setTimeout(() => setLeaving(true), 3000);
+    const t2 = setTimeout(() => setDone(true), 3000);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
@@ -389,10 +389,14 @@ function pathScreenTitle(id) {
 }
 
 function TabIcon({ icon, active, color }) {
-  const Icon = TAB_ICONS[icon];
-  if (Icon) {
-    return <Icon size={20} strokeWidth={active ? 2.4 : 1.8} color={color} />;
+  if (typeof icon === "string") {
+    const Icon = TAB_ICONS[icon];
+    if (Icon) {
+      return <Icon size={20} strokeWidth={active ? 2.4 : 1.8} color={color} />;
+    }
+    return <span style={{ fontSize: 18, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon || "•"}</span>;
   }
+  // If icon is a component object, render it as a span to avoid child crashes
   return <span style={{ fontSize: 18, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon || "•"}</span>;
 }
 
