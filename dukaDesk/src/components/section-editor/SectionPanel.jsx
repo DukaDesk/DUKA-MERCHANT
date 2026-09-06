@@ -364,11 +364,10 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
 
   const renderSplashCard = () => (
     <div style={{ marginBottom: 14, border: `1px solid ${theme.border}`, borderRadius: theme.radius.md, overflow: "hidden", background: theme.surface }}>
-      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 10, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", padding: "8px 10px 6px", borderBottom: `1px solid ${theme.borderLight}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span>Splash Screen — shows on every app entry (not a tab)</span>
-        <span style={{ fontSize: 9, background: "#EEF2FF", color: "#3730A3", padding: "2px 6px", borderRadius: 999, fontWeight: 700 }}>ENTRY</span>
+      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 10, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", padding: "8px 10px 6px", borderBottom: `1px solid ${theme.borderLight}` }}>
+        Splash Screen
       </div>
-      <div style={{ height: 140, background: splashBg, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", borderBottom: `1px solid ${theme.borderLight}` }}>
+      <div style={{ height: 140, background: splashBg, display: "flex", alignItems: "center", justifyContent: "center", borderBottom: `1px solid ${theme.borderLight}` }}>
         {splashLogo ? (
           <img src={splashLogo} alt="logo" style={{ width: 64, height: 64, borderRadius: 16, objectFit: "cover", boxShadow: "0 8px 24px rgba(0,0,0,0.25)", background: "#fff" }} />
         ) : (
@@ -376,7 +375,6 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
             {(store.data.meta?.appName || "D").charAt(0).toUpperCase()}
           </div>
         )}
-        <div style={{ position: "absolute", bottom: 6, left: 8, right: 8, textAlign: "center", fontSize: 9, color: "rgba(255,255,255,0.85)", textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}>Logo always centered</div>
       </div>
       <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
         <div>
@@ -422,7 +420,6 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
             reader.readAsDataURL(file);
             e.target.value = "";
           }} />
-          <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4 }}>Logo is always centered on splash. Uses app logo if none set.</div>
         </div>
       </div>
     </div>
