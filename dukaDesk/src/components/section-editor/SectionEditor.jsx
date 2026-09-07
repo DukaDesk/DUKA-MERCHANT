@@ -183,6 +183,14 @@ export default function SectionEditor({ store, onBack }) {
 
   const handlePublish = useCallback(async () => {
     const design = store.getDesignJSON();
+    console.log("%c[Publish Button] Clicked — design snapshot", "color:#059669;font-weight:700", JSON.parse(JSON.stringify(design)));
+    console.log("[Publish Button] Simple view:", {
+      appName: design?.meta?.appName,
+      primaryColor: design?.meta?.primaryColor,
+      splash: design?.splash,
+      screens: Object.keys(design?.screens || {}),
+      tabs: (design?.navigation?.tabs || []).map(t => ({ label: t.label, icon: t.icon, screenId: t.screenId })),
+    });
     // Kickstart generation: ensure design is saved before publish so preview/mobile sees latest
     try {
       await store.saveToServer();

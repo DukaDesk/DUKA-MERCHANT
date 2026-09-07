@@ -58,6 +58,18 @@ export async function publishProject(projectData) {
     status: "published",
   };
 
+  // ── Console: simple form of data being sent to backend ──
+  console.log("%c[Publish] Generating manifest v" + version, "color:#1A1A2E;font-weight:700");
+  console.log("[Publish] Simple summary:", {
+    version,
+    appName: projectData?.meta?.appName,
+    screens: Object.keys(projectData?.screens || {}).length,
+    tabs: (projectData?.navigation?.tabs || []).length,
+    splash: projectData?.splash ? { bg: projectData.splash.backgroundColor, hasImage: !!projectData.splash.backgroundImage, hasLogo: !!projectData.splash.logo } : null,
+  });
+  console.log("[Publish] Full manifest:", JSON.parse(JSON.stringify(manifest)));
+  console.log("[Publish] Full projectData:", JSON.parse(JSON.stringify(projectData)));
+
   try {
     // 1) Persist design to tenant config (PUT /api/v1/merchants/:id/config with { design })
     //    In demo mode this writes to localStorage; with real backend it hits the API.
@@ -76,37 +88,42 @@ export async function publishProject(projectData) {
     const merchantId = merchant?.merchantId || merchant?.tenantId;
     const slug = merchant?.merchantSlug || merchant?.tenantSlug || projectData?.meta?.appName?.toLowerCase().replace(/\s+/g, "-") || "demo";
     if (merchantId) {
+      // Log simple payloads for each backend call
+      const publishPayload = {
+        version,
+        manifest,
+        design: projectData,
+        theme: projectData?.meta?.primaryColor ? { primaryColor: projectData.meta.primaryColor } : undefined,
+        navigation: projectData?.navigation,
+        screens: projectData?.screens,
+      };
+      console.log(`[Publish] → POST /api/v1/merchants/${merchantId}/publishing/publish`, JSON.parse(JSON.stringify(publishPayload)));
+
       // Attempt SDUI publishing pipeline (primary)
       try {
-        await httpClient.post(`/api/v1/merchants/${merchantId}/publishing/publish`, {
-          version,
-          manifest,
-          design: projectData,
-          // Mobile BFF expects { theme, navigation, screens } — we provide full manifest
-          theme: projectData?.meta?.primaryColor ? { primaryColor: projectData.meta.primaryColor } : undefined,
-          navigation: projectData?.navigation,
-          screens: projectData?.screens,
-        });
+        await httpClient.post(`/api/v1/merchants/${merchantId}/publishing/publish`, publishPayload);
       } catch (e) {
         // Non-fatal — backend may be in demo mode or endpoint not yet deployed
         console.warn("[publishProject] publishing/publish failed (demo fallback):", e?.message || e);
       }
 
       // Also ensure tenant config has the deployed manifest for GET /api/v1/merchants/:id/definition
+      const configPayload = {
+        config: {
+          design: projectData,
+          deployed: manifest,
+          app: { templateConfig: manifest },
+        },
+      };
+      console.log(`[Publish] → PUT /api/v1/merchants/${merchantId}/config`, JSON.parse(JSON.stringify(configPayload)));
       try {
-        await httpClient.put(`/api/v1/merchants/${merchantId}/config`, {
-          config: {
-            design: projectData,
-            deployed: manifest,
-            // Also store as app.templateConfig so MiniAppPreview (which reads getMyApp().templateConfig) can render
-            app: { templateConfig: manifest },
-          },
-        });
+        await httpClient.put(`/api/v1/merchants/${merchantId}/config`, configPayload);
       } catch (e) {
         console.warn("[publishProject] config PUT failed (demo fallback):", e?.message || e);
       }
 
       // Also publish tenant (sets status live)
+      console.log(`[Publish] → POST /api/v1/merchants/${merchantId}/publish`);
       try {
         await httpClient.post(`/api/v1/merchants/${merchantId}/publish`);
       } catch (e) {

@@ -975,8 +975,10 @@ export async function updateTenant(id, body) {
 }
 
 export async function getTenantConfig(id) {
+  console.log(`[API] → GET /api/v1/merchants/${id}/config`);
   try {
     const res = await httpClient.get(`/api/v1/merchants/${id}/config`);
+    console.log(`[API] ✓ GET /api/v1/merchants/${id}/config`, res.data || res);
     return res.data || res;
   } catch (e) {
     console.warn("[getTenantConfig] backend unavailable, demo fallback", e?.message);
@@ -986,11 +988,14 @@ export async function getTenantConfig(id) {
 }
 
 export async function updateTenantConfig(id, body) {
+  console.log(`[API] → PUT /api/v1/merchants/${id}/config`, JSON.parse(JSON.stringify(body)));
   try {
     const res = await httpClient.put(`/api/v1/merchants/${id}/config`, body);
+    console.log(`[API] ✓ PUT /api/v1/merchants/${id}/config success`, res.data || res);
     return res.data || res;
   } catch (e) {
     console.warn("[updateTenantConfig] backend unavailable, demo fallback", e?.message);
+    console.log(`[API] (demo fallback) would save config for ${id}:`, JSON.parse(JSON.stringify(body)));
   }
   const store = demoStore();
   store.config = { ...(store.config || {}), ...(body?.config || {}) };
@@ -1037,6 +1042,7 @@ async function writeConfig(tenantId, patch) {
   CONFIG_COLUMNS.forEach(k => {
     if (row[k] !== undefined) body[k] = row[k];
   });
+  console.log(`[API] writeConfig → PUT /api/v1/merchants/${tenantId}/config`, { patchKeys: Object.keys(patch), body: JSON.parse(JSON.stringify(body)) });
   return updateTenantConfig(tenantId, body);
 }
 
