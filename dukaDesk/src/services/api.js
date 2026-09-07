@@ -1011,6 +1011,37 @@ export async function publishTenant(id) {
   return { id, published: true };
 }
 
+/* ───── Tenant config (backend contract) ─────
+   The backend stores runtime config in a Prisma `tenantConfig` table. The generic
+   JSON payload lives in the `config` column (app, design, compliance, releases,
+   integrationConfigs, …). Top-level columns are scalars only (languages, currency,
+   timezone, region, offlinePolicy, searchSettings, notificationPrefs). */
+
+const CONFIG_COLUMNS = ["languages", "currency", "timezone", "region", "offlinePolicy", "searchSettings", "notificationPrefs"];
+
+function configRow(cfg) {
+  if (!cfg) return {};
+  if (cfg.data && typeof cfg.data === "object") return cfg.data;
+  return cfg;
+}
+
+async function readConfig(tenantId) {
+  const cfg = await getTenantConfig(tenantId).catch(() => ({}));
+  const row = configRow(cfg);
+  return { row, data: row.config && typeof row.config === "object" ? row.config : {} };
+}
+
+async function writeConfig(tenantId, patch) {
+  const { row, data } = await readConfig(tenantId);
+  const body = { config: { ...data, ...patch } };
+  CONFIG_COLUMNS.forEach(k => {
+    if (row[k] !== undefined) body[k] = row[k];
+  });
+  return updateTenantConfig(tenantId, body);
+}
+
+/* Create a tenant on first use (fresh signups have no tenant) and persist its id
+   back onto the merchant so every tenant-scoped API call has a valid tenantId. */
 export async function ensureTenant(name) {
   const merchant = getMerchant() || {};
   if (merchant.merchantId || merchant.tenantId) return merchant.merchantId || merchant.tenantId;
