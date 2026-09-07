@@ -50,13 +50,14 @@ export function validateProject(projectData) {
   }
 
   /* ── Shared checks ── */
+  // Mobile apps often have no header/footer chrome — shared sections are optional.
+  // Only validate them when they actually contain components; empty is intentional, not a warning.
   if (shared) {
     const regTypes = getRegisteredTypes();
-
-    if (shared.header) {
+    if (shared.header?.components?.length > 0) {
       validateSection(shared.header, "shared.header", errors, warnings, regTypes);
     }
-    if (shared.footer) {
+    if (shared.footer?.components?.length > 0) {
       validateSection(shared.footer, "shared.footer", errors, warnings, regTypes);
     }
   }
