@@ -65,6 +65,7 @@ export default function SectionEditor({ store, onBack }) {
   const [focusSubKey, setFocusSubKey] = useState(null);
   const [navSelected, setNavSelected] = useState(false);
   const [browseType, setBrowseType] = useState(null);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const data = store.data;
 
@@ -182,6 +183,8 @@ export default function SectionEditor({ store, onBack }) {
   }, [handlePreviewNavigate, handlePreviewBack]);
 
   const handlePublish = useCallback(async () => {
+    if (isPublishing) return;
+    setIsPublishing(true);
     const design = store.getDesignJSON();
     console.log("%c[Publish Button] Clicked — design snapshot", "color:#059669;font-weight:700", JSON.parse(JSON.stringify(design)));
     console.log("[Publish Button] Simple view:", {
@@ -192,13 +195,32 @@ export default function SectionEditor({ store, onBack }) {
       tabs: (design?.navigation?.tabs || []).map(t => ({ label: t.label, icon: t.icon, screenId: t.screenId })),
     });
     // Kickstart generation: ensure design is saved before publish so preview/mobile sees latest
+    // Add small delay to show spinner for UX feedback (generation feels too fast otherwise)
+    const genStart = Date.now();
     try {
       await store.saveToServer();
     } catch { /* best-effort */ }
     toast.info("Generating app manifest…");
-    const result = await publishProject(design);
+    // Ensure spinner shows for at least 800ms for perceived performance
+    const minSpinnerMs = 800;
+    const elapsed = Date.now() - genStart;
+    if (elapsed < minSpinnerMs) await new Promise(r => setTimeout(r, minSpinnerMs - elapsed));
+    let result;
+    try {
+      result = await publishProject(design);
+    } catch (e) {
+      setIsPublishing(false);
+      toast.error("Publish failed: " + (e?.message || "unknown error"));
+      return;
+    }
     if (result.success) {
-      toast.success(`Published v${result.version} — mobile manifest updated!`);
+      // Check if payload was stripped due to 413 — warn user
+      const rawSize = new Blob([JSON.stringify(design)]).size;
+      if (rawSize > 800 * 1024) {
+        toast.warn(`Published v${result.version} — but images were compressed (payload ${(rawSize/1024).toFixed(0)}KB). For best quality, use images <800KB or upload via Media.`);
+      } else {
+        toast.success(`Published v${result.version} — mobile manifest updated!`);
+      }
       // Also persist to backend via direct config write so MiniAppPreview / BFF mobile can fetch immediately
       // (publishProject already does this, but we double-ensure for demo mode)
       try {
@@ -207,10 +229,16 @@ export default function SectionEditor({ store, onBack }) {
       } catch { /* ignore */ }
       setTimeout(() => onBack?.(), 1200);
     } else {
-      setValidationErrors(result.validation);
-      if (result.error) toast.error(result.error);
+      // Only show validation modal if there are actual errors/warnings to display
+      const hasIssues = (result.validation?.errors?.length || 0) > 0 || (result.validation?.warnings?.length || 0) > 0;
+      if (hasIssues) setValidationErrors(result.validation);
+      if (result.error?.includes("413") || result.error?.toLowerCase().includes("too large")) {
+        toast.error("Images too large — please compress images to <800KB or remove large background images, then try again.");
+      } else if (result.error) toast.error(result.error);
+      else if (!hasIssues) toast.error("Publish failed — please try again.");
     }
-  }, [store, onBack]);
+    setIsPublishing(false);
+  }, [store, onBack, isPublishing]);
 
   const handleShowReleases = useCallback(async () => {
     const history = await getReleaseHistory();
@@ -409,7 +437,7 @@ export default function SectionEditor({ store, onBack }) {
   }
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: theme.canvas }}>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: theme.canvas, position: "relative" }}>
       <style>{`
         @keyframes templatePulse {
           0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.5), 0 2px 10px rgba(245,158,11,0.35); }
@@ -531,15 +559,38 @@ export default function SectionEditor({ store, onBack }) {
 
           <button
             onClick={handlePublish}
-            style={primaryBtn}
-            onMouseEnter={e => { e.currentTarget.style.background = "#E89113"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(244,160,38,0.35)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = theme.active; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.12)"; }}
+            disabled={isPublishing}
+            style={{
+              ...primaryBtn,
+              opacity: isPublishing ? 0.7 : 1,
+              cursor: isPublishing ? "wait" : "pointer",
+              display: "inline-flex", alignItems: "center", gap: 6,
+            }}
+            onMouseEnter={e => { if (!isPublishing) { e.currentTarget.style.background = "#E89113"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(244,160,38,0.35)"; } }}
+            onMouseLeave={e => { if (!isPublishing) { e.currentTarget.style.background = theme.active; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.12)"; } }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-            Publish
+            {isPublishing ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 0.8s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                Publishing…
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                Publish
+              </>
+            )}
           </button>
         </div>
       </div>
+
+      {isPublishing && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 100, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(2px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 0.8s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: "#1A1A2E" }}>Generating app manifest…</div>
+          <div style={{ fontSize: 12, color: "#6B7280" }}>This may take a moment</div>
+        </div>
+      )}
 
       {/* Main area */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>

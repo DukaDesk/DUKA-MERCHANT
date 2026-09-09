@@ -88,26 +88,73 @@ export async function publishProject(projectData) {
     const merchantId = merchant?.merchantId || merchant?.tenantId;
     const slug = merchant?.merchantSlug || merchant?.tenantSlug || projectData?.meta?.appName?.toLowerCase().replace(/\s+/g, "-") || "demo";
     if (merchantId) {
-      // Log simple payloads for each backend call
-      const publishPayload = {
-        version,
-        manifest,
-        design: projectData,
-        theme: projectData?.meta?.primaryColor ? { primaryColor: projectData.meta.primaryColor } : undefined,
-        navigation: projectData?.navigation,
-        screens: projectData?.screens,
-      };
-      console.log(`[Publish] → POST /api/v1/merchants/${merchantId}/publishing/publish`, JSON.parse(JSON.stringify(publishPayload)));
+      // Build minimal payload to avoid 413 (deduplicate: manifest already contains design/navigation/screens)
+      // Estimate size before send
+      const estimateSize = (obj) => new Blob([JSON.stringify(obj)]).size;
+      const publishPayload = { version, manifest };
+      const rawSize = estimateSize(publishPayload);
+      console.log(`[Publish] → POST /api/v1/merchants/${merchantId}/publishing/publish — payload ${(rawSize/1024).toFixed(1)} KB`, JSON.parse(JSON.stringify(publishPayload)));
 
-      // Attempt SDUI publishing pipeline (primary)
+      // If payload is huge (> 800KB) due to base64 images, compress by stripping data URLs to URLs or placeholders
+      // For now, we send the minimal manifest only; backend can fetch images via media URLs if needed
+      let payloadToSend = publishPayload;
+      if (rawSize > 800 * 1024) {
+        console.warn(`[Publish] Payload large (${(rawSize/1024).toFixed(1)} KB) — stripping inline images to avoid 413`);
+        const stripDataUrls = (obj) => {
+          const clone = JSON.parse(JSON.stringify(obj));
+          const walk = (o) => {
+            if (!o || typeof o !== 'object') return;
+            for (const k of Object.keys(o)) {
+              const v = o[k];
+              if (typeof v === 'string' && v.startsWith('data:image/') && v.length > 5000) {
+                // Replace large data URL with placeholder; in production, upload via /media/upload first
+                o[k] = `[stripped data URL ${ (v.length/1024).toFixed(1)} KB — use media upload]`;
+              } else if (typeof v === 'object') walk(v);
+            }
+          };
+          walk(clone);
+          return clone;
+        };
+        payloadToSend = stripDataUrls(publishPayload);
+        console.log(`[Publish] Stripped payload ${(estimateSize(payloadToSend)/1024).toFixed(1)} KB`, JSON.parse(JSON.stringify(payloadToSend)));
+      }
+
+      // Attempt SDUI publishing pipeline (primary) — with 413 handling
       try {
-        await httpClient.post(`/api/v1/merchants/${merchantId}/publishing/publish`, publishPayload);
+        await httpClient.post(`/api/v1/merchants/${merchantId}/publishing/publish`, payloadToSend);
       } catch (e) {
-        // Non-fatal — backend may be in demo mode or endpoint not yet deployed
+        const status = e?.response?.status || e?.status;
+        if (status === 413) {
+          console.warn("[Publish] 413 Request Entity Too Large — payload too big, check images. Raw size:", (new Blob([JSON.stringify(publishPayload)]).size/1024).toFixed(1) + " KB");
+          // Try again with aggressively stripped payload (remove all data URLs)
+          try {
+            const stripAll = (obj) => {
+              const clone = JSON.parse(JSON.stringify(obj));
+              const walk = (o) => {
+                if (!o || typeof o !== 'object') return;
+                for (const k of Object.keys(o)) {
+                  const v = o[k];
+                  if (typeof v === 'string' && v.startsWith('data:image/')) o[k] = "";
+                  else if (typeof v === 'object') walk(v);
+                }
+              };
+              walk(clone);
+              return clone;
+            };
+            const minimal = stripAll(publishPayload);
+            console.log("[Publish] Retrying with stripped images", JSON.parse(JSON.stringify(minimal)));
+            await httpClient.post(`/api/v1/merchants/${merchantId}/publishing/publish`, minimal);
+            console.log("[Publish] Retry succeeded with stripped payload");
+          } catch (retryErr) {
+            console.warn("[Publish] Retry also failed:", retryErr?.message || retryErr);
+          }
+        }
         console.warn("[publishProject] publishing/publish failed (demo fallback):", e?.message || e);
       }
 
       // Also ensure tenant config has the deployed manifest for GET /api/v1/merchants/:id/definition
+      // For config, we still need design + deployed, but they are intentionally duplicated for BFF;
+      // log size and warn if huge
       const configPayload = {
         config: {
           design: projectData,
@@ -115,7 +162,11 @@ export async function publishProject(projectData) {
           app: { templateConfig: manifest },
         },
       };
-      console.log(`[Publish] → PUT /api/v1/merchants/${merchantId}/config`, JSON.parse(JSON.stringify(configPayload)));
+      const cfgSize = new Blob([JSON.stringify(configPayload)]).size;
+      console.log(`[Publish] → PUT /api/v1/merchants/${merchantId}/config — payload ${(cfgSize/1024).toFixed(1)} KB`, JSON.parse(JSON.stringify(configPayload)));
+      if (cfgSize > 900 * 1024) {
+        console.warn(`[Publish] Config payload very large (${(cfgSize/1024).toFixed(1)} KB) — backend may reject with 413. Consider compressing images.`);
+      }
       try {
         await httpClient.put(`/api/v1/merchants/${merchantId}/config`, configPayload);
       } catch (e) {

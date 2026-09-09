@@ -3,6 +3,14 @@ import axios from "axios";
 import httpClient from "./httpClient";
 import { WIZARD_INTEGRATIONS } from "../config/wizard";
 
+/* ───── Tenant config helpers (hoisted for early use) ───── */
+const CONFIG_COLUMNS = ["languages", "currency", "timezone", "region", "offlinePolicy", "searchSettings", "notificationPrefs"];
+function configRow(cfg) {
+  if (!cfg) return {};
+  if (cfg.data && typeof cfg.data === "object") return cfg.data;
+  return cfg;
+}
+
 function unwrapList(value) {
   if (Array.isArray(value)) return value;
   if (value && typeof value === "object") {
@@ -1014,20 +1022,6 @@ export async function publishTenant(id) {
   if (store.config?.app) store.config.app.status = "live";
   demoSave(store);
   return { id, published: true };
-}
-
-/* ───── Tenant config (backend contract) ─────
-   The backend stores runtime config in a Prisma `tenantConfig` table. The generic
-   JSON payload lives in the `config` column (app, design, compliance, releases,
-   integrationConfigs, …). Top-level columns are scalars only (languages, currency,
-   timezone, region, offlinePolicy, searchSettings, notificationPrefs). */
-
-const CONFIG_COLUMNS = ["languages", "currency", "timezone", "region", "offlinePolicy", "searchSettings", "notificationPrefs"];
-
-function configRow(cfg) {
-  if (!cfg) return {};
-  if (cfg.data && typeof cfg.data === "object") return cfg.data;
-  return cfg;
 }
 
 async function readConfig(tenantId) {

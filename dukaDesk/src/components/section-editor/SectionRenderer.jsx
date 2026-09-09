@@ -688,15 +688,59 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
                 : (data.navigation?.style?.inactive || "#9CA3AF");
               const Icon = getLucideIcon(tab.icon);
               return (
-                <div key={tab.id} style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                  padding: "2px 14px", color,
-                }}>
+                <div key={tab.id} style={{display: "flex", alignItems: "center", gap: 4, padding: "2px 14px", borderRadius: theme.radius.md, background: isActive ? theme.hoverAmber : "transparent", cursor: isActive ? "default" : "pointer"}}>
                   <span style={{ lineHeight: 1, opacity: isActive ? 1 : 0.65, display: "flex" }}>{Icon ? <Icon size={19} color={color} /> : null}</span>
                   <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 500, color, fontFamily: "'Inter',sans-serif" }}>{tab.label || "Tab"}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); store.removeTabFromNavigation(tab.id); }}
+                    style={{
+                      marginLeft: 8, padding: "2px 6px", borderRadius: theme.radius.sm, background: "none", border: "1px solid " + (isActive ? theme.active : theme.border), color: isActive ? theme.text : theme.textSecondary, cursor: "pointer", fontSize: 10, fontWeight: 600
+                    }}
+                    title="Delete tab">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
                 </div>
               );
             })}
+            <button
+              onClick={() => setShowPages(!showPages)}
+              style={{
+                marginLeft: 8, padding: "4px 8px", borderRadius: theme.radius.md, background: "none", border: "1px solid " + theme.border, color: theme.textSecondary, cursor: "pointer", fontSize: 10, fontWeight: 500
+              }}
+              title="Show page boxes">
+              <svg width="14" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y="9" x2="21" y2="9"/><line x1="9" y="3" x2="9" y2="21"/></svg>
+              Pages
+            </button>
+          </div>
+        )}
+        {showPages && (
+          <div style={{
+            position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 50,
+            background: theme.surface, borderTop: "1px solid " + theme.border,
+            padding: "8px 12px", fontFamily: "'Inter',sans-serif", overflowX: "auto", maxHeight: 200
+          }}>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 11, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Pages
+            </div>
+            {screenIds.map(sid => {
+              const s = data.screens[sid];
+              const active = sid === store.currentScreenId;
+              return (
+                <div
+                  key={sid}
+                  style={{display: "flex", alignItems: "center", gap: 6, padding: "4px 0", borderBottom: "1px solid " + (active ? theme.active : theme.cursor), cursor: "pointer"}}
+                  onClick={() => { store.setCurrentScreenId(sid); setShowPages(false); }}
+                >
+                  <span style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {(() => { const Icon = s.icon ? getLucideIcon(s.icon) : null; return Icon ? <Icon size={12} color={active ? theme.active : theme.textSecondary} /> : <span>•</span>; })()}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name || sid}</span>
+                </div>
+              );
+            })}
+            {screenIds.length === 0 && (
+              <div style={{ padding: "8px", color: theme.textMuted }}>No pages yet</div>
+            )}
           </div>
         )}
 

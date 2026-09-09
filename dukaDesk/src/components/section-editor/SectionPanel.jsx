@@ -6,6 +6,38 @@ import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
 import { toast } from "react-toastify";
 
+// Compress image to data URL to avoid 413 (max 1024px, 0.7 quality)
+async function fileToCompressedDataUrl(file, maxWidth = 1024, quality = 0.7) {
+  if (!file.type.startsWith("image/")) {
+    return await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+  // If small (<300KB) skip compression
+  if (file.size < 300 * 1024) {
+    return await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxWidth / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
 const SECTION_ICONS = {
   header: PanelTop,
   hero: Sparkles,
@@ -392,12 +424,13 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
               </button>
             )}
           </div>
-          <input id="splash-bg-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
+          <input id="splash-bg-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => store.setSplash({ backgroundImage: ev.target.result, backgroundColor: splash.backgroundColor });
-            reader.readAsDataURL(file);
+            if (file.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5MB)"); e.target.value = ""; return; }
+            const dataUrl = await fileToCompressedDataUrl(file, 1280, 0.7);
+            console.log(`[Splash] bg image ${(file.size/1024).toFixed(1)}KB → ${(dataUrl.length/1024).toFixed(1)}KB`);
+            store.setSplash({ backgroundImage: dataUrl, backgroundColor: splash.backgroundColor });
             e.target.value = "";
           }} />
         </div>
@@ -413,12 +446,13 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
               </button>
             )}
           </div>
-          <input id="splash-logo-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
+          <input id="splash-logo-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => store.setSplash({ logo: ev.target.result });
-            reader.readAsDataURL(file);
+            if (file.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5MB)"); e.target.value = ""; return; }
+            const dataUrl = await fileToCompressedDataUrl(file, 512, 0.8);
+            console.log(`[Splash] logo ${(file.size/1024).toFixed(1)}KB → ${(dataUrl.length/1024).toFixed(1)}KB`);
+            store.setSplash({ logo: dataUrl });
             e.target.value = "";
           }} />
         </div>
