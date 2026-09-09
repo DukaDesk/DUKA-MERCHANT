@@ -28,6 +28,8 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
   const [editValue, setEditValue] = useState("");
   const [showBgPicker, setShowBgPicker] = useState(null);
   const [addPicker, setAddPicker] = useState(null);
+  const [showPages, setShowPages] = useState(false);
+  const screenIds = Object.keys(data.screens || {});
   const editRef = useRef(null);
 
   if (!screen) return null;
