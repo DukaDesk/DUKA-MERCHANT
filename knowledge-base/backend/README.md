@@ -28,7 +28,6 @@ scripts/lint
 - [Agent Context](AGENT_CONTEXT.md)
 - [Architecture Alignment](ARCHITECTURE_ALIGNMENT.md)
 - [API Endpoints Reference](api-endpoints-reference.md)
-- [Builder Media and Data API TODO](BUILDER_MEDIA_API_BACKEND_TODO.md)
 - [Business Verification (KYC) Backend TODO](BUSINESS_VERIFICATION_BACKEND_TODO.md)
 - [One-Time Tenant Onboarding Backend TODO](ONBOARDING_ONETIME_BACKEND_TODO.md)
 - [Contributing](CONTRIBUTING.md)
