@@ -12,6 +12,8 @@ This file tracks the current state of the backend implementation repository.
 | API endpoint implementation (390 endpoints) | KB v0.1.0 | In Progress | Engineering |
 | Phase 3 gap-filling (Theme, Commerce, Booking, Notifications, Payments) | KB v0.1.0 | Complete | Engineering |
 | Builder Media and generated-data contract | KB-080, KB-042, Builder Media API TODO | Blocked | Backend / Builder |
+| Backend-managed template manifests | Builder Media API TODO, KB-042 | Planned | Backend / Builder |
+| Builder draft versus published lifecycle | KB-042, Builder Media API TODO | Planned | Backend / Builder |
 
 ## Completed Milestones
 
@@ -79,6 +81,8 @@ This file tracks the current state of the backend implementation repository.
 - Monitoring and alerting setup
 - Document Media upload field, response schemas, limits, CDN URL behavior, and merchant isolation; see [Builder Media and Data API TODO](BUILDER_MEDIA_API_BACKEND_TODO.md)
 - Document generated-data binding and preview seed-data contracts for Builder screens
+- Implement persisted, validated template manifests and catalog retrieval for the Merchant Builder; see [Builder Media and Data API TODO](BUILDER_MEDIA_API_BACKEND_TODO.md)
+- Add private Builder draft persistence that cannot affect mobile until an explicit publish succeeds
 
 \* Media/DAM endpoints exist, but the Builder integration contract and OpenAPI schemas remain open.
 
