@@ -256,7 +256,8 @@ function isUUID(value) {
 export async function uploadMediaAsset(file, metadata = {}) {
   if (isDemoId(metadata?.merchantId || getMerchant()?.merchantId || getMerchant()?.tenantId)) {
     console.log("[API] (demo) uploadMediaAsset skipped for demo tenant");
-    return { id: "demo_asset_" + Date.now(), url: null, name: file?.name || "builder-asset", status: "pending" };
+    const demoUrl = `https://cdn.dukadesk.com/builder/assets/demo_asset_${Date.now()}.jpg`;
+    return { id: "demo_asset_" + Date.now(), url: demoUrl, name: file?.name || "builder-asset", status: "pending" };
   }
   const form = new FormData();
   form.append("file", file, file?.name || "builder-asset");
