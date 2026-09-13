@@ -471,9 +471,19 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
           <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>App Slug</div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${theme.border}`, borderRadius: theme.radius.sm, padding: "0 8px", background: theme.surface }}>
             <span style={{ fontSize: 11, color: theme.textMuted, whiteSpace: "nowrap" }}>dukadesk.app/</span>
-            <input value={store.data.meta?.slug || ""} onChange={() => {}} onBlur={() => {}} placeholder={store.data.meta?.appName ? slugifyAppName(store.data.meta.appName) : "my-app"} readOnly style={{ flex: 1, border: "none", outline: "none", fontSize: 12, padding: "7px 0", background: "transparent", color: theme.text }} />
+            <input
+              value={store.data.meta?.slug || ""}
+              onChange={e => {
+                const businessName = store.data.meta?.businessName || store.data.meta?.appName || "";
+                const val = slugifyAppName(e.target.value || businessName);
+                store.setMeta({ slug: val });
+              }}
+              onBlur={() => {}}
+              placeholder={store.data.meta?.businessName ? slugifyAppName(store.data.meta.businessName) : (store.data.meta?.appName ? slugifyAppName(store.data.meta.appName) : "my-app")}
+              style={{ flex: 1, border: "none", outline: "none", fontSize: 12, padding: "7px 0", background: "transparent", color: theme.text }}
+            />
           </div>
-          <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4, lineHeight: 1.4 }}>Derived from App Name. Edit the App Name to change the slug.</div>
+          <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4, lineHeight: 1.4 }}>Derived from Business Name. Edit to change the slug.</div>
         </div>
       </div>
     </div>
