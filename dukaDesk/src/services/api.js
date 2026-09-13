@@ -735,6 +735,10 @@ export async function updateOrderStatus(id, status) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getConversations() {
+  if (isDemoId(getMerchant()?.tenantId)) {
+    console.log("[API] (demo) getConversations skipped for demo tenant");
+    return [];
+  }
   const res = await httpClient.get("/api/v1/notifications");
   const list = res.data || res;
   if (Array.isArray(list)) {
@@ -750,16 +754,27 @@ export async function getConversations() {
 }
 
 export async function getMessages(conversationId) {
+  if (isDemoId(getMerchant()?.tenantId)) {
+    console.log("[API] (demo) getMessages skipped for demo tenant");
+    return [];
+  }
   const res = await httpClient.get(`/api/v1/notifications/${conversationId}/messages`);
   return res.data || res;
 }
 
 export async function sendMessage(conversationId, text) {
+  if (isDemoId(getMerchant()?.tenantId)) {
+    console.log("[API] (demo) sendMessage skipped for demo tenant");
+    return { id: "demo_msg_" + Date.now(), text, conversationId };
+  }
   const res = await httpClient.post(`/api/v1/notifications/${conversationId}/messages`, { text });
   return res.data || res;
 }
 
 export async function getUnreadCount() {
+  if (isDemoId(getMerchant()?.tenantId)) {
+    return { count: 0 };
+  }
   try {
     const res = await httpClient.get("/api/v1/notifications/unread-count");
     return res.data || res;
@@ -769,6 +784,9 @@ export async function getUnreadCount() {
 }
 
 export async function getNotifications() {
+  if (isDemoId(getMerchant()?.tenantId)) {
+    return [];
+  }
   try {
     const res = await httpClient.get("/api/v1/notifications");
     const list = res.data || res;
@@ -780,6 +798,9 @@ export async function getNotifications() {
 }
 
 export async function markNotificationRead(id) {
+  if (isDemoId(getMerchant()?.tenantId)) {
+    return { message: "Marked as read" };
+  }
   try {
     const res = await httpClient.post(`/api/v1/notifications/${id}/read`);
     return res.data || res;
@@ -789,6 +810,9 @@ export async function markNotificationRead(id) {
 }
 
 export async function dismissNotification(id) {
+  if (isDemoId(getMerchant()?.tenantId)) {
+    return { message: "Dismissed" };
+  }
   try {
     const res = await httpClient.delete(`/api/v1/notifications/${id}`);
     return res.data || res;
@@ -1025,6 +1049,16 @@ export async function suspendTenant(id) {
 }
 
 export async function updateTenant(id, body) {
+  if (isDemoId(id)) {
+    console.log("[API] (demo) updateTenant skipped for demo tenant", { bodyKeys: Object.keys(body) });
+    const store = demoStore();
+    store.tenant = { ...store.tenant, ...body };
+    store.merchant = store.tenant;
+    demoSave(store);
+    const m = getMerchant();
+    if (m) setMerchant({ ...m, business: body?.name || m.business });
+    return { ...store.tenant };
+  }
   try {
     const res = await httpClient.put(`/api/v1/merchants/${id}`, body);
     const data = res.data || res;
@@ -1298,10 +1332,13 @@ export async function saveDeployment(deployed) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getAuthMe() {
+  const m = getMerchant();
+  if (isDemoId(m?.tenantId)) {
+    return { ...m, role: m?.role || "tenant_owner" };
+  }
   try {
     const res = await httpClient.get("/api/v1/auth/me");
     const profile = res.data || res;
-    const m = getMerchant();
     if (m) {
       const merged = { ...m, ...profile, name: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || m.name };
       setMerchant(merged);
@@ -1313,17 +1350,21 @@ export async function getAuthMe() {
 }
 
 export async function getMerchantProfile() {
+  const m = getMerchant();
+  if (isDemoId(m?.tenantId)) {
+    const safe = { ...m };
+    delete safe.password;
+    return safe;
+  }
   try {
     const res = await httpClient.get("/api/v1/profile");
     const profile = res.data || res;
-    const m = getMerchant();
     if (m) {
       const merged = { ...m, ...profile, name: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || m.name };
       setMerchant(merged);
     }
     return profile;
   } catch {
-    const m = getMerchant();
     if (!m) throw new Error("Not authenticated");
     const safe = { ...m };
     delete safe.password;
@@ -1332,10 +1373,20 @@ export async function getMerchantProfile() {
 }
 
 export async function updateMerchantProfile(body) {
+  const m = getMerchant();
+  if (isDemoId(m?.tenantId)) {
+    const updated = { ...m, ...body };
+    setMerchant(updated);
+    if (body.business && m.tenantId) {
+      updateTenant(m.tenantId, { name: body.business }).catch(() => {});
+    }
+    const safe = { ...updated };
+    delete safe.password;
+    return safe;
+  }
   try {
     const res = await httpClient.put("/api/v1/profile", body);
     const profile = res.data || res;
-    const m = getMerchant();
     if (m) {
       const updated = { ...m, ...profile, name: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || body.name || m.name };
       setMerchant(updated);
@@ -1345,7 +1396,6 @@ export async function updateMerchantProfile(body) {
     }
     return profile;
   } catch {
-    const m = getMerchant();
     if (!m) throw new Error("Not authenticated");
     const updated = { ...m, ...body };
     setMerchant(updated);
