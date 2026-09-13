@@ -11,7 +11,7 @@ import { loadAllTemplateScreens } from "../../services/TemplateLoader";
 import { generateShopTemplate } from "../../services/TemplateGenerator";
 import { resolveTemplateId } from "../../services/staticTemplates";
 import { SetupWizard } from "./SetupWizard";
-import { InteractivePreview } from "../template/TemplateRenderer";
+import { TemplatePreview } from "../template/TemplateRenderer";
 import { Share2, Download, QrCode, ExternalLink, Edit2 } from "lucide-react";
 
 const CATEGORY_TO_TEMPLATE = {
@@ -54,17 +54,20 @@ export default function Wizard() {
     const templateId = resolveTemplateId(category, template);
     try {
       const { manifest, screens } = await loadAllTemplateScreens(templateId);
-      setPreviewData({ manifest, screens });
-      setPreviewScreenId(manifest?.navigation?.initialScreen || "menu");
+       return { manifest, screens };
     } catch {
-      const generated = generateShopTemplate({
-        category, template,
+       const generatedCategory = category || String(template).split("/")[0].replace(/-/g, " ").replace(/\b\w/g, letter => letter.toUpperCase());
+       const generatedTemplate = String(template).split("/").pop().replace(/-/g, " ").replace(/\b\w/g, letter => letter.toUpperCase());
+       const generated = generateShopTemplate({
+         category: generatedCategory, template: generatedTemplate,
         appName: "", tagline: "", color: AMBER, logo: null,
         businessName: "", bizDesc: "", phone: "", address: "",
         hours: defaultHours(), selectedIntegrations: [],
       });
-      setPreviewData({ manifest: generated, screens: {} });
-      setPreviewScreenId(generated.navigation?.initialScreen || "menu");
+       return {
+         manifest: generated,
+         screens: Object.fromEntries((generated.screens || []).map(screen => [screen.screenId, screen])),
+       };
     }
   }, []);
 
@@ -103,17 +106,14 @@ export default function Wizard() {
     }
   }, []);
 
-  const renderPreview = useCallback((props) => (
-    <InteractivePreview
-      manifest={previewData.manifest}
-      screens={previewData.screens}
-      currentScreenId={previewScreenId}
-      setCurrentScreenId={setPreviewScreenId}
-      onAction={handlePreviewAction}
-      openCustomize={openCustomize}
-      branding={props.branding}
-      isMobile={false}
-    />
+  const renderPreview = useCallback(() => (
+    <TemplatePreview
+       templateId={previewData.manifest?.templateId}
+       initialScreenId={previewScreenId}
+       manifest={previewData.manifest}
+       screens={previewData.screens}
+       onScreenChange={setPreviewScreenId}
+     />
   ), [previewData, previewScreenId, handlePreviewAction, openCustomize]);
 
   if (published) return <Published data={initialData} isMobile={isMobile} navigate={navigate} />;

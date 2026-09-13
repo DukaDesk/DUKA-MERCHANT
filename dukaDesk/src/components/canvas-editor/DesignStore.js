@@ -46,6 +46,7 @@ function findSectionById(data, sectionId) {
 function migrateScreens(data) {
   Object.values(data.screens || {}).forEach(s => ensureChrome(s));
   ensureSplash(data);
+  ensureMetaSlug(data);
   // Remove splash screen from tabs if it somehow got added (splash is never on tabs)
   if (data.splash && Array.isArray(data.navigation?.tabs)) {
     const splashIds = Object.keys(data.screens).filter(id => {
@@ -71,9 +72,19 @@ function ensureChrome(screen) {
   return screen;
 }
 
+function slugify(str) {
+  return String(str || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 export function getDefaultData() {
   return {
-    meta: { category: "", appName: "", primaryColor: "#1A1A2E", logo: null },
+    meta: { category: "", appName: "", slug: "", primaryColor: "#1A1A2E", logo: null },
     splash: {
       backgroundColor: "#1A1A2E",
       backgroundImage: "",
@@ -96,6 +107,16 @@ function ensureSplash(data) {
     data.splash = { backgroundColor: "#1A1A2E", backgroundImage: "", logo: null };
   }
   return data.splash;
+}
+
+function ensureMetaSlug(data) {
+  if (!data.meta) data.meta = { category: "", appName: "", slug: "", primaryColor: "#1A1A2E", logo: null };
+  if (!data.meta.slug || data.meta.slug === "") {
+    data.meta.slug = slugify(data.meta.appName || "");
+  } else if (data.meta.appName && slugify(data.meta.appName) !== data.meta.slug) {
+    data.meta.slug = slugify(data.meta.appName);
+  }
+  return data.meta;
 }
 
 function loadLocalFallback() {
@@ -151,6 +172,14 @@ export function useDesignStore(initialData, options = {}) {
       }
     }).catch(() => {}).finally(() => setHydrated(true));
   }, []);
+
+  useEffect(() => {
+    const ids = Object.keys(data.screens || {});
+    if (!ids.length || ids.includes(currentScreenId)) return;
+    const configured = data.navigation?.initialScreen;
+    const firstTab = (data.navigation?.tabs || []).find(tab => tab.screenId && data.screens[tab.screenId]);
+    setCurrentScreenId(configured && data.screens[configured] ? configured : firstTab?.screenId || ids[0]);
+  }, [data, currentScreenId]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -647,6 +676,11 @@ export function useDesignStore(initialData, options = {}) {
       const comp = findComponentDeep(sec.components, compId);
       if (!comp) return;
       const def = getComponentType(comp.type);
+      // Optional sub-elements such as a hero badge must remain empty after removal.
+      if (def?.subElements?.some(item => item.key === key)) {
+        comp.props[key] = "";
+        return;
+      }
       const defVal = def?.defaultProps?.[key];
       comp.props[key] = typeof defVal === "undefined" ? "" : (defVal === null ? "" : defVal);
     });
@@ -748,7 +782,17 @@ export function useDesignStore(initialData, options = {}) {
 
   /* ── Meta & Splash ── */
   const setMeta = useCallback((patch) => {
-    updateData(d => { Object.assign(d.meta, patch); });
+    updateData(d => {
+      if (patch.slug !== undefined) patch.slug = slugify(patch.slug);
+      if (patch.appName !== undefined) {
+        const auto = slugify(patch.appName);
+        if (auto) d.meta.slug = auto;
+      } else if (patch.slug !== undefined && !patch.appName) {
+        const auto = slugify(d.meta.appName || "");
+        if (auto) d.meta.slug = auto;
+      }
+      Object.assign(d.meta, patch);
+    });
   }, [updateData]);
 
   const setSplash = useCallback((patch) => {
@@ -804,7 +848,10 @@ export function useDesignStore(initialData, options = {}) {
     });
     enriched.savedSections = Array.isArray(enriched.savedSections) ? enriched.savedSections : [];
     setData(enriched);
-    setCurrentScreenId(templateData.navigation?.initialScreen || Object.keys(templateData.screens)[0]);
+    const screenIds = Object.keys(enriched.screens || {});
+    const configuredScreen = enriched.navigation?.initialScreen;
+    const firstTab = (enriched.navigation?.tabs || []).find(tab => tab.screenId && enriched.screens[tab.screenId]);
+    setCurrentScreenId(configuredScreen && enriched.screens[configuredScreen] ? configuredScreen : firstTab?.screenId || screenIds[0]);
     setSelectedSectionId(null);
     setSelectedComponentId(null);
     setSelectedIds([]);

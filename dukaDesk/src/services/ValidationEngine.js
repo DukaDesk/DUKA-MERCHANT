@@ -21,6 +21,12 @@ export function validateProject(projectData) {
     if (meta.appName && meta.appName.length > 50) {
       warnings.push({ path: "meta.appName", message: "App name is too long (max 50 characters)", severity: "warning" });
     }
+    if (meta.slug && !/^[a-z0-9-]+$/.test(meta.slug)) {
+      errors.push({ path: "meta.slug", message: "Slug must contain only lowercase letters, numbers and hyphens", severity: "error", fix: "Use e.g. my-app" });
+    }
+    if (meta.slug && meta.slug.length > 50) {
+      warnings.push({ path: "meta.slug", message: "Slug is too long (max 50 characters)", severity: "warning" });
+    }
     if (!meta.primaryColor) {
       warnings.push({ path: "meta.primaryColor", message: "No brand color set — default will be used", severity: "warning" });
     }

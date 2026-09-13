@@ -5,6 +5,9 @@ vi.mock("./api", () => ({
   getCurrentDeployment: vi.fn(),
   saveReleases: vi.fn(),
   saveDeployment: vi.fn(),
+  uploadMediaAsset: vi.fn(),
+  getSetupData: vi.fn(() => null),
+  getMerchant: vi.fn(() => null),
 }));
 
 vi.mock("./ValidationEngine", () => ({

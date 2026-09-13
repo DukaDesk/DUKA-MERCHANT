@@ -1,4 +1,5 @@
 import { loadAllTemplateScreens } from "./TemplateLoader";
+import httpClient from "./httpClient";
 import { getComponentType } from "../components/canvas-editor/componentTypes";
 
 const catalogCache = new Map();
@@ -56,7 +57,47 @@ async function fetchJSON(url) {
   return res.json();
 }
 
+function isValidCatalogTemplate(tpl) {
+  if (!tpl || typeof tpl !== "object") return false;
+  if (!tpl.id && !tpl.templateId) return false;
+  return true;
+}
+
+async function fetchBackendCatalog() {
+  try {
+    const res = await httpClient.get("/api/v1/templates", { params: { limit: 100 } });
+    const body = res?.data ?? res;
+    const list = Array.isArray(body) ? body : body?.data ?? body?.items ?? body?.templates ?? [];
+    if (!Array.isArray(list) || list.length === 0) return null;
+    const byCategory = new Map();
+    for (const tpl of list) {
+      if (!isValidCatalogTemplate(tpl)) continue;
+      const cat = tpl.category || "General";
+      if (!byCategory.has(cat)) byCategory.set(cat, { name: cat, desc: "", icon: null, templates: [] });
+      byCategory.get(cat).templates.push({
+        id: tpl.id || tpl.templateId,
+        name: tpl.name || tpl.id || tpl.templateId,
+        category: cat,
+        tags: tpl.tags || [],
+        features: tpl.features || [],
+        preview: tpl.preview || null,
+        primaryColor: tpl.theme?.primaryColor || tpl.primaryColor || "#1B4332",
+        secondaryColor: tpl.theme?.secondaryColor || tpl.secondaryColor || "#F4A026",
+      });
+    }
+    const catalog = [...byCategory.values()].filter(c => c.templates.length > 0);
+    return catalog.length ? catalog : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getTemplateCatalog() {
+  const backendCatalog = await fetchBackendCatalog();
+  if (backendCatalog) {
+    catalogCache.set("root", backendCatalog);
+    return backendCatalog;
+  }
   const root = await fetchJSON("/templates/manifest.json");
   const categories = Array.isArray(root.categories) ? root.categories : [];
 
@@ -68,7 +109,7 @@ export async function getTemplateCatalog() {
         ids.map(async (id) => {
           try {
             const manifest = await fetchJSON(`/templates/${folder}/${id}/manifest.json`);
-            return {
+            const tpl = {
               id: `${folder}/${id}`,
               name: manifest.name || id,
               category: manifest.category || cat.name,
@@ -78,6 +119,9 @@ export async function getTemplateCatalog() {
               primaryColor: manifest.theme?.primaryColor || "#1B4332",
               secondaryColor: manifest.theme?.secondaryColor || "#F4A026",
             };
+            const screens = manifest.screens || [];
+            if (!Array.isArray(screens) || screens.length === 0) return null;
+            return tpl;
           } catch {
             return null;
           }
@@ -92,7 +136,7 @@ export async function getTemplateCatalog() {
     })
   );
 
-  const catalog = entries.filter(cat => cat.templates.length > 0);
+   const catalog = entries.filter(cat => cat.templates.length > 0);
   catalogCache.set("root", catalog);
   return catalog;
 }
@@ -206,7 +250,42 @@ export function convertManifestToDesign(manifest, screens) {
   };
 }
 
+function isValidTemplateManifest(manifest, screens) {
+  if (!manifest || typeof manifest !== "object") return false;
+  const screenMap = screens || manifest.screens;
+  const hasScreens = Array.isArray(manifest.screens)
+    ? manifest.screens.length > 0
+    : screenMap && typeof screenMap === "object" && Object.keys(screenMap).length > 0;
+  if (!hasScreens) return false;
+  return true;
+}
+
 export async function loadTemplateForCanvas(templateId) {
+  try {
+    const res = await httpClient.get(`/api/v1/templates/${encodeURIComponent(templateId)}`);
+    const body = res?.data ?? res;
+    const manifest = body?.data ?? body;
+    const screens = manifest.screens || body?.screens || {};
+    if (isValidTemplateManifest(manifest, screens)) {
+      const screenMap = Array.isArray(screens)
+        ? Object.fromEntries(screens.map(s => [s.id || s.screenId, s]))
+        : screens;
+      return convertManifestToDesign(manifest, screenMap);
+    }
+  } catch {
+    // backend template unavailable, fallback to local
+  }
   const { manifest, screens } = await loadAllTemplateScreens(templateId);
+  if (!isValidTemplateManifest(manifest, screens)) throw new Error(`Template ${templateId} has no content`);
   return convertManifestToDesign(manifest, screens);
+}
+
+export async function applyBackendTemplate(templateId) {
+  try {
+    const res = await httpClient.post(`/api/v1/templates/${encodeURIComponent(templateId)}/use`);
+    return res?.data ?? res;
+  } catch {
+    // backend template use unavailable
+    return null;
+  }
 }

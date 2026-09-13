@@ -51,6 +51,17 @@ export function SetupWizard({
   const [previewData, setPreviewData] = useState({ manifest: null, screens: {} });
   const [previewScreenId, setPreviewScreenId] = useState("menu");
 
+  useEffect(() => {
+    if (!showPreview || !loadPreview || !data.category || !data.template) return;
+    loadPreview(data.category, data.template)
+      .then(result => {
+        if (!result) return;
+        setPreviewData(result);
+        setPreviewScreenId(result.manifest?.navigation?.initialScreen || Object.keys(result.screens || {})[0] || "home");
+      })
+      .catch(() => {});
+  }, [showPreview, loadPreview, data.category, data.template]);
+
   const validate = useCallback(() => {
     const e = {};
     if (step === 1 && !data.appName.trim()) e.appName = "App name is required";
@@ -72,10 +83,11 @@ export function SetupWizard({
 
   const handleBack = useCallback(() => setStep(s => s - 1), []);
 
-  const handleTemplateSelect = useCallback((templateName) => {
+  const handleTemplateSelect = useCallback((templateName, templateCategory) => {
     setData(d => ({
       ...d,
       template: templateName,
+      category: d.category || templateCategory || null,
       selectedIntegrations: getTemplateIntegrationNames(templateName),
     }));
   }, []);

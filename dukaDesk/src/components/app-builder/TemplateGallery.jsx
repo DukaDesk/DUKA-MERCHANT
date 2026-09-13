@@ -70,7 +70,7 @@ export default function TemplateGallery({ value, onChange, isMobile, loading = f
           const selected = value === t.id;
           return (
             <div key={t.id} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
-              onClick={() => { if (!loading) onChange(t.id); }}
+              onClick={() => { if (!loading) onChange(t.id, t.category); }}
               style={{
                 background: "#fff", border: `1.5px solid ${selected ? AMBER : hovered === i ? "#D1D5DB" : "#E8E8F0"}`,
                 borderRadius: 12, overflow: "hidden", cursor: loading ? "wait" : "pointer", transition: "all 0.15s",

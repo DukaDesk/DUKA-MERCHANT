@@ -578,7 +578,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                   <button onClick={() => store.duplicateComponentInSection(selectedSectionId, component.id)} style={{ ...iconBtn, flex: 1, gap: 4, padding: "6px 0" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg><span style={{ fontSize: 11, fontWeight: 600 }}>Dup</span></button>
                 </div>
                 {component.type === "image_block" && <ImageUploader currentSrc={component.props?.src} onUpload={(v) => store.updateProp(selectedSectionId, component.id, "src", v)} />}
-                {generalFields.length === 0 ? <div style={{ fontSize: 11, color: theme.textMuted, padding: 8, textAlign: "center" }}>No general properties{q ? ` for "${q}"` : ""}.</div> : generalFields.map(field => <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.values(data.screens).map(s => ({ id: s.id || s.name, name: s.name }))} />)}
+                 {generalFields.length === 0 ? <div style={{ fontSize: 11, color: theme.textMuted, padding: 8, textAlign: "center" }}>No general properties{q ? ` for "${q}"` : ""}.</div> : generalFields.map(field => <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />)}
                 {/* Container children - content structure */}
                 {def?.container && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${theme.borderLight}` }}>
@@ -694,8 +694,8 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                   <div style={{ fontSize: 11, color: theme.textMuted, padding: 16, textAlign: "center" }}>No styling matches &ldquo;{q}&rdquo;.</div>
                 ) : stylingGroupKeys.map(gk => (
                   <AccPanel key={gk} id={gk} open={!!stylingOpen[gk]} onToggle={toggleStyling} title={STYLING_GROUP_META[gk].label} icon={STYLING_GROUP_META[gk].icon}>
-                    {stylingGroups[gk].map(field => (
-                      <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.values(data.screens).map(s => ({ id: s.id || s.name, name: s.name }))} />
+                     {stylingGroups[gk].map(field => (
+                       <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />
                     ))}
                   </AccPanel>
                 ))}

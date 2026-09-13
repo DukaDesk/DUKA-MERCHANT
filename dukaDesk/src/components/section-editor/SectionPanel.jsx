@@ -1,10 +1,20 @@
 import { useState } from "react";
-import { Layout, ClipboardList, PanelTop, ChevronDown, Type, AlignLeft, Square, List, Star, Minus, Image as ImageIcon, Video, SquareStack, Monitor, FileText, ShoppingBag, Tag, Info, Package, ShoppingCart, BarChart3, Scissors, Phone, Sparkles, Construction, Upload, Trash2, Home, Search, User, Settings } from "lucide-react";
+import { Layout, ClipboardList, PanelTop, ChevronDown, Type, AlignLeft, Square, List, Star, Minus, Image as ImageIcon, Video, SquareStack, Monitor, FileText, ShoppingBag, Tag, Info, Package, ShoppingCart, BarChart3, Scissors, Phone, Sparkles, Construction, Upload, Trash2, Home, Search, User, Settings, Link } from "lucide-react";
 import { useEditorTheme, ColorInput } from "./editorTheme.jsx";
 import { getComponentType, getLucideIcon, ICON_LIBRARY } from "../canvas-editor/componentTypes";
 import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
 import { toast } from "react-toastify";
+
+function slugifyAppName(name) {
+  return String(name || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "") || "my-app";
+}
 
 // Compress image to data URL to avoid 413 (max 1024px, 0.7 quality)
 async function fileToCompressedDataUrl(file, maxWidth = 1024, quality = 0.7) {
@@ -193,6 +203,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
   const [groupOpen, setGroupOpen] = useState({});
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [tabIconPickerIdx, setTabIconPickerIdx] = useState(null);
+  const [linkPickerIdx, setLinkPickerIdx] = useState(null);
   const [localReleases, setLocalReleases] = useState([
     { id: "rel_001", version: "1.0.2", timestamp: Date.now() - 1000 * 60 * 60 * 2, status: "published", changes: "Added hero banner and menu grid" },
     { id: "rel_002", version: "1.0.1", timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, status: "published", changes: "Initial publish" },
@@ -456,6 +467,14 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
             e.target.value = "";
           }} />
         </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>App Slug</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${theme.border}`, borderRadius: theme.radius.sm, padding: "0 8px", background: theme.surface }}>
+            <span style={{ fontSize: 11, color: theme.textMuted, whiteSpace: "nowrap" }}>dukadesk.app/</span>
+            <input value={store.data.meta?.slug || ""} onChange={() => {}} onBlur={() => {}} placeholder={store.data.meta?.appName ? slugifyAppName(store.data.meta.appName) : "my-app"} readOnly style={{ flex: 1, border: "none", outline: "none", fontSize: 12, padding: "7px 0", background: "transparent", color: theme.text }} />
+          </div>
+          <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4, lineHeight: 1.4 }}>Derived from App Name. Edit the App Name to change the slug.</div>
+        </div>
       </div>
     </div>
   );
@@ -476,7 +495,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
           const Icon = getLucideIcon(tab.icon) || Home;
           const isPickerOpen = tabIconPickerIdx === i;
           return (
-            <div key={tab.id || i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface }}>
+            <div key={tab.id || i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0px 6px 8px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface }}>
               <div style={{ position: "relative" }}>
                 <button onClick={() => setTabIconPickerIdx(isPickerOpen ? null : i)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.hover, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: theme.textSecondary }} title="Pick icon from bank">
                   <Icon size={14} />
@@ -497,18 +516,50 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
                   </>
                 )}
               </div>
-              <input value={tab.label || ""} onChange={e => store.updateTab(i, { label: e.target.value })} placeholder="Label" style={{ flex: 1, border: `1px solid ${theme.border}`, borderRadius: 6, padding: "5px 7px", fontSize: 12, outline: "none" }} />
-              <select value={tab.screenId || ""} onChange={e => store.updateTab(i, { screenId: e.target.value })} style={{ fontSize: 11, padding: "4px 6px", borderRadius: 6, border: `1px solid ${theme.border}`, maxWidth: 110 }}>
-                <option value="">— page —</option>
-                {Object.entries(store.data.screens).map(([id, sc]) => (
-                  <option key={id} value={id}>{sc.name || id}</option>
-                ))}
-              </select>
+              <input value={tab.label || ""} onChange={e => store.updateTab(i, { label: e.target.value })} placeholder="Label" style={{ width: 80, border: `1px solid ${theme.border}`, borderRadius: 6, padding: "5px 12px", textAlign: "center", fontSize: 12, outline: "none" }} />
+              <button
+                onClick={() => setLinkPickerIdx(linkPickerIdx === i ? null : i)}
+                style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${theme.border}`, background: tab.screenId ? theme.hoverAmber : theme.hover, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: tab.screenId ? "#B45309" : theme.textSecondary }}
+                title={tab.screenId ? "Linked — click to change" : "Link to page"}>
+                <Link size={14} />
+              </button>
               <button onClick={() => store.removeTab(i)} style={{ ...iconBtn, padding: "4px", color: theme.danger, borderColor: theme.dangerBorder }} title="Remove tab"><Trash2 size={12} /></button>
             </div>
           );
         })}
       </div>
+      {linkPickerIdx !== null && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 49, background: "rgba(0,0,0,0.3)" }} onClick={() => setLinkPickerIdx(null)} />
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 50, background: theme.surface, borderRadius: theme.radius.lg, boxShadow: theme.shadowLg, border: `1px solid ${theme.border}`, padding: 16, width: 260, maxHeight: 320, overflowY: "auto", fontFamily: "'Inter',sans-serif" }}>
+            <div style={{ fontWeight: 700, fontSize: 12, color: theme.text, marginBottom: 10 }}>Link to page</div>
+            {navTabs[linkPickerIdx]?.screenId && (
+              <button
+                onClick={() => { store.updateTab(linkPickerIdx, { screenId: "" }); setLinkPickerIdx(null); }}
+                style={{ width: "100%", textAlign: "left", padding: "7px 10px", borderRadius: 6, border: `1px solid ${theme.dangerBorder}`, background: "transparent", color: theme.danger, fontSize: 11, fontWeight: 600, cursor: "pointer", marginBottom: 6 }}
+              >Unlink page</button>
+            )}
+            {Object.entries(store.data.screens || {}).map(([sid, sc]) => {
+              const isActive = sid === navTabs[linkPickerIdx]?.screenId;
+              return (
+                <div
+                  key={sid}
+                  onClick={() => { store.updateTab(linkPickerIdx, { screenId: sid }); setLinkPickerIdx(null); }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 6, cursor: "pointer", background: isActive ? theme.hoverAmber : "transparent", border: isActive ? `1px solid ${theme.active}` : "1px solid transparent", marginBottom: 2 }}
+                >
+                  <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {(() => { const I = sc.icon ? getLucideIcon(sc.icon) : null; return I ? <I size={14} color={isActive ? theme.active : theme.textSecondary} /> : <span style={{ fontSize: 10, color: theme.textMuted }}>•</span>; })()}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: isActive ? 600 : 400, color: isActive ? theme.active : theme.text }}>{sc.name || sid}</span>
+                </div>
+              );
+            })}
+            {Object.keys(store.data.screens || {}).length === 0 && (
+              <div style={{ padding: "12px 0", textAlign: "center", color: theme.textMuted, fontSize: 11 }}>No pages yet</div>
+            )}
+          </div>
+        </>
+      )}
       <button onClick={() => store.addTab({ label: "New Tab", icon: "Home", screenId: "" })} style={{ width: "100%", marginTop: 8, padding: "8px", borderRadius: theme.radius.md, border: `1.5px dashed ${theme.border}`, background: "transparent", color: theme.textSecondary, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
         <Layout size={12} /> Add Tab
       </button>

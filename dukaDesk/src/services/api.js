@@ -235,6 +235,70 @@ export async function uploadComplianceDocument(tenantId, file) {
   return { tenantId, fileName: file?.name || null, status: "pending", mediaId: null, url: null };
 }
 
+function unwrapMedia(value) {
+  const body = value?.data ?? value;
+  return body?.asset || body?.media || body?.file || body;
+}
+
+function builderDraftPath(merchantId) {
+  return `/api/v1/merchants/${merchantId}/publishing/draft`;
+}
+
+function unwrapDraftDesign(value) {
+  const body = value?.data ?? value;
+  return body?.design ?? body?.draft?.design ?? body?.data?.design ?? body?.config?.design ?? null;
+}
+
+function isUUID(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+export async function uploadMediaAsset(file, metadata = {}) {
+  if (isDemoId(metadata?.merchantId || getMerchant()?.merchantId || getMerchant()?.tenantId)) {
+    console.log("[API] (demo) uploadMediaAsset skipped for demo tenant");
+    return { id: "demo_asset_" + Date.now(), url: null, name: file?.name || "builder-asset", status: "pending" };
+  }
+  const form = new FormData();
+  form.append("file", file, file?.name || "builder-asset");
+  Object.entries(metadata).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") form.append(key, String(value));
+  });
+  // Only send folderId if it's a valid UUID. Sending "builder" as a string causes FK violation (media_folderId_fkey).
+  const folderId = metadata.folderId && isUUID(metadata.folderId) ? metadata.folderId : undefined;
+  const response = await httpClient.post("/api/v1/app/media/upload", form, {
+    ...(folderId ? { params: { folderId } } : {}),
+    headers: { "Content-Type": undefined },
+  });
+  const asset = unwrapMedia(response);
+  if (!asset?.id && !asset?.assetId) throw new Error("Media upload returned no asset ID");
+  return {
+    ...asset,
+    id: asset.id || asset.assetId,
+    url: asset.url || asset.cdnUrl || asset.publicUrl || asset.downloadUrl || null,
+  };
+}
+
+export async function getMediaAssets(params = {}) {
+  const folderId = params.folderId && isUUID(params.folderId) ? params.folderId : undefined;
+  const query = folderId ? { folderId, ...params } : { ...params };
+  if (query.folderId && !isUUID(query.folderId)) delete query.folderId;
+  const response = await httpClient.get("/api/v1/app/media", { params: query });
+  const body = response?.data ?? response;
+  const list = Array.isArray(body) ? body : body?.items || body?.assets || body?.media || [];
+  return list.map(asset => ({
+    ...asset,
+    id: asset.id || asset.assetId,
+    url: asset.url || asset.cdnUrl || asset.publicUrl || asset.downloadUrl || null,
+    name: asset.name || asset.fileName || "Untitled asset",
+  }));
+}
+
+export async function deleteMediaAsset(id) {
+  if (!id) return null;
+  const response = await httpClient.delete(`/api/v1/app/media/${id}`);
+  return response?.data ?? response;
+}
+
 function toDocumentRecord(file, uploaded) {
   if (!file) return null;
   return {
@@ -982,12 +1046,27 @@ export async function updateTenant(id, body) {
   return { ...store.tenant };
 }
 
+export function isDemoId(id) {
+  return String(id || "").startsWith("tenant_demo_") || String(id || "").startsWith("merchant_demo_");
+}
+
 export async function getTenantConfig(id) {
-  console.log(`[API] → GET /api/v1/merchants/${id}/config`);
+  // New backend: config is at /api/v1/app/merchants/config (no id, resolved via JWT)
+  // Keep id param for demo fallback compatibility
+  if (isDemoId(id)) {
+    const store = demoStore();
+    return { id, config: store.config || {} };
+  }
+  console.log(`[API] → GET /api/v1/app/merchants/config`);
   try {
-    const res = await httpClient.get(`/api/v1/merchants/${id}/config`);
-    console.log(`[API] ✓ GET /api/v1/merchants/${id}/config`, res.data || res);
-    return res.data || res;
+    const res = await httpClient.get(`/api/v1/app/merchants/config`);
+    console.log(`[API] ✓ GET /api/v1/app/merchants/config`, res.data || res);
+    // Backend returns { data: { config: {...} } } or { config: {...} }
+    const payload = res.data || res;
+    // Normalize to { id, config } shape expected by readConfig
+    if (payload && payload.config) return { id, config: payload.config, ...payload };
+    if (payload && payload.data && payload.data.config) return { id, config: payload.data.config, ...payload.data };
+    return payload;
   } catch (e) {
     console.warn("[getTenantConfig] backend unavailable, demo fallback", e?.message);
   }
@@ -996,10 +1075,17 @@ export async function getTenantConfig(id) {
 }
 
 export async function updateTenantConfig(id, body) {
-  console.log(`[API] → PUT /api/v1/merchants/${id}/config`, JSON.parse(JSON.stringify(body)));
+  if (isDemoId(id)) {
+    console.log(`[API] (demo) local save for ${id}:`, JSON.parse(JSON.stringify(body)));
+    const store = demoStore();
+    store.config = { ...(store.config || {}), ...(body?.config || {}) };
+    demoSave(store);
+    return { id, config: store.config };
+  }
+  console.log(`[API] → PUT /api/v1/app/merchants/config`, JSON.parse(JSON.stringify(body)));
   try {
-    const res = await httpClient.put(`/api/v1/merchants/${id}/config`, body);
-    console.log(`[API] ✓ PUT /api/v1/merchants/${id}/config success`, res.data || res);
+    const res = await httpClient.put(`/api/v1/app/merchants/config`, body);
+    console.log(`[API] ✓ PUT /api/v1/app/merchants/config success`, res.data || res);
     return res.data || res;
   } catch (e) {
     console.warn("[updateTenantConfig] backend unavailable, demo fallback", e?.message);
@@ -1036,7 +1122,11 @@ async function writeConfig(tenantId, patch) {
   CONFIG_COLUMNS.forEach(k => {
     if (row[k] !== undefined) body[k] = row[k];
   });
-  console.log(`[API] writeConfig → PUT /api/v1/merchants/${tenantId}/config`, { patchKeys: Object.keys(patch), body: JSON.parse(JSON.stringify(body)) });
+  if (isDemoId(tenantId)) {
+    console.log(`[API] writeConfig → local demo save for ${tenantId}`, { patchKeys: Object.keys(patch) });
+  } else {
+    console.log(`[API] writeConfig → PUT /api/v1/app/merchants/config`, { patchKeys: Object.keys(patch), body: JSON.parse(JSON.stringify(body)) });
+  }
   return updateTenantConfig(tenantId, body);
 }
 
@@ -1099,17 +1189,74 @@ export async function setIntegrationConfig(name, config) {
 
 export async function getDesignData() {
   const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  if (!tenantId) return null;
-  const { data } = await readConfig(tenantId);
+  const merchantId = merchant?.merchantId || merchant?.tenantId;
+  if (!merchantId) return null;
+  if (!isDemoId(merchantId)) {
+    try {
+      const res = await httpClient.get(builderDraftPath(merchantId));
+      const design = unwrapDraftDesign(res);
+      if (design && design.meta && design.screens) return design;
+    } catch {
+      // backend draft unavailable, fallback to local
+    }
+  }
+  const { data } = await readConfig(merchantId);
   return data.design || null;
 }
 
 export async function saveDesignData(design) {
   const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
-  if (!tenantId) return;
-  await writeConfig(tenantId, { design });
+  const merchantId = merchant?.merchantId || merchant?.tenantId;
+  if (!merchantId) return;
+  if (!isDemoId(merchantId)) {
+    try {
+      await httpClient.put(builderDraftPath(merchantId), { design });
+      await writeConfig(merchantId, { design }).catch(() => {
+        // ignore local fallback error
+      });
+      return;
+    } catch {
+      // backend draft unavailable, fallback to local
+    }
+  }
+  await writeConfig(merchantId, { design });
+}
+
+export async function getPublishedDefinition(merchantId) {
+  const id = merchantId || getMerchant()?.merchantId || getMerchant()?.tenantId;
+  if (!id) return null;
+  try {
+    const res = await httpClient.get(`/api/v1/merchants/${id}/definition`);
+    return res?.data ?? res;
+  } catch {
+    return null;
+  }
+}
+
+export async function getMobileBffManifest(slug) {
+  if (!slug) return null;
+  try {
+    const res = await httpClient.get(`/api/v1/bff/mobile/tenant/${encodeURIComponent(slug)}/manifest`);
+    return res?.data ?? res;
+  } catch {
+    return null;
+  }
+}
+
+export async function verifyPublishedParity(merchantId, slug) {
+  const [definition, manifest] = await Promise.all([
+    getPublishedDefinition(merchantId),
+    getMobileBffManifest(slug),
+  ]);
+  if (!definition || !manifest) return { ok: false, reason: "missing_backend_response" };
+  const defScreens = Object.keys(definition.screens || definition.deployed?.screens || {});
+  const bffScreens = Object.keys(manifest.screens || manifest.deployed?.screens || manifest.data?.screens || {});
+  const defVersion = definition.version || definition.deployed?.version;
+  const bffVersion = manifest.version || manifest.deployed?.version;
+  const screensMatch = defScreens.length > 0 && defScreens.length === bffScreens.length && defScreens.every(id => bffScreens.includes(id));
+  const versionMatch = !defVersion || !bffVersion || defVersion === bffVersion;
+  const hasRequiredFields = !!(definition.manifestVersion || definition.metadata) && !!(manifest.manifestVersion || manifest.metadata);
+  return { ok: screensMatch && versionMatch && hasRequiredFields, defScreens, bffScreens, defVersion, bffVersion };
 }
 
 /* ═══════════════════════════════════════════════════════════════════

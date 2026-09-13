@@ -47,12 +47,28 @@ function resolvePreviewTarget(target, data) {
   return fuzzy || target;
 }
 
+function resolveHomeScreenId(data) {
+  const screens = data?.screens || {};
+  const screenIds = Object.keys(screens);
+  if (screenIds.length === 0) return null;
+
+  const configured = data?.navigation?.initialScreen;
+  if (configured && screens[configured]) return configured;
+
+  const firstTab = (data?.navigation?.tabs || []).find(tab => tab.screenId && screens[tab.screenId]);
+  if (firstTab) return firstTab.screenId;
+
+  const namedHome = screenIds.find(id => /^(home|shop|dashboard|menu|start)$/i.test(id) || /^(home|shop|dashboard|menu|start)$/i.test(screens[id]?.name || ""));
+  return namedHome || screenIds[0];
+}
+
 export default function SectionEditor({ store, onBack }) {
   const { theme, iconBtn, primaryBtn, isDark, toggleDark } = useEditorTheme();
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [selectedComponentId, setSelectedComponentId] = useState(null);
   const [showExport, setShowExport] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [previewSplashVisible, setPreviewSplashVisible] = useState(false);
   const [previewSize, setPreviewSize] = useState("mobile");
   const [previewScreenId, setPreviewScreenId] = useState(null);
   const [previewStack, setPreviewStack] = useState([]);
@@ -74,7 +90,7 @@ export default function SectionEditor({ store, onBack }) {
   useEffect(() => {
     if (previewMode) {
       const handler = (e) => {
-        if (e.key === "Escape") { setPreviewMode(false); setPreviewScreenId(null); }
+        if (e.key === "Escape") { setPreviewMode(false); setPreviewSplashVisible(false); setPreviewScreenId(null); }
       };
       window.addEventListener("keydown", handler);
       return () => window.removeEventListener("keydown", handler);
@@ -98,6 +114,12 @@ export default function SectionEditor({ store, onBack }) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [previewMode, selectedSectionId, selectedComponentId, store]);
+
+  useEffect(() => {
+    if (!previewMode || !previewSplashVisible) return undefined;
+    const timer = window.setTimeout(() => setPreviewSplashVisible(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [previewMode, previewSplashVisible]);
 
   function findBodySection(sid) {
     const screen = store.screen;
@@ -143,9 +165,20 @@ export default function SectionEditor({ store, onBack }) {
   }, []);
 
   const handleTogglePreview = useCallback(() => {
-    if (previewMode) { setPreviewMode(false); setPreviewScreenId(null); setPreviewStack([]); }
-    else { setPreviewMode(true); setPreviewStack([store.currentScreenId]); setPreviewScreenId(store.currentScreenId); }
-  }, [previewMode, store]);
+    const homeScreenId = resolveHomeScreenId(data);
+    if (!homeScreenId) return;
+    if (previewMode) {
+      setPreviewMode(false);
+      setPreviewSplashVisible(false);
+      setPreviewScreenId(null);
+      setPreviewStack([]);
+    } else {
+      setPreviewMode(true);
+      setPreviewSplashVisible(true);
+      setPreviewStack([homeScreenId]);
+      setPreviewScreenId(homeScreenId);
+    }
+  }, [data, previewMode]);
 
   const handlePreviewNavigate = useCallback((screenId, mode = "replace") => {
     if (!screenId) return;
@@ -173,6 +206,13 @@ export default function SectionEditor({ store, onBack }) {
     if (!action) return;
     const { type, payload = {} } = action;
     if (type === "pop") { handlePreviewBack(); return; }
+    if (type === "add_to_cart") { toast.success("Item added to cart"); return; }
+    if (type === "remove_from_cart") { toast.info("Item removed from cart"); return; }
+    if (type === "checkout") { toast.info("Checkout opened"); return; }
+    if (type === "refresh" || type === "data_refresh") { toast.info("Content refreshed"); return; }
+    if (type === "call_phone" && payload.phone) { window.location.href = `tel:${payload.phone}`; return; }
+    if (type === "email" && payload.to) { window.location.href = `mailto:${payload.to}`; return; }
+    if (type === "open_url" && payload.url) { window.open(payload.url, "_blank", "noopener,noreferrer"); return; }
     const target = resolveActionTarget(action);
     if (typeof target !== "string" || !target) return;
     if (type === "navigate" || type === "push") {
@@ -308,10 +348,15 @@ export default function SectionEditor({ store, onBack }) {
     const screen = data.screens[previewCurrentScreen];
     const ps = PREVIEW_SIZES[previewSize] || PREVIEW_SIZES.mobile;
     const isMobileDevice = previewSize === "mobile";
+    const splash = data.splash || {};
+    const splashLogo = splash.logo || data.meta?.logo;
+    const splashBackground = splash.backgroundImage
+      ? `url(${splash.backgroundImage}) center/cover no-repeat`
+      : splash.backgroundColor || data.meta?.primaryColor || "#1A1A2E";
     return (
       <div style={{ height: "100vh", background: "#0F0F1A", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Inter',sans-serif" }}>
         <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 6, alignItems: "center" }}>
-          <button onClick={() => { setPreviewMode(false); setPreviewScreenId(null); }}
+          <button onClick={() => { setPreviewMode(false); setPreviewSplashVisible(false); setPreviewScreenId(null); }}
             style={{ ...iconBtn, background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", padding: "8px 14px", borderRadius: theme.radius.md, gap: 6, fontSize: 12 }}
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}>
@@ -364,6 +409,23 @@ export default function SectionEditor({ store, onBack }) {
           display: "flex", flexDirection: "column", position: "relative",
           transition: "all 0.3s ease",
         }}>
+          {previewSplashVisible && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 30, background: splashBackground,
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              color: "#fff", textAlign: "center", padding: 24,
+            }}>
+              {splashLogo ? (
+                <img src={splashLogo} alt="App logo" style={{ width: 88, height: 88, borderRadius: 22, objectFit: "cover", background: "#fff", marginBottom: 18 }} />
+              ) : (
+                <div style={{ width: 88, height: 88, borderRadius: 22, background: "rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, fontWeight: 800, marginBottom: 18 }}>
+                  {(data.meta?.appName || "A").charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 22, fontWeight: 700 }}>{data.meta?.appName || "Your App"}</div>
+              {data.meta?.tagline && <div style={{ marginTop: 8, opacity: 0.78, fontSize: 13 }}>{data.meta.tagline}</div>}
+            </div>
+          )}
           <div style={{ height: 28, background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", flexShrink: 0, color: "#fff", fontSize: 11, fontWeight: 600 }}>
             <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
           </div>

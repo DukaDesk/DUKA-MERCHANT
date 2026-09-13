@@ -47,21 +47,73 @@ const BASE_TEMPLATES = {
 };
 
 function getBaseTemplate(category, template) {
-  return BASE_TEMPLATES[category]?.[template] || BASE_TEMPLATES.Restaurant["Classic Dine"];
+  const normalized = normalizeTemplateName(template);
+  return BASE_TEMPLATES[category]?.[normalized] || BASE_TEMPLATES.Restaurant["Classic Dine"];
+}
+
+function normalizeTemplateName(template) {
+  const raw = String(template || "").split("/").pop();
+  return raw.replace(/[-_]+([a-z])/g, (_, letter) => ` ${letter.toUpperCase()}`).replace(/^./, letter => letter.toUpperCase());
 }
 
 const WIZARD_PREVIEW_DATA_LOCAL = {
-  Restaurant: { categories: ["Popular", "Mains", "Drinks", "Desserts"], items: [] },
-  Ecommerce: { categories: ["New Arrivals", "Clothing", "Electronics"], items: [] },
-  "Food Vendor": { categories: ["Popular", "Specials", "Combo"], items: [] },
-  Grocery: { categories: ["Fruits", "Beverages", "Snacks"], items: [] },
-  Church: { categories: ["Upcoming", "Sermons", "Ministries"], items: [] },
-  School: { categories: ["Announcements", "Timetable", "Events"], items: [] },
-  Booking: { categories: ["Services", "Popular", "Special Offers"], items: [] },
+  Restaurant: { categories: ["Popular", "Mains", "Drinks", "Desserts"], items: [
+    { name: "Jollof Rice", price: "₦2,500", desc: "Rich, smoky jollof rice", emoji: "Utensils" },
+    { name: "Grilled Chicken", price: "₦3,000", desc: "Char-grilled and spicy", emoji: "Drumstick" },
+  ] },
+  Ecommerce: { categories: ["New Arrivals", "Clothing", "Electronics"], items: [
+    { name: "Everyday Tote", price: "₦18,000", desc: "Durable canvas carryall", emoji: "ShoppingBag" },
+    { name: "Wireless Headphones", price: "₦42,000", desc: "Comfortable all-day audio", emoji: "Headphones" },
+  ] },
+  "Food Vendor": { categories: ["Popular", "Specials", "Combo"], items: [
+    { name: "Suya Combo", price: "₦4,500", desc: "Beef suya with sides", emoji: "Utensils" },
+    { name: "Chicken Wrap", price: "₦3,200", desc: "Freshly grilled to order", emoji: "Sandwich" },
+  ] },
+  Grocery: { categories: ["Fruits", "Beverages", "Snacks"], items: [
+    { name: "Fresh Fruit Box", price: "₦8,500", desc: "Seasonal fruit selection", emoji: "Apple" },
+    { name: "Sparkling Water", price: "₦1,200", desc: "Pack of six bottles", emoji: "GlassWater" },
+  ] },
+  Church: { categories: ["Upcoming", "Sermons", "Ministries"], items: [
+    { name: "Sunday Service", price: "Free", desc: "Join us this Sunday", emoji: "Heart" },
+    { name: "Youth Fellowship", price: "Free", desc: "Weekly community gathering", emoji: "Users" },
+  ] },
+  School: { categories: ["Announcements", "Timetable", "Events"], items: [
+    { name: "Term Opening", price: "Today", desc: "Welcome back to school", emoji: "Calendar" },
+    { name: "Parent Meeting", price: "Friday", desc: "Main hall, 4:00 PM", emoji: "Users" },
+  ] },
+  Booking: { categories: ["Services", "Popular", "Special Offers"], items: [
+    { name: "Consultation", price: "₦10,000", desc: "One-hour appointment", emoji: "Calendar" },
+    { name: "Premium Session", price: "₦25,000", desc: "Extended focused session", emoji: "Star" },
+  ] },
+};
+
+const TEMPLATE_SCREEN_VARIANTS = {
+  "Classic Dine": ["menu", "orders", "reservations", "info"],
+  "Modern Bites": ["menu", "shop", "orders", "profile"],
+  "Fresh & Bright": ["menu", "info", "orders"],
+  Storefront: ["shop", "cart", "orders", "profile"],
+  "Flash Sale": ["shop", "cart", "orders"],
+  "Minimal Shop": ["shop", "profile", "orders"],
+  "Street Eats": ["menu", "pickup", "orders", "info"],
+  "Home Kitchen": ["menu", "orders", "info"],
+  "Fast Bites": ["menu", "pickup", "orders"],
+  "Market Fresh": ["shop", "cart", "orders", "info"],
+  "Corner Shop": ["shop", "orders", "profile"],
+  "Bulk Buy": ["shop", "cart", "orders", "profile"],
+  Cathedral: ["events", "giving", "sermons", "community"],
+  "Community Light": ["events", "community", "giving"],
+  "Youth Vibes": ["events", "community", "live", "giving"],
+  "Academy Pro": ["timetable", "assignments", "announcements", "parent"],
+  "Bright Minds": ["announcements", "grades", "parent"],
+  "Smart Campus": ["timetable", "fees", "assignments", "announcements"],
+  Scheduler: ["services", "calendar", "bookings", "info"],
+  "Spa Lounge": ["services", "calendar", "bookings", "profile"],
+  "Quick Book": ["services", "bookings", "info"],
 };
 
 function generateMenuScreen(config) {
   const preview = WIZARD_PREVIEW_DATA_LOCAL[config.category] || WIZARD_PREVIEW_DATA_LOCAL.Ecommerce;
+  const dataBinding = getDataBinding(config.category);
   
   return {
     screenId: "menu",
@@ -90,7 +142,12 @@ function generateMenuScreen(config) {
         {
           type: "menu_grid",
           key: "menu-items",
-          props: { columns: 2, variant: config.template.includes("Modern") ? "bold" : "default" },
+          props: {
+            columns: 2,
+             variant: normalizeTemplateName(config.template).includes("Modern") ? "bold" : "default",
+            items: preview.items,
+            dataBinding,
+          },
           actions: { addItem: { type: "add_to_cart" }, viewDetails: { type: "navigate", payload: { push: "/item-detail" } } },
         },
       ],
@@ -98,7 +155,9 @@ function generateMenuScreen(config) {
   };
 }
 
-function generateShopScreen() {
+function generateShopScreen(config) {
+  const preview = WIZARD_PREVIEW_DATA_LOCAL[config.category] || WIZARD_PREVIEW_DATA_LOCAL.Ecommerce;
+  const dataBinding = getDataBinding(config.category);
   return {
     screenId: "shop",
     title: "Shop",
@@ -110,7 +169,10 @@ function generateShopScreen() {
         {
           type: "promotion_list",
           key: "promo-banner",
-          props: { offers: [{ title: "New Arrivals", subtitle: "Up to 30% off", image: null }] },
+           props: {
+             offers: preview.items.map(item => ({ title: item.name, subtitle: item.desc, image: item.image || "", emoji: item.emoji })),
+             dataBinding,
+           },
           actions: { tap: { type: "navigate", payload: { push: "/products?filter=new-arrivals" } } },
         },
         {
@@ -119,10 +181,10 @@ function generateShopScreen() {
           props: { categories: ["All", "Clothing", "Electronics", "Accessories"] },
           actions: { selectCategory: { type: "filter", payload: { source: "category" } } },
         },
-        {
-          type: "menu_grid",
-          key: "products-grid",
-          props: { columns: 2 },
+         {
+           type: "menu_grid",
+           key: "products-grid",
+           props: { columns: 2, items: preview.items, dataBinding },
           actions: { addItem: { type: "add_to_cart" }, viewDetails: { type: "navigate", payload: { push: "/product-detail" } } },
         },
       ],
@@ -292,10 +354,13 @@ function darken(hex, percent) {
 
 function generateScreens(config) {
   const screens = [];
-  const screenTypes = CATEGORY_SCREENS[config.category] || CATEGORY_SCREENS.Restaurant;
+  const template = normalizeTemplateName(config.template);
+  const screenTypes = TEMPLATE_SCREEN_VARIANTS[template]
+    || CATEGORY_SCREENS[config.category]
+    || CATEGORY_SCREENS.Restaurant;
 
   if (screenTypes.includes("menu")) screens.push(generateMenuScreen(config));
-  if (screenTypes.includes("shop")) screens.push(generateShopScreen(config));
+   if (screenTypes.includes("shop")) screens.push(generateShopScreen(config));
   if (screenTypes.includes("services")) screens.push(generateBookingScreen(config));
   if (screenTypes.includes("events")) screens.push(generateEventsScreen(config));
   if (screenTypes.includes("info")) screens.push(generateInfoScreen(config));
@@ -321,7 +386,10 @@ function generateScreens(config) {
 }
 
 function generateNavigation(config) {
-  const screenTypes = CATEGORY_SCREENS[config.category] || CATEGORY_SCREENS.Restaurant;
+  const template = normalizeTemplateName(config.template);
+  const screenTypes = TEMPLATE_SCREEN_VARIANTS[template]
+    || CATEGORY_SCREENS[config.category]
+    || CATEGORY_SCREENS.Restaurant;
   const icons = {
     menu: "restaurant-outline", shop: "storefront-outline", services: "calendar-outline",
     events: "calendar-outline", info: "information-outline", orders: "receipt-outline",
@@ -354,10 +422,11 @@ function generateNavigation(config) {
 
 export function generateShopTemplate(config) {
   const baseTemplate = getBaseTemplate(config.category, config.template);
+  const templateName = normalizeTemplateName(config.template);
   
   return {
     version: "1.0",
-    templateId: (config.template || "").toLowerCase().replace(/\s+/g, "-"),
+     templateId: templateName.toLowerCase().replace(/\s+/g, "-"),
     category: config.category,
     theme: {
       primaryColor: config.color || baseTemplate.theme.primary,
@@ -404,4 +473,31 @@ export function getDefaultTemplateConfig(category = "Restaurant") {
     hours: [],
     selectedIntegrations: [],
   });
+}
+
+export function getGeneratedTemplateCatalog() {
+  return Object.entries(BASE_TEMPLATES).map(([category, templates]) => ({
+    name: category,
+    desc: `${category} starter app structures`,
+    icon: "",
+    templates: Object.entries(templates).map(([name, definition]) => ({
+      id: `${category.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      name,
+      category,
+      tags: [definition.style === "dark" ? "Dark" : "Light", "Starter"],
+      features: TEMPLATE_SCREEN_VARIANTS[name] || CATEGORY_SCREENS[category] || [],
+      preview: "",
+      primaryColor: definition.theme.primary,
+      secondaryColor: definition.theme.secondary,
+    })),
+  }));
+}
+
+function getDataBinding(category) {
+  const source = category === "Booking"
+    ? "booking.services"
+    : category === "Church" || category === "School"
+      ? "content.events"
+      : "commerce.products";
+  return { source, filters: { isActive: true }, limit: 20 };
 }
