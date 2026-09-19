@@ -9,7 +9,8 @@ import ScreenSwitcher from "./ScreenSwitcher";
 import { toast } from "react-toastify";
 import { NAVY } from "../../theme";
 import { useEditorTheme } from "./editorTheme.jsx";
-import { publishProject, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
+import { publishProject, buildManifestPreview, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
+import { getPublishedDefinition } from "../../services/api";
 import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
 
@@ -67,6 +68,11 @@ export default function SectionEditor({ store, onBack }) {
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [selectedComponentId, setSelectedComponentId] = useState(null);
   const [showExport, setShowExport] = useState(false);
+  const [showManifest, setShowManifest] = useState(false);
+  const [manifestCode, setManifestCode] = useState("");
+  const [manifestDocuments, setManifestDocuments] = useState({});
+  const [manifestDocument, setManifestDocument] = useState("all");
+  const [manifestSource, setManifestSource] = useState("generated");
   const [previewMode, setPreviewMode] = useState(false);
   const [previewSplashVisible, setPreviewSplashVisible] = useState(false);
   const [previewSize, setPreviewSize] = useState("mobile");
@@ -145,6 +151,19 @@ export default function SectionEditor({ store, onBack }) {
   const handleAddSection = useCallback(() => {
     store.addBodySection(store.currentScreenId, { type: "custom", name: "New Section" });
   }, [store]);
+
+  const handleLoadBackendManifest = useCallback(async () => {
+    const response = await getPublishedDefinition();
+    if (!response) {
+      toast.error("No published app definition was found in backend app configuration");
+      return;
+    }
+    setManifestDocuments(response);
+    setManifestDocument("all");
+    setManifestCode(JSON.stringify(response, null, 2));
+    setManifestSource("backend");
+    setShowManifest(true);
+  }, []);
 
   const handleFocusSubElement = useCallback((sectionId, compId, key) => {
     setSelectedSectionId(sectionId);
@@ -254,26 +273,14 @@ export default function SectionEditor({ store, onBack }) {
       return;
     }
     if (result.success) {
-      // Check if payload was stripped due to 413 — warn user
-      const rawSize = new Blob([JSON.stringify(design)]).size;
-      if (rawSize > 800 * 1024) {
-        toast.warn(`Published v${result.version} — but images were compressed (payload ${(rawSize/1024).toFixed(0)}KB). For best quality, use images <800KB or upload via Media.`);
-      } else {
-        toast.success(`Published v${result.version} — mobile manifest updated!`);
-      }
-      // Also persist to backend via direct config write so MiniAppPreview / BFF mobile can fetch immediately
-      // (publishProject already does this, but we double-ensure for demo mode)
-      try {
-        const { updateApp } = await import("../../services/api");
-        await updateApp({ templateConfig: result.manifest || design, lastPublishedAt: new Date().toISOString(), lastPublishedVersion: result.version });
-      } catch { /* ignore */ }
+      toast.success(`Published v${result.version} — mobile manifest updated!`);
       setTimeout(() => onBack?.(), 1200);
     } else {
       // Only show validation modal if there are actual errors/warnings to display
       const hasIssues = (result.validation?.errors?.length || 0) > 0 || (result.validation?.warnings?.length || 0) > 0;
       if (hasIssues) setValidationErrors(result.validation);
       if (result.error?.includes("413") || result.error?.toLowerCase().includes("too large")) {
-        toast.error("Images too large — please compress images to <800KB or remove large background images, then try again.");
+        toast.error(result.error);
       } else if (result.error) toast.error(result.error);
       else if (!hasIssues) toast.error("Publish failed — please try again.");
     }
@@ -334,6 +341,19 @@ export default function SectionEditor({ store, onBack }) {
       URL.revokeObjectURL(url);
     }
     setShowExport(false);
+  }, [store]);
+
+  const handleShowManifest = useCallback(() => {
+    try {
+      const manifest = buildManifestPreview(store.getDesignJSON());
+      setManifestDocuments(manifest);
+      setManifestDocument("all");
+      setManifestCode(JSON.stringify(manifest, null, 2));
+      setManifestSource("generated");
+      setShowManifest(true);
+    } catch (error) {
+      toast.error(`Unable to generate manifest: ${error?.message || "unknown error"}`);
+    }
   }, [store]);
 
   const serverLastSaved = store.serverLastSaved;
@@ -620,6 +640,14 @@ export default function SectionEditor({ store, onBack }) {
           </div>
 
           <button
+            onClick={handleShowManifest}
+            style={iconBtn}
+            title="View published manifest"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </button>
+
+          <button
             onClick={handlePublish}
             disabled={isPublishing}
             style={{
@@ -644,6 +672,82 @@ export default function SectionEditor({ store, onBack }) {
             )}
           </button>
         </div>
+
+        {showManifest && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Published manifest"
+            onClick={event => { if (event.target === event.currentTarget) setShowManifest(false); }}
+            style={{
+              position: "fixed", inset: 0, zIndex: 120, background: "rgba(15,23,42,0.62)",
+              display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+            }}
+          >
+            <div style={{
+              width: "min(100%, 980px)", height: "min(88vh, 820px)", background: theme.surface,
+              border: `1px solid ${theme.border}`, borderRadius: theme.radius.lg, boxShadow: theme.shadowLg,
+              display: "flex", flexDirection: "column", overflow: "hidden",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: `1px solid ${theme.border}` }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: theme.text, fontSize: 15 }}>{manifestSource === "backend" ? "Backend Definition" : "Published Manifest"}</div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={handleLoadBackendManifest} style={iconBtn} title="Fetch the published definition from the backend">Load backend</button>
+                  <button onClick={() => navigator.clipboard.writeText(manifestCode).then(() => toast.success("Manifest copied"))} style={iconBtn}>Copy</button>
+                  <button onClick={() => setShowManifest(false)} style={iconBtn} title="Close manifest viewer">Close</button>
+                </div>
+              </div>
+              <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+                <pre style={{ flex: 1, minWidth: 0, overflow: "auto", margin: 0, padding: 18, background: isDark ? "#0B1220" : "#F8FAFC", color: isDark ? "#E2E8F0" : "#1E293B", fontSize: 12, lineHeight: 1.55, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                  {manifestCode}
+                </pre>
+                <div style={{ width: 170, flexShrink: 0, overflowY: "auto", padding: "16px 12px", borderLeft: `1px solid ${theme.border}`, background: theme.surface }}>
+                  <div style={{ color: theme.textSecondary, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
+                    Documents
+                  </div>
+                  {["all", ...Object.keys(manifestDocuments)].map(documentName => {
+                    const selected = manifestDocument === documentName;
+                    return (
+                      <span
+                        key={documentName}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          setManifestDocument(documentName);
+                          setManifestCode(JSON.stringify(
+                            documentName === "all" ? manifestDocuments : manifestDocuments[documentName],
+                            null,
+                            2,
+                          ));
+                        }}
+                        onKeyDown={event => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            event.currentTarget.click();
+                          }
+                        }}
+                        style={{
+                          display: "block",
+                          padding: "7px 4px",
+                          color: selected ? theme.active : theme.textSecondary,
+                          cursor: "pointer",
+                          fontSize: 12,
+                          fontWeight: selected ? 700 : 500,
+                          fontFamily: "'Inter',sans-serif",
+                          borderLeft: `2px solid ${selected ? theme.active : "transparent"}`,
+                        }}
+                      >
+                        {documentName === "all" ? "All documents" : documentName}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {isPublishing && (

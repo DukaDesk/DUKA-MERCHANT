@@ -8,11 +8,15 @@ vi.mock("./api", () => ({
   uploadMediaAsset: vi.fn(),
   getSetupData: vi.fn(() => null),
   getMerchant: vi.fn(() => null),
+  isDemoId: vi.fn(id => String(id).includes('demo')),
 }));
 
 vi.mock("./ValidationEngine", () => ({
   validateProject: vi.fn(),
 }));
+
+vi.mock('./httpClient', () => ({ default: { post: vi.fn(), get: vi.fn() } }));
+import httpClient from './httpClient';
 
 import { publishProject, getReleaseHistory, rollbackToRelease } from "./PublishingPipeline";
 import * as api from "./api";
@@ -28,6 +32,7 @@ const validProject = {
 describe("PublishingPipeline", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    api.getMerchant.mockReturnValue(null);
     validateProject.mockReturnValue({ valid: true, errors: [], warnings: [] });
   });
 
@@ -39,7 +44,7 @@ describe("PublishingPipeline", () => {
         warnings: [],
       });
 
-      const result = await publishProject(validProject);
+      const result = await publishProject({ ...validProject, tenantId: "tenant_demo_001" });
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("Validation failed");
@@ -51,7 +56,7 @@ describe("PublishingPipeline", () => {
         { id: "rel_1", version: "1.0.0", status: "published", timestamp: "2024-01-01T00:00:00.000Z", project: {}, validationResult: { errors: 0, warnings: 0 }, environment: "production" },
       ]);
 
-      const result = await publishProject(validProject);
+      const result = await publishProject({ ...validProject, tenantId: "tenant_demo_001" });
 
       expect(result.success).toBe(true);
       expect(result.version).toBe("1.0.1");
@@ -62,7 +67,7 @@ describe("PublishingPipeline", () => {
     it("starts at 0.0.1 when no prior releases", async () => {
       api.getReleases.mockResolvedValue([]);
 
-      const result = await publishProject(validProject);
+      const result = await publishProject({ ...validProject, tenantId: "tenant_demo_001" });
 
       expect(result.success).toBe(true);
       expect(result.version).toBe("0.0.1");
@@ -73,7 +78,7 @@ describe("PublishingPipeline", () => {
         { id: "rel_1", version: "2.0.0", status: "rolled_back", timestamp: "2024-01-01T00:00:00.000Z", project: {}, validationResult: { errors: 0, warnings: 0 }, environment: "production" },
       ]);
 
-      const result = await publishProject(validProject);
+      const result = await publishProject({ ...validProject, tenantId: "tenant_demo_001" });
 
       expect(result.version).toBe("0.0.1");
     });
@@ -81,7 +86,7 @@ describe("PublishingPipeline", () => {
     it("saves the full project in the release", async () => {
       api.getReleases.mockResolvedValue([]);
 
-      const result = await publishProject(validProject);
+      const result = await publishProject({ ...validProject, tenantId: "tenant_demo_001" });
 
       expect(result.success).toBe(true);
       const savedReleases = api.saveReleases.mock.calls[0][0];
@@ -98,7 +103,7 @@ describe("PublishingPipeline", () => {
       });
       api.getReleases.mockResolvedValue([]);
 
-      await publishProject(validProject);
+      await publishProject({ ...validProject, tenantId: "tenant_demo_001" });
 
       const saved = api.saveReleases.mock.calls[0][0][0];
       expect(saved.validationResult).toEqual({ errors: 1, warnings: 1 });
@@ -112,7 +117,7 @@ describe("PublishingPipeline", () => {
       });
       api.getReleases.mockResolvedValue([]);
 
-      const result = await publishProject(validProject);
+      const result = await publishProject({ ...validProject, tenantId: "tenant_demo_001" });
 
       expect(result.success).toBe(true);
     });
@@ -177,5 +182,56 @@ describe("PublishingPipeline", () => {
       expect(deployed.version).toBe("1.0.0");
       expect(deployed.rollbackFrom).toBe("rel_1");
     });
+  });
+});
+
+describe('live publishing confirmation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    api.getMerchant.mockReturnValue({ merchantId: 'real-merchant' });
+    api.getReleases.mockResolvedValue([]);
+    validateProject.mockReturnValue({ valid: true, errors: [], warnings: [] });
+    httpClient.post.mockResolvedValue({ success: true });
+    httpClient.get.mockImplementation(async () => ({ data: httpClient.post.mock.calls[0][1].manifest }));
+  });
+
+  it('preserves a large URL-only manifest without claiming compression', async () => {
+    const project = { ...validProject, meta: { ...validProject.meta, logo: 'https://cdn.example.com/logo.webp' }, screens: {
+      home: { name: 'Home', bodySections: [{ components: [{ type: 'text', props: { text: 'x'.repeat(850 * 1024) } }] }] },
+    } };
+    const result = await publishProject(project);
+    expect(result.success).toBe(true);
+    expect(result.payloadStripped).toBeUndefined();
+    expect(httpClient.post.mock.calls[0][1].manifest.theme.brand.logo).toBe(project.meta.logo);
+    expect(api.saveDeployment).toHaveBeenCalledOnce();
+  });
+
+  it('does not record success when the backend rejects publishing', async () => {
+    httpClient.post.mockRejectedValue(new Error('Backend unavailable'));
+    const result = await publishProject(validProject);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Backend unavailable');
+    expect(api.saveReleases).not.toHaveBeenCalled();
+    expect(api.saveDeployment).not.toHaveBeenCalled();
+  });
+
+  it('does not retry a 413 by erasing images', async () => {
+    httpClient.post.mockRejectedValue({ response: { status: 413 } });
+    const result = await publishProject(validProject);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('413');
+    expect(httpClient.post).toHaveBeenCalledOnce();
+    expect(api.saveReleases).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { name: 'Owner', screens: [], navigation: [], theme: { logo: null } },
+    { version: '0.0.7', screens: { shop: {} } },
+  ])('rejects an empty or stale mobile definition', async definition => {
+    httpClient.get.mockResolvedValue({ data: definition });
+    const result = await publishProject(validProject);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('has not been confirmed live');
+    expect(api.saveReleases).not.toHaveBeenCalled();
   });
 });

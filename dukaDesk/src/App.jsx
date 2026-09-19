@@ -128,7 +128,7 @@ export default function App() {
               <Route path="/onboarding" element={<ProtectedRoute><Onboarding onAuth={handleAuth} /></ProtectedRoute>} />
               <Route path="/miniapp" element={<ProtectedRoute><MiniAppPreview /></ProtectedRoute>} />
               <Route path="/template-editor/:templateId" element={<ProtectedRoute><TemplateEditor /></ProtectedRoute>} />
-              <Route path="/canvas-editor" element={<CanvasEditor />} />
+              <Route path="/canvas-editor" element={<ProtectedRoute><CanvasEditor /></ProtectedRoute>} />
               <Route path="/compliance" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>}>
                 <Route index element={<CompliancePage />} />
               </Route>
@@ -175,5 +175,4 @@ export default function App() {
     </AuthContext.Provider>
   );
 }
-
 

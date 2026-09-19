@@ -4,6 +4,7 @@ import { useEditorTheme, ColorInput } from "./editorTheme.jsx";
 import { getComponentType, getLucideIcon, ICON_LIBRARY } from "../canvas-editor/componentTypes";
 import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
+import { uploadMediaAsset } from "../../services/api";
 import { toast } from "react-toastify";
 
 function slugifyAppName(name) {
@@ -26,6 +27,7 @@ async function fileToCompressedDataUrl(file, maxWidth = 1024, quality = 0.7) {
       r.readAsDataURL(file);
     });
   }
+
   // If small (<300KB) skip compression
   if (file.size < 300 * 1024) {
     return await new Promise((res, rej) => {
@@ -46,6 +48,20 @@ async function fileToCompressedDataUrl(file, maxWidth = 1024, quality = 0.7) {
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close();
   return canvas.toDataURL("image/jpeg", quality);
+}
+
+function resolveUploadedAssetUrl(url) {
+  if (!url || /^https?:\/\//i.test(url) || url.startsWith("data:")) return url;
+  const base = import.meta.env.VITE_API_URL || "https://duka-backend-production.up.railway.app";
+  return base ? `${base.replace(/\/$/, "")}/${url.replace(/^\//, "")}` : url;
+}
+
+async function uploadEditorAsset(file, purpose) {
+  const asset = await uploadMediaAsset(file, { source: "builder", purpose });
+  const rawUrl = asset?.url || asset?.cdnUrl || asset?.publicUrl;
+  const url = resolveUploadedAssetUrl(rawUrl);
+  if (!url) throw new Error("Logo uploaded, but the backend returned no public delivery URL");
+  return url;
 }
 
 const SECTION_ICONS = {
@@ -461,9 +477,15 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
             const file = e.target.files?.[0];
             if (!file) return;
             if (file.size > 5 * 1024 * 1024) { toast.error("Image too large (max 5MB)"); e.target.value = ""; return; }
-            const dataUrl = await fileToCompressedDataUrl(file, 512, 0.8);
-            console.log(`[Splash] logo ${(file.size/1024).toFixed(1)}KB → ${(dataUrl.length/1024).toFixed(1)}KB`);
-            store.setSplash({ logo: dataUrl });
+            const preview = await fileToCompressedDataUrl(file, 512, 0.8);
+            store.setSplash({ logo: preview });
+            try {
+              const url = await uploadEditorAsset(file, "splash-logo");
+              store.setSplash({ logo: url });
+              toast.success("Logo uploaded");
+            } catch (error) {
+              toast.error(error?.message || "Logo upload failed");
+            }
             e.target.value = "";
           }} />
         </div>
@@ -788,7 +810,20 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, minWidth: 60 }}>Logo</label>
               <div onClick={() => document.getElementById("left-logo-upload")?.click()} style={{ width: 44, height: 44, borderRadius: theme.radius.md, border: `2px dashed ${theme.border}`, background: meta.logo ? `url(${meta.logo}) center/cover no-repeat` : theme.hover, cursor: "pointer", flexShrink: 0 }} />
-              <input id="left-logo-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (!file || file.size > 5 * 1024 * 1024) return; const reader = new FileReader(); reader.onload = (ev) => store.setMeta({ logo: ev.target.result }); reader.readAsDataURL(file); }} />
+              <input id="left-logo-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file || file.size > 5 * 1024 * 1024) { if (file) toast.error("Image too large (max 5MB)"); e.target.value = ""; return; }
+                const preview = await fileToCompressedDataUrl(file, 512, 0.8);
+                store.setMeta({ logo: preview });
+                try {
+                  const url = await uploadEditorAsset(file, "app-logo");
+                  store.setMeta({ logo: url });
+                  toast.success("Logo uploaded");
+                } catch (error) {
+                  toast.error(error?.message || "Logo upload failed");
+                }
+                e.target.value = "";
+              }} />
               {meta.logo && <button onClick={() => store.setMeta({ logo: null })} style={{ fontSize: 10, padding: "4px 8px", border: `1px solid ${theme.dangerBorder}`, borderRadius: theme.radius.sm, background: theme.dangerLight, color: theme.danger, cursor: "pointer" }}>Remove</button>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

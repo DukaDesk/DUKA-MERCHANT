@@ -7,9 +7,9 @@ function generateId() {
   return `rel_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
-async function getLastVersion() {
+async function getLastVersion(releasesOverride) {
   try {
-    const releases = await getReleases();
+    const releases = releasesOverride ?? await getReleases();
     if (!Array.isArray(releases) || releases.length === 0) return "0.0.0";
     const versions = releases
       .filter(r => r.status === "published")
@@ -28,6 +28,15 @@ function incrementVersion(version) {
   return `${major}.${minor}.${patch + 1}`;
 }
 
+function slugify(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    || "published-app";
+}
+
 // Convert the editor model into the runtime contract consumed by the mobile app.
 // Editor-only fields (shared sections, chrome modes and saved-section references)
 // must not be the source of truth for a published app.
@@ -44,18 +53,29 @@ function compileDesignToPublishedApp(projectData, version, publishedAt, assetCat
       const resolved = section?.kind === "saved" ? libraryById[section.libraryId] : section;
       if (Array.isArray(resolved?.components)) components.push(...resolved.components);
     }
+
     return components;
   };
 
   const screens = Object.fromEntries(Object.entries(sourceScreens).map(([id, screen]) => {
     const children = resolveComponents(screen?.bodySections);
+    const sourceLayout = screen?.layout && typeof screen.layout === "object" ? screen.layout : {};
     return [id, {
       screenId: id,
       title: screen?.name || id,
       layout: {
-        kind: "scroll",
-        gap: 16,
-        padding: 16,
+        kind: sourceLayout.kind || "scroll",
+        gap: sourceLayout.gap ?? 16,
+        padding: sourceLayout.padding ?? 16,
+        scroll: sourceLayout.scroll,
+        alignItems: sourceLayout.alignItems,
+        justifyContent: sourceLayout.justifyContent,
+        flex: sourceLayout.flex,
+        flexGrow: sourceLayout.flexGrow,
+        width: sourceLayout.width,
+        minHeight: sourceLayout.minHeight,
+        maxWidth: sourceLayout.maxWidth,
+        backgroundColor: sourceLayout.backgroundColor,
         children,
       },
     }];
@@ -76,7 +96,10 @@ function compileDesignToPublishedApp(projectData, version, publishedAt, assetCat
   const background = meta.backgroundColor || source.splash?.backgroundColor || "#FAFAFA";
   const text = meta.textColor || "#0F0F1A";
   const fontFamily = meta.fontFamily || "Inter";
-  const appName = meta.appName || meta.businessName || "Published App";
+  // Merchant/business identity is owner metadata, not the customer-facing app
+  // identity. An explicitly edited app name wins; otherwise use its slug.
+  const appSlug = meta.slug || slugify(meta.appName || "published-app");
+  const appName = meta.appName || appSlug;
   const logo = meta.logo || null;
   const font = (fontSize, fontWeight, lineHeight) => ({ fontFamily, fontSize, fontWeight, lineHeight });
 
@@ -93,7 +116,7 @@ function compileDesignToPublishedApp(projectData, version, publishedAt, assetCat
       publishedAt,
     },
     identity: {
-      slug: meta.slug || appName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-") || "published-app",
+      slug: appSlug,
       displayName: appName,
     },
     capabilities: {},
@@ -152,13 +175,20 @@ function compileDesignToPublishedApp(projectData, version, publishedAt, assetCat
   };
 }
 
+export function buildManifestPreview(projectData) {
+  const publishedAt = new Date().toISOString();
+  return compileDesignToPublishedApp(projectData, "draft", publishedAt);
+}
+
 function dataUrlToFile(dataUrl, name) {
   const [header, encoded] = String(dataUrl).split(",");
-  const mime = (header.match(/^data:([^;]+)/) || [])[1] || "image/jpeg";
+  const mime = (header.match(/^data:([^;]+)/) || [])[1] || "image/png";
+  const extension = mime.split("/")[1]?.replace("jpeg", "jpg") || "bin";
+  const safeName = String(name || "builder-asset").replace(/\.[a-z0-9]+$/i, "");
   const binary = atob(encoded || "");
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new File([bytes], name, { type: mime });
+  return new File([bytes], `${safeName}.${extension}`, { type: mime });
 }
 
 async function materializeAssets(projectData) {
@@ -234,7 +264,7 @@ export async function publishProject(projectData) {
 
    // If screens are missing/empty (e.g. new merchant with no draft), generate a sensible default from the merchant's category/template
    let ensuredProject = projectData;
-   if (!projectData?.screens || Object.keys(projectData.screens).length === 0 || Object.values(projectData.screens).every(s => !s?.bodySections?.length && !s?.layout?.children?.length)) {
+   if (!projectData?.screens || Object.keys(projectData.screens).length === 0) {
      try {
        const { generateShopTemplate } = await import("./TemplateGenerator.js");
        const merchantTmp = getMerchant() || {};
@@ -254,7 +284,6 @@ export async function publishProject(projectData) {
          selectedIntegrations: setupTmp.selectedIntegrations || [],
        });
        // Convert generated template (version/navigation/screens) back to builder project shape
-       const { convertManifestToDesign } = await import("./staticTemplates.js");
        // generateShopTemplate already returns screens in builder-ish shape; build a minimal project
        ensuredProject = {
          ...projectData,
@@ -276,11 +305,12 @@ export async function publishProject(projectData) {
    const merchant = getMerchant() || {};
    const setup = getSetupData() || {};
    const sourceMeta = ensuredProject?.meta || {};
-   const appName = sourceMeta.appName || sourceMeta.businessName || setup.appName || merchant.business || "Published App";
+   const appName = sourceMeta.appName || sourceMeta.slug || setup.appName || "published-app";
+   const appSlug = sourceMeta.slug || appName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "published-app";
    const sourceLogo = sourceMeta.logo || ensuredProject?.splash?.logo || setup.logo || null;
    const normalizedProject = {
      ...ensuredProject,
-     meta: { ...sourceMeta, appName, businessName: sourceMeta.businessName || merchant.business || appName, logo: sourceLogo },
+     meta: { ...sourceMeta, appName, slug: appSlug, businessName: sourceMeta.businessName || merchant.business || "", logo: sourceLogo },
    };
 
    let publishData = normalizedProject;
@@ -297,7 +327,8 @@ export async function publishProject(projectData) {
      };
    }
 
-   const lastVersion = await getLastVersion();
+   const history = await getReleases();
+   const lastVersion = await getLastVersion(history);
   const version = incrementVersion(lastVersion);
 
   const release = {
@@ -313,6 +344,7 @@ export async function publishProject(projectData) {
   // ── Generation: compile SDUI manifest for mobile BFF ──
    const manifest = compileDesignToPublishedApp(publishData, release.version, release.timestamp, assetCatalog);
 
+
   // ── Console: simple form of data being sent to backend ──
   console.log("%c[Publish] Generating manifest v" + version, "color:#1A1A2E;font-weight:700");
   console.log("[Publish] Simple summary:", {
@@ -326,121 +358,49 @@ export async function publishProject(projectData) {
   console.log("[Publish] Full projectData:", JSON.parse(JSON.stringify(projectData)));
 
   try {
-     // 1) Keep local editor history; the documented merchant publish endpoint is
-     // the only backend write used by the builder.
-     const history = await getReleases();
-    history.push(release);
-    await saveReleases(history);
-    await saveDeployment(manifest);
-
-      // 2) Publish to the documented merchant publishing pipeline
-      //    POST /api/v1/merchants/:id/publishing/publish (documented compile/publish route)
-     const merchantId = merchant?.merchantId || merchant?.tenantId;
-      if (merchantId && !isDemoId(merchantId)) {
-       // Build minimal payload to avoid 413 (deduplicate: manifest already contains design/navigation/screens)
-       // Estimate size before send
-       const estimateSize = (obj) => new Blob([JSON.stringify(obj)]).size;
-       const publishPayload = { version, manifest };
-       const rawSize = estimateSize(publishPayload);
-       console.log(`[Publish] → POST /api/v1/merchants/${merchantId}/publishing/publish — payload ${(rawSize/1024).toFixed(1)} KB`, JSON.parse(JSON.stringify(publishPayload)));
-
-        // Images are uploaded to Media before this request, so this payload contains URLs and asset IDs only.
-       let payloadToSend = publishPayload;
-        if (rawSize > 800 * 1024) {
-         console.warn(`[Publish] Payload large (${(rawSize/1024).toFixed(1)} KB) — stripping inline images to avoid 413`);
-         const stripDataUrls = (obj) => {
-           const clone = JSON.parse(JSON.stringify(obj));
-           const walk = (o) => {
-             if (!o || typeof o !== 'object') return;
-             for (const k of Object.keys(o)) {
-               const v = o[k];
-               if (typeof v === 'string' && v.startsWith('data:image/') && v.length > 5000) {
-                 // Replace large data URL with placeholder; in production, upload via /media/upload first
-                 o[k] = `[stripped data URL ${ (v.length/1024).toFixed(1)} KB — use media upload]`;
-               } else if (typeof v === 'object') walk(v);
-             }
-           };
-           walk(clone);
-           return clone;
-         };
-         payloadToSend = stripDataUrls(publishPayload);
-         console.log(`[Publish] Stripped payload ${(estimateSize(payloadToSend)/1024).toFixed(1)} KB`, JSON.parse(JSON.stringify(payloadToSend)));
-       }
-
-       // Attempt SDUI publishing pipeline (primary) — with 413 handling
-       try {
-         await httpClient.post(`/api/v1/merchants/${merchantId}/publishing/publish`, payloadToSend);
-       } catch (e) {
-        const status = e?.response?.status || e?.status;
-        if (status === 413) {
-          console.warn("[Publish] 413 Request Entity Too Large — payload too big, check images. Raw size:", (new Blob([JSON.stringify(publishPayload)]).size/1024).toFixed(1) + " KB");
-          // Try again with aggressively stripped payload (remove all data URLs)
-          try {
-            const stripAll = (obj) => {
-              const clone = JSON.parse(JSON.stringify(obj));
-              const walk = (o) => {
-                if (!o || typeof o !== 'object') return;
-                for (const k of Object.keys(o)) {
-                  const v = o[k];
-                  if (typeof v === 'string' && v.startsWith('data:image/')) o[k] = "";
-                  else if (typeof v === 'object') walk(v);
-                }
-              };
-              walk(clone);
-              return clone;
-            };
-            const minimal = stripAll(publishPayload);
-            console.log("[Publish] Retrying with stripped images", JSON.parse(JSON.stringify(minimal)));
-            await httpClient.post(`/api/v1/merchants/${merchantId}/publishing/publish`, minimal);
-            console.log("[Publish] Retry succeeded with stripped payload");
-          } catch (retryErr) {
-            console.warn("[Publish] Retry also failed:", retryErr?.message || retryErr);
-          }
+    const merchantId = merchant?.merchantId || merchant?.tenantId;
+    if (merchantId && !isDemoId(merchantId)) {
+      // Materialization has already uploaded inline images. Payload size does
+      // not indicate compression and must never cause image URLs to be erased.
+      const payload = { version, manifest };
+      const payloadBytes = new Blob([JSON.stringify(payload)]).size;
+      console.log('[Publish] Sending published manifest', { version, payloadBytes });
+      try {
+        await httpClient.post(`/api/v1/merchants/${merchantId}/publishing/publish`, payload);
+      } catch (error) {
+        if ((error?.response?.status || error?.status) === 413) {
+          throw new Error(`Backend rejected the ${Math.ceil(payloadBytes / 1024)}KB manifest (413). Images were uploaded separately; the backend request-size limit must accommodate this manifest.`);
         }
-        console.warn("[publishProject] publishing/publish failed (demo fallback):", e?.message || e);
+        throw error;
       }
 
-      // Fallback: also persist via App config so that definition has a chance even if publishing draft is empty
-      // This is best-effort and merchant-isolated (JWT → current merchant)
-      try {
-        await httpClient.put(`/api/v1/app/merchants/config`, { config: { deployed: manifest, app: { lastPublished: manifest } } });
-        console.log("[Publish] Fallback PUT /api/v1/app/merchants/config succeeded");
-      } catch (e) {
-        console.warn("[Publish] Fallback config PUT failed:", e?.message || e);
-      }
-
-      // Best-effort: try to sync to draft pages if backend uses draft compilation.
-      // We don't know exact payload, so we do a minimal no-op initialize to ensure draft exists, then verify.
-      try {
-        await httpClient.post(`/api/v1/app/draft/initialize`, {}).catch(() => {});
-      } catch {}
-
-       // Verify that definition is now non-empty (skip for demo tenants — no real backend merchant)
-      try {
-        if (!isDemoId(merchantId)) {
-          const verifyRes = await httpClient.get(`/api/v1/merchants/${merchantId}/definition`);
-          const def = verifyRes?.data ?? verifyRes;
-          const screensLen = Object.keys(def?.screens || {}).length;
-          const navLen = Array.isArray(def?.navigation) ? def.navigation.length : Object.keys(def?.navigation || {}).length;
-          if (screensLen === 0 && navLen === 0) {
-            console.warn("[Publish] Verification: definition still empty after publish", def);
-          } else {
-            console.log("[Publish] Verification: definition OK", { screens: screensLen, navigation: navLen });
-          }
-        } else {
-          console.log("[Publish] Demo tenant — skipping definition verification GET");
-        }
-      } catch (e) {
-        console.warn("[Publish] Verification GET definition failed:", e?.message || e);
+      // A successful POST alone does not prove that mobile received this release.
+      // Do not manufacture success by writing runtime data through config/drafts.
+      const response = await httpClient.get(`/api/v1/merchants/${merchantId}/definition`);
+      const deployed = response?.data ?? response;
+      const screenIds = Object.keys(manifest.screens).sort();
+      const deployedIds = Object.keys(deployed?.screens || {}).sort();
+      const deployedVersion = deployed?.version ?? deployed?.metadata?.version;
+      const deployedLogo = deployed?.theme?.brand?.logo ?? deployed?.meta?.logo ?? null;
+      if (deployedVersion !== version ||
+          JSON.stringify(deployedIds) !== JSON.stringify(screenIds) ||
+          deployed?.identity?.slug !== manifest.identity.slug ||
+          deployedLogo !== (manifest.theme.brand.logo ?? null) ||
+          deployed?.navigation?.root?.initialRoute !== manifest.navigation.root.initialRoute) {
+        throw new Error(`Publish was accepted, but mobile definition does not match v${version} (received ${deployedVersion || 'an unversioned definition'}). Backend publishing/read-path synchronization is required; this release has not been confirmed live.`);
       }
     }
-  } catch (e) {
-    return { success: false, error: "Failed to save: " + e.message, validation };
+
+    // Record a successful deployment only after the backend read-back matches.
+    const releaseHistory = Array.isArray(history) ? [...history, release] : [release];
+    await saveReleases(releaseHistory);
+    await saveDeployment(manifest);
+  } catch (error) {
+    return { success: false, error: error?.message || 'Publishing failed', validation };
   }
 
   return { success: true, version, releaseId: release.id, validation, manifest };
 }
-
 export async function getReleaseHistory() {
   try {
     return await getReleases();

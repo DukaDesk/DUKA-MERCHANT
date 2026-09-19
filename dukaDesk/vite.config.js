@@ -27,5 +27,8 @@ export default defineConfig({
     environment: "jsdom",
     include: ["src/**/*.test.{js,jsx}"],
     setupFiles: ["./vitest.setup.js"],
+    pool: "threads",
+    minWorkers: 1,
+    maxWorkers: 1,
   },
 });

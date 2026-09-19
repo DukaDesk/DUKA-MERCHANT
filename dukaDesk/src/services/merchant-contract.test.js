@@ -21,24 +21,33 @@ describe("merchant draft/publish separation", () => {
     setMerchant();
   });
 
-  it("getDesignData tries backend draft endpoint first", async () => {
-    mockHttp.get.mockResolvedValueOnce({ data: { design: { meta: { appName: "Draft App" }, screens: { s1: {} }, shared: {}, navigation: {} } } });
+  it("getDesignData reads the tenant app configuration", async () => {
+    mockHttp.get.mockResolvedValueOnce({ data: { config: { design: { meta: { appName: "Draft App" }, screens: { s1: {} }, shared: {}, navigation: {} } } } });
     const design = await getDesignData();
-    expect(mockHttp.get).toHaveBeenCalledWith("/api/v1/merchants/m_123/publishing/draft");
+    expect(mockHttp.get).toHaveBeenCalledWith("/api/v1/app/merchants/config");
     expect(design.meta.appName).toBe("Draft App");
   });
 
-  it("saveDesignData tries backend draft put", async () => {
+  it("saveDesignData writes the tenant app configuration", async () => {
+    mockHttp.get.mockResolvedValueOnce({ data: { config: {} } });
     mockHttp.put.mockResolvedValueOnce({ data: {} });
     await saveDesignData({ meta: { appName: "X" }, screens: {} });
-    expect(mockHttp.put).toHaveBeenCalledWith("/api/v1/merchants/m_123/publishing/draft", { design: { meta: { appName: "X" }, screens: {} } });
+    expect(mockHttp.put).toHaveBeenCalledWith("/api/v1/app/merchants/config", { config: { design: { meta: { appName: "X" }, screens: {} } } });
   });
 
-  it("getPublishedDefinition uses public definition endpoint, not draft", async () => {
+  it("getPublishedDefinition reads the published app config, not a tenant endpoint", async () => {
     mockHttp.get.mockResolvedValueOnce({ data: { manifestVersion: "1.0.0", screens: { s1: {} } } });
     const def = await getPublishedDefinition("m_123");
-    expect(mockHttp.get).toHaveBeenCalledWith("/api/v1/merchants/m_123/definition");
+    expect(mockHttp.get).toHaveBeenCalledWith("/api/v1/app/merchants/config");
     expect(def.manifestVersion).toBe("1.0.0");
+  });
+
+  it("unwraps nested app config envelopes", async () => {
+    mockHttp.get.mockResolvedValueOnce({
+      config: { deployed: { manifestVersion: "1.0.0", screens: { home: {} } } },
+    });
+    const def = await getPublishedDefinition();
+    expect(def.screens.home).toEqual({});
   });
 
   it("verifyPublishedParity checks both read paths", async () => {
@@ -46,7 +55,7 @@ describe("merchant draft/publish separation", () => {
     mockHttp.get.mockResolvedValueOnce({ data: { version: "1.0.1", screens: { s1: {} }, manifestVersion: "1.0.0", metadata: {} } });
     const res = await verifyPublishedParity("m_123", "test-slug");
     expect(res.ok).toBe(true);
-    expect(mockHttp.get).toHaveBeenCalledWith("/api/v1/merchants/m_123/definition");
+    expect(mockHttp.get).toHaveBeenCalledWith("/api/v1/app/merchants/config");
     expect(mockHttp.get).toHaveBeenCalledWith("/api/v1/bff/mobile/tenant/test-slug/manifest");
   });
 

@@ -1,5 +1,3 @@
-// eslint-disable-next-line no-unused-vars -- used by the commented-out tenant API calls (restore path)
-import axios from "axios";
 import httpClient from "./httpClient";
 import { WIZARD_INTEGRATIONS } from "../config/wizard";
 
@@ -203,10 +201,18 @@ async function fetchTenantSilently(tenantId = null) {
   // } catch {
   //   return null;
   // }
-  const store = demoStore();
-  const tenant = { ...store.tenant };
-  if (tenantId && tenant.id !== tenantId) return null;
-  return tenant;
+  try {
+    const res = tenantId
+      ? await httpClient.get(`/api/v1/merchants/${encodeURIComponent(tenantId)}`)
+      : await httpClient.get("/api/v1/app/merchants");
+    const payload = res?.data ?? res;
+    const data = payload?.data ?? payload;
+    if (tenantId) return data?.id ? data : null;
+    const merchants = Array.isArray(data) ? data : data?.merchants;
+    return Array.isArray(merchants) && merchants.length > 0 ? merchants[0] : null;
+  } catch {
+    return null;
+  }
 }
 
 /* ───── Setup / App Config ───── */
@@ -240,24 +246,35 @@ function unwrapMedia(value) {
   return body?.asset || body?.media || body?.file || body;
 }
 
-function builderDraftPath(merchantId) {
-  return `/api/v1/merchants/${merchantId}/publishing/draft`;
-}
-
-function unwrapDraftDesign(value) {
-  const body = value?.data ?? value;
-  return body?.design ?? body?.draft?.design ?? body?.data?.design ?? body?.config?.design ?? null;
+function mediaUrl(value) {
+  if (typeof value === "string") return value;
+  return value?.url || value?.cdnUrl || value?.publicUrl || value?.downloadUrl ||
+    value?.signedUrl || value?.fileUrl || value?.location || null;
 }
 
 function isUUID(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ""));
 }
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error("Unable to read demo asset"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function uploadMediaAsset(file, metadata = {}) {
   if (isDemoId(metadata?.merchantId || getMerchant()?.merchantId || getMerchant()?.tenantId)) {
-    console.log("[API] (demo) uploadMediaAsset skipped for demo tenant");
-    const demoUrl = `https://cdn.dukadesk.com/builder/assets/demo_asset_${Date.now()}.jpg`;
-    return { id: "demo_asset_" + Date.now(), url: demoUrl, name: file?.name || "builder-asset", status: "pending" };
+    console.log("[API] (demo) uploadMediaAsset using local data URL");
+    return {
+      id: "demo_asset_" + Date.now(),
+      url: await fileToDataUrl(file),
+      name: file?.name || "builder-asset",
+      mimeType: file?.type || "application/octet-stream",
+      status: "local",
+    };
   }
   const form = new FormData();
   form.append("file", file, file?.name || "builder-asset");
@@ -272,10 +289,34 @@ export async function uploadMediaAsset(file, metadata = {}) {
   });
   const asset = unwrapMedia(response);
   if (!asset?.id && !asset?.assetId) throw new Error("Media upload returned no asset ID");
+  const assetId = asset.id || asset.assetId;
+  if (typeof httpClient.patch === "function") {
+    try {
+      await httpClient.patch(`/api/v1/app/media/${assetId}`, {
+        visibility: "public",
+        alt: metadata.alt || metadata.purpose || file?.name || "App image",
+      });
+    } catch (error) {
+      throw new Error(`Media uploaded but could not make it public: ${error?.message || "visibility update failed"}`);
+    }
+  }
+  let deliveryUrl = mediaUrl(asset);
+  // The upload response may only contain an internal `/uploads/...` path.
+  // Resolve the authenticated CDN delivery URL before persisting it in a
+  // published manifest consumed by unauthenticated mobile users.
+  if (assetId && (!deliveryUrl || deliveryUrl.startsWith("/"))) {
+    try {
+      const cdnResponse = await httpClient.get(`/api/v1/app/media/${assetId}/cdn-url`);
+      const cdnAsset = unwrapMedia(cdnResponse);
+      deliveryUrl = mediaUrl(cdnAsset) || deliveryUrl;
+    } catch {
+      // Keep the upload URL; callers still receive an explicit asset record.
+    }
+  }
   return {
     ...asset,
-    id: asset.id || asset.assetId,
-    url: asset.url || asset.cdnUrl || asset.publicUrl || asset.downloadUrl || null,
+    id: assetId,
+    url: deliveryUrl,
   };
 }
 
@@ -516,12 +557,13 @@ export async function googleSignIn(idToken) {
 export async function deployApp(appData) {
   const tenantId = await ensureTenant();
 
-  const slug = (appData.appName || "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const slug = (appData.appName || appData.slug || "published-app").toLowerCase().trim().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "published-app";
+  const appName = appData.appName || slug;
   const storeUrl = `dukadesk.app/${slug}`;
 
   await writeConfig(tenantId, {
     app: {
-      appName: appData.appName,
+      appName,
       slug,
       storeUrl,
       category: appData.category || "Restaurant",
@@ -540,7 +582,7 @@ export async function deployApp(appData) {
   });
 
   await publishTenant(tenantId);
-  return { app: { appName: appData.appName, slug, storeUrl }, message: "App deployed successfully!" };
+  return { app: { appName, slug, storeUrl }, message: "App deployed successfully!" };
 }
 
 export async function updateApp(appData) {
@@ -561,7 +603,24 @@ export async function getMyApp() {
   const tenantId = merchant?.tenantId;
   if (!tenantId) return null;
   const { data } = await readConfig(tenantId);
-  return data.app || null;
+  const app = data.app || {};
+  const published = app.lastPublished || data.deployed || {};
+  const identity = published.identity || {};
+  const branding = published.branding || {};
+  const themeBrand = published.theme?.brand || {};
+  const publishedName = identity.displayName || published.appName || branding.appName || themeBrand.name;
+  const publishedSlug = identity.slug || published.slug;
+  const publishedLogo = branding.logo || themeBrand.logo || published.meta?.logo;
+
+  // The merchant record identifies the owner; the published manifest identifies
+  // the customer-facing app. Prefer the latter wherever it is available.
+  return {
+    ...app,
+    appName: publishedName || app.appName,
+    slug: publishedSlug || app.slug,
+    logo: publishedLogo || app.logo,
+    storeUrl: publishedSlug ? `dukadesk.app/${publishedSlug}` : app.storeUrl,
+  };
 }
 
 export async function saveCategory(category) {
@@ -1226,15 +1285,6 @@ export async function getDesignData() {
   const merchant = getMerchant();
   const merchantId = merchant?.merchantId || merchant?.tenantId;
   if (!merchantId) return null;
-  if (!isDemoId(merchantId)) {
-    try {
-      const res = await httpClient.get(builderDraftPath(merchantId));
-      const design = unwrapDraftDesign(res);
-      if (design && design.meta && design.screens) return design;
-    } catch {
-      // backend draft unavailable, fallback to local
-    }
-  }
   const { data } = await readConfig(merchantId);
   return data.design || null;
 }
@@ -1243,27 +1293,32 @@ export async function saveDesignData(design) {
   const merchant = getMerchant();
   const merchantId = merchant?.merchantId || merchant?.tenantId;
   if (!merchantId) return;
-  if (!isDemoId(merchantId)) {
-    try {
-      await httpClient.put(builderDraftPath(merchantId), { design });
-      await writeConfig(merchantId, { design }).catch(() => {
-        // ignore local fallback error
-      });
-      return;
-    } catch {
-      // backend draft unavailable, fallback to local
-    }
-  }
   await writeConfig(merchantId, { design });
 }
 
 export async function getPublishedDefinition(merchantId) {
-  const id = merchantId || getMerchant()?.merchantId || getMerchant()?.tenantId;
-  if (!id) return null;
   try {
-    const res = await httpClient.get(`/api/v1/merchants/${id}/definition`);
-    return res?.data ?? res;
-  } catch {
+    // Merchant editor reads its own app configuration. App scope is resolved
+    // from the authenticated merchant; no tenant-scoped lookup is required.
+    const res = await httpClient.get(`/api/v1/app/merchants/config`);
+    const payload = res?.data ?? res;
+    const isDefinition = value => value && typeof value === "object" && (
+      value.screens || value.navigation || value.theme || value.manifestVersion
+    );
+    const findDefinition = (value, depth = 0) => {
+      if (!value || typeof value !== "object" || depth > 4) return null;
+      if (isDefinition(value)) return value;
+      for (const key of ["deployed", "published", "manifest", "config", "data"]) {
+        const found = findDefinition(value[key], depth + 1);
+        if (found) return found;
+      }
+      return null;
+    };
+    const definition = findDefinition(payload);
+    if (definition) return definition;
+    return null;
+  } catch (error) {
+    console.warn("[getPublishedDefinition] app config request failed:", error?.message || error);
     return null;
   }
 }

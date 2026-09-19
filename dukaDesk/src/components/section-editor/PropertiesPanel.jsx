@@ -711,6 +711,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
               </div>
             ) : section ? (
               <div style={{ margin: "-12px -10px 0", borderTop: `1px solid ${theme.borderLight}` }}>
+                <ScreenLayoutEditor store={store} screen={store.screen} />
                 <AccPanel id="sec-bg" open={stylingOpen["sec-bg"] !== false} onToggle={toggleStyling} title="Background" icon={ImageIcon}>
                   <div style={{ marginBottom: 12 }}><label style={labelStyle}>Background Color</label><ColorInput value={section.backgroundColor || "#FCF8FA"} onChange={v => store.setSectionColor(null, selectedSectionId, v)} /></div>
                   <div style={{ marginBottom: 4 }}>
@@ -733,6 +734,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
               </div>
             ) : (
               <div style={{ margin: "-12px -10px 0", borderTop: `1px solid ${theme.borderLight}` }}>
+                <ScreenLayoutEditor store={store} screen={store.screen} />
                 <AccPanel id="none-screen" open={stylingOpen["none-screen"] !== false} onToggle={toggleStyling} title="Screen Background" icon={Palette}>
                   <ColorInput value={store.screen?.backgroundColor || "#FCF8FA"} onChange={v => store.setScreenBackgroundColor(store.currentScreenId, v)} />
                 </AccPanel>
@@ -751,6 +753,78 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
         )}
       </div>
     </div>
+  );
+}
+
+function ScreenLayoutEditor({ store, screen }) {
+  const { theme, textInput, labelStyle } = useEditorTheme();
+  const layout = screen?.layout || {};
+  const update = (patch) => store.setScreenLayout(store.currentScreenId, patch);
+  const number = (key, fallback = "") => (
+    <input
+      type="number"
+      min="0"
+      value={layout[key] ?? fallback}
+      onChange={event => {
+        const value = event.target.value;
+        update({ [key]: value === "" ? undefined : Number(value) });
+      }}
+      style={{ ...textInput, padding: "6px 8px" }}
+    />
+  );
+
+  return (
+    <AccPanel id="screen-layout" open={true} onToggle={() => {}} title="Screen Layout" icon={LayoutGrid}>
+      <div style={{ marginBottom: 10 }}>
+        <label style={labelStyle}>Container</label>
+        <select
+          value={layout.kind || "scroll"}
+          onChange={event => update({ kind: event.target.value })}
+          style={{ ...textInput, cursor: "pointer" }}
+        >
+          <option value="scroll">Scrollable column</option>
+          <option value="column">Column</option>
+          <option value="row">Row</option>
+          <option value="grid">Grid</option>
+          <option value="section">Section</option>
+          <option value="stack">Stack / overlay</option>
+        </select>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+        <div><label style={labelStyle}>Gap (px)</label>{number("gap", 16)}</div>
+        <div><label style={labelStyle}>Flex grow</label>{number("flexGrow", "")}</div>
+      </div>
+      <div style={{ marginBottom: 10 }}>
+        <label style={labelStyle}>Padding (px)</label>
+        <SpacingEditor value={layout.padding ?? 16} onChange={padding => update({ padding })} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+        <div>
+          <label style={labelStyle}>Align items</label>
+          <select value={layout.alignItems || "stretch"} onChange={event => update({ alignItems: event.target.value })} style={{ ...textInput, cursor: "pointer" }}>
+            <option value="stretch">Stretch</option><option value="flex-start">Start</option><option value="center">Center</option><option value="flex-end">End</option>
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Justify</label>
+          <select value={layout.justifyContent || "flex-start"} onChange={event => update({ justifyContent: event.target.value })} style={{ ...textInput, cursor: "pointer" }}>
+            <option value="flex-start">Start</option><option value="center">Center</option><option value="flex-end">End</option><option value="space-between">Between</option><option value="space-around">Around</option><option value="space-evenly">Evenly</option>
+          </select>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+        <div><label style={labelStyle}>Min height</label>{number("minHeight", "")}</div>
+        <div><label style={labelStyle}>Flex</label>{number("flex", "")}</div>
+      </div>
+      <div style={{ marginBottom: 10 }}>
+        <label style={labelStyle}>Container background</label>
+        <ColorInput value={layout.backgroundColor || screen?.backgroundColor || "#FCF8FA"} onChange={value => update({ backgroundColor: value })} />
+      </div>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: theme.textSecondary, cursor: "pointer" }}>
+        <input type="checkbox" checked={layout.scroll !== false} onChange={event => update({ scroll: event.target.checked })} />
+        Allow scrolling
+      </label>
+    </AccPanel>
   );
 }
 

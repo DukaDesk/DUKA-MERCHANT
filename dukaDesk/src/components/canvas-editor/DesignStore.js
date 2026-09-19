@@ -718,6 +718,14 @@ export function useDesignStore(initialData, options = {}) {
     });
   }, [updateData]);
 
+  const setScreenLayout = useCallback((screenId, patch) => {
+    updateData(d => {
+      const target = d.screens[screenId];
+      if (!target) return;
+      target.layout = { ...(target.layout || {}), ...patch };
+    });
+  }, [updateData]);
+
   /* ── Duplicate section ── */
   const duplicateSection = useCallback((screenId, sectionId) => {
     const sid = screenId || currentScreenId;
@@ -884,7 +892,7 @@ export function useDesignStore(initialData, options = {}) {
 
     // Screens
     addScreen, removeScreen, renameScreen,
-    setScreenBackgroundColor,
+    setScreenBackgroundColor, setScreenLayout,
 
     // Sections
     getAllSections,
