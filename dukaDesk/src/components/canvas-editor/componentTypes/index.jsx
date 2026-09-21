@@ -16,7 +16,7 @@ import {
   Sparkles, Compass, FileText, BarChart3, ClipboardList, Scissors,
   ToggleLeft, CheckSquare, Pencil, Boxes, GalleryHorizontal, CreditCard, PanelTop, List, AlignLeft,
   Tag,
-  Square,
+  Square, Utensils, Drumstick, CupSoda, GlassWater, Bike, Sun, Coffee, Pizza, Cake, Apple, Store, Package, Truck, Receipt, Ticket, Bookmark, Award, Crown, Shield, Lock, Key, Mail, MessageCircle, Headphones, Music, Play, Globe, Building2, Briefcase, GraduationCap, BookOpen, Dumbbell, Stethoscope, Flower2, Leaf, PawPrint, Car, Plane, Train, Hotel, Bed, Map, Navigation, Users, UserPlus, LogOut, HelpCircle, Wrench, Laptop, Smartphone,
 } from "lucide-react";
 
 export function registerComponentType(typeName, def) {
@@ -61,8 +61,13 @@ export const ICON_LIBRARY = {
   Home, Star, Heart, ShoppingBag, ShoppingCart, MapPin, Bell, User,
   Clock, Wallet, Settings, Phone, Camera, Gift, Info, Check, X, Plus, Minus,
   Trash2, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, ArrowRight,
-  ArrowLeft, ArrowUp, ArrowDown, Search,
+  ArrowLeft, ArrowUp, ArrowDown, Search, Menu, Calendar, LayoutGrid, FileText, BarChart3, ClipboardList, Scissors, Tag, Compass, CreditCard, Utensils, Drumstick, CupSoda, GlassWater, Bike, Sun, Coffee, Pizza, Cake, Apple, Store, Package, Truck, Receipt, Ticket, Bookmark, Award, Crown, Shield, Lock, Key, Mail, MessageCircle, Headphones, Music, Play, Globe, Building2, Briefcase, GraduationCap, BookOpen, Dumbbell, Stethoscope, Flower2, Leaf, PawPrint, Car, Plane, Train, Hotel, Bed, Map, Navigation, Users, UserPlus, LogOut, HelpCircle, Wrench, Laptop, Smartphone,
 };
+
+export function IconGlyph({ name, size = 24 }) {
+  const Icon = ICON_LIBRARY[name];
+  return Icon ? <Icon size={size} /> : /\p{Extended_Pictographic}/u.test(name || "") ? <span style={{ fontSize: size }}>{name}</span> : <ImageIcon size={size} />;
+}
 
 export function getLucideIcon(name) {
   return ICON_LIBRARY[name] || Circle;
@@ -261,7 +266,7 @@ registerComponentType("menu_item", {
     }
   },
   subElements: [
-    { key: "emoji", label: "Image / Emoji", icon: ImageIcon, kind: "image" },
+    { key: "emoji", label: "Icon", icon: ImageIcon, kind: "image" },
     { key: "name", label: "Name", icon: Type, kind: "text", styleable: true },
     { key: "price", label: "Price", icon: Tag, kind: "text", styleable: true },
     { key: "desc", label: "Description", icon: Type, kind: "text", styleable: true },
@@ -270,7 +275,7 @@ registerComponentType("menu_item", {
     { key: "name", label: "Name", type: "text" },
     { key: "price", label: "Price", type: "text" },
     { key: "desc", label: "Description", type: "text" },
-    { key: "emoji", label: "Image / Emoji", type: "text" },
+    { key: "emoji", label: "Icon", type: "icon" },
     { key: "width", label: "Width (px, 0=auto)", type: "number", group: "layout" },
     { key: "height", label: "Height (px, 0=auto)", type: "number", group: "layout" },
   ],
@@ -279,7 +284,7 @@ registerComponentType("menu_item", {
     const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : "100%";
     return (
     <div style={{ display: "flex", gap: 12, padding: "12px 16px", background: "#FCF8FA", borderRadius: 12, boxShadow: "0px 2px 12px rgba(0,0,0,0.08)", border: "1px solid rgba(200,197,205,0.3)", width: w, height: h, alignItems: "center" }}>
-      <div style={{ width: 48, height: 48, background: "#F1EDEF", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{props.emoji || "Utensils"}</div>
+      <div style={{ width: 48, height: 48, background: "#F1EDEF", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}><IconGlyph name={props.emoji || "Utensils"} size={22} /></div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "name", { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#1C1B1D" })), { marginBottom: 2 })}>{props.name}</div>
         {props.desc && <div style={applyTextStyle(resolveTextStyle(props, "desc", { fontFamily: "Inter", fontSize: 11, fontWeight: "400", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#6B7280" }))}>{props.desc}</div>}
@@ -327,7 +332,7 @@ registerComponentType("category_pills", {
         {cats.map((c, i) => {
           const active = c.active === true || c.active === "true" || i === 0;
           return (
-            <span key={i} style={{ padding: "6px 16px", borderRadius: 20, background: active ? "#1A1A2E" : "#E5E1E3", color: active ? "#fff" : "#47464C", fontSize: 13, fontWeight: active ? 600 : 500, whiteSpace: "nowrap", fontFamily: "'Inter',sans-serif" }}>{c.label || "Pill"}</span>
+            <span key={i} onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(c, i, "cats"); } : undefined} style={{ ...props.itemSelectionStyle?.("cats", i), padding: "6px 16px", borderRadius: 20, background: active ? "#1A1A2E" : "#E5E1E3", color: active ? "#fff" : "#47464C", fontSize: 13, fontWeight: active ? 600 : 500, whiteSpace: "nowrap", fontFamily: "'Inter',sans-serif" }}>{c.label || "Pill"}</span>
           );
         })}
       </div>
@@ -734,7 +739,7 @@ registerComponentType("menu_grid", {
         { key: "oldPrice", label: "Old Price", type: "text" },
         { key: "desc", label: "Description", type: "text" },
         { key: "badge", label: "Badge / Tag", type: "text", placeholder: "e.g. Special" },
-        { key: "emoji", label: "Emoji", type: "text", placeholder: "Utensils" },
+        { key: "emoji", label: "Icon", type: "icon", placeholder: "Utensils" },
         { key: "image", label: "Image", type: "image" },
         { key: "background", label: "Card Background", type: "bg" },
       ],
@@ -778,7 +783,8 @@ registerComponentType("menu_grid", {
           const cardBg = resolveBackground(it.background, "#FCF8FA");
           const cardImg = isImageFill(it.background);
           return (
-            <div key={i} style={{
+            <div key={i} onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items"); } : undefined} style={{
+              ...props.itemSelectionStyle?.("items", i),
               background: cardBg,
               borderRadius: cardRadius,
               padding: 10,
@@ -814,7 +820,7 @@ registerComponentType("menu_grid", {
                   marginLeft: imageWidth > 0 ? "auto" : 0,
                   marginRight: imageWidth > 0 ? "auto" : 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                }}>{it.emoji || "Utensils"}</div>
+                }}><IconGlyph name={it.emoji || "Utensils"} size={props.iconSize || 26} /></div>
               )}
               <div style={{ fontSize: 12, fontWeight: 600, color: props.textColor || "#1C1B1D", lineHeight: 1.25 }}>{it.name || "Item"}</div>
               {it.desc && <div style={{ fontSize: 10.5, color: "#6B7280", lineHeight: 1.3, marginTop: 2 }}>{it.desc}</div>}
@@ -996,7 +1002,7 @@ registerComponentType("promotion_list", {
         { key: "title", label: "Title", type: "text" },
         { key: "subtitle", label: "Subtitle", type: "text" },
         { key: "badge", label: "Badge", type: "text", placeholder: "e.g. 50% OFF" },
-        { key: "emoji", label: "Emoji", type: "text", placeholder: "Utensils" },
+        { key: "emoji", label: "Icon", type: "icon", placeholder: "Utensils" },
         { key: "image", label: "Image", type: "image" },
         { key: "background", label: "Image Card Tone", type: "bg" },
       ],
@@ -1037,7 +1043,8 @@ registerComponentType("promotion_list", {
       const isImageTone = isImageFill(of.background);
       const mediaBg = isImageTone ? ofTone : (hasImage ? "#F1EDEF" : (resolveBackground(of.background, "#FFF3E0")));
       return (
-        <div key={i} style={{
+        <div key={i} onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(of, i, props.offers?.length ? "offers" : "items"); } : undefined} style={{
+          ...props.itemSelectionStyle?.(props.offers?.length ? "offers" : "items", i),
           background: cardBg, borderRadius: radius, overflow: "hidden",
           border, boxShadow: layout === "scroll" ? "0 12px 28px rgba(26,26,46,0.10)" : "0 2px 10px rgba(26,26,46,0.06)",
           display: "flex", flexDirection: "column", height: "100%",
@@ -1049,7 +1056,7 @@ registerComponentType("promotion_list", {
           }}>
             {hasImage
               ? <img src={of.image} alt="" style={{ width: "100%", height: "100%", objectFit: fit, display: "block" }} />
-              : <span style={{ fontSize: 36, opacity: 0.9 }}>{of.emoji || "Gift"}</span>}
+              : <span style={{ fontSize: 36, opacity: 0.9 }}><IconGlyph name={of.emoji || "Gift"} size={36} /></span>}
             {of.badge && (
               <span style={{
                 position: "absolute", top: 8, left: 8, background: accent, color: "#5B3A00",
@@ -1148,7 +1155,7 @@ registerComponentType("card", {
     { key: "shadow", label: "Shadow", type: "select", options: ["none", "soft", "raised"] },
     { key: "border", label: "Border", type: "select", options: ["none", "soft", "strong"] },
     { key: "image", label: "Cover Image", type: "image" },
-    { key: "emoji", label: "Emoji", type: "text", placeholder: "Sun" },
+    { key: "emoji", label: "Icon", type: "icon", placeholder: "Sun" },
     { key: "imageWidth", label: "Image Width (0 = full)", type: "number" },
     { key: "imageHeight", label: "Image Height", type: "number" },
     { key: "imageFit", label: "Image Fit", type: "select", options: ["cover", "contain", "fill"] },
@@ -1204,7 +1211,7 @@ registerComponentType("card", {
       }}>
         {hasImage
           ? <img src={props.image} alt="" style={{ width: "100%", height: "100%", objectFit: fit, display: "block" }} />
-          : <span>{props.emoji || "Image"}</span>}
+          : <span><IconGlyph name={props.emoji || "Image"} size={36} /></span>}
       </div>
     );
 
@@ -1380,7 +1387,7 @@ registerComponentType("icon", {
   defaultHeight: 32,
   defaultProps: { name: "Home", size: 24, color: "#1C1B1D" },
   propFields: [
-    { key: "name", label: "Icon", type: "select", options: Object.keys(ICON_LIBRARY) },
+    { key: "name", label: "Icon", type: "icon" },
     { key: "size", label: "Size", type: "number" },
     { key: "color", label: "Color", type: "color", group: "colors" },
   ],
@@ -1426,7 +1433,7 @@ registerComponentType("icon_button", {
   defaultHeight: 44,
   defaultProps: { icon: "Heart", label: "Favorite", color: "#FFFFFF", background: "#1A1A2E", rounded: "true" },
   propFields: [
-    { key: "icon", label: "Icon", type: "select", options: Object.keys(ICON_LIBRARY) },
+    { key: "icon", label: "Icon", type: "icon" },
     { key: "label", label: "Label", type: "text" },
     { key: "background", label: "Background", type: "color" },
     { key: "color", label: "Icon Color", type: "color" },
@@ -1457,7 +1464,7 @@ registerComponentType("fab", {
   defaultHeight: 56,
   defaultProps: { icon: "Plus", background: "#F4A026", color: "#1C1B1D" },
   propFields: [
-    { key: "icon", label: "Icon", type: "select", options: Object.keys(ICON_LIBRARY) },
+    { key: "icon", label: "Icon", type: "icon" },
     { key: "background", label: "Background", type: "color" },
     { key: "color", label: "Icon Color", type: "color" },
   ],

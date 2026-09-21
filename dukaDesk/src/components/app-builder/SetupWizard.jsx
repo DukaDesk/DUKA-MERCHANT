@@ -1,3 +1,4 @@
+import { showAlert } from "../common/dialogs";
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
@@ -340,7 +341,7 @@ function SetupBranding({ data, setData, errors, setErrors, isMobile }) {
   const handleLogoUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert("File too large. Max 5MB."); return; }
+    if (file.size > 5 * 1024 * 1024) { void showAlert("File too large. Max 5MB.", "Upload too large"); return; }
     const reader = new FileReader();
     reader.onload = (ev) => setData(d => ({ ...d, logo: ev.target.result }));
     reader.readAsDataURL(file);

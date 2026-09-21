@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { getComponentCatalog } from "./componentCatalog";
+import { promptDialog } from "../common/dialogs";
+import { useState, useEffect } from "react";
 import { Layout, ClipboardList, PanelTop, ChevronDown, Type, AlignLeft, Square, List, Star, Minus, Image as ImageIcon, Video, SquareStack, Monitor, FileText, ShoppingBag, Tag, Info, Package, ShoppingCart, BarChart3, Scissors, Phone, Sparkles, Construction, Upload, Trash2, Home, Search, User, Settings, Link } from "lucide-react";
 import { useEditorTheme, ColorInput } from "./editorTheme.jsx";
 import { getComponentType, getLucideIcon, ICON_LIBRARY } from "../canvas-editor/componentTypes";
@@ -84,7 +86,7 @@ const COMPONENT_FALLBACK = FileText;
 
 // Tab definitions — 100px column, top to bottom, last two at bottom
 const TABS_TOP = [
-  { id: "page-content", label: "Page Content", icon: PageContentIcon },
+  { id: "page-content", label: "App sections", icon: PageContentIcon },
   { id: "element", label: "Elements", icon: ElementIcon },
   { id: "third-party", label: "Third Party", icon: ThirdPartyIcon },
   { id: "templates", label: "Templates", icon: TemplatesIcon },
@@ -156,38 +158,10 @@ function ChatIcon({ active }) {
 
 /* New Elements palette — grouped, collapsible, closed by default.
    `type: null` rows are placeholders shown disabled as "Coming soon". */
-const ELEMENT_GROUPS = [
-  {
-    label: "Structure",
-    items: [
-      { label: "Section", special: "section" },
-      { label: "Layout", type: "row" },
-      { label: "Screens", special: "screens" },
-      { label: "Content List", type: "info_list" },
-      { label: "Tabs", type: "tabs" },
-      { label: "Accordion", type: null },
-    ],
-  },
-  {
-    label: "Basic",
-    items: [
-      { label: "Heading", type: "text_block" },
-      { label: "Paragraph", type: "text_block" },
-      { label: "Button", type: "button" },
-      { label: "List", type: "info_list" },
-      { label: "Icon", type: "icon" },
-      { label: "Divider", type: "divider" },
-    ],
-  },
-  {
-    label: "Media",
-    items: [
-      { label: "Images", type: "image_block" },
-      { label: "Video", type: null },
-    ],
-  },
+const getElementGroups = () => [
+  { label: "Structure", items: [{ label: "Layout", type: "row" }, { label: "Screens", special: "screens" }, { label: "Tabs", type: "tabs" }] },
+  { label: "Components", items: getComponentCatalog().map(category => ({ label: category.label, special: "category", category: category.key, icon: category.icon })) },
 ];
-
 /* Lucide icon per palette item (replaces emoji/special-character glyphs). */
 const ELEMENT_ICON_MAP = {
   Section: SquareStack,
@@ -217,6 +191,11 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
   const [activeTab, setActiveTab] = useState("page-content");
   const [addQuery, setAddQuery] = useState("");
   const [groupOpen, setGroupOpen] = useState({});
+  useEffect(() => {
+    if (!browseType) return;
+    setActiveTab("element");
+    setGroupOpen(previous => ({ ...previous, [browseType.startsWith("components:") ? "Components" : "Structure"]: true }));
+  }, [browseType]);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [tabIconPickerIdx, setTabIconPickerIdx] = useState(null);
   const [linkPickerIdx, setLinkPickerIdx] = useState(null);
@@ -437,11 +416,16 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
         )}
       </div>
       <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+        <label style={{ fontSize: 12, color: theme.textSecondary }}>
+          <input type="checkbox" checked={splash.enabled !== false} onChange={event => store.setSplash({ enabled: event.target.checked })} /> Enabled
+        </label>
+        <label style={{ fontSize: 12, color: theme.textSecondary }}>Duration (seconds)
+          <input type="number" min="0" step="0.1" style={{ width: 64, marginLeft: 8, padding: "4px 6px", fontSize: 12, border: "1px solid " + theme.border, borderRadius: theme.radius.sm, background: theme.surface, color: theme.text }} value={(splash.durationMs ?? 500) / 1000} onChange={event => { const durationMs = Math.round(Number(event.target.value) * 1000); if (Number.isFinite(durationMs) && durationMs >= 0) store.setSplash({ durationMs }); }} />
+        </label>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Background</div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <ColorInput value={splash.backgroundColor || "#1A1A2E"} onChange={(v) => store.setSplash({ backgroundColor: v, backgroundImage: "" })} />
-            <span style={{ fontSize: 11, color: theme.textMuted }}>or</span>
             <button onClick={() => document.getElementById("splash-bg-upload")?.click()} style={{ ...iconBtn, padding: "5px 8px", fontSize: 11, gap: 4 }}>
               <Upload size={12} /> {splash.backgroundImage ? "Change image" : "Upload image"}
             </button>
@@ -462,7 +446,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
           }} />
         </div>
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Center Logo</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Logo</div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <button onClick={() => document.getElementById("splash-logo-upload")?.click()} style={{ ...iconBtn, padding: "5px 8px", fontSize: 11, gap: 4 }}>
               <Upload size={12} /> {splashLogo ? "Change logo" : "Upload logo"}
@@ -491,21 +475,18 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
         </div>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>App Slug</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${theme.border}`, borderRadius: theme.radius.sm, padding: "0 8px", background: theme.surface }}>
-            <span style={{ fontSize: 11, color: theme.textMuted, whiteSpace: "nowrap" }}>dukadesk.app/</span>
+          <div style={{ width: 160, maxWidth: "100%", boxSizing: "border-box", display: "flex", alignItems: "center", gap: 6, border: `1px solid ${theme.border}`, borderRadius: theme.radius.sm, padding: "0 8px", background: theme.surface }}>
             <input
               value={store.data.meta?.slug || ""}
               onChange={e => {
-                const businessName = store.data.meta?.businessName || store.data.meta?.appName || "";
-                const val = slugifyAppName(e.target.value || businessName);
+                const val = e.target.value;
                 store.setMeta({ slug: val });
               }}
-              onBlur={() => {}}
+              onBlur={() => store.setMeta({ slug: store.data.meta?.slug?.trim() ? slugifyAppName(store.data.meta.slug) : "" })}
               placeholder={store.data.meta?.businessName ? slugifyAppName(store.data.meta.businessName) : (store.data.meta?.appName ? slugifyAppName(store.data.meta.appName) : "my-app")}
-              style={{ flex: 1, border: "none", outline: "none", fontSize: 12, padding: "7px 0", background: "transparent", color: theme.text }}
+              style={{ width: "100%", minWidth: 0, border: "none", outline: "none", fontSize: 12, padding: "4px 0", background: "transparent", color: theme.text }}
             />
           </div>
-          <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4, lineHeight: 1.4 }}>Derived from Business Name. Edit to change the slug.</div>
         </div>
       </div>
     </div>
@@ -535,7 +516,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
                 {isPickerOpen && (
                   <>
                     <div style={{ position: "fixed", inset: 0, zIndex: 39 }} onClick={() => setTabIconPickerIdx(null)} />
-                    <div style={{ position: "absolute", zIndex: 40, bottom: "100%", left: 0, marginBottom: 6, background: theme.surface, borderRadius: theme.radius.md, boxShadow: theme.shadowLg, border: `1px solid ${theme.border}`, padding: 8, display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 4, width: 220 }}>
+                    <div style={{ position: "absolute", zIndex: 40, bottom: "100%", left: 0, marginBottom: 6, background: theme.surface, borderRadius: theme.radius.md, boxShadow: theme.shadowLg, border: `1px solid ${theme.border}`, padding: 8, display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 4, width: 220, maxHeight: 240, overflowY: "auto" }}>
                       {Object.keys(ICON_LIBRARY).map(name => {
                         const I = ICON_LIBRARY[name];
                         return (
@@ -602,7 +583,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {renderSplashCard()}
       <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 11, color: theme.text, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span>{screen.name || "Screen"} sections</span>
+        <span>App sections</span>
         <span style={{ fontSize: 10, color: theme.textMuted, fontWeight: 400 }}>{bodySections.length}</span>
       </div>
       {bodySections.length === 0 && (
@@ -633,7 +614,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
                 <div style={{ position: "absolute", zIndex: 40, right: 40, top: "0px", background: theme.surface, borderRadius: theme.radius.md, boxShadow: theme.shadowLg, border: `1px solid ${theme.border}`, minWidth: 170, overflow: "hidden", padding: 4 }}>
                   {!isLinked && <MenuItem label="Save to library" onClick={() => { store.saveSectionToLibrary(null, id); setMenuOpen(null); }} icon="bookmark" />}
                   {isLinked && <MenuItem label="Detach from library" onClick={() => { store.detachSection(undefined, id); setMenuOpen(null); }} icon="chain" />}
-                  <MenuItem label="Rename" onClick={() => { const n = window.prompt("Rename section:", resolved.name || "Section"); if (n) store.renameSection(null, id, n); setMenuOpen(null); }} icon="edit" />
+                  <MenuItem label="Rename" onClick={async () => { setMenuOpen(null); const n = await promptDialog("Enter the section name:", resolved.name || "Section"); if (n) store.renameSection(null, id, n); }} icon="edit" />
                   <MenuItem label="Duplicate" onClick={() => { store.duplicateSection(null, id); setMenuOpen(null); }} icon="copy" />
                   <div style={{ height: 1, background: theme.border, margin: "4px 0" }} />
                   <MenuItem label="Move up" disabled={i === 0} onClick={() => { store.reorderBodySection(null, id, "up"); setMenuOpen(null); }} icon="up" />
@@ -716,14 +697,14 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
         {!hasSection && (
           <div style={{ background: theme.hoverAmber, borderRadius: theme.radius.md, padding: 10, marginBottom: 10 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#6B4200", marginBottom: 2 }}>Select a section first</div>
-            <div style={{ fontSize: 10, color: "#92400E", lineHeight: 1.4 }}>Click a section on the canvas or in Page Content to add elements to it.</div>
+            <div style={{ fontSize: 10, color: "#92400E", lineHeight: 1.4 }}>Click a section on the canvas or in App sections to add elements to it.</div>
           </div>
         )}
         <div style={{ position: "relative", marginBottom: 8 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={theme.textMuted} strokeWidth="2.5" style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
           <input value={addQuery} onChange={(e) => setAddQuery(e.target.value)} placeholder="Search elements…" style={{ width: "100%", padding: "7px 8px 7px 28px", border: `1px solid ${theme.border}`, borderRadius: theme.radius.md, fontSize: 12, outline: "none", background: theme.surface, color: theme.text }} />
         </div>
-        {ELEMENT_GROUPS.map((group) => {
+        {getElementGroups().map((group) => {
           const items = filterItems(group.items);
           if (items.length === 0) return null;
           const isOpen = q ? true : groupOpen[group.label] === true;
@@ -743,14 +724,14 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
                 <div style={{ display: "flex", flexDirection: "column", gap: 1, marginTop: 2 }}>
                   {items.map((it) => {
                     const comingSoon = !it.type && !it.special;
-                    const isActive = browseType === it.label;
-                    const IconCmp = ELEMENT_ICON_MAP[it.label] || Square;
+                    const isActive = browseType === (it.category ? "components:" + it.category : it.label);
+                    const IconCmp = it.icon || ELEMENT_ICON_MAP[it.label] || Square;
                     return (
                       <button
                         key={it.label}
                         onClick={() => {
                           if (it.special === "section") onAddSection?.();
-                          else onBrowse?.(it.label);
+                          else onBrowse?.(it.category ? "components:" + it.category : it.label);
                         }}
                         title={comingSoon ? "Coming soon" : it.label}
                         style={{

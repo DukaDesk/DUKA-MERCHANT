@@ -1,3 +1,4 @@
+import { showAlert } from "../common/dialogs";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, Eye, Code, Layers, Download, Undo, Redo, ChevronLeft, ChevronRight, MousePointer, GripVertical, Trash2, Edit3, Copy, Plus, X, Smartphone, Check, Palette } from "lucide-react";
@@ -268,7 +269,7 @@ export default function TemplateEditor({ templateId }) {
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
       console.error("Failed to save template:", err);
-      alert("Failed to save template: " + err.message);
+      await showAlert("Failed to save template: " + err.message, "Template not saved");
     } finally {
       setSaving(false);
     }

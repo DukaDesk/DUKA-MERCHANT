@@ -9,7 +9,7 @@ import ScreenSwitcher from "./ScreenSwitcher";
 import { toast } from "react-toastify";
 import { NAVY } from "../../theme";
 import { useEditorTheme } from "./editorTheme.jsx";
-import { publishProject, buildManifestPreview, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
+import { hasPendingPublication, publishProject, buildManifestPreview, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
 import { getPublishedDefinition } from "../../services/api";
 import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
@@ -26,7 +26,8 @@ function resolveActionTarget(action) {
 
 function parsePreviewAction(comp) {
   const p = comp?.props || {};
-  const raw = p.action || p.actions?.default || (p.actions && typeof p.actions === "object" ? p.actions.tap : null);
+  const actions = { ...comp?.actions, ...p.actions };
+  const raw = p.tapAction || p.action || actions.selectItem || actions.filter || actions.default || actions.tap;
   if (!raw) return null;
   if (typeof raw === "string") {
     try { return JSON.parse(raw); } catch { return null; }
@@ -87,7 +88,9 @@ export default function SectionEditor({ store, onBack }) {
   const [focusSubKey, setFocusSubKey] = useState(null);
   const [navSelected, setNavSelected] = useState(false);
   const [browseType, setBrowseType] = useState(null);
+  const [layoutTarget, setLayoutTarget] = useState(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publicationPending, setPublicationPending] = useState(hasPendingPublication);
 
   const data = store.data;
 
@@ -148,6 +151,22 @@ export default function SectionEditor({ store, onBack }) {
     setBrowseType(null);
   }, []);
 
+  const handleBrowseElements = value => {
+    setLayoutTarget(null);
+    if (value?.startsWith("components:")) {
+      const selected = (store.screen?.bodySections || []).find(section => section.id === selectedSectionId);
+      const section = selected && (store.resolveSection?.(selected) || selected);
+      let target = null;
+      const visit = (nodes, parent = null) => { for (const node of nodes || []) {
+        const container = node.type === "nested_section" ? node.id : parent;
+        if (node.id === selectedComponentId) target = container;
+        visit(node.children, container);
+      } };
+      visit(section?.components);
+      setSelectedComponentId(target); setFocusSubKey(null); setNavSelected(false);
+    }
+    setBrowseType(value);
+  };
   const handleAddSection = useCallback(() => {
     store.addBodySection(store.currentScreenId, { type: "custom", name: "New Section" });
   }, [store]);
@@ -272,9 +291,13 @@ export default function SectionEditor({ store, onBack }) {
       toast.error("Publish failed: " + (e?.message || "unknown error"));
       return;
     }
+    setPublicationPending(!!result.pending);
     if (result.success) {
       toast.success(`Published v${result.version} — mobile manifest updated!`);
-      setTimeout(() => onBack?.(), 1200);
+      if (result.verifiedPrevious) toast.info("The previous publication is confirmed. Publish again to send any newer edits.");
+      else setTimeout(() => onBack?.(), 1200);
+    } else if (result.pending) {
+      toast.info(result.error);
     } else {
       // Only show validation modal if there are actual errors/warnings to display
       const hasIssues = (result.validation?.errors?.length || 0) > 0 || (result.validation?.warnings?.length || 0) > 0;
@@ -288,9 +311,11 @@ export default function SectionEditor({ store, onBack }) {
   }, [store, onBack, isPublishing]);
 
   const handleShowReleases = useCallback(async () => {
-    const history = await getReleaseHistory();
-    setReleases(history);
-    setShowReleases(true);
+    try {
+      const history = await getReleaseHistory();
+      setReleases(history);
+      setShowReleases(true);
+    } catch (error) { toast.error(error.message || "Unable to load releases"); }
   }, []);
 
   const handleRollback = useCallback(async (releaseId) => {
@@ -298,7 +323,9 @@ export default function SectionEditor({ store, onBack }) {
     if (result.success) {
       const history = await getReleaseHistory();
       setReleases(history);
-    }
+      toast.success(result.verifiedPrevious ? "Previous publication verified; no new rollback was sent" : "Rollback confirmed live");
+    } else if (result.pending) { toast.info(result.error); }
+    else { toast.error(result.error || "Rollback failed"); }
   }, []);
 
   const handleLoadTemplate = useCallback(async (templateId) => {
@@ -481,7 +508,7 @@ export default function SectionEditor({ store, onBack }) {
                     }} onClick={action ? () => handlePreviewAction(comp) : undefined}
                       onMouseEnter={action ? e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; } : undefined}
                       onMouseLeave={action ? e => { e.currentTarget.style.background = "transparent"; } : undefined}
-                    >{CompType.render({ ...comp.props })}</div>;
+                    >{CompType.render({ ...comp.props, onItemPress: (item) => { const target = item?.tapAction ? { props: { tapAction: item.tapAction } } : comp; handlePreviewAction(target); } })}</div>;
                   })}
                 </div>
               );
@@ -667,7 +694,7 @@ export default function SectionEditor({ store, onBack }) {
             ) : (
               <>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-                Publish
+                {publicationPending ? 'Check publication' : 'Publish'}
               </>
             )}
           </button>
@@ -771,7 +798,7 @@ export default function SectionEditor({ store, onBack }) {
             focusSubKey={focusSubKey}
             onFocusSubElement={handleFocusSubElement}
             onRemoveSubElement={handleRemoveSubElement}
-            onBrowse={setBrowseType}
+            onBrowse={handleBrowseElements}
             browseType={browseType}
             onAddSection={handleAddSection}
           />
@@ -779,6 +806,7 @@ export default function SectionEditor({ store, onBack }) {
 
         {/* Center */}
         <SectionRenderer
+          onChooseLayout={target => { setSelectedSectionId(target.sectionId); setSelectedComponentId(target.parentId || null); setFocusSubKey(null); setNavSelected(false); setLayoutTarget(target); setBrowseType("Layout"); }}
           store={store}
           selectedSectionId={selectedSectionId}
           selectedComponentId={selectedComponentId}
@@ -790,8 +818,10 @@ export default function SectionEditor({ store, onBack }) {
 
         {/* Right panel — Element gallery when browsing, else Properties */}
         <div style={{ width: 300, background: theme.surface, borderLeft: `1px solid ${theme.border}`, overflow: "hidden", flexShrink: 0, display: "flex", flexDirection: "column" }}>
-          {browseType ? (
+          {browseType && !browseType.startsWith("components:") ? (
             <ElementGallery
+              insertionTarget={layoutTarget}
+              onAdded={(sectionId, id) => { handleSelectComponent(sectionId, id); setLayoutTarget(null); }}
               browseType={browseType}
               store={store}
               selectedSectionId={selectedSectionId}
@@ -799,12 +829,14 @@ export default function SectionEditor({ store, onBack }) {
             />
           ) : (
             <PropertiesPanel
+              componentCategory={browseType?.startsWith("components:") ? browseType.slice(11) : null}
               store={store}
               selectedSectionId={selectedSectionId}
               selectedComponentId={selectedComponentId}
               navSelected={navSelected}
               onClose={handleClose}
               onSelectComponent={handleSelectComponent}
+              onFocusSubElement={handleFocusSubElement}
               focusSubKey={focusSubKey}
               onClearProp={(key) => { if (selectedComponentId) store.clearProp(selectedSectionId, selectedComponentId, key); }}
             />
@@ -907,7 +939,8 @@ export default function SectionEditor({ store, onBack }) {
 
   function ReleasesPanel({ releases, onRollback, onClose }) {
     const [current, setCurrent] = useState(null);
-    useEffect(() => { getCurrentDeployment().then(setCurrent).catch(() => setCurrent(null)); }, []);
+    const [currentError, setCurrentError] = useState(false);
+    useEffect(() => { getCurrentDeployment().then(setCurrent).catch(() => setCurrentError(true)); }, []);
     return (
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }} onClick={onClose}>
         <div onClick={e => e.stopPropagation()} style={{ background: theme.surface, borderRadius: theme.radius["2xl"], boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24, maxWidth: 480, width: "90%", maxHeight: "70vh", overflowY: "auto" }}>
@@ -915,7 +948,7 @@ export default function SectionEditor({ store, onBack }) {
             Release History
           </div>
           <p style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 16 }}>
-            {current ? `Currently deployed: v${current.version || "?"}` : "No deployment found"}
+            {current ? `Currently deployed: v${current.version || "?"}` : currentError ? "Unable to verify the current deployment" : "Checking current deployment..."}
           </p>
           {releases.length === 0 ? (
             <div style={{ textAlign: "center", padding: 24, color: "#9CA3AF", fontSize: 13 }}>
@@ -923,11 +956,11 @@ export default function SectionEditor({ store, onBack }) {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-              {[...releases].reverse().map((rel, i) => (
+              {[...releases].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map((rel, i) => (
                 <div key={rel.id} style={{
                   padding: "12px 14px", borderRadius: theme.radius.md,
-                  background: rel.status === "published" ? "#F0FDF4" : "#F9FAFB",
-                  border: `1px solid ${rel.status === "published" ? "#BBF7D0" : "#E8E8F0"}`,
+                  background: current?.version === rel.version ? "#F0FDF4" : "#F9FAFB",
+                  border: `1px solid ${current?.version === rel.version ? "#BBF7D0" : "#E8E8F0"}`,
                   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
                 }}>
                   <div>
@@ -935,11 +968,11 @@ export default function SectionEditor({ store, onBack }) {
                     <div style={{ fontSize: 11, color: "#6B7280" }}>
                       {new Date(rel.timestamp).toLocaleDateString()} {new Date(rel.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </div>
-                    <div style={{ fontSize: 11, color: rel.status === "published" ? "#059669" : "#9CA3AF" }}>
-                      {rel.status === "published" ? "Live" : "Rolled back"}
+                    <div style={{ fontSize: 11, color: current?.version === rel.version ? "#059669" : "#9CA3AF" }}>
+                      {current?.version === rel.version ? "Live" : rel.status}
                     </div>
                   </div>
-                  {rel.status === "published" && (
+                  {current && current.version !== rel.version && ["published", "rolled_back"].includes(rel.status) && (
                     <button onClick={() => onRollback(rel.id)}
                       style={{
                         padding: "6px 14px", borderRadius: theme.radius.md,

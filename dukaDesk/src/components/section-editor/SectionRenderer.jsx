@@ -1,7 +1,6 @@
-import { useState, useRef, useCallback } from "react";
-import { getComponentType, getAllComponentTypes, resolveBackground, ROW_TEMPLATES, applyTextStyle, resolveTextStyle, getLucideIcon } from "../canvas-editor/componentTypes";
+import { useState, useRef } from "react";
+import { IconGlyph, getComponentType, resolveBackground, ROW_TEMPLATES, applyTextStyle, resolveTextStyle, getLucideIcon } from "../canvas-editor/componentTypes";
 import { useEditorTheme } from "./editorTheme.jsx";
-import { toast } from "react-toastify";
 
 const TIME = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -15,19 +14,15 @@ function sanitizeRadius(value, fallback) {
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
-export default function SectionRenderer({ store, selectedSectionId, selectedComponentId, onSelectSection, onSelectComponent, onFocusSubElement, focusSubKey }) {
-  const { theme, iconBtn, iconBtnDanger } = useEditorTheme();
+export default function SectionRenderer({ store, selectedSectionId, selectedComponentId, onSelectSection, onSelectComponent, onFocusSubElement, focusSubKey, onChooseLayout }) {
+  const { theme } = useEditorTheme();
   const data = store.data;
   const screen = store.screen;
   const [dragOverSectionId, setDragOverSectionId] = useState(null);
-  const [hoveredSectionId, setHoveredSectionId] = useState(null);
-  const [hoveredCompId, setHoveredCompId] = useState(null);
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [editingCompId, setEditingCompId] = useState(null);
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState("");
-  const [showBgPicker, setShowBgPicker] = useState(null);
-  const [addPicker, setAddPicker] = useState(null);
   const editRef = useRef(null);
 
   if (!screen) return null;
@@ -102,36 +97,6 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
   };
 
   /* ── Image upload on canvas ── */
-  const imageFileRef = useRef(null);
-  const [imageTarget, setImageTarget] = useState(null);
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !imageTarget) return;
-    if (file.size > 5 * 1024 * 1024) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      store.updateProp(imageTarget.sectionId, imageTarget.compId, "src", ev.target.result);
-      setImageTarget(null);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const triggerImageUpload = (sectionId, compId) => {
-    setImageTarget({ sectionId, compId });
-    setTimeout(() => imageFileRef.current?.click(), 10);
-  };
-
-  /* ── Background color quick pick ── */
-  const QUICK_COLORS = ["#FCF8FA", "#1A1A2E", "#F4A026", "#2ECC71", "#E74C3C", "#7C3AED", "#0D9488", "#EA580C", "#EC4899", "#000000"];
-
-  const handleBgColorChange = (sectionId, color) => {
-    const sec = bodySections.find(s => s.id === sectionId);
-    if (sec) {
-      store.setSectionColor(null, sectionId, color);
-    }
-  };
-
   const isSubFocused = (compId, subKey) => focusSubKey?.compId === compId && focusSubKey?.key === subKey;
   const handleSubClick = (e, sectionId, compId, subKey) => {
     e.stopPropagation();
@@ -139,7 +104,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
     onFocusSubElement?.(sectionId, compId, subKey);
   };
   const subTextStyle = (comp, subKey, fallback) => applyTextStyle(resolveTextStyle(comp.props || {}, subKey, fallback));
-  const subFocusStyle = (compId, subKey) => isSubFocused(compId, subKey) ? { outline: `1.5px dashed ${theme.selection}`, outlineOffset: 1, borderRadius: 3 } : {};
+  const subFocusStyle = (compId, subKey) => isSubFocused(compId, subKey) ? { outline: `1.5px solid ${theme.selection}`, outlineOffset: 1, borderRadius: 3 } : {};
 
   const renderInlineText = (comp, field, value, sectionId, extraStyle) => {
     const focused = isSubFocused(comp.id, field);
@@ -153,7 +118,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
           onKeyDown={e => { if (e.key === "Enter") finishEditing(); if (e.key === "Escape") { setEditingCompId(null); setEditingField(null); } }}
           onClick={e => e.stopPropagation()}
           style={{
-            background: "transparent", border: `1.5px dashed ${theme.selection}`, borderRadius: 3,
+            background: "transparent", border: `1.5px solid ${theme.selection}`, borderRadius: 3,
             padding: "2px 4px", fontSize: "inherit", fontWeight: "inherit",
             color: "inherit", fontFamily: "inherit", textAlign: "inherit",
             outline: "none", width: "100%", boxSizing: "border-box",
@@ -173,6 +138,12 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
   };
 
   /* Recursively render a component. Containers (carousel, nested_section) embed their children inline. */
+  const addSectionControl = (sectionId, parentId, index) => <button type="button" onClick={event => {
+    event.stopPropagation();
+    onChooseLayout?.({ sectionId, parentId, index });
+  }} style={{ width: "auto", minHeight: 32, padding: "6px 10px", border: "1px dashed " + theme.border, borderRadius: 8, background: "transparent", color: theme.textMuted, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", fontSize: 11 }}>
+    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>Add a section
+  </button>;
   const renderComponent = (comp, sectionId, depth) => {
     const def = getComponentType(comp.type);
     if (!def) return null;
@@ -197,7 +168,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
       };
       const tbFocused = isSubFocused(comp.id, "text");
       rendered = (
-        <div style={{ ...tbStyle, padding: "2px 16px", cursor: "text", ...(tbFocused ? { outline: `1.5px dashed ${theme.selection}`, outlineOffset: 1, borderRadius: 4, background: "rgba(244,160,38,0.08)" } : {}) }} onClick={(e) => handleSubClick(e, sectionId, comp.id, "text")}>
+        <div style={{ ...tbStyle, padding: "2px 16px", cursor: "text", ...(tbFocused ? { outline: `1.5px solid ${theme.selection}`, outlineOffset: 1, borderRadius: 4, background: "rgba(244,160,38,0.08)" } : {}) }} onClick={(e) => handleSubClick(e, sectionId, comp.id, "text")}>
           {renderInlineText(comp, "text", val, sectionId)}
         </div>
       );
@@ -259,7 +230,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
     } else if (comp.type === "menu_item") {
       rendered = (
         <div style={{ display: "flex", gap: 12, padding: "12px 16px", background: "#FCF8FA", borderRadius: 12, boxShadow: "0px 2px 12px rgba(0,0,0,0.08)", border: "1px solid rgba(200,197,205,0.3)", alignItems: "center", margin: "0 4px" }}>
-          <div style={{ width: 48, height: 48, background: "#F1EDEF", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{comp.props?.emoji || "\uD83C\uDF7D\uFE0F"}</div>
+          <div style={{ width: 48, height: 48, background: "#F1EDEF", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}><IconGlyph name={comp.props?.emoji || "Utensils"} size={22} /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ ...subTextStyle(comp, "name", { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: theme.text }), marginBottom: 2, ...subFocusStyle(comp.id, "name") }}>
               {renderInlineText(comp, "name", comp.props?.name || "", sectionId, subTextStyle(comp, "name", { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: theme.text }))}
@@ -280,15 +251,6 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
             <img src={comp.props.src} alt={comp.props?.alt || ""} style={{ width: "100%", height: "auto", display: "block", objectFit: comp.props?.fit || "cover" }} />
           ) : (
             <span style={{ color: theme.textMuted, fontSize: 12 }}>No image</span>
-          )}
-          {(hoveredCompId === comp.id || selectedComponentId === comp.id) && (
-            <div style={{ position: "absolute", top: 4, right: 4, zIndex: 5 }}>
-              <button onClick={(e) => { e.stopPropagation(); triggerImageUpload(sectionId, comp.id); }}
-                style={{ ...iconBtn, padding: "3px 8px", fontSize: 11, gap: 3 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                {comp.props?.src ? "Change" : "Upload"}
-              </button>
-            </div>
           )}
         </div>
       );
@@ -316,23 +278,14 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
     } else if (comp.type === "nested_section") {
       const bg = comp.props?.backgroundColor || "#ffffff";
       rendered = (
-        <div style={{ background: bg, margin: "6px 8px", borderRadius: 14, padding: 8, border: "1.5px dashed rgba(120,110,180,0.4)", position: "relative" }}>
-          {comp.props?.name && (
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.5px", color: "#8B7FC8", textTransform: "uppercase", padding: "2px 6px 6px", fontFamily: "'Inter',sans-serif" }}>
-              {comp.props.name}
-            </div>
-          )}
-          {children.length === 0 && (
-            <div style={{ padding: "14px 8px", textAlign: "center", color: theme.textMuted, fontSize: 11 }}>
-              Nested section — add components to it from Properties
-            </div>
-          )}
-          {renderComponentList(children, sectionId, depth + 1)}
+        <div style={{ background: bg, minHeight: 120, margin: "6px 8px", borderRadius: 14, padding: 12, border: "1.5px solid rgba(120,110,180,0.4)", position: "relative" }}>
+          <div style={{ minHeight: children.length ? undefined : 64 }}>{renderComponentList(children, sectionId, depth + 1)}</div>
+          {addSectionControl(sectionId, comp.id, children.length)}
         </div>
       );
     } else if (comp.type === "carousel") {
       rendered = (
-        <div style={{ margin: "4px 8px", borderRadius: 14, overflow: "hidden", border: "1.5px dashed rgba(120,110,180,0.4)", background: "rgba(243,240,246,0.6)", position: "relative" }}>
+        <div style={{ margin: "4px 8px", borderRadius: 14, overflow: "hidden", border: "1.5px solid rgba(120,110,180,0.4)", background: "rgba(243,240,246,0.6)", position: "relative" }}>
           <div style={{ position: "absolute", top: 6, left: 8, zIndex: 2, fontSize: 9, fontWeight: 700, letterSpacing: "0.5px", color: "#6B7280", background: "rgba(255,255,255,0.9)", padding: "2px 7px", borderRadius: 10, fontFamily: "'Inter',sans-serif" }}>
             Carousel
           </div>
@@ -367,34 +320,11 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
       const rowBg = resolveBackground(rp.background, "transparent");
       const colCss = cols.map(c => `${c}fr`).join(" ");
       const slotRows = Math.max(1, Math.ceil((children.length + 1) / N));
-      const pickerOpen = addPicker?.compId === comp.id;
-
-      const addCell = (index) => (
-        <div
-          key={`add_${index}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            setAddPicker(pickerOpen && addPicker.index === index ? null : { compId: comp.id, index });
-          }}
-          style={{
-            minHeight: 46, border: "1.5px dashed rgba(140,130,190,0.55)", borderRadius: 10,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#8B7FC8", cursor: "pointer", background: "rgba(140,130,190,0.06)",
-            fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 600, gap: 5,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(140,130,190,0.15)"; e.currentTarget.style.color = "#5D4FC0"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(140,130,190,0.06)"; e.currentTarget.style.color = "#8B7FC8"; }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          <span>Add</span>
-        </div>
-      );
-
       rendered = (
         <div style={{
           background: rowBg, borderRadius: rowRadius, padding: rowPad,
           margin: "4px 8px", display: "flex", flexDirection: "column", gap,
-          position: "relative", border: "1.5px dashed rgba(140,130,190,0.4)",
+          position: "relative", border: "1.5px solid rgba(140,130,190,0.4)",
         }}>
           {Array.from({ length: slotRows }).map((_, r) => {
             const start = r * N;
@@ -403,48 +333,12 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
                 {Array.from({ length: N }).map((_, c) => {
                   const index = start + c;
                   if (index < children.length) return renderComponent(children[index], sectionId, depth + 1);
-                  return addCell(index);
+                  return <div key={index}>{addSectionControl(sectionId, comp.id, index)}</div>;
                 })}
               </div>
             );
           })}
 
-          {pickerOpen && (
-            <>
-              <div style={{ position: "fixed", inset: 0, zIndex: 38 }} onClick={() => setAddPicker(null)} />
-              <div style={{
-                position: "absolute", top: 12, left: 8, right: 8, zIndex: 42,
-                background: "#FFFFFF", borderRadius: 12, boxShadow: "0 16px 44px rgba(26,26,46,0.22)",
-                border: "1px solid #E5E1E3", padding: 9, maxHeight: 320, overflowY: "auto",
-              }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0 6px 8px", fontFamily: "'Inter',sans-serif" }}>
-                  Add to row
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                  {getAllComponentTypes().map(def2 => (
-                    <button
-                      key={def2.type}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        store.insertComponentAt(sectionId, comp.id, addPicker.index, def2.type, { ...def2.defaultProps });
-                        setAddPicker(null);
-                      }}
-                      style={{
-                        padding: "7px 3px", borderRadius: 8, border: "1px solid #E5E1E3", background: "#fff",
-                        cursor: "pointer", textAlign: "center", fontSize: 9, fontWeight: 600, color: "#6B7280",
-                        fontFamily: "'Inter',sans-serif", transition: "all 0.12s", lineHeight: 1.15,
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.background = theme.hoverAmber; e.currentTarget.style.color = "#5B3A00"; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E1E3"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#6B7280"; }}
-                    >
-                      <div style={{ fontSize: 14, marginBottom: 2 }}>{def2.icon ? <def2.icon size={18} /> : "▣"}</div>
-                      <div>{def2.label}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
         </div>
       );
     } else if (comp.type === "tabs") {
@@ -477,6 +371,8 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
     } else {
       rendered = def.render({
         ...comp.props,
+        onItemPress: (_item, index, key) => onFocusSubElement?.(sectionId, comp.id, "item:" + key + ":" + index),
+        itemSelectionStyle: (key, index) => selectedSectionId === sectionId && selectedComponentId === comp.id && isSubFocused(comp.id, "item:" + key + ":" + index) ? { outline: "2px solid " + theme.selection, outlineOffset: -2 } : {},
         ...(comp.type === "header_bar" ? { logo: logo || comp.props?.logo, appName: appName || comp.props?.appName } : {}),
       });
     }
@@ -522,19 +418,6 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
       >
         {rendered}
 
-        {/* Component floating toolbar */}
-        {(hoveredCompId === comp.id || isSelected) && (
-          <div style={{ position: "absolute", top: 2, right: 2, zIndex: 15, display: "flex", gap: 2 }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); store.duplicateComponentInSection(sectionId, comp.id); }}
-              style={iconBtn} title="Duplicate"
-            ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
-            <button
-              onClick={(e) => { e.stopPropagation(); store.removeComponentFromSection(sectionId, comp.id); }}
-              style={iconBtnDanger} title="Delete"
-            ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-          </div>
-        )}
       </div>
     );
   };
@@ -575,8 +458,6 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
             onDragLeave={() => handleDragLeave(section.id)}
             onDrop={(e) => handleDrop(e, section.id)}
             onDragEnd={handleDragEnd}
-            onMouseEnter={() => setHoveredSectionId(section.id)}
-            onMouseLeave={() => { setHoveredSectionId(null); setHoveredCompId(null); setShowBgPicker(null); }}
             onClick={() => onSelectSection(section.id)}
             style={{
               background: section.backgroundColor || screenBg,
@@ -590,84 +471,10 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
               minHeight: section.components?.length ? undefined : 48,
             }}
           >
-            {/* Floating toolbar (actions only when the section is selected) */}
-            {selectedSectionId === section.id && (
-              <div style={{
-                position: "absolute", top: 4, right: 4, zIndex: 20,
-                display: "flex", gap: 2,
-                animation: "fadeIn 0.12s ease",
-              }}>
-                <span style={{
-                  background: theme.active,
-                  color: "#6B4200",
-                  fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4,
-                  fontFamily: "'Inter',sans-serif", marginRight: 4, display: "flex", alignItems: "center", gap: 3,
-                }}>
-                  {section._label}
-                  {section._link && (
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                  )}
-                </span>
-                {section._link && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); store.detachSection(null, section.id); toast.success("Section detached from library"); }}
-                    style={{ ...iconBtn, background: "#EEF4FF", color: "#3B6FE0" }} title="Detach from library"
-                  ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
-                )}
-                {!section._link && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); store.saveSectionToLibrary(null, section.id); toast.success("Section saved to library"); }}
-                    style={iconBtn} title="Save to library"
-                  ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
-                )}
-                <button
-                  onClick={(e) => { e.stopPropagation(); store.duplicateSection(null, section.id); }}
-                  style={iconBtn} title="Duplicate"
-                ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); store.removeBodySection(null, section.id); onSelectSection(null); }}
-                  style={iconBtnDanger} title="Delete"
-                    ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-              </div>
-            )}
-
-            {/* Background color quick pick (on hover) */}
-            {hoveredSectionId === section.id && (
-              <div style={{
-                position: "absolute", bottom: 4, right: 4, zIndex: 15,
-                display: "flex", gap: 2, padding: 3, background: "rgba(255,255,255,0.9)",
-                borderRadius: theme.radius.sm, border: `1px solid ${theme.border}`,
-                boxShadow: theme.shadowMd,
-              }}
-                onClick={e => e.stopPropagation()}
-              >
-                {QUICK_COLORS.slice(0, 5).map(c => (
-                  <div key={c} onClick={() => handleBgColorChange(section.id, c)}
-                    style={{
-                      width: 14, height: 14, background: c, borderRadius: "50%", cursor: "pointer",
-                      border: section.backgroundColor === c ? `2px solid ${theme.active}` : "1px solid rgba(0,0,0,0.1)",
-                      transition: `transform ${theme.transition}`,
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.transform = "scale(1.2)"}
-                    onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-                  />
-                ))}
-              </div>
-            )}
-
             {/* Components (recursive: containers nest child components/sections) */}
             {renderComponentList(section.components || [], section.id, 0)}
+            {addSectionControl(section.id, null, section.components?.length || 0)}
 
-            {/* Empty section hint */}
-            {(!section.components || section.components.length === 0) && (
-              <div style={{ padding: "28px 16px", textAlign: "center", color: theme.textMuted }}>
-                <div style={{ fontSize: 22, marginBottom: 6, opacity: 0.6 }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 2 }}>Add components from the right panel</div>
-                <div style={{ fontSize: 11, color: theme.border }}>Open \u201CAdd Component\u201D in Properties</div>
-              </div>
-            )}
           </div>
         ))}
 
@@ -701,7 +508,6 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
       </div>
 
       {/* Hidden file inputs */}
-      <input ref={imageFileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageUpload} />
     </div>
   );
 }

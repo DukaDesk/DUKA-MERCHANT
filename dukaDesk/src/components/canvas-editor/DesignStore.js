@@ -111,11 +111,7 @@ function ensureSplash(data) {
 
 function ensureMetaSlug(data) {
   if (!data.meta) data.meta = { category: "", appName: "", slug: "", primaryColor: "#1A1A2E", logo: null };
-  if (!data.meta.slug || data.meta.slug === "") {
-    data.meta.slug = slugify(data.meta.appName || "");
-  } else if (data.meta.appName && slugify(data.meta.appName) !== data.meta.slug) {
-    data.meta.slug = slugify(data.meta.appName);
-  }
+  if (data.meta.slug == null) data.meta.slug = slugify(data.meta.appName || "");
   return data.meta;
 }
 
@@ -791,13 +787,8 @@ export function useDesignStore(initialData, options = {}) {
   /* ── Meta & Splash ── */
   const setMeta = useCallback((patch) => {
     updateData(d => {
-      if (patch.slug !== undefined) patch.slug = slugify(patch.slug);
-      if (patch.appName !== undefined) {
-        const auto = slugify(patch.appName);
-        if (auto) d.meta.slug = auto;
-      } else if (patch.slug !== undefined && !patch.appName) {
-        const auto = slugify(d.meta.appName || "");
-        if (auto) d.meta.slug = auto;
+      if (patch.appName !== undefined && patch.slug === undefined && d.meta.slug === slugify(d.meta.appName || "")) {
+        d.meta.slug = slugify(patch.appName);
       }
       Object.assign(d.meta, patch);
     });

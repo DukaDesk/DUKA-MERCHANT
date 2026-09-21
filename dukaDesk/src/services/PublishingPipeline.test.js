@@ -32,7 +32,9 @@ const validProject = {
 describe("PublishingPipeline", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    api.getMerchant.mockReturnValue(null);
+    sessionStorage.clear();
+    sessionStorage.clear();
+    api.getMerchant.mockReturnValue({ merchantId: 'tenant_demo_001' });
     validateProject.mockReturnValue({ valid: true, errors: [], warnings: [] });
   });
 
@@ -188,11 +190,12 @@ describe("PublishingPipeline", () => {
 describe('live publishing confirmation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     api.getMerchant.mockReturnValue({ merchantId: 'real-merchant' });
     api.getReleases.mockResolvedValue([]);
     validateProject.mockReturnValue({ valid: true, errors: [], warnings: [] });
-    httpClient.post.mockResolvedValue({ success: true });
-    httpClient.get.mockImplementation(async () => ({ data: httpClient.post.mock.calls[0][1].manifest }));
+    httpClient.post.mockImplementation(async (_, body) => ({ data: { releaseId: 'backend-release', version: body.version, checksum: 'server-checksum' } }));
+    httpClient.get.mockImplementation(async url => url.endsWith('/publishing/releases') ? { data: [] } : { data: httpClient.post.mock.calls[0][1].manifest });
   });
 
   it('preserves a large URL-only manifest without claiming compression', async () => {
@@ -203,7 +206,8 @@ describe('live publishing confirmation', () => {
     expect(result.success).toBe(true);
     expect(result.payloadStripped).toBeUndefined();
     expect(httpClient.post.mock.calls[0][1].manifest.theme.brand.logo).toBe(project.meta.logo);
-    expect(api.saveDeployment).toHaveBeenCalledOnce();
+    expect(api.saveDeployment).not.toHaveBeenCalled();
+    expect(result.releaseId).toBe('backend-release');
   });
 
   it('does not record success when the backend rejects publishing', async () => {
@@ -228,7 +232,7 @@ describe('live publishing confirmation', () => {
     { name: 'Owner', screens: [], navigation: [], theme: { logo: null } },
     { version: '0.0.7', screens: { shop: {} } },
   ])('rejects an empty or stale mobile definition', async definition => {
-    httpClient.get.mockResolvedValue({ data: definition });
+    httpClient.get.mockImplementation(async url => ({ data: url.endsWith('/publishing/releases') ? [] : definition }));
     const result = await publishProject(validProject);
     expect(result.success).toBe(false);
     expect(result.error).toContain('has not been confirmed live');

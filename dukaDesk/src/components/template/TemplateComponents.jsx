@@ -542,13 +542,11 @@ export function LaundryBooking({ service = "Wash & Fold", price = 2500, unitLabe
   );
 }
 
-export function CartSummary({ items = [], style = {}, onAction }) {
+export function CartSummary({ items = [], deliveryFee, style = {}, onAction }) {
   const brand = useBrand();
-  const cartItems = items.length ? items : [
-    { id: 1, name: "Jollof Rice & Chicken", price: 2500, qty: 2, img: "Utensils" }
-  ];
+  const cartItems = items;
   const subtotal = cartItems.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0);
-  const delivery = items.length ? 500 : 500;
+  const delivery = Number(deliveryFee ?? 0);
   const total = subtotal + delivery;
   return (
     <div style={{ background: brand.cardColor || "#fff", borderRadius: 14, padding: 20, border: `1px solid ${brand.GRAY?.[200]}`, ...style }}>
@@ -577,9 +575,9 @@ export function CartSummary({ items = [], style = {}, onAction }) {
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, color: brand.GRAY?.[600] }}>
           <span>Subtotal</span><span>₦{subtotal.toLocaleString()}</span>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, color: brand.GRAY?.[600] }}>
+        {deliveryFee != null && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, color: brand.GRAY?.[600] }}>
           <span>Delivery</span><span>₦{delivery.toLocaleString()}</span>
-        </div>
+        </div>}
         <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16, color: brand.NAVY }}>
           <span>Total</span><span>₦{total.toLocaleString()}</span>
         </div>

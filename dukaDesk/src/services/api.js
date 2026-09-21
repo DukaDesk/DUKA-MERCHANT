@@ -1,3 +1,4 @@
+import { readPublished } from './publishedDelivery';
 import httpClient from "./httpClient";
 import { WIZARD_INTEGRATIONS } from "../config/wizard";
 
@@ -600,11 +601,16 @@ export async function updateApp(appData) {
 
 export async function getMyApp() {
   const merchant = getMerchant();
-  const tenantId = merchant?.tenantId;
+  const tenantId = merchant?.merchantId || merchant?.tenantId;
   if (!tenantId) return null;
   const { data } = await readConfig(tenantId);
   const app = data.app || {};
-  const published = app.lastPublished || data.deployed || {};
+  let published = app.lastPublished || data.deployed || {};
+  let status = app.status;
+  if (!isDemoId(tenantId)) {
+    try { published = await readPublished(tenantId); status = 'live'; }
+    catch { published = {}; status = 'unverified'; }
+  }
   const identity = published.identity || {};
   const branding = published.branding || {};
   const themeBrand = published.theme?.brand || {};
@@ -616,6 +622,8 @@ export async function getMyApp() {
   // the customer-facing app. Prefer the latter wherever it is available.
   return {
     ...app,
+    status,
+    version: published.version,
     appName: publishedName || app.appName,
     slug: publishedSlug || app.slug,
     logo: publishedLogo || app.logo,

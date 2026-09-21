@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "appName": "Published Fixture",
+    "slug": "published-fixture",
+    "logo": "/uploads/logo.webp",
+    "primaryColor": "#123456",
+    "fontFamily": "Inter"
+  },
+  "splash": {
+    "backgroundColor": "#223344",
+    "backgroundImage": "/uploads/splash.webp",
+    "durationMs": 1200
+  },
+  "content": {
+    "welcome": "Merchant content"
+  },
+  "permissions": {
+    "camera": {
+      "reason": "Scan code"
+    }
+  },
+  "runtime": {
+    "version": "1.0.0",
+    "featureFlag": "retained"
+  },
+  "localization": {
+    "defaultLocale": "en",
+    "messages": {
+      "welcome": "Welcome"
+    }
+  },
+  "assets": {
+    "mark": {
+      "url": "/uploads/mark.webp"
+    }
+  },
+  "capabilities": {
+    "catalog": {
+      "enabled": true,
+      "type": "optional"
+    }
+  },
+  "savedSections": [
+    {
+      "id": "shared-body",
+      "backgroundColor": "#ABCDEF",
+      "padding": 9,
+      "components": [
+        {
+          "id": "title",
+          "type": "text_block",
+          "props": {
+            "text": "Published title",
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "color": "#234567"
+          }
+        },
+        {
+          "id": "container",
+          "type": "surface",
+          "props": {
+            "testID": "published-parent"
+          },
+          "children": [
+            {
+              "type": "text",
+              "props": {
+                "children": "Nested child"
+              }
+            }
+          ]
+        },
+        {
+          "id": "cta",
+          "type": "button",
+          "props": {
+            "label": "Details",
+            "action": "{\"type\":\"navigate\",\"payload\":{\"screen\":\"/details\"}}"
+          }
+        }
+      ]
+    }
+  ],
+  "shared": {
+    "header": {
+      "id": "header",
+      "components": [
+        {
+          "type": "text",
+          "props": {
+            "children": "Published header"
+          }
+        }
+      ]
+    },
+    "footer": {
+      "id": "footer",
+      "components": [
+        {
+          "type": "text",
+          "props": {
+            "children": "Published footer"
+          }
+        }
+      ]
+    }
+  },
+  "navigation": {
+    "initialScreen": "home",
+    "tabs": [
+      {
+        "id": "home-tab",
+        "screenId": "home",
+        "label": "Home",
+        "icon": "home-outline",
+        "color": "#AA0000"
+      }
+    ],
+    "style": {
+      "background": "#EEEEEE",
+      "active": "#AA0000",
+      "height": 72
+    },
+    "routes": [
+      {
+        "routeId": "details-route",
+        "screenId": "details",
+        "path": "/details"
+      }
+    ],
+    "guestMode": {
+      "enabled": true,
+      "allowedScreens": [
+        "home",
+        "details"
+      ],
+      "blockedActions": [
+        "checkout"
+      ],
+      "authPromptScreens": []
+    }
+  },
+  "screens": {
+    "home": {
+      "name": "Home",
+      "backgroundColor": "#FAFAFA",
+      "layout": {
+        "kind": "scroll",
+        "gap": 12,
+        "padding": 3
+      },
+      "bodySections": [
+        {
+          "id": "body-instance",
+          "kind": "saved",
+          "libraryId": "shared-body"
+        }
+      ]
+    },
+    "details": {
+      "name": "Details",
+      "chrome": {
+        "header": {
+          "mode": "hide"
+        },
+        "footer": {
+          "mode": "hide"
+        }
+      },
+      "bodySections": [
+        {
+          "id": "details-body",
+          "components": [
+            {
+              "type": "image",
+              "props": {
+                "source": {
+                  "assetId": "mark"
+                },
+                "style": {
+                  "width": 80,
+                  "height": 80
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

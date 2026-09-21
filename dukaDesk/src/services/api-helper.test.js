@@ -21,7 +21,7 @@ vi.mock("axios", () => {
   return { default: mock };
 });
 
-import { getIntegrationConfig, setIntegrationConfig, getDesignData, saveDesignData, getReleases, getCurrentDeployment, saveDeployment, signup, getDashboardModules, saveDashboardModules, ensureTenant, deployApp } from "./api";
+import { getMyApp, getIntegrationConfig, setIntegrationConfig, getDesignData, saveDesignData, getReleases, getCurrentDeployment, saveDeployment, signup, getDashboardModules, saveDashboardModules, ensureTenant, deployApp } from "./api";
 import httpClient from "./httpClient";
 
 const mockHttpClient = vi.mocked(httpClient);
@@ -377,5 +377,17 @@ describe("ensureTenant / deployApp", () => {
 
     expect(mockHttpClient.put).toHaveBeenCalledWith("/api/v1/app/merchants/config", expect.anything());
     expect(mockHttpClient.post).toHaveBeenCalledWith(`/api/v1/merchants/${TENANT_ID}/publish`);
+  });
+});
+
+describe('canonical app status', () => {
+  beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); setupMerchant(); });
+  it('uses canonical publication identity instead of stale editor config', async () => {
+    mockHttpClient.get.mockImplementation(async url => ({ data: url.endsWith('/definition') ? { manifestVersion: '1.0.0', status: 'published', version: '2.0.0', screens: { home: {} }, identity: { displayName: 'New App', slug: 'new-app' } } : { config: { app: { appName: 'Old App', status: 'live' }, deployed: { identity: { displayName: 'Stale' } } } } }));
+    expect(await getMyApp()).toMatchObject({ appName: 'New App', version: '2.0.0', status: 'live' });
+  });
+  it('does not label stale config live when canonical verification fails', async () => {
+    mockHttpClient.get.mockResolvedValue({ data: { config: { app: { appName: 'Old App', status: 'live' } } } });
+    expect(await getMyApp()).toMatchObject({ status: 'unverified' });
   });
 });

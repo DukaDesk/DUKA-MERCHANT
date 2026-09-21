@@ -1,6 +1,8 @@
+import { getComponentCatalog } from "./componentCatalog";
+import IconPicker from "./IconPicker";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Search, Type, Palette, Image as ImageIcon, Square, LayoutGrid, Sparkles, Compass, FileText, Tag, ShoppingBag, ClipboardList, PanelTop, Star, Minus, Plus, Pencil, Boxes, GalleryHorizontal, CreditCard, ShoppingCart, Calendar, Clock, Bell, MapPin, BarChart3, Scissors, Phone, ToggleLeft, CheckSquare, User, ArrowLeftRight, ArrowDownUp, Zap, Hash, Circle, Construction, Link, Unlink } from "lucide-react";
-import { getComponentType, getAllComponentTypes, getComponentsByCategory, FONT_FAMILIES, FONT_WEIGHTS, resolveTextStyle, applyTextStyle, getLucideIcon, ICON_LIBRARY } from "../canvas-editor/componentTypes";
+import { getComponentType, getAllComponentTypes, FONT_FAMILIES, FONT_WEIGHTS, resolveTextStyle, applyTextStyle, getLucideIcon, ICON_LIBRARY } from "../canvas-editor/componentTypes";
 import { useEditorTheme, ColorInput } from "./editorTheme.jsx";
 
 function IconRender({ icon, size = 16, style }) {
@@ -46,7 +48,7 @@ const QUICK_COLORS = ["#FCF8FA", "#1A1A2E", "#F4A026", "#2ECC71", "#E74C3C", "#7
 
 const TAB_ICONS = Object.keys(ICON_LIBRARY);
 
-export default function PropertiesPanel({ store, selectedSectionId, selectedComponentId, navSelected, onClose, focusSubKey, onClearProp, onSelectComponent }) {
+export default function PropertiesPanel({ store, selectedSectionId, selectedComponentId, navSelected, onClose, focusSubKey, onClearProp, onSelectComponent, onFocusSubElement, componentCategory }) {
   const { theme, iconBtn, iconBtnDanger, textInput, labelStyle } = useEditorTheme();
   const data = store.data;
   const [addQuery, setAddQuery] = useState("");
@@ -62,11 +64,13 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
     setActiveTab("general");
     setSearchOpen(false);
     setPropQuery("");
-  }, [selectedSectionId, selectedComponentId, navSelected]);
+  }, [selectedSectionId, selectedComponentId, navSelected, focusSubKey?.key, componentCategory]);
 
   function findSection() {
     const sid = selectedSectionId;
     if (!sid) return null;
+    const shared = Object.values(data.shared || {}).find(section => section.id === sid);
+    if (shared) return shared;
     const screen = store.screen;
     if (!screen?.bodySections) return null;
     const body = screen.bodySections.find(s => s.id === sid);
@@ -105,6 +109,9 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
   const def = component ? getComponentType(component.type) : null;
   const fields = def?.propFields || [];
   const focusedField = component ? (def?.subElements?.find(s => focusSubKey?.compId === component.id && focusSubKey?.key === s.key)) : null;
+  const selectedItem = focusSubKey?.compId === component?.id && focusSubKey?.key?.startsWith("item:");
+  const selectedText = focusedField?.kind === "text";
+  const selectPropertyTarget = key => key === "component" ? onSelectComponent?.(selectedSectionId, component.id) : onFocusSubElement?.(selectedSectionId, component.id, key);
   const canAdd = !!section;
   const addDisabled = !canAdd;
 
@@ -174,8 +181,8 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ display: "flex", color: theme.textMuted }}><IconRender icon={COMPONENT_ICONS[component.type] || FileText} size={18} /></span>
               <div>
-                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: theme.text }}>{def?.label || component.type}</div>
-                <div style={{ fontSize: 10, color: theme.textMuted }}>{component.id.slice(0, 12)}</div>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: theme.text }}>{focusedField?.label || def?.label || component.type}</div>
+
               </div>
             </div>
             <button onClick={() => { onClose?.(); store.removeComponentFromSection(selectedSectionId, component.id); }}
@@ -432,8 +439,8 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
   const matchesQuery = (label, key) => !q || String(label || "").toLowerCase().includes(q) || String(key || "").toLowerCase().includes(q);
   const STYLING_GROUP_ORDER = ["typography","colors","background","border","layout","effects"];
   function isStylingField(f){ if(f.group && STYLING_GROUP_ORDER.includes(f.group)) return true; return groupForField(f)==="styling"; }
-  const generalFields = fields.filter(f => !isStylingField(f) && (q ? matchesQuery(f.label, f.key) : true));
-  const rawStylingFields = fields.filter(f => isStylingField(f) && (q ? matchesQuery(f.label, f.key) : true));
+  const generalFields = (selectedItem ? [] : focusedField ? [fields.find(field => field.key === focusedField.key) || { key: focusedField.key, label: focusedField.label, type: "text" }] : fields).filter(f => f.key !== "action" && !(focusSubKey?.compId === component?.id && focusSubKey?.key?.startsWith("item:") && f.type === "list") && !isStylingField(f) && (q ? matchesQuery(f.label, f.key) : true));
+  const rawStylingFields = (selectedText && focusedField.styleable || selectedItem ? [] : fields).filter(f => isStylingField(f) && (q ? matchesQuery(f.label, f.key) : true));
   const STYLING_GROUP_META = {
     typography: { label: "Typography", icon: Type },
     colors: { label: "Colors", icon: Palette },
@@ -480,8 +487,9 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
           <div style={{ fontSize: 10, color: "#92400E", lineHeight: 1.4 }}>Click a section on the canvas or in the left panel to add components to it.</div>
         </div>
       )}
-      <input value={addQuery} onChange={e => setAddQuery(e.target.value)} placeholder="Search components…" style={{ ...textInput, marginBottom: 8 }} />
-      {getComponentsByCategory().map(cat => {
+      {!componentCategory && <div style={{ fontSize: 12, color: theme.textMuted }}>Choose a component category in Elements.</div>}
+      {componentCategory && <input value={addQuery} onChange={e => setAddQuery(e.target.value)} placeholder="Search components…" style={{ ...textInput, marginBottom: 8 }} />}
+      {getComponentCatalog().filter(cat => componentCategory && cat.key === componentCategory).map(cat => {
         const cq = addQuery.trim().toLowerCase();
         const items = cat.components.filter(d => !cq || (d.label || "").toLowerCase().includes(cq) || (d.type || "").toLowerCase().includes(cq));
         if (items.length === 0) return null;
@@ -496,7 +504,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
             {open && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 6 }}>
                 {items.map(compDef => (
-                  <button key={compDef.type} onClick={() => section && store.addComponentToSection(selectedSectionId, compDef.type, { ...compDef.defaultProps })} disabled={addDisabled} style={{ padding: "6px 4px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: addDisabled ? "not-allowed" : "pointer", textAlign: "center", fontSize: 10, fontWeight: 500, color: theme.textSecondary, opacity: addDisabled ? 0.45 : 1 }}>
+                  <button key={compDef.catalogId || compDef.type} title={compDef.comingSoon ? "Coming soon" : compDef.label} onClick={() => section && !compDef.comingSoon && store.addComponentToSection(selectedSectionId, compDef.type, { ...compDef.defaultProps }, component?.type === "nested_section" ? component.id : undefined)} disabled={addDisabled || compDef.comingSoon} style={{ padding: "6px 4px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: addDisabled ? "not-allowed" : "pointer", textAlign: "center", fontSize: 10, fontWeight: 500, color: theme.textSecondary, opacity: addDisabled ? 0.45 : 1 }}>
                     <div style={{ fontSize: 16, marginBottom: 1, color: theme.textMuted }}><IconRender icon={COMPONENT_ICONS[compDef.type] || compDef.icon || FileText} size={16} /></div>
                     <div style={{ fontSize: 9, lineHeight: 1.2 }}>{compDef.label}</div>
                   </button>
@@ -548,37 +556,22 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ display: "flex", color: theme.textMuted }}><IconRender icon={COMPONENT_ICONS[component.type] || FileText} size={18} /></span>
                     <div>
-                      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: theme.text }}>{def?.label || component.type}</div>
-                      <div style={{ fontSize: 10, color: theme.textMuted }}>{component.id.slice(0, 12)}</div>
+                      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: theme.text }}>{focusedField?.label || def?.label || component.type}</div>
+
                     </div>
                   </div>
                   <button onClick={() => { onClose?.(); store.removeComponentFromSection(selectedSectionId, component.id); }} style={iconBtnDanger}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg></button>
                 </div>
-                {focusedField && (
-                  <div style={{ marginBottom: 12, padding: "8px 10px", borderRadius: theme.radius.md, background: theme.hoverAmber, border: `1px solid ${theme.active}` }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: focusedField.styleable && focusedField.kind === "text" ? 8 : 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6B4200", fontWeight: 600 }}><span style={{ display: "flex", alignItems: "center" }}>{(() => { const Icon = focusedField.icon; return Icon ? <Icon size={14} /> : null; })()}</span> Editing: {focusedField.label}{focusedField.styleable ? " · Text" : ""}</div>
-                      <div style={{ display: "flex", gap: 4 }}>
-                        <button onClick={() => onSelectComponent?.(selectedSectionId, component.id)} style={{ fontSize: 11, padding: "4px 8px", border: `1px solid ${theme.border}`, borderRadius: theme.radius.sm, background: "#fff", color: theme.textSecondary, cursor: "pointer", fontWeight: 600 }}>Back</button>
-                        <button onClick={() => onClearProp?.(focusedField.key)} style={{ fontSize: 11, padding: "4px 8px", border: `1px solid ${theme.dangerBorder}`, borderRadius: theme.radius.sm, background: theme.dangerLight, color: theme.danger, cursor: "pointer", fontWeight: 600 }}>Remove</button>
-                      </div>
-                    </div>
-                    {focusedField.styleable && focusedField.kind === "text" && (
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: "#6B4200", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>Content — double-click on canvas also edits</div>
-                        <input value={component.props?.[focusedField.key] || ""} onChange={e => store.updateProp(selectedSectionId, component.id, focusedField.key, e.target.value)} placeholder={focusedField.label} style={{ ...textInput, marginBottom: 6 }} />
-                        <div style={{ fontSize: 10, color: "#92400E", lineHeight: 1.4 }}>Select <b>Styling</b> tab to edit font for this text.</div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {!focusedField && !selectedItem && <>
                 <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                   <button onClick={() => store.reorderComponent(selectedSectionId, component.id, "up")} style={{ ...iconBtn, flex: 1, gap: 4, padding: "6px 0" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15" /></svg><span style={{ fontSize: 11, fontWeight: 600 }}>Up</span></button>
                   <button onClick={() => store.reorderComponent(selectedSectionId, component.id, "down")} style={{ ...iconBtn, flex: 1, gap: 4, padding: "6px 0" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg><span style={{ fontSize: 11, fontWeight: 600 }}>Down</span></button>
                   <button onClick={() => store.duplicateComponentInSection(selectedSectionId, component.id)} style={{ ...iconBtn, flex: 1, gap: 4, padding: "6px 0" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg><span style={{ fontSize: 11, fontWeight: 600 }}>Dup</span></button>
                 </div>
+                </>}
                 {component.type === "image_block" && <ImageUploader currentSrc={component.props?.src} onUpload={(v) => store.updateProp(selectedSectionId, component.id, "src", v)} />}
-                 {generalFields.length === 0 ? <div style={{ fontSize: 11, color: theme.textMuted, padding: 8, textAlign: "center" }}>No general properties{q ? ` for "${q}"` : ""}.</div> : generalFields.map(field => <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />)}
+                 {generalFields.length === 0 ? null : generalFields.map(field => <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />)}
+                {!focusedField && <PressProperties onSelectTarget={selectPropertyTarget} key={component.id} component={component} fields={fields} focusKey={focusSubKey?.compId === component.id ? focusSubKey.key : null} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} onChange={(key, value) => store.updateProp(selectedSectionId, component.id, key, value)} />}
                 {/* Container children - content structure */}
                 {def?.container && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${theme.borderLight}` }}>
@@ -593,12 +586,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                         </div>
                       );
                     })}
-                    <div style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, margin: "10px 0 6px" }}>Add child</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                      {getAllComponentTypes().slice(0, 6).map(def2 => (
-                        <button key={def2.type} onClick={() => store.addComponentToSection(selectedSectionId, def2.type, { ...def2.defaultProps }, component.id)} style={{ padding: "6px 4px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: "pointer", fontSize: 9 }}>{def2.label}</button>
-                      ))}
-                    </div>
+                    {component.type === "nested_section" && <div style={{ marginTop: 12 }}><div style={labelStyle}>Add Element</div><AddComponentContent /></div>}
                   </div>
                 )}
                 {/* Visibility in General */}
@@ -612,6 +600,8 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <div style={{ fontSize: 10, color: theme.textMuted }}>{section.id.slice(0, 16)}</div>
                   <div style={{ display: "flex", gap: 4 }}>
+                    <button onClick={() => store.duplicateSection(null, section.id)} style={iconBtn} title="Duplicate section">Duplicate</button>
+                    {section._link && <button onClick={() => store.detachSection(null, section.id)} style={iconBtn} title="Detach from library">Detach</button>}
                     {!section._link && <button onClick={() => store.saveSectionToLibrary(null, section.id)} style={{ ...iconBtn, marginRight: 4 }} title="Save to library"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /></svg></button>}
                     <button onClick={() => { store.removeBodySection(null, section.id); onClose?.(); }} style={iconBtnDanger}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg></button>
                   </div>
@@ -627,18 +617,11 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
               </>
             ) : (
               <>
+                {componentCategory && <AddComponentContent />}
                 <div style={{ textAlign: "center", padding: "20px 12px", color: theme.textMuted }}>
                   <div style={{ display: "flex", justifyContent: "center", marginBottom: 6, color: theme.textMuted }}><FileText size={22} /></div>
                   <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>No Selection</div>
                   <div style={{ fontSize: 11, lineHeight: 1.5 }}>Select a section or component to edit its properties.</div>
-                </div>
-                <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: 12, marginTop: 8 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Add Element</div>
-                  <AddComponentContent />
-                </div>
-                <div style={{ background: theme.hoverAmber, borderRadius: theme.radius.md, padding: 12, marginTop: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#6B4200", marginBottom: 4 }}>Tip</div>
-                  <div style={{ fontSize: 11, color: "#92400E", lineHeight: 1.5 }}>Pick an element on the canvas to see its editable fields here in General, and its appearance controls in Styling.</div>
                 </div>
               </>
             )}
@@ -656,7 +639,6 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
               <div style={{ margin: "-12px -10px 0", borderTop: `1px solid ${theme.borderLight}` }}>
                 {focusedField?.styleable && focusedField?.kind === "text" && (
                   <AccPanel id="sub-text-style" open={stylingOpen["sub-text-style"] !== false} onToggle={toggleStyling} title={`Text: ${focusedField.label}`} icon={focusedField.icon || Type}>
-                    <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 8, lineHeight: 1.4 }}>Click the text on the canvas to select it. Double-click edits content.</div>
                     {(() => {
                       const subKey = focusedField.key;
                       const bag = component.props?.textStyles?.[subKey] || {};
@@ -664,10 +646,6 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                       const getVal = (k, fb) => bag[k] ?? defaults[k] ?? fb;
                       return (
                         <>
-                          <div style={{ marginBottom: 10 }}>
-                            <label style={labelStyle}>Content</label>
-                            <input value={component.props?.[subKey] || ""} onChange={e => store.updateProp(selectedSectionId, component.id, subKey, e.target.value)} placeholder={focusedField.label} style={textInput} />
-                          </div>
                           <div style={{ marginBottom: 10 }}><label style={labelStyle}>Font Family</label><select value={getVal("fontFamily","Inter")} onChange={e => store.updateTextStyle(selectedSectionId, component.id, subKey, "fontFamily", e.target.value)} style={{ ...textInput, cursor: "pointer" }}>{FONT_FAMILIES.map(f => <option key={f} value={f}>{f}</option>)}</select></div>
                           <div style={{ marginBottom: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <div><label style={labelStyle}>Font Size</label><input type="number" value={getVal("fontSize",14)} onChange={e => { const v=Number(e.target.value); store.updateTextStyle(selectedSectionId, component.id, subKey, "fontSize", Number.isFinite(v)?v:14); }} style={textInput} /></div>
@@ -688,7 +666,8 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                     })()}
                   </AccPanel>
                 )}
-                {stylingGroupKeys.length === 0 && !q ? (
+                {selectedItem && <PressProperties mode="styling" component={component} fields={fields} focusKey={focusSubKey.key} screens={[]} onChange={(key, value) => store.updateProp(selectedSectionId, component.id, key, value)} />}
+                {selectedText && focusedField.styleable || selectedItem ? null : stylingGroupKeys.length === 0 && !q ? (
                   <div style={{ fontSize: 11, color: theme.textMuted, padding: 16, textAlign: "center" }}>No styling properties for this element.</div>
                 ) : stylingGroupKeys.length === 0 && q ? (
                   <div style={{ fontSize: 11, color: theme.textMuted, padding: 16, textAlign: "center" }}>No styling matches &ldquo;{q}&rdquo;.</div>
@@ -700,6 +679,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                   </AccPanel>
                 ))}
                 {/* Spacing — component-level, shown for every component */}
+                {!focusedField && !selectedItem && <>
                 <AccPanel id="spacing" open={!!stylingOpen.spacing} onToggle={toggleStyling} title="Spacing" icon={ArrowLeftRight}>
                   <div style={{ marginBottom: 10 }}><label style={labelStyle}>Margin (px)</label><SpacingEditor value={component.props?.margin || {}} onChange={v => store.updateProp(selectedSectionId, component.id, "margin", v)} /></div>
                   <div style={{ marginBottom: 4 }}><label style={labelStyle}>Padding (px)</label><SpacingEditor value={component.props?.padding} onChange={v => store.updateProp(selectedSectionId, component.id, "padding", v)} /></div>
@@ -708,6 +688,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                   <div style={{ marginBottom: 10 }}><label style={labelStyle}>Elevation</label><select value={component.props?.elevation || "none"} onChange={e => store.updateProp(selectedSectionId, component.id, "elevation", e.target.value)} style={{ ...textInput, cursor: "pointer" }}><option value="none">None</option><option value="soft">Soft</option><option value="medium">Medium</option><option value="raised">Raised</option></select></div>
                   <div style={{ marginBottom: 4 }}><label style={labelStyle}>Opacity</label><input type="number" min="0" max="100" value={component.props?.opacity ?? 100} onChange={e => { const n = Number(e.target.value); store.updateProp(selectedSectionId, component.id, "opacity", Number.isFinite(n) ? n : 100); }} style={textInput} /></div>
                 </AccPanel>
+                </>}
               </div>
             ) : section ? (
               <div style={{ margin: "-12px -10px 0", borderTop: `1px solid ${theme.borderLight}` }}>
@@ -877,12 +858,12 @@ function TabEditorRow({ tab, screenIds, screens, onUpdate, onRemove, onReorder, 
               position: "absolute", zIndex: 40, bottom: "100%", left: 0, marginBottom: 6,
               background: theme.surface, borderRadius: theme.radius.md, boxShadow: theme.shadowLg,
               border: `1px solid ${theme.border}`, padding: 8, display: "grid",
-              gridTemplateColumns: "repeat(6, 1fr)", gap: 4, width: 200,
+              gridTemplateColumns: "repeat(6, 1fr)", gap: 4, width: 200, maxHeight: 240, overflowY: "auto",
             }}>
               {TAB_ICONS.map(ic => {
                 const I = getLucideIcon(ic) || getLucideIcon("Home");
                 return (
-                  <button key={ic} onClick={() => { onUpdate({ icon: ic }); setIconOpen(false); }}
+                  <button key={ic} title={ic} aria-label={ic} onClick={() => { onUpdate({ icon: ic }); setIconOpen(false); }}
                     style={{
                       background: tab.icon === ic ? theme.hoverAmber : "transparent",
                       border: tab.icon === ic ? `1px solid ${theme.active}` : "1px solid transparent",
@@ -1025,6 +1006,8 @@ function FieldEditor({ field, value, onChange, focused, onClearProp, screens }) 
       </div>
       {isRadius ? (
         <RadiusEditor value={value} onChange={onChange} />
+      ) : field.type === "icon" ? (
+        <IconPicker value={value} onChange={onChange} />
       ) : field.type === "list" ? (
         <ListFieldEditor
           fields={field.fields}
@@ -1074,6 +1057,7 @@ function FieldEditor({ field, value, onChange, focused, onClearProp, screens }) 
 }
 
 function parsePreviewActionJson(value) {
+  if (value && typeof value === "object") return value;
   if (!value || typeof value !== "string") return null;
   const t = value.trim();
   if (!t) return null;
@@ -1086,12 +1070,13 @@ function parsePreviewActionJson(value) {
 }
 
 /* Friendly JSON action editor: preset chips + target screen dropdown, raw-JSON fallback. */
-function ActionEditor({ value = "", onChange, screens }) {
+export function ActionEditor({ value = "", onChange, screens }) {
+  if (value && typeof value === "object") value = JSON.stringify(value, null, 2);
   const { theme, textInput } = useEditorTheme();
   const [rawMode, setRawMode] = useState(false);
   const parsed = parsePreviewActionJson(value);
   const selectedType = parsed?.type || "";
-  const rawJsonActive = rawMode || (value.trim() !== "" && parsed && !["navigate", "pop", "refresh"].includes(parsed.type));
+  const rawJsonActive = rawMode || (value.trim() !== "" && (!parsed || !["navigate", "pop", "refresh"].includes(parsed.type)));
 
   const applyAction = (action) => onChange(action ? JSON.stringify(action, null, 2) : "");
 
@@ -1099,6 +1084,7 @@ function ActionEditor({ value = "", onChange, screens }) {
     <div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
         {[
+          { type: "", label: "Do nothing" },
           { type: "navigate", label: "Open Screen" },
           { type: "pop", label: "Go Back" },
           { type: "refresh", label: "Refresh" },
@@ -1106,7 +1092,7 @@ function ActionEditor({ value = "", onChange, screens }) {
           <button key={opt.type}
             onClick={() => {
               setRawMode(false);
-              applyAction(opt.type === "navigate" ? { type: "navigate", payload: { screenId: "" } } : { type: opt.type });
+              applyAction(!opt.type ? null : opt.type === "navigate" ? { type: "navigate", payload: { screenId: "" } } : { type: opt.type });
             }}
             style={{
               padding: "5px 11px", borderRadius: 999, cursor: "pointer", fontFamily: "'Inter',sans-serif",
@@ -1138,7 +1124,7 @@ function ActionEditor({ value = "", onChange, screens }) {
           style={{ ...textInput, minHeight: 70, resize: "vertical", fontFamily: "'Monaco','Consolas',monospace", fontSize: 11 }}
           placeholder='{"type": "navigate", "payload": {"screenId": ""}}' />
       ) : selectedType === "navigate" ? (
-        <select value={parsed?.payload?.screenId || ""}
+        <select aria-label="Destination page" value={parsed?.payload?.screenId || ""}
           onChange={e => applyAction({ type: "navigate", payload: { screenId: e.target.value } })}
           style={{ ...textInput, cursor: "pointer" }}>
           <option value="">Select a screen…</option>
@@ -1455,7 +1441,9 @@ function ListFieldEditor({ fields, value, onChange }) {
                   return (
                     <div key={f.key} style={{ marginBottom: 8 }}>
                       <label style={{ ...labelStyle, fontSize: 11 }}>{f.label}</label>
-                      {f.type === "bg" ? (
+                      {f.type === "icon" ? (
+                        <IconPicker value={v} onChange={value => updateItem(idx, f.key, value)} />
+                      ) : f.type === "bg" ? (
                         <FillEditor value={v} onChange={(cv) => updateItem(idx, f.key, cv)} />
                       ) : f.type === "color" ? (
                         <div>
@@ -1504,4 +1492,42 @@ function ListFieldEditor({ fields, value, onChange }) {
       </button>
     </div>
   );
+}
+
+// One property channel follows the current component, event or selected list item.
+export function PressProperties({ component, fields = [], focusKey, screens, onChange, mode = "general", onSelectTarget }) {
+  const { labelStyle, textInput } = useEditorTheme();
+  const [target, setTarget] = useState(focusKey || "component");
+  useEffect(() => { setTarget(focusKey || "component"); }, [focusKey]);
+  const props = component.props || {};
+  const events = { ...Object.fromEntries((({ cart_summary: ["removeItem", "addItem", "checkout"], order_detail: ["back"], empty_state: ["refresh"], report_action: ["submit"] })[component.type] || []).map(key => [key, null])), ...component.actions, ...props.actions };
+  const options = [{ id: "component", label: "Component press" }];
+  Object.keys(events).forEach(key => options.push({ id: "event:" + key, label: key }));
+  if (["category_pills", "menu_grid", "promotion_list", "info_list", "order_history"].includes(component.type)) {
+    ["cats", "categories", "items", "offers", "orders", "rows"].forEach(key => {
+      if (Array.isArray(props[key])) props[key].forEach((item, index) => options.push({ id: "item:" + key + ":" + index, label: typeof item === "string" ? item : item.label || item.name || item.title || "Item " + (index + 1) }));
+    });
+  }
+  const selected = options.some(option => option.id === target) ? target : "component";
+  const [, listKey, indexText] = selected.split(":");
+  const index = Number(indexText);
+  const item = selected.startsWith("item:") ? props[listKey][index] : null;
+  const itemValue = typeof item === "string" ? { label: item } : item;
+  const updateItem = patch => onChange(listKey, props[listKey].map((entry, i) => i === index ? { ...itemValue, ...patch } : entry));
+  const value = itemValue ? itemValue.tapAction : selected.startsWith("event:") ? events[listKey] : props.tapAction ?? props.action;
+  return <div style={{ marginTop: 12 }}>
+    {mode === "general" && <>
+    <label style={labelStyle}>Editing</label>
+    <select aria-label="Selected pressable" value={selected} onChange={event => { setTarget(event.target.value); onSelectTarget?.(event.target.value); }} style={textInput}>
+      {options.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+    </select></>}
+    {itemValue && (fields.find(field => field.key === listKey)?.fields || [{ key: "label", label: "Label", type: "text" }]).filter(field => (groupForField(field) === "styling") === (mode === "styling")).map(field => <FieldEditor key={field.key} field={field} value={itemValue[field.key]} onChange={value => updateItem({ [field.key]: value })} screens={screens} />)}
+    {mode === "general" && <>
+    <label style={labelStyle}>On press / Attach page</label>
+    <ActionEditor key={selected} value={value ?? ""} screens={screens} onChange={value => {
+      if (itemValue) updateItem({ tapAction: value || null });
+      else if (selected.startsWith("event:")) onChange("actions", { ...props.actions, [listKey]: value || null });
+      else { onChange("tapAction", value || null); if (props.action) onChange("action", ""); }
+    }} /></>}
+  </div>;
 }

@@ -120,6 +120,7 @@ const GALLERY = {
   Layout: {
     icon: Layout,
     variants: [
+      { id: "section", label: "Section", type: "nested_section", props: {}, Preview: (t) => <RowPreview weights={[1]} theme={t} /> },
       ...Object.keys(ROW_TEMPLATES).map((key) => ({
         id: key, label: key.replace(/\|/g, " | "), type: "row", props: { template: key },
         Preview: (t) => <RowPreview weights={ROW_TEMPLATES[key]} theme={t} />,
@@ -203,7 +204,7 @@ const GALLERY = {
   Video: { icon: Video, comingSoon: true },
 };
 
-export default function ElementGallery({ browseType, store, selectedSectionId, onClose }) {
+export default function ElementGallery({ browseType, store, selectedSectionId, onClose, insertionTarget, onAdded }) {
   const { theme } = useEditorTheme();
   const config = GALLERY[browseType];
   const IconCmp = config?.icon || Square;
@@ -211,10 +212,13 @@ export default function ElementGallery({ browseType, store, selectedSectionId, o
 
   const add = (variant) => {
     if (!canAdd) return;
-    store.addComponentToSection(selectedSectionId, variant.type, {
-      ...(getComponentType(variant.type)?.defaultProps || {}),
-      ...variant.props,
-    });
+    const props = { ...(getComponentType(variant.type)?.defaultProps || {}), ...variant.props };
+    const sectionId = insertionTarget?.sectionId || selectedSectionId;
+    const id = insertionTarget?.parentId
+      ? store.insertComponentAt(sectionId, insertionTarget.parentId, insertionTarget.index, variant.type, props)
+      : store.addComponentToSection(sectionId, variant.type, props);
+    if (id) onAdded?.(sectionId, id);
+    onClose?.();
     toast.success(`${browseType} added`);
   };
 

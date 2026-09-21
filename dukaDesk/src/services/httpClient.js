@@ -35,7 +35,7 @@ httpClient.interceptors.response.use(
       return Promise.reject(new Error(body.errors?.[0] || body.message || 'Request failed'));
     }
     const method = response.config?.method;
-    if (mutMethods.includes(method) && body?.message) {
+    if (mutMethods.includes(method) && body?.message && !response.config?.silentSuccess) {
       emit('success', body.message);
     }
     return body;
@@ -45,7 +45,7 @@ httpClient.interceptors.response.use(
 
     console.error(`[Network Error] ${error.response?.status || 'No response'} ${originalRequest?.method?.toUpperCase() || '?'} ${originalRequest?.url || '?'}`, error.response?.data || error.message);
 
-    const isAuthUrl = originalRequest.url?.includes('/auth/');
+    const isAuthUrl = originalRequest?.url?.includes('/auth/');
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthUrl) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -94,7 +94,8 @@ httpClient.interceptors.response.use(
     if (body && body.errors?.length) {
       const errMsg = typeof body.errors[0] === 'string' ? body.errors[0] : (body.errors[0]?.message || 'Request failed');
       if (!isAuthUrl) emit('error', errMsg);
-      return Promise.reject(new Error(errMsg));
+      error.message = errMsg;
+      return Promise.reject(error);
     }
     const msg = body?.message || error.message || 'Network request failed';
     if (!isAuthUrl) emit('error', msg);

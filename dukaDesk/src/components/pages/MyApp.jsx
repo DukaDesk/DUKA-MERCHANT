@@ -94,7 +94,7 @@ export default function MyApp() {
                   <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Status</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: NAVY }}>
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: isLive ? "#2ECC71" : "#9CA3AF" }} />
-                    {isLive ? "Live" : "Draft"}
+                    {isLive ? "Live" : app.status === "unverified" ? "Not verified" : "Draft"}
                   </div>
                 </div>
                 <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>

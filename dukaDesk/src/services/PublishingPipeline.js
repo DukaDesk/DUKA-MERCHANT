@@ -1,6 +1,7 @@
+import { pendingPublication, verifyPublication, submitPublication, readHistory, readPublished, rollbackPublication } from './publishedDelivery';
+import { compileDesignToPublishedApp } from "./compilePublishedApp";
 import { validateProject } from "./ValidationEngine";
-import { getReleases, getCurrentDeployment, saveReleases, saveDeployment, uploadMediaAsset, getSetupData } from "./api";
-import httpClient from "./httpClient";
+import { getReleases, getCurrentDeployment as getLegacyDeployment, saveReleases, saveDeployment, uploadMediaAsset, getSetupData } from "./api";
 import { getMerchant, isDemoId } from "./api";
 
 function generateId() {
@@ -40,141 +41,6 @@ function slugify(value) {
 // Convert the editor model into the runtime contract consumed by the mobile app.
 // Editor-only fields (shared sections, chrome modes and saved-section references)
 // must not be the source of truth for a published app.
-function compileDesignToPublishedApp(projectData, version, publishedAt, assetCatalog = []) {
-  const source = JSON.parse(JSON.stringify(projectData || {}));
-  const meta = source.meta || {};
-  const sourceScreens = source.screens && typeof source.screens === "object" ? source.screens : {};
-  const libraries = Array.isArray(source.savedSections) ? source.savedSections : [];
-  const libraryById = Object.fromEntries(libraries.map(section => [section.id, section]));
-
-  const resolveComponents = (sections) => {
-    const components = [];
-    for (const section of Array.isArray(sections) ? sections : []) {
-      const resolved = section?.kind === "saved" ? libraryById[section.libraryId] : section;
-      if (Array.isArray(resolved?.components)) components.push(...resolved.components);
-    }
-
-    return components;
-  };
-
-  const screens = Object.fromEntries(Object.entries(sourceScreens).map(([id, screen]) => {
-    const children = resolveComponents(screen?.bodySections);
-    const sourceLayout = screen?.layout && typeof screen.layout === "object" ? screen.layout : {};
-    return [id, {
-      screenId: id,
-      title: screen?.name || id,
-      layout: {
-        kind: sourceLayout.kind || "scroll",
-        gap: sourceLayout.gap ?? 16,
-        padding: sourceLayout.padding ?? 16,
-        scroll: sourceLayout.scroll,
-        alignItems: sourceLayout.alignItems,
-        justifyContent: sourceLayout.justifyContent,
-        flex: sourceLayout.flex,
-        flexGrow: sourceLayout.flexGrow,
-        width: sourceLayout.width,
-        minHeight: sourceLayout.minHeight,
-        maxWidth: sourceLayout.maxWidth,
-        backgroundColor: sourceLayout.backgroundColor,
-        children,
-      },
-    }];
-  }));
-
-  const initialRoute = source.navigation?.initialScreen || Object.keys(screens)[0] || "home";
-  const tabs = Array.isArray(source.navigation?.tabs) ? source.navigation.tabs.map((tab, index) => ({
-    tabId: tab.id || `tab_${index + 1}`,
-    label: tab.label || tab.screenId || `Tab ${index + 1}`,
-    icon: typeof tab.icon === "string" ? tab.icon : "storefront-outline",
-    screenId: tab.screenId || initialRoute,
-    guest: true,
-    protected: false,
-  })) : [];
-
-  const primary = meta.primaryColor || "#1A1A2E";
-  const secondary = meta.secondaryColor || "#F4A026";
-  const background = meta.backgroundColor || source.splash?.backgroundColor || "#FAFAFA";
-  const text = meta.textColor || "#0F0F1A";
-  const fontFamily = meta.fontFamily || "Inter";
-  // Merchant/business identity is owner metadata, not the customer-facing app
-  // identity. An explicitly edited app name wins; otherwise use its slug.
-  const appSlug = meta.slug || slugify(meta.appName || "published-app");
-  const appName = meta.appName || appSlug;
-  const logo = meta.logo || null;
-  const font = (fontSize, fontWeight, lineHeight) => ({ fontFamily, fontSize, fontWeight, lineHeight });
-
-  return {
-    manifestVersion: "1.0.0",
-    version,
-    publishedAt,
-    status: "published",
-    metadata: {
-      version,
-      schemaVersion: "1.0",
-      displayName: appName,
-      category: meta.category || "",
-      publishedAt,
-    },
-    identity: {
-      slug: appSlug,
-      displayName: appName,
-    },
-    capabilities: {},
-    navigation: {
-      root: { type: "tabs", initialRoute },
-      initialScreen: initialRoute,
-      tabs,
-      stacks: [],
-      modals: [],
-      routes: Object.keys(screens).map(screenId => ({ routeId: screenId, screenId, path: `/${screenId}` })),
-      deepLinks: [],
-      guestMode: { enabled: true, allowedScreens: Object.keys(screens), blockedActions: [], authPromptScreens: [] },
-    },
-    theme: {
-      version: { themeVersion: "1.0.0", schemaVersion: "1.0" },
-      brand: { name: appName, logo: logo || undefined },
-      colors: {
-        primary, secondary, surface: background, background, card: "#FFFFFF", border: "#E5E7EB",
-        success: "#16A34A", warning: "#F59E0B", error: "#EF4444", textPrimary: text,
-        textSecondary: "#6B7280", disabled: "#9CA3AF", placeholder: "#9CA3AF",
-      },
-      typography: {
-        displayLg: font(32, "700", 40), displayMd: font(28, "700", 36), displaySm: font(24, "700", 32),
-        headlineLg: font(22, "600", 28), headlineMd: font(20, "600", 24), headlineSm: font(18, "600", 22),
-        bodyLg: font(16, "400", 24), bodyMd: font(14, "400", 20), bodySm: font(12, "400", 16),
-        labelLg: font(14, "500", 20), labelMd: font(12, "500", 16), labelSm: font(10, "500", 14),
-        cta: font(14, "600", 20), caption: font(10, "400", 14),
-      },
-      spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
-      roundness: Number(meta.roundness ?? 12),
-    },
-    runtime: { version: "1.0.0" },
-    permissions: {},
-    localization: { defaultLocale: "en", supportedLocales: ["en"] },
-    assets: {
-      logo: assetCatalog.find(asset => asset.url === logo) || (logo ? { type: "image", url: logo } : undefined),
-      images: assetCatalog,
-    },
-    // Compatibility fields for current mobile/template readers during contract migration.
-    name: appName,
-    appName,
-    meta: {
-      appName,
-      businessName: meta.businessName || appName,
-      logo,
-      primaryColor: primary,
-    },
-    branding: {
-      appName,
-      businessName: meta.businessName || appName,
-      tagline: meta.tagline || "",
-      logo: logo || undefined,
-    },
-    content: {},
-    screens,
-  };
-}
-
 export function buildManifestPreview(projectData) {
   const publishedAt = new Date().toISOString();
   return compileDesignToPublishedApp(projectData, "draft", publishedAt);
@@ -257,6 +123,10 @@ async function materializeAssets(projectData) {
 }
 
 export async function publishProject(projectData) {
+  const publishingMerchant = getMerchant() || {};
+  const publishingId = publishingMerchant.merchantId || publishingMerchant.tenantId;
+  if (!publishingId) return { success: false, error: 'Sign in to a merchant before publishing' };
+  if (publishingId && !isDemoId(publishingId) && pendingPublication(publishingId)) return { ...await verifyPublication(publishingId), verifiedPrevious: true };
   const validation = validateProject(projectData);
   if (!validation.valid) {
     return { success: false, error: "Validation failed", validation };
@@ -327,8 +197,8 @@ export async function publishProject(projectData) {
      };
    }
 
-   const history = await getReleases();
-   const lastVersion = await getLastVersion(history);
+   const history = await getReleaseHistory();
+   const lastVersion = await getLastVersion(publishingId && !isDemoId(publishingId) ? history.map(entry => ({ ...entry, status: "published" })) : history);
   const version = incrementVersion(lastVersion);
 
   const release = {
@@ -354,41 +224,13 @@ export async function publishProject(projectData) {
     tabs: manifest.navigation.tabs.length,
     splash: projectData?.splash ? { bg: projectData.splash.backgroundColor, hasImage: !!projectData.splash.backgroundImage, hasLogo: !!projectData.splash.logo } : null,
   });
-  console.log("[Publish] Full manifest:", JSON.parse(JSON.stringify(manifest)));
-  console.log("[Publish] Full projectData:", JSON.parse(JSON.stringify(projectData)));
+
+
 
   try {
     const merchantId = merchant?.merchantId || merchant?.tenantId;
     if (merchantId && !isDemoId(merchantId)) {
-      // Materialization has already uploaded inline images. Payload size does
-      // not indicate compression and must never cause image URLs to be erased.
-      const payload = { version, manifest };
-      const payloadBytes = new Blob([JSON.stringify(payload)]).size;
-      console.log('[Publish] Sending published manifest', { version, payloadBytes });
-      try {
-        await httpClient.post(`/api/v1/merchants/${merchantId}/publishing/publish`, payload);
-      } catch (error) {
-        if ((error?.response?.status || error?.status) === 413) {
-          throw new Error(`Backend rejected the ${Math.ceil(payloadBytes / 1024)}KB manifest (413). Images were uploaded separately; the backend request-size limit must accommodate this manifest.`);
-        }
-        throw error;
-      }
-
-      // A successful POST alone does not prove that mobile received this release.
-      // Do not manufacture success by writing runtime data through config/drafts.
-      const response = await httpClient.get(`/api/v1/merchants/${merchantId}/definition`);
-      const deployed = response?.data ?? response;
-      const screenIds = Object.keys(manifest.screens).sort();
-      const deployedIds = Object.keys(deployed?.screens || {}).sort();
-      const deployedVersion = deployed?.version ?? deployed?.metadata?.version;
-      const deployedLogo = deployed?.theme?.brand?.logo ?? deployed?.meta?.logo ?? null;
-      if (deployedVersion !== version ||
-          JSON.stringify(deployedIds) !== JSON.stringify(screenIds) ||
-          deployed?.identity?.slug !== manifest.identity.slug ||
-          deployedLogo !== (manifest.theme.brand.logo ?? null) ||
-          deployed?.navigation?.root?.initialRoute !== manifest.navigation.root.initialRoute) {
-        throw new Error(`Publish was accepted, but mobile definition does not match v${version} (received ${deployedVersion || 'an unversioned definition'}). Backend publishing/read-path synchronization is required; this release has not been confirmed live.`);
-      }
+      return { ...await submitPublication(merchantId, manifest), validation };
     }
 
     // Record a successful deployment only after the backend read-back matches.
@@ -402,17 +244,22 @@ export async function publishProject(projectData) {
   return { success: true, version, releaseId: release.id, validation, manifest };
 }
 export async function getReleaseHistory() {
-  try {
-    return await getReleases();
-  } catch {
-    return [];
-  }
+  const merchant = getMerchant() || {};
+  const id = merchant.merchantId || merchant.tenantId;
+  if (id && !isDemoId(id)) return readHistory(id);
+  try { return await getReleases(); } catch { return []; }
 }
-
-export { getCurrentDeployment };
+export async function getCurrentDeployment() {
+  const merchant = getMerchant() || {};
+  const id = merchant.merchantId || merchant.tenantId;
+  return id && !isDemoId(id) ? readPublished(id) : getLegacyDeployment();
+}
 
 export async function rollbackToRelease(releaseId) {
   try {
+    const merchant = getMerchant() || {};
+    const id = merchant.merchantId || merchant.tenantId;
+    if (id && !isDemoId(id)) return await rollbackPublication(id, releaseId);
     const history = await getReleases();
     const release = history.find(r => r.id === releaseId);
     if (!release) {
@@ -439,4 +286,10 @@ export async function rollbackToRelease(releaseId) {
   } catch (e) {
     return { success: false, error: "Failed to rollback: " + e.message };
   }
+}
+
+export function hasPendingPublication() {
+  const merchant = getMerchant() || {};
+  const id = merchant.merchantId || merchant.tenantId;
+  try { return !!id && !isDemoId(id) && !!pendingPublication(id); } catch { return false; }
 }
