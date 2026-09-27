@@ -1,3 +1,4 @@
+import PreviewTabBar from "./PreviewTabBar";
 import { useState, useCallback, useEffect } from "react";
 import { Sparkles } from "lucide-react";
 import { getComponentType } from "../canvas-editor/componentTypes";
@@ -66,6 +67,7 @@ function resolveHomeScreenId(data) {
 
 export default function SectionEditor({ store, onBack }) {
   const { theme, iconBtn, primaryBtn, isDark, toggleDark } = useEditorTheme();
+  const [selectedScreenId, setSelectedScreenId] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [selectedComponentId, setSelectedComponentId] = useState(null);
   const [showExport, setShowExport] = useState(false);
@@ -136,6 +138,7 @@ export default function SectionEditor({ store, onBack }) {
   }
 
   const handleSelectSection = useCallback((sectionId) => {
+    setSelectedScreenId(null);
     setSelectedSectionId(sectionId);
     setSelectedComponentId(null);
     setFocusSubKey(null);
@@ -436,18 +439,6 @@ export default function SectionEditor({ store, onBack }) {
               Back
             </button>
           )}
-          {Object.keys(data.screens).map(sid => (
-            <button key={sid} onClick={() => handlePreviewNavigate(sid, "replace")}
-              style={{
-                background: previewCurrentScreen === sid ? theme.active : "rgba(255,255,255,0.1)", border: "none",
-                color: previewCurrentScreen === sid ? NAVY : "#fff", borderRadius: theme.radius.md, padding: "5px 12px",
-                cursor: "pointer", fontSize: 11, fontWeight: 600, fontFamily: "'Inter',sans-serif",
-                transition: `all ${theme.transition}`,
-              }}
-              onMouseEnter={e => { if (previewCurrentScreen !== sid) e.currentTarget.style.background = "rgba(255,255,255,0.18)"; }}
-              onMouseLeave={e => { if (previewCurrentScreen !== sid) e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
-            >{data.screens[sid]?.name || sid}</button>
-          ))}
         </div>
         <div style={{
           width: ps.width, height: ps.height, background: screen?.backgroundColor || "#FCF8FA",
@@ -473,11 +464,7 @@ export default function SectionEditor({ store, onBack }) {
               {data.meta?.tagline && <div style={{ marginTop: 8, opacity: 0.78, fontSize: 13 }}>{data.meta.tagline}</div>}
             </div>
           )}
-          <div style={{ height: 28, background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", flexShrink: 0, color: "#fff", fontSize: 11, fontWeight: 600 }}>
-            <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-          </div>
-          <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 120, height: 22, background: "#1a1a2e", borderRadius: "0 0 14px 14px", zIndex: 10 }} />
-          <div style={{ flex: 1, overflowY: "auto" }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             {(screen?.bodySections || []).map(sec => {
               const resolved = store.resolveSection(sec);
               return (
@@ -514,32 +501,7 @@ export default function SectionEditor({ store, onBack }) {
               );
             })}
           </div>
-          {(data.navigation?.tabs || []).length > 0 && (
-            <div style={{
-              height: 56, background: data.navigation?.style?.background || "#fff",
-              borderTop: "1px solid #E5E7EB", display: "flex", alignItems: "center",
-              justifyContent: "space-around", flexShrink: 0,
-            }}>
-              {data.navigation.tabs.map((tab, i) => {
-                const isActive = previewCurrentScreen === tab.screenId;
-                const color = isActive
-                  ? (tab.color || data.navigation?.style?.active || "#1A1A2E")
-                  : (data.navigation?.style?.inactive || "#9CA3AF");
-                return (
-                  <button key={tab.id || i} onClick={() => tab.screenId && handlePreviewNavigate(tab.screenId)}
-                    style={{
-                      background: "none", border: "none", cursor: tab.screenId ? "pointer" : "default",
-                      display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                      padding: "4px 16px",
-                    }}
-                  >
-                    <span style={{ fontSize: 20, color, opacity: isActive ? 1 : 0.6 }}>{tab.icon}</span>
-                    <span style={{ fontSize: 10, color, fontWeight: isActive ? 700 : 500 }}>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <PreviewTabBar navigation={data.navigation} activeScreen={previewCurrentScreen} onNavigate={handlePreviewNavigate} />
         </div>
       </div>
     );
@@ -806,6 +768,9 @@ export default function SectionEditor({ store, onBack }) {
 
         {/* Center */}
         <SectionRenderer
+          screenSelected={selectedScreenId === store.currentScreenId && !selectedSectionId && !selectedComponentId && !navSelected}
+          onSelectScreen={() => { setSelectedScreenId(store.currentScreenId); setSelectedSectionId(null); setSelectedComponentId(null); setFocusSubKey(null); setNavSelected(false); setLayoutTarget(null); setBrowseType("components:choose"); }}
+          onChooseComponents={(target, category) => { setSelectedSectionId(target.sectionId); setSelectedComponentId(target.parentId || null); setFocusSubKey(null); setNavSelected(false); setLayoutTarget(target); setBrowseType("components:" + category); }}
           onChooseLayout={target => { setSelectedSectionId(target.sectionId); setSelectedComponentId(target.parentId || null); setFocusSubKey(null); setNavSelected(false); setLayoutTarget(target); setBrowseType("Layout"); }}
           store={store}
           selectedSectionId={selectedSectionId}
@@ -829,6 +794,9 @@ export default function SectionEditor({ store, onBack }) {
             />
           ) : (
             <PropertiesPanel
+              screenSelected={selectedScreenId === store.currentScreenId && !selectedSectionId && !selectedComponentId && !navSelected}
+              onChooseCategory={category => setBrowseType("components:" + category)}
+              insertionTarget={browseType?.startsWith("components:") ? layoutTarget : null}
               componentCategory={browseType?.startsWith("components:") ? browseType.slice(11) : null}
               store={store}
               selectedSectionId={selectedSectionId}

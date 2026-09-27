@@ -581,6 +581,23 @@ export function useDesignStore(initialData, options = {}) {
     return id;
   }, [updateData]);
 
+  const addComponentToScreen = useCallback((type, props) => {
+    if (!data.screens[currentScreenId]) return null;
+    const sectionId = genSectionId();
+    const id = genId();
+    updateData(d => {
+      const screen = d.screens[currentScreenId];
+      if (!screen.bodySections) screen.bodySections = [];
+      screen.bodySections.push({
+        id: sectionId, type: "custom", name: "Section",
+        backgroundColor: "transparent",
+        components: enrichComponents([{ id, type, props: props || {} }]),
+      });
+    });
+    setSelectedComponentId(id);
+    return { sectionId, id };
+  }, [data.screens, currentScreenId, updateData]);
+
   const removeComponentFromSection = useCallback((sectionId, compId) => {
     updateData(d => {
       const sec = findSection(d, sectionId);
@@ -900,7 +917,7 @@ export function useDesignStore(initialData, options = {}) {
     updateSharedSection, setSharedSectionColor,
 
     // Components
-    addComponentToSection, removeComponentFromSection,
+    addComponentToScreen, addComponentToSection, removeComponentFromSection,
     insertComponentAt,
     duplicateComponentInSection,
     reorderComponent, updateComponentInSection, updateProp, clearProp,

@@ -19,3 +19,16 @@ it("keeps cleared and custom slugs through edits and local reload", async () => 
   expect(reloaded.result.current.data.meta.slug).toBe("my-new-shop");
   reloaded.unmount();
 });
+
+it("adds the first component to an empty screen in one undoable edit", () => {
+  const initial = getDefaultData();
+  const { result } = renderHook(() => useDesignStore(initial, { deferSave: true }));
+  let added;
+  act(() => { added = result.current.addComponentToScreen("button", { label: "Start" }); });
+  const sections = result.current.screen.bodySections;
+  expect(sections).toHaveLength(1);
+  expect(sections[0].id).toBe(added.sectionId);
+  expect(sections[0].components[0]).toMatchObject({ id: added.id, type: "button", props: { label: "Start" } });
+  act(() => result.current.undo());
+  expect(result.current.screen.bodySections).toHaveLength(0);
+});

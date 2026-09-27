@@ -29,8 +29,6 @@ scripts/lint
 - [Architecture Alignment](ARCHITECTURE_ALIGNMENT.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
-- [PageFly Research Notes](PAGEFLY-RESEARCH-NOTES.md)
-- [Section Editor Gap Analysis](GAP-ANALYSIS.md)
 
 ## License
 

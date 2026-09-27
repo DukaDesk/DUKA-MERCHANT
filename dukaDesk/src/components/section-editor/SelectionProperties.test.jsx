@@ -47,3 +47,27 @@ it("renders the selected menu icon as a symbol rather than its name", () => {
   expect(container.querySelector("svg.lucide-utensils")).toBeTruthy();
   expect(screen.queryByText("Utensils")).toBeNull();
 });
+
+it("keeps button content in General and shape in Styling", () => {
+  const component = { id: "button", type: "button", props: { label: "Continue", icon: "ArrowRight", iconSize: 22, shape: "round", radius: 24 } };
+  const section = { id: "section", components: [component] };
+  const page = { bodySections: [section] };
+  const store = { data: { screens: { home: page }, navigation: {} }, screen: page, updateProp: vi.fn() };
+  render(<PropertiesPanel store={store} selectedSectionId="section" selectedComponentId="button" />);
+  expect(screen.getByDisplayValue("Continue")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Choose icon" })).toBeTruthy();
+  expect(screen.queryByText("Shape")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Styling" }));
+  expect(screen.queryByDisplayValue("Continue")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Layout" }));
+  expect(screen.getByDisplayValue("round")).toBeTruthy();
+});
+it("renders an icon-only round button and icons in pill sets", () => {
+  const button = getComponentType("button");
+  const view = render(button.render({ label: "Add", icon: "Plus", showLabel: "false", shape: "round", width: 56, height: 56 }));
+  expect(view.container.querySelector("svg.lucide-plus")).toBeTruthy();
+  expect(screen.queryByText("Add")).toBeNull();
+  view.rerender(getComponentType("category_pills").render({ cats: [{ label: "Favorites", icon: "Heart" }] }));
+  expect(view.container.querySelector("svg.lucide-heart")).toBeTruthy();
+  expect(screen.getByText("Favorites")).toBeTruthy();
+});

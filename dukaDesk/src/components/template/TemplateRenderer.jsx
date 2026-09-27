@@ -1,8 +1,7 @@
+import PreviewTabBar from "../section-editor/PreviewTabBar";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { LayoutRenderer, ScreenRenderer } from "../../runtime/layouts";
 import { RuntimeContext } from "../../runtime/RuntimeContext";
-import { Home, Calendar, ClipboardList, ShoppingCart, User, Store, Tag, Utensils, Info, Megaphone, Trophy, Heart, BookOpen, Users, Briefcase, CreditCard, ShoppingBag, Video, Phone } from "lucide-react";
-import { getLucideIcon } from "../canvas-editor/componentTypes";
 import { TemplateComponents } from "./TemplateComponents";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";
 function getScreenPreviewData() {
@@ -296,7 +295,6 @@ function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }
     }
   };
 
-  const tabs = manifest?.navigation?.tabs || [];
   const isRoot = stack.length === 1;
 
   return (
@@ -328,7 +326,7 @@ function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }
         </div>
 
         {/* Screen body */}
-        <div style={{ flex: 1, overflow: "auto", background: manifest?.theme?.bgColor || manifest?.theme?.backgroundColor || "#F9FAFB" }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", background: manifest?.theme?.bgColor || manifest?.theme?.backgroundColor || "#F9FAFB" }}>
           <TemplateRenderer
             templateId={manifest?.templateId}
             screenId={currentScreenId}
@@ -339,47 +337,7 @@ function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }
           />
         </div>
 
-        {/* Bottom tab bar */}
-        {tabs.length > 0 && (
-          <div style={{
-            display: "flex",
-            background: manifest?.navigation?.style?.background || "#fff",
-            borderTop: "1px solid #E5E7EB",
-            flexShrink: 0,
-            padding: "4px 0 8px",
-          }}>
-            {tabs.map(tab => {
-              const active = tab.screenId === currentScreenId;
-              const color = active
-                ? (tab.color || manifest?.navigation?.style?.active || "#1B4332")
-                : (manifest?.navigation?.style?.inactive || "#9CA3AF");
-              return (
-                <button
-                  key={tab.screenId || tab.id || tab.label}
-                  onClick={() => switchTab(tab.screenId)}
-                  style={{
-                    flex: 1,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 3,
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "6px 4px",
-                    fontFamily: "inherit",
-                    color,
-                    fontSize: 10,
-                    fontWeight: active ? 700 : 500,
-                  }}
-                >
-                  <TabIcon icon={tab.icon} active={active} color={color} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <PreviewTabBar navigation={manifest?.navigation} activeScreen={currentScreenId} onNavigate={switchTab} />
       </div>
     </RuntimeContext.Provider>
   );
@@ -388,48 +346,6 @@ function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }
 function pathScreenTitle(id) {
   return id.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
-
-function TabIcon({ icon, active, color }) {
-  if (typeof icon === "string") {
-    const Icon = TAB_ICONS[icon];
-    if (Icon) {
-      return <Icon size={20} strokeWidth={active ? 2.4 : 1.8} color={color} />;
-    }
-    // Fallback: try getLucideIcon for any icon name not explicitly mapped
-    const LucidIcon = getLucideIcon(icon);
-    if (LucidIcon && LucidIcon !== Circle) {
-      return <LucidIcon size={20} color={color} strokeWidth={active ? 2.4 : 1.8} />;
-    }
-    return <span style={{ fontSize: 18, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon || "•"}</span>;
-  }
-  // If icon is a component object, render it as a span to avoid child crashes
-  return <span style={{ fontSize: 18, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon || "•"}</span>;
-}
-
-const TAB_ICONS = {
-  "home-outline": Home,
-  "storefront-outline": Store,
-  "cart-outline": ShoppingCart,
-  "receipt-outline": ClipboardList,
-  "person-outline": User,
-  "calendar-outline": Calendar,
-  "tag-outline": Tag,
-  "restaurant-outline": Utensils,
-  "information-outline": Info,
-  "megaphone-outline": Megaphone,
-  "trophy-outline": Trophy,
-  "heart-outline": Heart,
-  "book-outline": BookOpen,
-  "people-outline": Users,
-  "clipboard-outline": ClipboardList,
-  "videocam-outline": Video,
-  "shop-outline": Store,
-  "bag-outline": ShoppingBag,
-  "card-outline": CreditCard,
-  "grid-outline": Briefcase,
-  "order-outline": ClipboardList,
-  "phone-outline": Phone,
-};
 
 export function TemplatePreview({ templateId, initialScreenId, manifest, screens, onScreenChange }) {
   const [state, setState] = useState({ manifest: null, screens: {} });

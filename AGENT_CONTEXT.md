@@ -1,9 +1,9 @@
 # Merchant Portal — Agent Context
 
 **Repository:** DukaDesk Merchant Portal (business-dashboard implementation)
-**KB Version:** 0.3.0
-**Last Verified Commit:** `1f9f654`
-**Last Updated:** 2026-07-24
+**KB Version:** 0.3.8
+**Last Verified Commit:** `1921e67`
+**Last Updated:** 2026-09-27
 **Status:** Active
 
 ## Overview

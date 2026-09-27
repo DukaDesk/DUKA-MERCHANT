@@ -313,12 +313,19 @@ registerComponentType("category_pills", {
     { key: "cats", label: "Categories", icon: Tag, kind: "text" },
   ],
   propFields: [
+    { key: "background", label: "Background", type: "color", group: "background" },
+    { key: "activeBackground", label: "Active Background", type: "color", group: "background" },
+    { key: "color", label: "Text Color", type: "color", group: "colors" },
+    { key: "activeColor", label: "Active Text Color", type: "color", group: "colors" },
+    { key: "radius", label: "Corner Radius", type: "number", group: "border" },
+    { key: "fontSize", label: "Font Size", type: "number", group: "typography" },
     {
       key: "cats",
       label: "Categories",
       type: "list",
       fields: [
         { key: "label", label: "Label", type: "text" },
+        { key: "icon", label: "Icon", type: "icon" },
         { key: "active", label: "Active", type: "select", options: ["true", "false"] },
       ],
     },
@@ -332,7 +339,7 @@ registerComponentType("category_pills", {
         {cats.map((c, i) => {
           const active = c.active === true || c.active === "true" || i === 0;
           return (
-            <span key={i} onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(c, i, "cats"); } : undefined} style={{ ...props.itemSelectionStyle?.("cats", i), padding: "6px 16px", borderRadius: 20, background: active ? "#1A1A2E" : "#E5E1E3", color: active ? "#fff" : "#47464C", fontSize: 13, fontWeight: active ? 600 : 500, whiteSpace: "nowrap", fontFamily: "'Inter',sans-serif" }}>{c.label || "Pill"}</span>
+            <span key={i} onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(c, i, "cats"); } : undefined} style={{ ...props.itemSelectionStyle?.("cats", i), display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 16px", borderRadius: props.radius ?? 20, background: active ? props.activeBackground || "#1A1A2E" : props.background || "#E5E1E3", color: active ? props.activeColor || "#fff" : props.color || "#47464C", fontSize: props.fontSize || 13, fontWeight: active ? 600 : 500, whiteSpace: "nowrap", fontFamily: "'Inter',sans-serif" }}>{c.icon && <IconGlyph name={c.icon} size={16} />}{c.label || "Pill"}</span>
           );
         })}
       </div>
@@ -450,6 +457,11 @@ registerComponentType("button", {
   ],
   propFields: [
     { key: "label", label: "Label", type: "text" },
+    { key: "icon", label: "Icon", type: "icon" },
+    { key: "showLabel", label: "Show Label", type: "select", options: ["true", "false"] },
+    { key: "shape", label: "Shape", type: "select", options: ["rectangle", "round"], group: "layout" },
+    { key: "iconPosition", label: "Icon Position", type: "select", options: ["left", "right"], group: "layout" },
+    { key: "iconSize", label: "Icon Size", type: "number", group: "layout" },
     { key: "variant", label: "Variant", type: "select", options: ["filled", "outline", "ghost"], group: "layout" },
     { key: "background", label: "Background / Border", type: "color", group: "background" },
     { key: "color", label: "Text Color", type: "color", group: "colors" },
@@ -474,18 +486,19 @@ registerComponentType("button", {
       <div style={{
         width: w, height: h,
         display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "0 8px", boxSizing: "border-box",
+        padding: props.showLabel === "false" ? 0 : "0 8px", boxSizing: "border-box",
       }}>
         <span style={{
-          display: "inline-block", padding: "10px 24px", borderRadius: radius,
+          display: "inline-flex", flexDirection: props.iconPosition === "right" ? "row-reverse" : "row", alignItems: "center", justifyContent: "center", gap: 8, padding: props.showLabel === "false" ? 0 : "10px 24px", borderRadius: props.shape === "round" ? 999 : radius, minHeight: props.height || 44,
           background: filled ? accent : "transparent",
           border: outlined ? `1.5px solid ${accent}` : "none",
           color: props.color || (filled ? "#FFFFFF" : "#1C1B1D"),
           fontFamily: props.fontFamily ? `'${props.fontFamily}',sans-serif` : "'Inter',sans-serif", fontWeight: props.fontWeight || 600, fontSize: props.fontSize || 14,
           textTransform: props.textTransform && props.textTransform !== "none" ? props.textTransform : "none",
           width: "100%", textAlign: "center", boxSizing: "border-box",
+          boxShadow: props.elevation === "soft" ? "0 4px 10px rgba(0,0,0,0.16)" : undefined,
           cursor: "pointer",
-        }}>{props.label || "Button"}</span>
+        }}>{props.icon && <IconGlyph name={props.icon} size={props.iconSize || 20} />}{props.showLabel !== "false" && <span>{props.label || "Button"}</span>}</span>
       </div>
     );
   },

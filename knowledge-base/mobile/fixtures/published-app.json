@@ -1,0 +1,484 @@
+{
+  "manifestVersion": "1.0.0",
+  "version": "1.2.3",
+  "publishedAt": "2026-09-19T00:00:00.000Z",
+  "status": "published",
+  "metadata": {
+    "version": "1.2.3",
+    "schemaVersion": "1.0",
+    "displayName": "Published Fixture",
+    "category": "",
+    "publishedAt": "2026-09-19T00:00:00.000Z"
+  },
+  "identity": {
+    "slug": "published-fixture",
+    "displayName": "Published Fixture"
+  },
+  "capabilities": {
+    "catalog": {
+      "enabled": true,
+      "type": "optional"
+    }
+  },
+  "navigation": {
+    "initialScreen": "home",
+    "tabs": [
+      {
+        "id": "home-tab",
+        "screenId": "home",
+        "label": "Home",
+        "icon": "home-outline",
+        "color": "#AA0000",
+        "tabId": "home-tab",
+        "guest": true,
+        "protected": false
+      }
+    ],
+    "style": {
+      "background": "#EEEEEE",
+      "active": "#AA0000",
+      "height": 72
+    },
+    "routes": [
+      {
+        "routeId": "details-route",
+        "screenId": "details",
+        "path": "/details"
+      }
+    ],
+    "guestMode": {
+      "enabled": true,
+      "allowedScreens": [
+        "home",
+        "details"
+      ],
+      "blockedActions": [
+        "checkout"
+      ],
+      "authPromptScreens": []
+    },
+    "root": {
+      "type": "tabs",
+      "initialRoute": "home"
+    },
+    "stacks": [],
+    "modals": [],
+    "deepLinks": []
+  },
+  "theme": {
+    "version": {
+      "themeVersion": "1.0.0",
+      "schemaVersion": "1.0"
+    },
+    "brand": {
+      "name": "Published Fixture",
+      "logo": "/uploads/logo.webp"
+    },
+    "colors": {
+      "primary": "#123456",
+      "secondary": "#F4A026",
+      "surface": "#223344",
+      "background": "#223344",
+      "card": "#FFFFFF",
+      "border": "#E5E7EB",
+      "success": "#16A34A",
+      "warning": "#F59E0B",
+      "error": "#EF4444",
+      "textPrimary": "#0F0F1A",
+      "textSecondary": "#6B7280",
+      "disabled": "#9CA3AF",
+      "placeholder": "#9CA3AF"
+    },
+    "typography": {
+      "displayLg": {
+        "fontFamily": "Inter",
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40
+      },
+      "displayMd": {
+        "fontFamily": "Inter",
+        "fontSize": 28,
+        "fontWeight": "700",
+        "lineHeight": 36
+      },
+      "displaySm": {
+        "fontFamily": "Inter",
+        "fontSize": 24,
+        "fontWeight": "700",
+        "lineHeight": 32
+      },
+      "headlineLg": {
+        "fontFamily": "Inter",
+        "fontSize": 22,
+        "fontWeight": "600",
+        "lineHeight": 28
+      },
+      "headlineMd": {
+        "fontFamily": "Inter",
+        "fontSize": 20,
+        "fontWeight": "600",
+        "lineHeight": 24
+      },
+      "headlineSm": {
+        "fontFamily": "Inter",
+        "fontSize": 18,
+        "fontWeight": "600",
+        "lineHeight": 22
+      },
+      "bodyLg": {
+        "fontFamily": "Inter",
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24
+      },
+      "bodyMd": {
+        "fontFamily": "Inter",
+        "fontSize": 14,
+        "fontWeight": "400",
+        "lineHeight": 20
+      },
+      "bodySm": {
+        "fontFamily": "Inter",
+        "fontSize": 12,
+        "fontWeight": "400",
+        "lineHeight": 16
+      },
+      "labelLg": {
+        "fontFamily": "Inter",
+        "fontSize": 14,
+        "fontWeight": "500",
+        "lineHeight": 20
+      },
+      "labelMd": {
+        "fontFamily": "Inter",
+        "fontSize": 12,
+        "fontWeight": "500",
+        "lineHeight": 16
+      },
+      "labelSm": {
+        "fontFamily": "Inter",
+        "fontSize": 10,
+        "fontWeight": "500",
+        "lineHeight": 14
+      },
+      "cta": {
+        "fontFamily": "Inter",
+        "fontSize": 14,
+        "fontWeight": "600",
+        "lineHeight": 20
+      },
+      "caption": {
+        "fontFamily": "Inter",
+        "fontSize": 10,
+        "fontWeight": "400",
+        "lineHeight": 14
+      }
+    },
+    "spacing": {
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 24,
+      "xl": 32
+    },
+    "roundness": 12
+  },
+  "runtime": {
+    "version": "1.0.0",
+    "featureFlag": "retained"
+  },
+  "permissions": {
+    "camera": {
+      "reason": "Scan code"
+    }
+  },
+  "localization": {
+    "defaultLocale": "en",
+    "supportedLocales": [
+      "en"
+    ],
+    "messages": {
+      "welcome": "Welcome"
+    }
+  },
+  "assets": {
+    "mark": {
+      "url": "/uploads/mark.webp"
+    },
+    "logo": {
+      "type": "image",
+      "url": "/uploads/logo.webp"
+    },
+    "images": []
+  },
+  "name": "Published Fixture",
+  "appName": "Published Fixture",
+  "meta": {
+    "appName": "Published Fixture",
+    "businessName": "Published Fixture",
+    "logo": "/uploads/logo.webp",
+    "primaryColor": "#123456"
+  },
+  "branding": {
+    "appName": "Published Fixture",
+    "businessName": "Published Fixture",
+    "tagline": "",
+    "logo": "/uploads/logo.webp"
+  },
+  "content": {
+    "welcome": "Merchant content"
+  },
+  "splash": {
+    "backgroundColor": "#223344",
+    "backgroundImage": "/uploads/splash.webp",
+    "durationMs": 1200,
+    "screen": {
+      "screenId": "__published_splash__",
+      "layout": {
+        "kind": "column",
+        "flex": 1,
+        "justifyContent": "center",
+        "alignItems": "center",
+        "gap": 18,
+        "padding": 24,
+        "backgroundColor": "#223344",
+        "children": [
+          {
+            "type": "image",
+            "props": {
+              "source": "/uploads/splash.webp",
+              "style": {
+                "position": "absolute",
+                "top": 0,
+                "left": 0,
+                "width": "100%",
+                "height": "100%"
+              }
+            }
+          },
+          {
+            "type": "image",
+            "props": {
+              "source": "/uploads/logo.webp",
+              "style": {
+                "width": 88,
+                "height": 88,
+                "borderRadius": 22
+              },
+              "resizeMode": "contain"
+            }
+          },
+          {
+            "type": "heading",
+            "props": {
+              "children": "Published Fixture",
+              "color": "#FFFFFF",
+              "style": {
+                "fontSize": 22,
+                "fontWeight": "700"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "screens": {
+    "home": {
+      "name": "Home",
+      "backgroundColor": "#FAFAFA",
+      "layout": {
+        "kind": "scroll",
+        "gap": 12,
+        "padding": 3,
+        "backgroundColor": "#FAFAFA",
+        "children": [
+          {
+            "type": "layout",
+            "key": "body-instance",
+            "layout": {
+              "kind": "section",
+              "backgroundColor": "#ABCDEF",
+              "padding": 9,
+              "children": [
+                {
+                  "id": "title",
+                  "type": "text_block",
+                  "props": {
+                    "text": "Published title",
+                    "fontSize": 21,
+                    "lineHeight": 1.4,
+                    "color": "#234567"
+                  },
+                  "key": "title"
+                },
+                {
+                  "id": "container",
+                  "type": "surface",
+                  "props": {
+                    "testID": "published-parent"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "props": {
+                        "children": "Nested child"
+                      }
+                    }
+                  ],
+                  "key": "container"
+                },
+                {
+                  "id": "cta",
+                  "type": "button",
+                  "props": {
+                    "label": "Details",
+                    "action": "{\"type\":\"navigate\",\"payload\":{\"screen\":\"/details\"}}"
+                  },
+                  "key": "cta",
+                  "actions": {
+                    "default": {
+                      "type": "navigate",
+                      "payload": {
+                        "screen": "/details"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "screenId": "home",
+      "title": "Home",
+      "fixedTop": [
+        {
+          "type": "layout",
+          "key": "header",
+          "layout": {
+            "kind": "section",
+            "padding": {
+              "top": 4,
+              "bottom": 4
+            },
+            "children": [
+              {
+                "type": "text",
+                "props": {
+                  "children": "Published header"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "fixedBottom": [
+        {
+          "type": "layout",
+          "key": "footer",
+          "layout": {
+            "kind": "section",
+            "padding": {
+              "top": 4,
+              "bottom": 4
+            },
+            "children": [
+              {
+                "type": "text",
+                "props": {
+                  "children": "Published footer"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "tab_bar",
+          "key": "published-navigation",
+          "props": {
+            "tabs": [
+              {
+                "id": "home-tab",
+                "screenId": "home",
+                "label": "Home",
+                "icon": "home-outline",
+                "color": "#AA0000",
+                "tabId": "home-tab",
+                "guest": true,
+                "protected": false
+              }
+            ],
+            "navigationStyle": {
+              "background": "#EEEEEE",
+              "active": "#AA0000",
+              "height": 72
+            }
+          }
+        }
+      ]
+    },
+    "details": {
+      "name": "Details",
+      "screenId": "details",
+      "title": "Details",
+      "layout": {
+        "kind": "scroll",
+        "children": [
+          {
+            "type": "layout",
+            "key": "details-body",
+            "layout": {
+              "kind": "section",
+              "padding": {
+                "top": 4,
+                "bottom": 4
+              },
+              "children": [
+                {
+                  "type": "image",
+                  "props": {
+                    "source": {
+                      "assetId": "mark"
+                    },
+                    "style": {
+                      "width": 80,
+                      "height": 80
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "fixedTop": [],
+      "fixedBottom": [
+        {
+          "type": "tab_bar",
+          "key": "published-navigation",
+          "props": {
+            "tabs": [
+              {
+                "id": "home-tab",
+                "screenId": "home",
+                "label": "Home",
+                "icon": "home-outline",
+                "color": "#AA0000",
+                "tabId": "home-tab",
+                "guest": true,
+                "protected": false
+              }
+            ],
+            "navigationStyle": {
+              "background": "#EEEEEE",
+              "active": "#AA0000",
+              "height": 72
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,3 +1,3 @@
-Version: 0.3.0
-Verified Commit: 1f9f654
+Version: 0.3.8
+Verified Commit: 1921e67
 Status: Active

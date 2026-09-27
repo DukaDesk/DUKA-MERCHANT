@@ -1,8 +1,8 @@
+import PreviewTabBar from "./PreviewTabBar";
 import { useState, useRef } from "react";
 import { IconGlyph, getComponentType, resolveBackground, ROW_TEMPLATES, applyTextStyle, resolveTextStyle, getLucideIcon } from "../canvas-editor/componentTypes";
 import { useEditorTheme } from "./editorTheme.jsx";
 
-const TIME = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
 function sanitizeNum(value, fallback) {
   const n = Number(value);
@@ -14,11 +14,13 @@ function sanitizeRadius(value, fallback) {
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
-export default function SectionRenderer({ store, selectedSectionId, selectedComponentId, onSelectSection, onSelectComponent, onFocusSubElement, focusSubKey, onChooseLayout }) {
+export default function SectionRenderer({ store, selectedSectionId, selectedComponentId, onSelectSection, onSelectComponent, onFocusSubElement, focusSubKey, onChooseLayout, onChooseComponents, screenSelected, onSelectScreen }) {
   const { theme } = useEditorTheme();
   const data = store.data;
   const screen = store.screen;
   const [dragOverSectionId, setDragOverSectionId] = useState(null);
+  const [hoveredCompId, setHoveredCompId] = useState(null);
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [editingCompId, setEditingCompId] = useState(null);
   const [editingField, setEditingField] = useState(null);
@@ -138,12 +140,17 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
   };
 
   /* Recursively render a component. Containers (carousel, nested_section) embed their children inline. */
-  const addSectionControl = (sectionId, parentId, index) => <button type="button" onClick={event => {
-    event.stopPropagation();
-    onChooseLayout?.({ sectionId, parentId, index });
-  }} style={{ width: "auto", minHeight: 32, padding: "6px 10px", border: "1px dashed " + theme.border, borderRadius: 8, background: "transparent", color: theme.textMuted, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", fontSize: 11 }}>
-    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>Add a section
-  </button>;
+  const addSectionControl = (sectionId, parentId) => (
+    <div style={{ display: "flex", justifyContent: "center", padding: 8 }}>
+      <button type="button" aria-label="Select section" onClick={event => {
+        event.stopPropagation();
+        if (parentId) onSelectComponent?.(sectionId, parentId);
+        else onSelectSection?.(sectionId);
+      }} style={{ width: 32, height: 32, padding: 0, border: 0, borderRadius: 8, background: "transparent", color: theme.textMuted, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
+      </button>
+    </div>
+  );
   const renderComponent = (comp, sectionId, depth) => {
     const def = getComponentType(comp.type);
     if (!def) return null;
@@ -264,22 +271,23 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
       rendered = (
         <div style={{ padding: "8px 16px", textAlign: "center" }}>
           <div style={{
-            display: "inline-block", padding: "10px 24px",
-            borderRadius: p.radius != null ? Number(p.radius) : 10,
+            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, flexDirection: p.iconPosition === "right" ? "row-reverse" : "row", padding: p.showLabel === "false" ? 0 : "10px 24px", width: p.width || undefined, minHeight: p.height || 44, boxSizing: "border-box",
+            borderRadius: p.shape === "round" ? 999 : p.radius != null ? Number(p.radius) : 10,
             background: filled ? accent : "transparent",
             border: outlined ? `1.5px solid ${accent}` : "none",
             ...lblStyle,
             ...subFocusStyle(comp.id, "label"),
           }}>
-            {renderInlineText(comp, "label", p.label || "Button", sectionId, lblStyle)}
+            {p.icon && <IconGlyph name={p.icon} size={p.iconSize || 20} />}
+            {p.showLabel !== "false" && renderInlineText(comp, "label", p.label || "Button", sectionId, lblStyle)}
           </div>
         </div>
       );
     } else if (comp.type === "nested_section") {
       const bg = comp.props?.backgroundColor || "#ffffff";
       rendered = (
-        <div style={{ background: bg, minHeight: 120, margin: "6px 8px", borderRadius: 14, padding: 12, border: "1.5px solid rgba(120,110,180,0.4)", position: "relative" }}>
-          <div style={{ minHeight: children.length ? undefined : 64 }}>{renderComponentList(children, sectionId, depth + 1)}</div>
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: children.length ? "flex-start" : "center", background: bg, minHeight: 120, margin: "6px 8px", borderRadius: 14, padding: 12, border: "1.5px solid rgba(120,110,180,0.4)", position: "relative" }}>
+          <div>{renderComponentList(children, sectionId, depth + 1)}</div>
           {addSectionControl(sectionId, comp.id, children.length)}
         </div>
       );
@@ -332,8 +340,41 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
               <div key={r} style={{ display: "grid", gridTemplateColumns: N === 1 ? "1fr" : colCss, gap }}>
                 {Array.from({ length: N }).map((_, c) => {
                   const index = start + c;
-                  if (index < children.length) return renderComponent(children[index], sectionId, depth + 1);
-                  return <div key={index}>{addSectionControl(sectionId, comp.id, index)}</div>;
+                  const slotKey = `${comp.id}:${index}`;
+                  const isSlotSelected = selectedSlot === slotKey;
+                  if (index < children.length) {
+                    const child = children[index];
+                    const isChildSelected = selectedComponentId === child.id;
+                    return (
+                      <div
+                        key={child.id || index}
+                        onClick={(e) => { e.stopPropagation(); setSelectedSlot(slotKey); onSelectComponent(sectionId, child.id); }}
+                        title="Select column slot"
+                        style={{
+                          minHeight: 48, borderRadius: 8, padding: 2, cursor: "pointer", boxSizing: "border-box",
+                          border: isChildSelected || isSlotSelected ? `2px solid ${theme.selection}` : `1px dashed ${theme.border}`,
+                          background: isChildSelected || isSlotSelected ? "rgba(244,160,38,0.06)" : "transparent",
+                        }}
+                      >
+                        {renderComponent(child, sectionId, depth + 1)}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div
+                      key={index}
+                      onClick={(e) => { e.stopPropagation(); setSelectedSlot(slotKey); onSelectComponent(sectionId, comp.id); onChooseComponents?.({ sectionId, parentId: comp.id, index }, "choose"); }}
+                      title="Select empty slot to add content"
+                      style={{
+                        minHeight: 56, borderRadius: 8, cursor: "pointer", boxSizing: "border-box",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        border: isSlotSelected ? `2px solid ${theme.selection}` : `1.5px dashed ${theme.border}`,
+                        background: isSlotSelected ? "rgba(244,160,38,0.06)" : "transparent",
+                      }}
+                    >
+                      {addSectionControl(sectionId, comp.id, index)}
+                    </div>
+                  );
                 })}
               </div>
             );
@@ -429,25 +470,17 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
   return (
     <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "24px 16px", overflow: "auto", background: theme.canvas }}>
       <div style={{
-        width: 390, minHeight: 700,
+        width: 390, height: 740, flexShrink: 0,
+        outline: screenSelected ? "2px solid " + theme.selection : "none", outlineOffset: 2,
         background: screenBg,
         borderRadius: theme.radius["2xl"], overflow: "hidden",
         boxShadow: theme.shadowCanvas,
         display: "flex", flexDirection: "column", position: "relative",
       }}>
-        {/* Status bar */}
-        <div style={{
-          height: 28, background: "#1a1a2e", display: "flex",
-          alignItems: "center", justifyContent: "space-between",
-          padding: "0 20px", flexShrink: 0, color: "#fff", fontSize: 11,
-          fontFamily: "'Inter',sans-serif", fontWeight: 600,
-        }}>
-          <span>{TIME}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <svg width="14" height="10" viewBox="0 0 14 10"><rect x="0.5" y="0.5" width="11" height="9" rx="1.5" fill="none" stroke="#fff" strokeOpacity="0.6"/><rect x="12" y="3" width="1.5" height="4" rx="0.5" fill="#fff" fillOpacity="0.6"/><rect x="2" y="2" width="3" height="6" rx="0.5" fill="#2ECC71"/><rect x="5.5" y="2" width="3" height="6" rx="0.5" fill="#2ECC71"/><rect x="9" y="2" width="2" height="6" rx="0.5" fill="#2ECC71"/></svg>
-          </div>
-        </div>
-
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        {allSections.length === 0 && <div style={{ height: "100%", minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }} onClick={onSelectScreen}>
+          <button type="button" aria-label="Select screen" onClick={event => { event.stopPropagation(); onSelectScreen?.(); }} style={{ border: 0, background: "transparent", color: theme.textMuted, cursor: "pointer", padding: 12 }}><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg></button>
+        </div>}
         {/* Sections */}
         {allSections.map((section, si) => (
           <div
@@ -478,33 +511,8 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
           </div>
         ))}
 
-        {/* Bottom nav bar */}
-        {(data.navigation?.tabs || []).length > 0 && (
-          <div style={{
-            position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 12,
-            background: data.navigation?.style?.background || "#FFFFFF",
-            borderTop: `1px solid ${theme.border}`,
-            display: "flex", alignItems: "stretch", justifyContent: "space-around",
-            flexShrink: 0, padding: "4px 0 6px",
-            boxShadow: "0 -2px 10px rgba(0,0,0,0.05)",
-          }}>
-            {data.navigation.tabs.map(tab => {
-              const isActive = tab.screenId === store.currentScreenId;
-              const color = isActive
-                ? (tab.color || data.navigation?.style?.active || "#1A1A2E")
-                : (data.navigation?.style?.inactive || "#9CA3AF");
-              const Icon = getLucideIcon(tab.icon);
-              return (
-                <div key={tab.id} onClick={(e) => { e.stopPropagation(); if (tab.screenId) store.setCurrentScreenId(tab.screenId); }} style={{display: "flex", flexDirection: "column", alignItems: "center", gap: 1, padding: "4px 10px", borderRadius: theme.radius.md, background: isActive ? theme.hoverAmber : "transparent", cursor: isActive ? "default" : "pointer"}}>
-                  <span style={{ lineHeight: 1, opacity: isActive ? 1 : 0.65, display: "flex" }}>{Icon ? <Icon size={18} color={color} /> : null}</span>
-                  <span style={{ fontSize: 8, fontWeight: isActive ? 700 : 500, color, fontFamily: "'Inter',sans-serif", textAlign: "center" }}>{tab.label || "Tab"}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {/* Bottom spacer for nav */}
-        {data.navigation?.tabs?.length > 0 && <div style={{ height: 56, flexShrink: 0 }} />}
+        </div>
+        <PreviewTabBar navigation={data.navigation} activeScreen={store.currentScreenId} onNavigate={id => store.setCurrentScreenId(id)} />
       </div>
 
       {/* Hidden file inputs */}

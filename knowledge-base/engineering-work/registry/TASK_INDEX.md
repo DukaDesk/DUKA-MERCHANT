@@ -20,16 +20,16 @@ Central register of all Tasks.
 
 | ID | Title | Status | Priority | Feature | Repository | Effort | Implementation Agent |
 |----|-------|--------|----------|---------|------------|--------|----------------------|
-| TASK-0001 | Implement User Registration Service | Ready | P0 | FEAT-0001 | backend | M | @agent-alpha |
-| TASK-0002 | Implement Login and Token Issuance | Ready | P0 | FEAT-0001 | backend | M | @agent-alpha |
-| TASK-0003 | Implement Password Reset Flow | Ready | P1 | FEAT-0001 | backend | S | @agent-alpha |
-| TASK-0004 | Create User and Identity Schema | Ready | P0 | FEAT-0001 | backend | S | @agent-alpha |
-| TASK-0005 | Implement Tenant Creation Service | Ready | P0 | FEAT-0002 | backend | M | @agent-alpha |
-| TASK-0006 | Implement Tenant Isolation | Ready | P0 | FEAT-0002 | backend | L | @agent-alpha |
-| TASK-0007 | Implement Tenant Settings | Ready | P1 | FEAT-0002 | backend | S | @agent-alpha |
-| TASK-0008 | Create Tenant Schema | Ready | P0 | FEAT-0002 | backend | S | @agent-alpha |
-| TASK-0009 | Implement Auth API Endpoints | Ready | P0 | FEAT-0003 | backend | M | @agent-alpha |
-| TASK-0010 | Implement Tenant API Endpoints | Ready | P0 | FEAT-0003 | backend | M | @agent-alpha |
+| TASK-0001 | Implement User Registration Service | Done | P0 | FEAT-0001 | backend | M | @agent-alpha |
+| TASK-0002 | Implement Login and Token Issuance | Done | P0 | FEAT-0001 | backend | M | @agent-alpha |
+| TASK-0003 | Implement Password Reset Flow | Done | P1 | FEAT-0001 | backend | S | @agent-alpha |
+| TASK-0004 | Create User and Identity Schema | Done | P0 | FEAT-0001 | backend | S | @agent-alpha |
+| TASK-0005 | Implement Tenant Creation Service | Done | P0 | FEAT-0002 | backend | M | @agent-alpha |
+| TASK-0006 | Implement Tenant Isolation | Done | P0 | FEAT-0002 | backend | L | @agent-alpha |
+| TASK-0007 | Implement Tenant Settings | Done | P1 | FEAT-0002 | backend | S | @agent-alpha |
+| TASK-0008 | Create Tenant Schema | Done | P0 | FEAT-0002 | backend | S | @agent-alpha |
+| TASK-0009 | Implement Auth API Endpoints | Done | P0 | FEAT-0003 | backend | M | @agent-alpha |
+| TASK-0010 | Implement Tenant API Endpoints | Done | P0 | FEAT-0003 | backend | M | @agent-alpha |
 | TASK-0011 | Add API Contract Tests | Ready | P1 | FEAT-0003 | sdk | S | @agent-delta |
 | TASK-0012 | Implement Website Marketing Pages | Ready | P1 | FEAT-0004 | website | M | @agent-eta |
 | TASK-0013 | Implement Website Auth Screens | Ready | P1 | FEAT-0004 | website | M | @agent-eta |
@@ -43,9 +43,12 @@ Central register of all Tasks.
 | TASK-0021 | Implement Tenant Dashboard Shell | Ready | P1 | FEAT-0007 | tenant-dashboard | M | @agent-iota |
 | TASK-0022 | Implement Profile Screen | Ready | P1 | FEAT-0007 | tenant-dashboard | S | @agent-iota |
 | TASK-0023 | Implement Settings Screen | Ready | P1 | FEAT-0007 | tenant-dashboard | S | @agent-iota |
+| TASK-0024 | Fix publish permission — only tenant owner can publish (403/413 fallback) | Done | P1 | Publishing | backend | S | @agent-alpha |
+| TASK-0025 | Implement customizable dashboard endpoint (backend) | Done | P0 | FEAT-0008 | backend | M | @agent-alpha |
+| TASK-0026 | Integrate customizable dashboard endpoint in dukaDesk frontend | Ready | P0 | FEAT-0008 | dukaDesk | M | @agent-h |
 
 ## Allocation
 
 | Next Available |
 |----------------|
-| TASK-0024 |
+| TASK-0027 |

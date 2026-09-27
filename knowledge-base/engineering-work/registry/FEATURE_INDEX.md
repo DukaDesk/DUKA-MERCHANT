@@ -27,9 +27,10 @@ Central register of all Features.
 | FEAT-0005 | Mobile Auth Flows | Ready | P1 | EPIC-0001 | @team-f |
 | FEAT-0006 | Business Dashboard Shell | Ready | P1 | EPIC-0001 | @team-h |
 | FEAT-0007 | Tenant Dashboard Shell | Ready | P1 | EPIC-0001 | @team-h |
+| FEAT-0008 | Customizable Merchant Dashboard (Integration-Aware) | Ready | P0 | EPIC-0001 | @team-e |
 
 ## Allocation
 
 | Next Available |
 |----------------|
-| FEAT-0008 |
+| FEAT-0009 |

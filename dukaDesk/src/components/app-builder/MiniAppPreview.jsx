@@ -1,3 +1,4 @@
+import { PreviewTabIcon } from "../section-editor/PreviewTabBar";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Palette, SlidersHorizontal, MousePointer, ArrowRight, X, Home, Package, Calendar, Info, ShoppingCart, Circle, Star } from "lucide-react";
@@ -184,7 +185,7 @@ export default function MiniAppPreview() {
                   display: "flex", alignItems: "center", gap: 4
                 }}
               >
-                {tab.icon && <span>{tab.icon}</span>}
+                {tab.icon && <PreviewTabIcon name={tab.icon} size={16} />}
                 {tab.label}
               </button>
             ))}
@@ -197,8 +198,7 @@ export default function MiniAppPreview() {
 
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? "16px 8px" : "40px 20px" }}>
         <div style={{ width: isMobile ? "calc(100vw - 32px)" : 390, maxWidth: 390, background: NAVY, borderRadius: 44, padding: "12px", boxShadow: "0 40px 120px rgba(0,0,0,0.6)", position: "relative", margin: "0 auto" }}>
-          <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", width: 120, height: 32, background: NAVY, borderRadius: "0 0 20px 20px", zIndex: 10 }} />
-          <div style={{ background: "#fff", borderRadius: 36, overflow: "hidden", position: "relative", minHeight: isMobile ? 500 : 760 }}>
+          <div style={{ background: "#fff", borderRadius: 36, overflow: "hidden", position: "relative", height: isMobile ? 500 : 760, overflowY: hasRenderableTemplate ? "hidden" : "auto" }}>
             <div onClick={() => navigate("/dashboard")} style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}>
               <div style={{ width: isMobile ? 36 : 40, height: isMobile ? 36 : 40, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(0,0,0,0.3)", border: "2px solid rgba(255,255,255,0.6)" }}>
                 <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: isMobile ? 16 : 18, color: NAVY }}>D</span>

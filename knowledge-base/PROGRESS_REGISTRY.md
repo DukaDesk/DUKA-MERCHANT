@@ -1,6 +1,18 @@
 # DUKADESK Progress Registry
 
-**Last Updated:** 2026-07-17
+**Last Updated:** 2026-09-27
+
+2026-09-27: **Backend B7 compatibility contract live** (deploy `717d7d8d`) — anonymous `GET /api/v1/compatibility` publishes `dukadesk.published-app-runtime` 1.0.0 (manifest versions, 35 component types, 10 actions, 16 capabilities, limits); merchant `POST /merchants/:id/publishing/preflight` returns `{valid, compatible, errors, warnings, counts}` without publishing; `PublishingService` enforces the contract before activation (422 `INCOMPATIBLE_RUNTIME`); discovery now filters `activeReleaseId != null` and projects the active release identity. Gate: 58 tests / lint 0 errors / tsc 0 issues. Remaining: B8.
+
+2026-09-27: **Backend B4 applied in production** — migration `20260924000000_add_active_release` live (deploy `a00865ae`, backfill 0 rows, `tenants.activeReleaseId` + index present); `_prisma_migrations` baseline recovered with 7× `migrate resolve --applied` after the failed `a10c79c6` (P3018/23502); `preDeployCommand` fixed to `npm run predeploy` (seed previously never ran) and `tsconfig.json` added to the runner image (seed was failing `ERR_UNKNOWN_FILE_EXTENSION`). Seed OK (3 templates, `acme-store`), audit 0 errors, health 200. Evidence: DUKA-BACKEND `docs/B4_MIGRATION_RUNBOOK.md`. Remaining: B8 merchant re-publish + live integration evidence (B7 completed later the same day — see the entry above).
+
+2026-09-24: **Backend published-app delivery B1–B6 implemented** on `DUKA-BACKEND` main — canonical `ActiveReleaseService`, `ManifestValidator` for PublishedApp 1.0.0 object screens, atomic release activation with `tenant.activeReleaseId` + Idempotency-Key, owner/manager authz, media `folderId` + storage URL retention, default merchant app seed, `ApiQuotaGuard`, 5 unit suites (38 tests). B4 migration file written (not applied); B7 compatibility and B8 live integration evidence remain open. Tasks: [backend delivery TODO](backend/PUBLISHED_APP_DELIVERY_BACKEND_TODO.md). Status: code complete / live verify pending.
+
+2026-09-19: Mobile now uses one shell and the complete published snapshot, with explicit errors for incompatible definitions. Merchant compilation preserves section/splash/chrome data and checks complete read-back. [Implementation report](mobile/PUBLISHED_APP_RECONSTRUCTION_2026-09-19.md) | [Execution plan](mobile/PUBLISHED_APP_RECONSTRUCTION_TODO.md) | [Remaining parity TODO](mobile/PUBLISHED_APP_PARITY_VERIFICATION_TODO.md).
+
+
+2026-09-19: Fixed complete nested PublishedApp resolution on mobile and merchant false publish success/image stripping. Live BFF still exposes Storefront v0.0.7 and the referenced logo returns 404; backend publication and public media delivery remain unresolved. Evidence: [Published logo/release mismatch](backend/PUBLISHED_LOGO_RELEASE_MISMATCH_2026-09-19.md). Agent tasks: [Dedicated TODO file](backend/PUBLISHED_LOGO_RELEASE_MISMATCH_TODO.md).
+
 
 ## Status Key
 - ✅ Complete — Production ready
@@ -12,10 +24,10 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Runtime Engine | 🔧 In Progress | Screen rendering, component registry, action system working |
+| Runtime Engine | 🔧 In Progress | Screen rendering, component registry, action system working; deterministic fallback IDs and validation fixes applied 2026-09-18 |
 | Module System | 🔧 In Progress | Module registry working with default screens |
-| Manifest Resolver | ✅ Complete | Fetches tenant data, merges module defaults with tenant overrides |
-| Network Layer | ✅ Complete | Axios-based, interceptors, offline queue, caching |
+| Manifest Resolver | ✅ Complete | Validates and retains one complete published snapshot; no module/default-screen injection or guessed identity |
+| Network Layer | ✅ Complete | Axios-based, interceptors, offline queue, caching; `hybridClient.ts` live-only |
 | Auth System | ✅ Complete | Login/signup/reset flow, session management |
 | State Management | 🔧 In Progress | Zustand stores. CartStore works, form data context implemented |
 | Event Bus | ✅ Complete | Pub/sub for cross-component communication |
@@ -25,9 +37,12 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Explore/Home Screen | ✅ Complete | Store discovery, search |
-| Desk Screen | 🔧 In Progress | Tab navigation, screen switching, splash screen working |
+| Explore/Home Screen | ✅ Complete | Live-only fetch `discoveryApi.getFeatured()`, `bffApi.getDiscoveryFeed()`, no demo data |
+| Desk Screen | ✅ Complete | Tab navigation, screen switching, splash with `resolvedDisplayName`/`resolvedLogo`, no dummy fallback |
 | Screen Renderer | ✅ Complete | Layout path + children path working |
+| Endpoint Layer | ✅ Complete | All 57 functions aligned to live OpenAPI 3.0.0 (328 paths); `/tenants`→`/merchants`, `/app/*` authenticated |
+| Slug System | ✅ Complete | Builder: `DesignStore.js` `setMeta` syncs slug from appName; Mobile: `ManifestResolver.ts` computes `displaySlug` from displayName |
+| Demo Data | ✅ Unhooked | `nearbyStores`, `deskCategories`, `promoAds`, `runtime/tenants/**` on disk but NOT imported |
 | Component Registry | 🔧 In Progress | 50+ components registered. Some unused, some incomplete |
 | Section Components | 🔧 In Progress | CategoryPills, MenuGrid, etc. wired to actions. AddressForm, CartSummary added |
 | Action Engine | ✅ Complete | All 21 ActionType values have registered handlers |
@@ -42,9 +57,31 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| API Design | ⏳ Planned | Not yet implemented |
-| Data Model | ⏳ Planned | Not yet implemented |
-| Tenant System | ⏳ Planned | Not yet implemented |
+| API Design | ✅ Complete | ~428 endpoints across 32 modules, three-tier architecture |
+| Data Model | ✅ Complete | 85+ Prisma models, 2073 lines, PostgreSQL 16 |
+| Tenant System | ✅ Complete | Tenant lifecycle, config, subscriptions, feature flags |
+| Auth & IAM | ✅ Complete | JWT, Google/Apple OAuth, OTP, password recovery, devices |
+| Commerce | ✅ Complete | Products, cart, orders, coupons, tax, fulfillment, inventory |
+| Booking & Scheduling | ✅ Complete | Services, staff, resources, availability, 7-state workflow |
+| Forms & Workflow | ✅ Complete | Versioned forms, validation engine, approval workflows |
+| Payments | ✅ Complete | Paystack/Flutterwave/Stripe, intents, refunds, settlements |
+| Notifications | ✅ Complete | Templates, push/email/SMS, campaigns, preferences |
+| Builder (SDUI) | ✅ Complete | Pages, sections, components, actions, conditions, data binding |
+| Publishing | ✅ Complete | Validation, manifest compiler, releases, rollback |
+| Media / DAM | ✅ Complete | Upload, sharp optimization, variants, folders, CDN |
+| Theme | ✅ Complete | Theme management, compiler, versioning, caching |
+| Integrations | ✅ Complete | Connector framework, SendGrid, Google Calendar |
+| Analytics & BI | ✅ Complete | Event tracking, dashboards with widget data resolution, reports |
+| Search & Discovery | ✅ Complete | Full-text index, synonyms, autocomplete, facets |
+| AI Platform | ✅ Complete | OpenAI/Anthropic/Mock providers, prompts, embeddings |
+| Platform Administration | ✅ Complete | Settings, announcements, feature flags, quotas |
+| Infrastructure & DevOps | ✅ Complete | Deployments, environments, health checks, backups |
+| Security & Compliance | ✅ Complete | Policies, API keys, security events, consent audits |
+| Developer Platform | ✅ Complete | Developer apps, webhook endpoints, event logs |
+| Marketplace & Plugins | ✅ Complete | Listings, plugin installations |
+| BFF Layer | ✅ Complete | Mobile, Tenant Dashboard, Business Dashboard, Website |
+| Three-Tier Architecture | ✅ Complete | Website/App/Mobile split, App/Public controller pattern |
+| TASK-0025: Dashboard | ✅ Complete | Widget data resolution, DTOs, widget type registry |
 
 ## Builder & Dashboards
 
@@ -59,10 +96,10 @@
 | Data Model Builder | ✅ Complete | KB-028 — Data Model Builder defined |
 | Preview Runtime | ✅ Complete | KB-029 — Preview Runtime defined |
 | Validation Engine | ✅ Complete | KB-030 — Validation Engine defined |
-| Publishing Pipeline | ✅ Complete | KB-031 — Publishing Pipeline defined |
+| Publishing Pipeline | ✅ Complete | KB-031 — Publishing Pipeline defined; release history is read once per publish and existing screen definitions are preserved while empty projects use template fallback |
 | SDUI Authoring | ✅ Complete | Template gallery (21 templates, search, category filter chips, color-block cards), drag-drop component palette, screen management, phone preview, PageFly-inspired section editor with inline editing, floating toolbars, editor theme design system |
-| Business Dashboard | ⏳ Planned | Not yet started |
-| Tenant Dashboard | ⏳ Planned | Not yet started |
+| Business Dashboard | ✅ Complete | Live `Admin-portal` `https://github.com/DukaDesk/DUKA-ADMIN` — shell + `PendingAdmins`/`Merchants`/`Marketplace`/`Audit`/`Subscriptions`/`Settings` + **Orders/Products/Customers/Analytics/Marketing/Infrastructure** (`317a549` `1896 modules ✓`, live `GET /app/commerce/*`, `GET /admin/users/merchant/:id`, `GET /analytics/reports/*`, `GET /infra/overview`), role-aware `platform_operator`/`support_agent`/`super_admin`, tenant correlation `getMerchantEnriched` + `da83369` customers per-merchant, `Bell` icon `bb05d76`, counts mapping `47f61e2`, merchant **approve/decline with credential review** `6588a6a` `POST /admin/merchants/:id/reject` |
+| Tenant Dashboard | 🔧 In Progress | Merchant portal dashboard/builder exists locally; published definition and BFF parity reads wired, but it is not yet the full manifest-driven tenant runtime |
 
 ## SDUI & Data Layer
 
@@ -77,9 +114,11 @@
 ## Known Gaps
 1. MenuGridSection needs per-item RuntimeNodes for action system add_to_cart
 2. FormEngine (multi-step forms) not yet wired to FormDataContext
-3. No backend exists — all data is mocked
+3. Backend has 0% test coverage — no unit or e2e tests written
 4. (Resolved) Screen & Layout Builder (KB-024) through Publishing Pipeline (KB-031) all completed
 5. No persistence layer for form data across app restarts
+6. Mobile saved addresses and payment methods await backend endpoints.
+7. Merchant portal preview/editor and mobile `ScreenEngine` use related schemas but are not yet one shared cross-platform renderer; parity is currently verified by published definition/BFF manifest comparison.
 
 ## Marketplace
 
@@ -246,3 +285,10 @@
 | ADR-004 | Event Bus for Cross-Component Communication | ✅ Accepted | 2026-06-30 |
 | ADR-005 | Branded Splash Screen | ✅ Accepted | 2026-07-09 |
 | ADR-006 | Knowledge Base Initialization | ✅ Accepted | 2026-07-09 |
+
+
+2026-09-20: Backend checkout inspected; live read paths still expose an unversioned definition and nested v0.0.7. Confirmed array-only publish validation, duplicate-release path, cache/rollback and WebP deletion defects. [Cross-stack fix plan](ARCHITECTURE/PUBLISHED_APP_DELIVERY_FIX_PLAN_2026-09-20.md); separate stack TODOs linked there. Status: planned, implementation open.
+
+2026-09-20: Mobile release revalidation/staged adoption and merchant verified publish/rollback implemented. Local tests and web/Android/iOS bundle builds passed. [Client delivery report](mobile/PUBLISHED_APP_DELIVERY_CLIENT_IMPLEMENTATION_2026-09-20.md). Backend and device release gates remain open.
+
+2026-09-20: Fixed manifest root-tab rendering and tenant splash lifecycle; removed injected operational text. [Splash/tab ownership report](mobile/SPLASH_AND_MANIFEST_TABS_2026-09-20.md); separate verification TODO linked there.

@@ -31,6 +31,8 @@
 
 This document defines the end-to-end Rendering Pipeline Architecture for the DUKADESK platform. The Rendering Pipeline is the structured sequence of stages through which application definitions flow to produce an interactive user experience. It spans from Runtime initialization through application discovery, definition loading, resolution, validation, composition, rendering, interaction, and shutdown.
 
+**Current client implementation:** The mobile runtime resolves declarative screen layouts through `LayoutRenderer` and registered component nodes through `ComponentRegistry`. Published screens preserve supported merchant layout values (`kind`, directional padding, gap, alignment, flex, dimensions, background color, and scrolling), with safe defaults only when a value is absent. Built-in component spacing remains a component-level default and does not replace manifest-provided container layout. Unknown component types render as observable placeholders instead of crashing the screen.
+
 While KB-052 Rendering Engine Architecture defines the engine itself — its internal subsystems, data structures, and capabilities — this document specifies how rendering flows through each architectural stage. It is the authoritative pipeline contract that every DUKADESK Runtime — Mobile, Web, Desktop, Preview, Builder Studio Preview, and SDK — must implement.
 
 The Rendering Pipeline is not a single linear path. It encompasses multiple sub-pipelines: the initialization pipeline, the resolution pipeline, the validation pipeline, the recovery pipeline, the incremental update pipeline, the offline pipeline, and the extension integration pipeline. Each sub-pipeline has defined stages, inputs, outputs, dependencies, failure conditions, and recovery strategies.

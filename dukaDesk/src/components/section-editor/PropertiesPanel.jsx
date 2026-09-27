@@ -1,3 +1,4 @@
+import ButtonGallery from "./ButtonGallery";
 import { getComponentCatalog } from "./componentCatalog";
 import IconPicker from "./IconPicker";
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -48,7 +49,7 @@ const QUICK_COLORS = ["#FCF8FA", "#1A1A2E", "#F4A026", "#2ECC71", "#E74C3C", "#7
 
 const TAB_ICONS = Object.keys(ICON_LIBRARY);
 
-export default function PropertiesPanel({ store, selectedSectionId, selectedComponentId, navSelected, onClose, focusSubKey, onClearProp, onSelectComponent, onFocusSubElement, componentCategory }) {
+export default function PropertiesPanel({ store, selectedSectionId, selectedComponentId, navSelected, onClose, focusSubKey, onClearProp, onSelectComponent, onFocusSubElement, componentCategory, insertionTarget, onChooseCategory, screenSelected }) {
   const { theme, iconBtn, iconBtnDanger, textInput, labelStyle } = useEditorTheme();
   const data = store.data;
   const [addQuery, setAddQuery] = useState("");
@@ -112,7 +113,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
   const selectedItem = focusSubKey?.compId === component?.id && focusSubKey?.key?.startsWith("item:");
   const selectedText = focusedField?.kind === "text";
   const selectPropertyTarget = key => key === "component" ? onSelectComponent?.(selectedSectionId, component.id) : onFocusSubElement?.(selectedSectionId, component.id, key);
-  const canAdd = !!section;
+  const canAdd = !!section || !!store.screen;
   const addDisabled = !canAdd;
 
   let propertiesContent = (
@@ -478,21 +479,31 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
   }, [selectedComponentId, selectedSectionId, navSelected, propQuery, focusedField?.key]);
   const toggleStyling = (k)=> setStylingOpen(o=> ({...o, [k]: !o[k]}));
 
+  const addCatalogComponent = compDef => {
+                    if (compDef.comingSoon) return;
+                    if (section) {
+                      const id = insertionTarget?.sectionId === selectedSectionId && insertionTarget.parentId
+                        ? store.insertComponentAt(selectedSectionId, insertionTarget.parentId, insertionTarget.index, compDef.type, { ...compDef.defaultProps })
+                        : store.addComponentToSection(selectedSectionId, compDef.type, { ...compDef.defaultProps }, ["nested_section", "row", "carousel"].includes(component?.type) ? component.id : undefined);
+                      if (id) onSelectComponent?.(selectedSectionId, id);
+                    } else {
+                      const added = store.addComponentToScreen(compDef.type, { ...compDef.defaultProps });
+                      if (added) onSelectComponent?.(added.sectionId, added.id);
+                    }
+
+  };
+
   // Add Component content reused in General tab
   const AddComponentContent = () => (
     <div>
-      {!section && (
-        <div style={{ background: theme.hoverAmber, borderRadius: theme.radius.md, padding: 10, marginBottom: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#6B4200", marginBottom: 2 }}>Select a section first</div>
-          <div style={{ fontSize: 10, color: "#92400E", lineHeight: 1.4 }}>Click a section on the canvas or in the left panel to add components to it.</div>
-        </div>
-      )}
       {!componentCategory && <div style={{ fontSize: 12, color: theme.textMuted }}>Choose a component category in Elements.</div>}
-      {componentCategory && <input value={addQuery} onChange={e => setAddQuery(e.target.value)} placeholder="Search components…" style={{ ...textInput, marginBottom: 8 }} />}
+      {componentCategory === "choose" && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>{getComponentCatalog().map(category => <button type="button" key={category.key} onClick={() => onChooseCategory?.(category.key)} style={{ display: "flex", alignItems: "center", gap: 6, padding: 8, border: "1px solid " + theme.border, borderRadius: 8, background: theme.surface, color: theme.textSecondary, cursor: "pointer" }}><category.icon size={16} />{category.label}</button>)}</div>}
+      {componentCategory && componentCategory !== "choose" && <input value={addQuery} onChange={e => setAddQuery(e.target.value)} placeholder="Search components…" style={{ ...textInput, marginBottom: 8 }} />}
       {getComponentCatalog().filter(cat => componentCategory && cat.key === componentCategory).map(cat => {
         const cq = addQuery.trim().toLowerCase();
         const items = cat.components.filter(d => !cq || (d.label || "").toLowerCase().includes(cq) || (d.type || "").toLowerCase().includes(cq));
         if (items.length === 0) return null;
+        if (cat.key === "buttons") return <ButtonGallery key={cat.key} items={items} onAdd={addCatalogComponent} disabled={addDisabled} searching={!!cq} />;
         const open = cq ? true : catCollapsed[cat.key] !== true;
         return (
           <div key={cat.key} style={{ marginBottom: 10 }}>
@@ -504,7 +515,9 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
             {open && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 6 }}>
                 {items.map(compDef => (
-                  <button key={compDef.catalogId || compDef.type} title={compDef.comingSoon ? "Coming soon" : compDef.label} onClick={() => section && !compDef.comingSoon && store.addComponentToSection(selectedSectionId, compDef.type, { ...compDef.defaultProps }, component?.type === "nested_section" ? component.id : undefined)} disabled={addDisabled || compDef.comingSoon} style={{ padding: "6px 4px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: addDisabled ? "not-allowed" : "pointer", textAlign: "center", fontSize: 10, fontWeight: 500, color: theme.textSecondary, opacity: addDisabled ? 0.45 : 1 }}>
+                  <button key={compDef.catalogId || compDef.type} title={compDef.comingSoon ? "Coming soon" : compDef.label} onClick={() => {
+                    addCatalogComponent(compDef);
+                  }} disabled={addDisabled || compDef.comingSoon} style={{ padding: "6px 4px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: addDisabled ? "not-allowed" : "pointer", textAlign: "center", fontSize: 10, fontWeight: 500, color: theme.textSecondary, opacity: addDisabled ? 0.45 : 1 }}>
                     <div style={{ fontSize: 16, marginBottom: 1, color: theme.textMuted }}><IconRender icon={COMPONENT_ICONS[compDef.type] || compDef.icon || FileText} size={16} /></div>
                     <div style={{ fontSize: 9, lineHeight: 1.2 }}>{compDef.label}</div>
                   </button>
@@ -617,12 +630,13 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
               </>
             ) : (
               <>
+                {screenSelected && <div style={{ marginBottom: 12 }}><label style={labelStyle} htmlFor="selected-screen-name">Screen Name</label><input id="selected-screen-name" value={store.screen?.name || ""} onChange={event => store.renameScreen(store.currentScreenId, event.target.value)} style={textInput} /></div>}
                 {componentCategory && <AddComponentContent />}
-                <div style={{ textAlign: "center", padding: "20px 12px", color: theme.textMuted }}>
+                {!screenSelected && <div style={{ textAlign: "center", padding: "20px 12px", color: theme.textMuted }}>
                   <div style={{ display: "flex", justifyContent: "center", marginBottom: 6, color: theme.textMuted }}><FileText size={22} /></div>
                   <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>No Selection</div>
                   <div style={{ fontSize: 11, lineHeight: 1.5 }}>Select a section or component to edit its properties.</div>
-                </div>
+                </div>}
               </>
             )}
           </>

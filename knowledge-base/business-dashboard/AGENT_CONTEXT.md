@@ -20,10 +20,11 @@ The `business-dashboard/` repository contains the administrative dashboard used 
 
 ## Technology Stack
 
-- Framework: TBD (e.g., React, Vue, Angular)
-- State Management: TBD
-- API Client: TBD
-- Testing: TBD
+- Framework: React 18.2 + Vite 5.4 + React Router 6.20 (see `Admin-portal/package.json:17`)
+- State Management: React Context (`AuthContext.jsx`) + hooks (`useToast.js`) + localStorage (`admin_token`, `dukadesk_admin`)
+- API Client: `apiClient.ts:44` `fetch` with `VITE_API_URL=https://duka-backend-production.up.railway.app` + `/api/v1`, JWT `Authorization: Bearer`, `retry:3` exponential backoff, `TransformInterceptor` envelope `success` handling, `x-railway-request-id` trace
+- UI: lucide-react 1.39, custom CSS vars (`index.css:1` KB tokens `color-primary-500 #2563EB`), `recharts` 2.10 available but charts use custom SVG `RevenueChart:83`/`MerchantGrowthChart:113`
+- Testing: Playwright 1.40 (`tests/smoke.spec.ts` covers UI-0003 AC-01–04: shell renders, role-aware nav, invite, settings); `vite build` 1889 modules ✓
 
 ## Repository Structure
 
@@ -63,7 +64,11 @@ Specifications that target this repository:
 
 | Specification | Title | State |
 |---------------|-------|-------|
-| | | |
+| UI-0003 | Business Dashboard Foundation and Shell | Complete — shell `App.jsx:128`, sidebar `AdminSidebar`, dashboard `AdminDashboard`, users `PendingAdmins`, settings `Settings` live |
+| SEC-0002 | Authorization and RBAC | Complete — `permissions.js:12` `super_admin/platform_operator/support_agent` + `AuthContext` heal + `Forbidden.jsx` |
+| FEAT-0002 | Tenant Lifecycle and Isolation | Complete — `FEAT-0002` FR-01–06 via `getMerchants` `normalizeMerchantStatus` `pending→draft`/`active→published` + `getMerchantEnriched` |
+| API-0002 | Tenant Management API | Complete — alias `GET /admin/merchants` for `GET /tenants` + `suspend` per spec; `POST /auth/register {role}` pending |
+| ADM-001 | Administration Domain | Complete — Platform Config, Audit Logs (`BFF /bff/admin/audit`), Monitoring (`/health`, `/infra/status`), Feature Flags (`/admin/feature-flags`), System Health |
 
 ## Agent Conventions
 

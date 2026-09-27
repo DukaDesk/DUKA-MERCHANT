@@ -21,14 +21,15 @@ it("hides Add Element until a section is selected and inserts into that section"
   fireEvent.click(screen.getByRole("button", { name: "Button" }));
   expect(store.addComponentToSection).toHaveBeenCalledWith("outer", "button", expect.any(Object), "inner");
 });
-it("restores inline section insertion and selects the newly created section", () => {
+it("selects a layout from its plus without opening an insertion menu", () => {
   const store = fixture();
   store.screen.bodySections[0].components = [{ id: "layout", type: "row", props: { template: "1/1" }, children: [] }];
   const select = vi.fn();
   const choose = vi.fn();
   render(<SectionRenderer store={store} selectedSectionId="outer" selectedComponentId="layout" onSelectSection={vi.fn()} onSelectComponent={select} onChooseLayout={choose} />);
-  fireEvent.click(screen.getAllByRole("button", { name: "Add a section" })[0]);
-  expect(choose).toHaveBeenCalledWith({ sectionId: "outer", parentId: "layout", index: 0 });
+  fireEvent.click(screen.getAllByRole("button", { name: "Select section" })[0]);
+  expect(select).toHaveBeenCalledWith("outer", "layout");
+  expect(choose).not.toHaveBeenCalled();
   expect(store.insertComponentAt).not.toHaveBeenCalled();
 });
 it("inserts the chosen layout into the original target instead of the root", () => {
@@ -51,4 +52,67 @@ it("shows only the selected category and keeps text variants distinct without du
   const keys = choices.map(item => item.catalogId || item.type);
   expect(new Set(keys).size).toBe(keys.length);
   expect(choices.some(item => item.type === "primary_button")).toBe(false);
+});
+
+it("adds components without a selection and opens their properties", () => {
+  const store = fixture();
+  store.screen.bodySections = [];
+  store.addComponentToScreen = vi.fn(() => ({ sectionId: "new-section", id: "new-button" }));
+  const select = vi.fn();
+  render(<PropertiesPanel store={store} componentCategory="buttons" onSelectComponent={select} />);
+  const button = screen.getByRole("button", { name: "Button" });
+  expect(button.disabled).toBe(false);
+  fireEvent.click(button);
+  expect(store.addComponentToScreen).toHaveBeenCalledWith("button", expect.any(Object));
+  expect(select).toHaveBeenCalledWith("new-section", "new-button");
+});
+it("allows a layout to be the first item on an empty screen", () => {
+  const store = fixture();
+  store.screen.bodySections = [];
+  store.addComponentToScreen = vi.fn(() => ({ sectionId: "new-section", id: "layout" }));
+  const added = vi.fn();
+  render(<ElementGallery browseType="Layout" store={store} onAdded={added} />);
+  fireEvent.click(screen.getByRole("button", { name: "Section" }));
+  expect(store.addComponentToScreen).toHaveBeenCalledWith("nested_section", expect.any(Object));
+  expect(added).toHaveBeenCalledWith("new-section", "layout");
+});
+
+it("selects nested and outer sections without extra buttons", () => {
+  const store = fixture();
+  const select = vi.fn();
+  const selectSection = vi.fn();
+  render(<SectionRenderer store={store} onSelectSection={selectSection} onSelectComponent={select} />);
+  fireEvent.click(screen.getAllByRole("button", { name: "Select section" })[0]);
+  expect(select).toHaveBeenCalledWith("outer", "inner");
+  fireEvent.click(screen.getAllByRole("button", { name: "Select section" })[1]);
+  expect(selectSection).toHaveBeenCalledWith("outer");
+  expect(screen.queryByRole("button", { name: "Inner section" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Components" })).toBeNull();
+});
+
+it("inserts a chosen component into the targeted layout slot", () => {
+  const store = fixture();
+  render(<PropertiesPanel store={store} selectedSectionId="outer" selectedComponentId="inner" componentCategory="buttons" insertionTarget={{ sectionId: "outer", parentId: "inner", index: 0 }} />);
+  fireEvent.click(screen.getByRole("button", { name: "Button" }));
+  expect(store.insertComponentAt).toHaveBeenCalledWith("outer", "inner", 0, "button", expect.any(Object));
+  expect(store.addComponentToSection).not.toHaveBeenCalled();
+});
+
+it("selects an empty screen and outlines the full phone", () => {
+  const store = fixture(); store.screen.bodySections = [];
+  const select = vi.fn();
+  const view = render(<SectionRenderer store={store} onSelectScreen={select} />);
+  fireEvent.click(screen.getByRole("button", { name: "Select screen" }));
+  expect(select).toHaveBeenCalledTimes(1);
+  view.rerender(<SectionRenderer store={store} onSelectScreen={select} screenSelected />);
+  const phone = screen.getByRole("button", { name: "Select screen" }).parentElement.parentElement.parentElement;
+  expect(phone.style.outline).toContain("solid");
+});
+it("shows screen properties and component categories for a selected screen", () => {
+  const store = fixture(); store.screen.bodySections = []; store.currentScreenId = "home"; store.renameScreen = vi.fn();
+  render(<PropertiesPanel store={store} screenSelected componentCategory="choose" />);
+  expect(screen.queryByText("No Selection")).toBeNull();
+  fireEvent.change(screen.getByLabelText("Screen Name"), { target: { value: "Shop" } });
+  expect(store.renameScreen).toHaveBeenCalledWith("home", "Shop");
+  expect(screen.getByRole("button", { name: "Text" })).toBeTruthy();
 });
