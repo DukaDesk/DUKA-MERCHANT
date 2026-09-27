@@ -1,3 +1,3 @@
 Version: 0.3.8
-Verified Commit: 1921e67
+Verified Commit: a60dbf0
 Status: Active

@@ -2,7 +2,7 @@
 
 **Repository:** DukaDesk Merchant Portal (business-dashboard implementation)
 **KB Version:** 0.3.8
-**Last Verified Commit:** `1921e67`
+**Last Verified Commit:** `a60dbf0`
 **Last Updated:** 2026-09-27
 **Status:** Active
 

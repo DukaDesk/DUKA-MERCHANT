@@ -50,7 +50,8 @@ This file tracks the current state of the mobile repository (DukaDesk — Expo +
 ## Next Up
 
 - Merchant re-publish, then verify both read paths (B8) — backend is deployed (B4 migration applied, B7 contract live 2026-09-27)
-- Mobile M3 canonical read transition after backend parity is deployed
+- Mobile M3 canonical read + M4 diagnostics + B7 compatibility gate landed 2026-09-27 (100 runtime tests) — pending merchant re-publish for live proof
+- Mobile M5 installed-shell acceptance (A-to-B-to-A on Android/iOS without binary change)
 - E2E integration tests for all modules
 - API versioning strategy (v2 planning)
 
