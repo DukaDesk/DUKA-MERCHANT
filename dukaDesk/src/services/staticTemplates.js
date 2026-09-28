@@ -46,9 +46,16 @@ export function categoryFolder(category) {
 export function resolveTemplateId(category, templateName) {
   if (!templateName) return "";
   if (templateName.includes("/")) return templateName;
+  // Backend template UUIDs must pass through untouched — never slugify them
+  // into a `category/uuid` path (that path only exists for local templates).
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(templateName)) return templateName;
   if (!category) return templateName;
   const slug = templateName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   return `${categoryFolder(category)}/${slug}`;
+}
+
+export function isBackendTemplateId(templateId) {
+  return typeof templateId === "string" && !templateId.includes("/") && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(templateId);
 }
 
 async function fetchJSON(url) {
@@ -83,6 +90,9 @@ async function fetchBackendCatalog() {
         preview: tpl.preview || null,
         primaryColor: tpl.theme?.primaryColor || tpl.primaryColor || "#1B4332",
         secondaryColor: tpl.theme?.secondaryColor || tpl.secondaryColor || "#F4A026",
+        source: "backend",
+        slug: tpl.slug || null,
+        thumbnail: tpl.thumbnail || null,
       });
     }
     const catalog = [...byCategory.values()].filter(c => c.templates.length > 0);
@@ -93,11 +103,26 @@ async function fetchBackendCatalog() {
 }
 
 export async function getTemplateCatalog() {
-  const backendCatalog = await fetchBackendCatalog();
-  if (backendCatalog) {
-    catalogCache.set("root", backendCatalog);
-    return backendCatalog;
+  const [backendCatalog, localCatalog] = await Promise.all([
+    fetchBackendCatalog(),
+    fetchLocalCatalog(),
+  ]);
+  const merged = [];
+  const seen = new Set();
+  for (const cat of [...(backendCatalog || []), ...(localCatalog || [])]) {
+    const fresh = { ...cat, templates: [] };
+    for (const tpl of cat.templates || []) {
+      if (!tpl || seen.has(tpl.id)) continue;
+      seen.add(tpl.id);
+      fresh.templates.push(tpl);
+    }
+    if (fresh.templates.length > 0) merged.push(fresh);
   }
+  catalogCache.set("root", merged);
+  return merged;
+}
+
+async function fetchLocalCatalog() {
   const root = await fetchJSON("/templates/manifest.json");
   const categories = Array.isArray(root.categories) ? root.categories : [];
 
@@ -118,6 +143,7 @@ export async function getTemplateCatalog() {
               preview: manifest.preview || null,
               primaryColor: manifest.theme?.primaryColor || "#1B4332",
               secondaryColor: manifest.theme?.secondaryColor || "#F4A026",
+              source: "local",
             };
             const screens = manifest.screens || [];
             if (!Array.isArray(screens) || screens.length === 0) return null;
@@ -137,7 +163,6 @@ export async function getTemplateCatalog() {
   );
 
    const catalog = entries.filter(cat => cat.templates.length > 0);
-  catalogCache.set("root", catalog);
   return catalog;
 }
 
@@ -250,6 +275,111 @@ export function convertManifestToDesign(manifest, screens) {
   };
 }
 
+// Backend templates (GET /api/v1/templates/:id) use a different shape from the
+// local manifests: `{ id, name, category, config: { pages: [{ name, slug,
+// sections: [{ type, config, components: [{ type, props }] }] }], navigation:
+// [{ label, target, icon }], theme } }`. Convert that shape into the same
+// canvas design object that convertManifestToDesign produces.
+const BACKEND_COMPONENT_MAP = {
+  HeroBanner: "hero_banner",
+  CategoryGrid: "category_pills",
+  ProductCarousel: "menu_grid",
+  ProductGrid: "menu_grid",
+  ContactForm: "text_block",
+  hero: "hero_banner",
+  grid: "menu_grid",
+  carousel: "menu_grid",
+  text: "text_block",
+};
+
+function mapBackendComponent(comp, screenId, index) {
+  const rawType = comp?.type || "text_block";
+  const type = BACKEND_COMPONENT_MAP[rawType] || rawType;
+  const rawProps = { ...(comp?.props || {}) };
+  if (type === "hero_banner") {
+    if (rawProps.backgroundImage && !rawProps.fill) rawProps.fill = rawProps.backgroundImage;
+    if (rawProps.alignment && !rawProps.variant) {
+      rawProps.variant = ["center", "left", "overlay", "split"].includes(rawProps.alignment) ? rawProps.alignment : "center";
+    }
+  }
+  if (type === "text_block" && rawType === "ContactForm") {
+    rawProps.text = rawProps.title || rawType;
+  }
+  if (rawProps.cta && typeof rawProps.cta === "object" && !rawProps.actions) {
+    const cta = rawProps.cta;
+    rawProps.actions = { default: { type: "navigate", payload: { push: cta.target || "/" } } };
+  }
+  return { type, props: rawProps, actions: comp?.actions, key: `comp_${screenId}_${index}` };
+}
+
+export function convertBackendTemplateToDesign(template) {
+  const config = template?.config || {};
+  const theme = config.theme || {};
+  const bgColor = theme.backgroundColor || "#FCF8FA";
+  const pages = Array.isArray(config.pages) ? config.pages : [];
+  const screensOut = {};
+
+  pages.forEach((page, pi) => {
+    const id = page.slug || page.id || `screen_${pi}`;
+    const sections = Array.isArray(page.sections) ? page.sections : [];
+    screensOut[id] = {
+      name: page.name || id,
+      backgroundColor: bgColor,
+      bodySections: sections.map((section, si) => ({
+        id: `sec_${id}_${si}`,
+        type: "custom",
+        name: section.type || `Section ${si + 1}`,
+        backgroundColor: bgColor,
+        backendType: section.type || null,
+        components: (Array.isArray(section.components) ? section.components : []).map((comp, ci) =>
+          buildComponents(id, [mapBackendComponent(comp, id, ci)])[0]
+        ),
+      })),
+    };
+  });
+
+  if (Object.keys(screensOut).length === 0) {
+    screensOut.screen_1 = { name: "Home", backgroundColor: bgColor, bodySections: [] };
+  }
+
+  const screenIds = Object.keys(screensOut);
+  const homePage = pages.find(p => p.isHome && (p.slug || p.id) && screensOut[p.slug || p.id]);
+  const initialScreen = (homePage && (homePage.slug || homePage.id)) || screenIds[0];
+  const navEntries = Array.isArray(config.navigation) ? config.navigation : [];
+  const tabs = navEntries
+    .map((t, i) => {
+      const target = String(t.target || "").replace(/^\//, "");
+      return {
+        id: `tab_${i}_${Date.now()}`,
+        label: t.label || "Tab",
+        icon: tabEmoji(t.icon) || t.icon || "\uD83D\uDCCB",
+        screenId: screensOut[target] ? target : "",
+        color: t.color || undefined,
+      };
+    })
+    .filter(t => t.screenId);
+
+  return {
+    meta: {
+      appName: template?.name || "My App",
+      category: template?.category || "",
+      primaryColor: theme.primaryColor || "#1B4332",
+      logo: null,
+    },
+    navigation: { initialScreen, style: {}, tabs },
+    shared: {
+      header: { id: "section_header", type: "header", name: "Header", backgroundColor: bgColor, components: [] },
+      footer: { id: "section_footer", type: "footer", name: "Footer", backgroundColor: bgColor, components: [] },
+    },
+    screens: screensOut,
+  };
+}
+
+function isValidBackendTemplate(template) {
+  const pages = template?.config?.pages;
+  return template && typeof template === "object" && Array.isArray(pages) && pages.length > 0;
+}
+
 function isValidTemplateManifest(manifest, screens) {
   if (!manifest || typeof manifest !== "object") return false;
   const screenMap = screens || manifest.screens;
@@ -261,23 +391,22 @@ function isValidTemplateManifest(manifest, screens) {
 }
 
 export async function loadTemplateForCanvas(templateId) {
+  // Local templates live under /templates/<folder>/<id>/ and are addressed as
+  // `folder/id`. Anything else is a backend template UUID.
+  if (!isBackendTemplateId(templateId)) {
+    const { manifest, screens } = await loadAllTemplateScreens(templateId);
+    if (!isValidTemplateManifest(manifest, screens)) throw new Error(`Template ${templateId} has no content`);
+    return convertManifestToDesign(manifest, screens);
+  }
   try {
     const res = await httpClient.get(`/api/v1/templates/${encodeURIComponent(templateId)}`);
     const body = res?.data ?? res;
-    const manifest = body?.data ?? body;
-    const screens = manifest.screens || body?.screens || {};
-    if (isValidTemplateManifest(manifest, screens)) {
-      const screenMap = Array.isArray(screens)
-        ? Object.fromEntries(screens.map(s => [s.id || s.screenId, s]))
-        : screens;
-      return convertManifestToDesign(manifest, screenMap);
-    }
+    const template = body?.data ?? body;
+    if (isValidBackendTemplate(template)) return convertBackendTemplateToDesign(template);
   } catch {
-    // backend template unavailable, fallback to local
+    // backend template unavailable — fall through to the error below
   }
-  const { manifest, screens } = await loadAllTemplateScreens(templateId);
-  if (!isValidTemplateManifest(manifest, screens)) throw new Error(`Template ${templateId} has no content`);
-  return convertManifestToDesign(manifest, screens);
+  throw new Error(`Template ${templateId} has no content`);
 }
 
 export async function applyBackendTemplate(templateId) {
