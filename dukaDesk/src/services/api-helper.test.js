@@ -271,6 +271,52 @@ describe("signup", () => {
     expect(result.merchant.tenantId).toBeNull();
     expect(result.token).toBe("tok_789");
   });
+
+  it("unwraps TenantUser membership rows to the real tenant id", async () => {
+    mockHttpClient.post.mockResolvedValueOnce({
+      data: {
+        user: { id: "u1", firstName: "Ada", lastName: "", email: "ada@test.com" },
+        accessToken: "tok_m",
+        refreshToken: "rtok_m",
+      },
+    });
+    mockHttpClient.get.mockResolvedValueOnce({
+      data: [{ id: "membership_1", tenantId: "tenant_real", role: "owner", tenant: { id: "tenant_real", name: "Ada's Kitchen", slug: "adas-kitchen" } }],
+    });
+
+    const result = await signup({
+      fullName: "Ada",
+      businessName: "Ada's Kitchen",
+      email: "ada@test.com",
+      phone: "8012345678",
+      password: "Pass1234",
+    });
+
+    expect(result.merchant.tenantId).toBe("tenant_real");
+    expect(result.merchant.tenantSlug).toBe("adas-kitchen");
+    expect(result.merchant.business).toBe("Ada's Kitchen");
+  });
+
+  it("probes tenants silently without global error toasts", async () => {
+    mockHttpClient.post.mockResolvedValueOnce({
+      data: {
+        user: { id: "u1", firstName: "Bob", lastName: "", email: "bob@test.com" },
+        accessToken: "tok_s",
+        refreshToken: "rtok_s",
+      },
+    });
+    mockHttpClient.get.mockResolvedValueOnce({ data: [] });
+
+    await signup({
+      fullName: "Bob",
+      businessName: "Bob's Shop",
+      email: "bob@test.com",
+      phone: "8012345678",
+      password: "Pass1234",
+    });
+
+    expect(mockHttpClient.get).toHaveBeenCalledWith("/api/v1/app/merchants", { silent: true });
+  });
 });
 
 describe("dashboard modules (primitives)", () => {

@@ -32,7 +32,12 @@ httpClient.interceptors.response.use(
   response => {
     const body = response.data;
     if (body && body.success === false) {
-      return Promise.reject(new Error(body.errors?.[0] || body.message || 'Request failed'));
+      if (!response.config?.silent) {
+        return Promise.reject(new Error(body.errors?.[0] || body.message || 'Request failed'));
+      }
+      const silentError = new Error(body.errors?.[0] || body.message || 'Request failed');
+      silentError.silent = true;
+      return Promise.reject(silentError);
     }
     const method = response.config?.method;
     if (mutMethods.includes(method) && body?.message && !response.config?.silentSuccess) {
@@ -91,14 +96,15 @@ httpClient.interceptors.response.use(
     }
 
     const body = error.response?.data;
+    const silent = originalRequest?.silent || error.silent;
     if (body && body.errors?.length) {
       const errMsg = typeof body.errors[0] === 'string' ? body.errors[0] : (body.errors[0]?.message || 'Request failed');
-      if (!isAuthUrl) emit('error', errMsg);
+      if (!isAuthUrl && !silent) emit('error', errMsg);
       error.message = errMsg;
       return Promise.reject(error);
     }
     const msg = body?.message || error.message || 'Network request failed';
-    if (!isAuthUrl) emit('error', msg);
+    if (!isAuthUrl && !silent) emit('error', msg);
     return Promise.reject(error);
   }
 );

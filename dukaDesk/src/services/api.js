@@ -204,13 +204,19 @@ async function fetchTenantSilently(tenantId = null) {
   // }
   try {
     const res = tenantId
-      ? await httpClient.get(`/api/v1/merchants/${encodeURIComponent(tenantId)}`)
-      : await httpClient.get("/api/v1/app/merchants");
+      ? await httpClient.get(`/api/v1/merchants/${encodeURIComponent(tenantId)}`, { silent: true })
+      : await httpClient.get("/api/v1/app/merchants", { silent: true });
     const payload = res?.data ?? res;
     const data = payload?.data ?? payload;
     if (tenantId) return data?.id ? data : null;
     const merchants = Array.isArray(data) ? data : data?.merchants;
-    return Array.isArray(merchants) && merchants.length > 0 ? merchants[0] : null;
+    if (!Array.isArray(merchants) || merchants.length === 0) return null;
+    // GET /app/merchants returns TenantUser membership rows
+    // ({ id: membershipId, tenantId, tenant: {...} }), not tenants — unwrap.
+    const row = merchants[0];
+    const tenant = row?.tenant && typeof row.tenant === "object" ? row.tenant : row;
+    if (row?.tenantId && !tenant?.id) tenant.id = row.tenantId;
+    return tenant?.id ? tenant : null;
   } catch {
     return null;
   }
@@ -418,18 +424,24 @@ export function setMerchant(m) {
 
 function buildMerchant(user, tenant = null) {
   const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
+  // Tenant may arrive as a TenantUser membership row ({ tenantId, tenant })
+  // or as a tenant object — always resolve to the real tenant.
+  const nested = tenant?.tenant && typeof tenant.tenant === "object" ? tenant.tenant : null;
+  const realTenant = nested || tenant;
+  const tenantId = realTenant?.id || tenant?.tenantId || null;
+  const tenantSlug = realTenant?.slug || tenant?.slug || null;
   return {
     id: user.id,
     name,
     firstName: user.firstName,
     lastName: user.lastName,
-    business: tenant?.name || "",
+    business: realTenant?.name || "",
     email: user.email,
     phone: user.phoneNumber || "",
     avatar: name.split(" ").map(n => n[0]).join("").toUpperCase(),
     createdAt: user.createdAt,
-    tenantId: tenant?.id || null,
-    tenantSlug: tenant?.slug || null,
+    tenantId,
+    tenantSlug,
     status: user.status,
     role: user.role || "tenant_owner",
   };
