@@ -1,9 +1,9 @@
 # Merchant Portal — Agent Context
 
 **Repository:** DukaDesk Merchant Portal (business-dashboard implementation)
-**KB Version:** 0.3.8
-**Last Verified Commit:** `4076d39`
-**Last Updated:** 2026-09-27
+**Knowledge Base:** canonical `KNOWLEDGE-BASE` checkout at `D:/work/DD/KNOWLEDGE-BASE`
+  (previously vendored under `knowledge-base/` — removed 2026-09-28; read docs there, not here)
+**Last Updated:** 2026-09-28
 **Status:** Active
 
 ## Overview
@@ -34,7 +34,7 @@ The `merchant-portal/` repository contains the Business Dashboard — an adminis
   and stores document refs (`{ name, size, status, mediaId, url }`) instead of base64 blobs
 - Added `status: "pending"` field to compliance payload (verification lifecycle begins)
 - Added helpers `dataUrlToBlob`, `uploadComplianceDocument`, `toDocumentRecord`
-- Backend gap documented: `knowledge-base/backend/BUSINESS_VERIFICATION_BACKEND_TODO.md`
+- Backend gap documented: `../KNOWLEDGE-BASE/backend/BUSINESS_VERIFICATION_BACKEND_TODO.md`
   (no dedicated KYC/compliance endpoints exist — data provisionally stored in tenant config)
 
 ### Toast System Migration
@@ -85,8 +85,8 @@ merchant-portal/
       index.css         CSS variables, animations, global rules
       App.jsx           Root component, routing
   AGENT_CONTEXT.md
-  knowledge-base-version.md
   *.md                 Project documentation
+  (Knowledge Base lives in the canonical `../KNOWLEDGE-BASE` checkout, not in this repo)
 ```
 
 ## Build and Test

@@ -50,8 +50,8 @@ This file tracks the current state of the DukaDesk Merchant frontend and its bac
 
 ## References
 
-- `../knowledge-base/ARCHITECTURE/publishedApp-mobile-contract.md`
-- `../knowledge-base/backend/BUILDER_MEDIA_API_BACKEND_TODO.md`
+- `../../KNOWLEDGE-BASE/ARCHITECTURE/publishedApp-mobile-contract.md`
+- `../../KNOWLEDGE-BASE/backend/BUILDER_MEDIA_API_BACKEND_TODO.md`
 - `src/services/PublishingPipeline.js`
 - `src/services/TemplateGenerator.js`
 - `src/components/canvas-editor/DesignStore.js`
