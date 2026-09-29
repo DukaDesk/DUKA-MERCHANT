@@ -98,7 +98,7 @@ httpClient.interceptors.response.use(
     const body = error.response?.data;
     const silent = originalRequest?.silent || error.silent;
     if (body && body.errors?.length) {
-      const errMsg = typeof body.errors[0] === 'string' ? body.errors[0] : (body.errors[0]?.message || 'Request failed');
+      const errMsg = body.errors.map(entry => typeof entry === 'string' ? entry : entry?.message).filter(Boolean).join('\n') || 'Request failed';
       if (!isAuthUrl && !silent) emit('error', errMsg);
       error.message = errMsg;
       return Promise.reject(error);

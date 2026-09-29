@@ -34,3 +34,12 @@ describe("httpClient instance", () => {
     expect(axios.interceptors.response.use).toHaveBeenCalled();
   });
 });
+
+
+it('preserves every backend validation error in the displayed message', async () => {
+  const reject = axios.interceptors.response.use.mock.calls[0][1];
+  const error = { config: { url: '/publishing/publish', silent: true }, response: {
+    status: 422, data: { code: 'INCOMPATIBLE_RUNTIME', errors: ['Runtime compatibility check failed', 'component: unsupported widget', 'asset: missing image'] }
+  } };
+  await expect(reject(error)).rejects.toMatchObject({ message: 'Runtime compatibility check failed\ncomponent: unsupported widget\nasset: missing image' });
+});
