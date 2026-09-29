@@ -503,6 +503,7 @@ export async function signup(body) {
     firstName,
     lastName,
     password: body.password,
+    ...(body.businessName ? { businessName: body.businessName } : {}),
   });
 
   const payload = res.data || res;
