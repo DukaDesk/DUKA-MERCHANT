@@ -28,6 +28,13 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
       }
       if (!parsed || typeof parsed.type !== "string" || !parsed.type) throw new Error("Invalid component action: " + copy.key);
       if (["navigate", "push", "replace", "switch_screen"].includes(parsed.type) && Object.prototype.hasOwnProperty.call(parsed.payload || {}, "screenId") && !sourceScreens[parsed.payload.screenId]) throw new Error("Choose an existing destination page for: " + copy.key);
+      // Canonicalize path-style destinations ("/shop") to screenId when they
+      // name an existing screen. The backend validator and mobile resolver
+      // both accept push, but screenId is the canonical contract form.
+      if (parsed.payload && typeof parsed.payload === "object" && !parsed.payload.screenId && typeof parsed.payload.push === "string") {
+        const match = parsed.payload.push.match(/^\/([A-Za-z0-9_-]+)$/);
+        if (match && sourceScreens[match[1]]) parsed.payload = { ...parsed.payload, screenId: match[1] };
+      }
       return parsed;
     };
     const merged = { ...node.actions, ...copy.props.actions };

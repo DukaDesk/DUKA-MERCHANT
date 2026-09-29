@@ -65,3 +65,10 @@ it("rejects attachments to missing pages", () => {
   project.screens.home.bodySections = [{ id: "section", components: [{ id: "button", type: "button", props: { tapAction: { type: "navigate", payload: { screenId: "deleted-page" } } } }] }];
   expect(() => compileDesignToPublishedApp(project, "1", "now")).toThrow("Choose an existing destination page");
 });
+
+it("canonicalizes path-style push destinations to screenId", () => {
+  const project = fixture("merchant-project.json");
+  project.screens.home.bodySections = [{ id: "section", components: [{ id: "button", type: "button", props: { tapAction: { type: "navigate", payload: { push: "/details" } } } }] }];
+  const node = compileDesignToPublishedApp(project, "1", "now").screens.home.layout.children[0].layout.children[0];
+  expect(node.props.tapAction.payload.screenId).toBe("details");
+});
