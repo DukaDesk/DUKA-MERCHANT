@@ -13,7 +13,7 @@ describe('canonical publication delivery', () => {
   it('confirms both public paths and returns the server release identity', async () => {
     const result = await submitPublication('tenant', manifest);
     expect(result).toMatchObject({ success: true, releaseId: 'r1', receipt: { checksum: 'abc' } });
-    expect(http.get).toHaveBeenCalledWith('/api/v1/merchants/tenant/definition');
+    expect(http.get).toHaveBeenCalledWith('/api/v1/merchants/tenant/definition', { silent: true });
     expect(http.get).toHaveBeenCalledWith('/api/v1/bff/mobile/tenant/tenant/manifest');
     expect(http.post.mock.calls[0][2].headers['Idempotency-Key']).toBeTruthy();
     expect(pendingPublication('tenant')).toBeNull();

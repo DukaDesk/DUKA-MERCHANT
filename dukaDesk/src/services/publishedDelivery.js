@@ -11,7 +11,9 @@ export function pendingPublication(id) {
 const remember = (id, operation) => sessionStorage.setItem(key(id), JSON.stringify(operation));
 const pending = (operation, error) => ({ success: false, pending: true, status: 'verification-pending', version: operation.manifest.version, receipt: operation.receipt, error: 'Publication has not been confirmed live. ' + error + ' Check publication status before publishing again.' });
 export async function readPublished(id) {
-  const manifest = unwrap(await httpClient.get(path(id) + '/definition'));
+  // Probe: NO_PUBLISHED_RELEASE before first publish is an expected outcome,
+  // not an error — stay silent so no toast is emitted for it.
+  const manifest = unwrap(await httpClient.get(path(id) + '/definition', { silent: true }));
   if (manifest?.manifestVersion !== '1.0.0' || manifest?.status !== 'published' || !manifest?.version || !manifest?.screens || Array.isArray(manifest.screens)) throw new Error('Backend is not serving a canonical published app');
   return manifest;
 }
@@ -54,7 +56,8 @@ export async function submitPublication(id, manifest, rollbackVersion) {
     const status = error.response?.status ?? error.status;
     if (status >= 400 && status < 500 && ![408, 429].includes(status)) {
       sessionStorage.removeItem(key(id));
-      return { success: false, status: 'rejected', error: status === 413 ? 'Backend rejected this manifest (413). Images were not removed.' : error.response?.data?.message || error.message || 'Publication rejected (' + status + ')' };
+      // error.message already carries the interceptor-joined backend errors.
+      return { success: false, status: 'rejected', error: status === 413 ? 'Backend rejected this manifest (413). Images were not removed.' : error.message || error.response?.data?.message || 'Publication rejected (' + status + ')' };
     }
     return pending(operation, error.message || 'The request outcome is unknown.');
   }
