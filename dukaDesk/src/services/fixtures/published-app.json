@@ -77,8 +77,8 @@
     "colors": {
       "primary": "#123456",
       "secondary": "#F4A026",
-      "surface": "#223344",
-      "background": "#223344",
+      "surface": "#FAFAFA",
+      "background": "#FAFAFA",
       "card": "#FFFFFF",
       "border": "#E5E7EB",
       "success": "#16A34A",

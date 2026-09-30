@@ -101,7 +101,11 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
 
   const primary = meta.primaryColor || "#1A1A2E";
   const secondary = meta.secondaryColor || "#F4A026";
-  const background = meta.backgroundColor || source.splash?.backgroundColor || "#FAFAFA";
+  // App background comes from what the user specified in the builder: an
+  // explicit meta override, else the initial screen's background. The splash
+  // background must never leak here — it painted every default publish navy.
+  const initialBg = screens[initialRoute]?.backgroundColor;
+  const background = meta.backgroundColor || initialBg || "#FCF8FA";
   const text = meta.textColor || "#0F0F1A";
   const fontFamily = meta.fontFamily || "Inter";
   // Merchant/business identity is owner metadata, not the customer-facing app
