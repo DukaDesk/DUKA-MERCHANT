@@ -1,3 +1,4 @@
+import { resolveInsertionTarget } from "./insertionTarget";
 import { getMerchant } from "../../services/api";
 import ButtonGallery from "./ButtonGallery";
 import { getComponentCatalog } from "./componentCatalog";
@@ -483,9 +484,10 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
   const addCatalogComponent = compDef => {
                     if (compDef.comingSoon) return;
                     if (section) {
-                      const id = insertionTarget?.sectionId === selectedSectionId && insertionTarget.parentId
-                        ? store.insertComponentAt(selectedSectionId, insertionTarget.parentId, insertionTarget.index, compDef.type, { ...compDef.defaultProps })
-                        : store.addComponentToSection(selectedSectionId, compDef.type, { ...compDef.defaultProps }, ["nested_section", "row", "carousel"].includes(component?.type) ? component.id : undefined);
+                      const target = resolveInsertionTarget(section, selectedComponentId, insertionTarget);
+                      const id = target
+                        ? store.insertComponentAt(selectedSectionId, target.parentId, target.index, compDef.type, { ...compDef.defaultProps })
+                        : store.addComponentToSection(selectedSectionId, compDef.type, { ...compDef.defaultProps });
                       if (id) onSelectComponent?.(selectedSectionId, id);
                     } else {
                       const added = store.addComponentToScreen(compDef.type, { ...compDef.defaultProps });
@@ -600,9 +602,10 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                         </div>
                       );
                     })}
-                    {component.type === "nested_section" && <div style={{ marginTop: 12 }}><div style={labelStyle}>Add Element</div><AddComponentContent /></div>}
+
                   </div>
                 )}
+                {componentCategory && <div style={{ marginTop: 12 }}><div style={labelStyle}>Add Element</div><AddComponentContent /></div>}
                 {/* Visibility in General */}
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${theme.borderLight}` }}>
                   <label style={labelStyle}>Visibility</label>

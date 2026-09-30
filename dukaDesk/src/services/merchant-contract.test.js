@@ -35,6 +35,12 @@ describe("merchant draft/publish separation", () => {
     expect(mockHttp.put).toHaveBeenCalledWith("/api/v1/app/merchants/config", { config: { design: { meta: { appName: "X" }, screens: {} } } });
   });
 
+  it("saveDesignData rejects when the backend save fails (no silent fake success)", async () => {
+    mockHttp.get.mockResolvedValueOnce({ data: { config: {} } });
+    mockHttp.put.mockRejectedValueOnce(new Error("Request failed with status code 403"));
+    await expect(saveDesignData({ meta: { appName: "X" }, screens: {} })).rejects.toThrow();
+  });
+
   it("getPublishedDefinition reads the published app config, not a tenant endpoint", async () => {
     mockHttp.get.mockResolvedValueOnce({ data: { manifestVersion: "1.0.0", screens: { s1: {} } } });
     const def = await getPublishedDefinition("m_123");

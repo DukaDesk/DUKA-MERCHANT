@@ -19,7 +19,7 @@ it("hides Add Element until a section is selected and inserts into that section"
   view.rerender(<PropertiesPanel store={store} selectedSectionId="outer" selectedComponentId="inner" componentCategory="buttons" />);
   expect(screen.getByText("Add Element")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Button" }));
-  expect(store.addComponentToSection).toHaveBeenCalledWith("outer", "button", expect.any(Object), "inner");
+  expect(store.insertComponentAt).toHaveBeenCalledWith("outer", "inner", 0, "button", expect.any(Object));
 });
 it("selects a layout from its plus without opening an insertion menu", () => {
   const store = fixture();
@@ -126,4 +126,26 @@ it.each(['1/2|1/2', '1/3|2/3', '2/3|1/3', '1/3|1/3|1/3'])('selects the exact emp
   fireEvent.click(plus.querySelector('path'));
   expect(choose).toHaveBeenCalledWith({ sectionId: 'outer', parentId: 'columns', index: 1 }, 'choose');
   expect(plus.closest('[title="Select empty slot to add content"]').style.border).toContain('2px solid');
+});
+
+it.each(['1/2|1/2', '1/3|2/3', '2/3|1/3', '1/3|1/3|1/3'])('keeps both pickers inside the selected child parent: %s', template => {
+ const store = fixture();
+ store.screen.bodySections[0].components = [{ id: 'columns', type: 'row', props: { template }, children: [{ id: 'existing', type: 'button', props: {} }] }];
+ const view = render(<PropertiesPanel store={store} selectedSectionId="outer" selectedComponentId="existing" componentCategory="buttons" />);
+ fireEvent.click(screen.getByRole('button', { name: 'Button' }));
+ expect(store.insertComponentAt).toHaveBeenCalledWith('outer', 'columns', 1, 'button', expect.any(Object));
+ view.unmount();
+ render(<ElementGallery browseType="Layout" store={store} selectedSectionId="outer" selectedComponentId="existing" />);
+ fireEvent.click(screen.getByRole('button', { name: 'Section' }));
+ expect(store.insertComponentAt).toHaveBeenCalledWith('outer', 'columns', 1, 'nested_section', expect.any(Object));
+ expect(store.addComponentToSection).not.toHaveBeenCalled();
+});
+
+it.each(['1/2|1/2', '1/3|2/3', '2/3|1/3', '1/3|1/3|1/3'])('shows the picker for a selected row and honors its chosen column: %s', template => {
+ const store = fixture();
+ store.screen.bodySections[0].components = [{ id: 'columns', type: 'row', props: { template }, children: [] }];
+ render(<PropertiesPanel store={store} selectedSectionId="outer" selectedComponentId="columns" componentCategory="buttons" insertionTarget={{ sectionId: 'outer', parentId: 'columns', index: 1 }} />);
+ fireEvent.click(screen.getByRole('button', { name: 'Button' }));
+ expect(store.insertComponentAt).toHaveBeenCalledWith('outer', 'columns', 1, 'button', expect.any(Object));
+ expect(store.addComponentToSection).not.toHaveBeenCalled();
 });

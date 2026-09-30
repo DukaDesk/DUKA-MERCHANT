@@ -999,18 +999,12 @@ export async function updateTenantConfig(id, body) {
     return { id, config: store.config };
   }
   console.log(`[API] → PUT /api/v1/app/merchants/config`, JSON.parse(JSON.stringify(body)));
-  try {
-    const res = await httpClient.put(`/api/v1/app/merchants/config`, body);
-    console.log(`[API] ✓ PUT /api/v1/app/merchants/config success`, res.data || res);
-    return res.data || res;
-  } catch (e) {
-    console.warn("[updateTenantConfig] backend unavailable, demo fallback", e?.message);
-    console.log(`[API] (demo fallback) would save config for ${id}:`, JSON.parse(JSON.stringify(body)));
-  }
-  const store = demoStore();
-  store.config = { ...(store.config || {}), ...(body?.config || {}) };
-  demoSave(store);
-  return { id, config: store.config };
+  // NOTE: no demo fallback here by design — a failed save must reject so the
+  // builder keeps the design in its local outbox and retries (silent success
+  // is what made "save doesn't work" invisible).
+  const res = await httpClient.put(`/api/v1/app/merchants/config`, body);
+  console.log(`[API] ✓ PUT /api/v1/app/merchants/config success`, res.data || res);
+  return res.data || res;
 }
 
 export async function publishTenant(id) {

@@ -182,7 +182,8 @@ export async function flushOutbox(saveFn, attempt = 0, onStatus) {
     if (current && current.updatedAt === pending.updatedAt) clearOutbox();
     onStatus?.("synced");
     return true;
-  } catch {
+  } catch (error) {
+    console.warn("[designCache] backend sync failed, keeping local outbox:", error?.message || error);
     onStatus?.("pending");
     scheduleRetry(saveFn, attempt);
     return false;

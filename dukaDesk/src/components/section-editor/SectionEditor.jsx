@@ -801,6 +801,7 @@ export default function SectionEditor({ store, onBack }) {
         <div style={{ width: 300, background: theme.surface, borderLeft: `1px solid ${theme.border}`, overflow: "hidden", flexShrink: 0, display: "flex", flexDirection: "column" }}>
           {browseType && !browseType.startsWith("components:") ? (
             <ElementGallery
+              selectedComponentId={selectedComponentId}
               insertionTarget={layoutTarget}
               onAdded={(sectionId, id) => { handleSelectComponent(sectionId, id); setLayoutTarget(null); }}
               browseType={browseType}

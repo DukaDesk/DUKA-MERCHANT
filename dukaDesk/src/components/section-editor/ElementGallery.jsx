@@ -1,3 +1,4 @@
+import { resolveInsertionTarget } from "./insertionTarget";
 import { useEditorTheme } from "./editorTheme.jsx";
 import { getComponentType, ROW_TEMPLATES, ICON_LIBRARY } from "../canvas-editor/componentTypes";
 import { toast } from "react-toastify";
@@ -339,7 +340,7 @@ const GALLERY = {
   Video: { icon: Video, comingSoon: true },
 };
 
-export default function ElementGallery({ browseType, store, selectedSectionId, onClose, insertionTarget, onAdded }) {
+export default function ElementGallery({ browseType, store, selectedSectionId, selectedComponentId, onClose, insertionTarget, onAdded }) {
   const { theme } = useEditorTheme();
   const config = GALLERY[browseType];
   const IconCmp = config?.icon || Square;
@@ -354,8 +355,11 @@ export default function ElementGallery({ browseType, store, selectedSectionId, o
       if (added) { onAdded?.(added.sectionId, added.id); onClose?.(); }
       return;
     }
-    const id = insertionTarget?.parentId
-      ? store.insertComponentAt(sectionId, insertionTarget.parentId, insertionTarget.index, variant.type, props)
+    const selectedSection = (store.screen?.bodySections || []).find(section => section.id === sectionId);
+    const section = selectedSection && (store.resolveSection?.(selectedSection) || selectedSection);
+    const target = resolveInsertionTarget(section, selectedComponentId, insertionTarget);
+    const id = target
+      ? store.insertComponentAt(sectionId, target.parentId, target.index, variant.type, props)
       : store.addComponentToSection(sectionId, variant.type, props);
     if (id) onAdded?.(sectionId, id);
     onClose?.();
