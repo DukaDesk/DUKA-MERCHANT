@@ -16,16 +16,16 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
-    businessName: "My Store",
-    businessDescription: "Your favorite local business serving quality products and services.",
-    email: "merchant@example.com",
-    phone: "+234 800 000 0000",
-    address: "12 Admiralty Way, Lekki Phase 1",
-    city: "Lagos",
-    country: "Nigeria",
+    businessName: "",
+    businessDescription: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    country: "",
     website: "",
     timezone: "Africa/Lagos",
-    hours: { Monday: "09:00 - 18:00", Tuesday: "09:00 - 18:00", Wednesday: "09:00 - 18:00", Thursday: "09:00 - 18:00", Friday: "09:00 - 17:00", Saturday: "10:00 - 15:00", Sunday: "Closed" },
+    hours: {},
     accentColor: AMBER,
     logo: null,
   });

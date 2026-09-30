@@ -1,4 +1,6 @@
 import { getRegisteredTypes } from "../runtime/ComponentRegistry";
+import { getTypeNames } from "../components/canvas-editor/componentTypes";
+const supportedDraftTypes = () => [...new Set([...getTypeNames(), ...getRegisteredTypes()])];
 
 export function validateProject(projectData) {
   const errors = [];
@@ -59,7 +61,7 @@ export function validateProject(projectData) {
   // Mobile apps often have no header/footer chrome — shared sections are optional.
   // Only validate them when they actually contain components; empty is intentional, not a warning.
   if (shared) {
-    const regTypes = getRegisteredTypes();
+    const regTypes = supportedDraftTypes();
     if (shared.header?.components?.length > 0) {
       validateSection(shared.header, "shared.header", errors, warnings, regTypes);
     }
@@ -72,7 +74,7 @@ export function validateProject(projectData) {
   if (!screens || Object.keys(screens).length === 0) {
     errors.push({ path: "screens", message: "No screens defined", severity: "error", fix: "Add at least one screen to your app" });
   } else {
-    const regTypes = getRegisteredTypes();
+    const regTypes = supportedDraftTypes();
     Object.entries(screens).forEach(([screenId, screen]) => {
       const prefix = `screens.${screenId}`;
       if (!screen.name || !screen.name.trim()) {
@@ -102,21 +104,20 @@ export function validateProject(projectData) {
 function validateSection(section, path, errors, warnings, regTypes) {
   if (!section) return;
 
-  if (!section.type) {
-    errors.push({ path: `${path}.type`, message: "Section type is missing", severity: "error" });
-  }
 
   if (!section.components || section.components.length === 0) {
     warnings.push({ path: `${path}.components`, message: `Section "${section.name || path}" has no components`, severity: "warning" });
     return;
   }
 
-  section.components.forEach((comp, i) => {
-    const compPath = `${path}.components[${i}]`;
+  const validateComponent = (comp, compPath) => {
     if (!comp.type) {
       errors.push({ path: `${compPath}.type`, message: "Component type is missing", severity: "error" });
     } else if (!regTypes.includes(comp.type)) {
       errors.push({ path: `${compPath}.type`, message: `Unknown component type "${comp.type}"`, severity: "error", fix: `Register "${comp.type}" or use one of: ${regTypes.join(", ")}` });
     }
-  });
+    (comp.children || []).forEach((child, i) => validateComponent(child, compPath + '.children[' + i + ']'));
+    (comp.layout?.children || []).forEach((child, i) => validateComponent(child, compPath + '.layout.children[' + i + ']'));
+  };
+  section.components.forEach((comp, i) => validateComponent(comp, path + '.components[' + i + ']'));
 }

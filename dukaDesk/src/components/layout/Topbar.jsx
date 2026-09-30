@@ -99,14 +99,7 @@ export default function Topbar() {
         cursor: "pointer", display: "flex", alignItems: "center", padding: 8, transition,
       }}>
         <Bell size={isMobile ? 18 : 20} color="#6B7280" />
-        <span style={{
-          position: "absolute", top: 4, right: 4,
-          background: "#E74C3C", color: "#fff", fontSize: 9, fontWeight: 700,
-          width: 16, height: 16, borderRadius: "50%",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          border: "2px solid #fff",
-          animation: "badgePop 0.3s ease",
-        }}>3</span>
+
       </button>
 
       <button onClick={() => navigate("/dashboard/profile")} style={{

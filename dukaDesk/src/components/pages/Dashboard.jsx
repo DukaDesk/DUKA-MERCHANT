@@ -55,12 +55,13 @@ export default function Dashboard() {
     return unsub;
   }, []);
 
-  const storeSlug = deployedApp?.slug || ((merchant?.business || "my-store") || "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  const storeUrl = deployedApp?.storeUrl || `dukadesk.app/${storeSlug}`;
+  const isLive = deployedApp?.status === "live";
+  const storeSlug = isLive ? deployedApp?.slug : null;
+  const storeUrl = isLive && deployedApp?.storeUrl ? (/^https?:\/\//.test(deployedApp.storeUrl) ? deployedApp.storeUrl : `https://${deployedApp.storeUrl}`) : null;
 
   const downloadQr = async () => {
     try {
-      const url = await QRCode.toDataURL(`https://${storeUrl}`, { width: 400, margin: 1 });
+      const url = await QRCode.toDataURL(storeUrl, { width: 400, margin: 1 });
       const a = document.createElement("a"); a.href = url; a.download = `${storeSlug}-qr.png`; a.click();
       toast.success("QR code downloaded!");
     } catch { toast.error("Failed to generate QR code"); }
@@ -80,10 +81,8 @@ export default function Dashboard() {
   const statusItems = [
     { dot: "#7C3AED", label: merchant?.name || "Merchant", sub: merchant?.email || "No email" },
     { dot: "#0D9488", label: merchant?.business || "Business", sub: merchant?.phone || "No phone" },
-    { dot: "#2ECC71", label: "App Live", sub: `${deployedApp?.appName || setup?.appName || "Your App"} is active at ${deployedApp?.storeUrl || "dukadesk.app/..."}` },
     ...(deployedApp?.category ? [{ dot: AMBER, label: "Category: " + deployedApp.category, sub: "Template: " + (deployedApp?.template || "Not set") }] : []),
     ...(setup?.selectedIntegrations?.length ? [{ dot: "#7C3AED", label: `${setup.selectedIntegrations.length} Integrations Enabled`, sub: setup.selectedIntegrations.slice(0,4).join(", ") + (setup.selectedIntegrations.length > 4 ? "..." : "") }] : []),
-    { dot: AMBER, label: `${stats?.reviewsCount || 0} reviews received`, sub: `${Math.ceil((stats?.reviewsCount || 0) * 0.15)} need response` },
   ];
 
   const copyLink = () => { navigator.clipboard.writeText(storeUrl); setQrCopied(true); toast.success("Store link copied!"); setTimeout(() => setQrCopied(false), 2000); };
@@ -96,7 +95,7 @@ export default function Dashboard() {
   if (error) return <ErrorState message={error} onRetry={loadDashboard} />;
   if (!stats) return <Empty icon="BarChart3" message="No dashboard data yet" sub={setup ? "Setup data saved. Complete your app setup to see stats here." : "Complete your app setup to see stats here"} action={<button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{setup ? "Continue Setup →" : "Setup Your App →"}</button>} />;
 
-  const statField = { customers: "customers", revenue: "revenue", orders: "orders", rating: "avgRating", attendance: "attendance", booking: "orders", fees: "revenue", giving: "revenue" };
+  const statField = { customers: "customers", revenue: "revenue", orders: "orders", rating: "avgRating", attendance: "attendance", booking: "booking", fees: "fees", giving: "giving" };
   const iconMap = { Users, DollarSign, MessageSquare, Star, ShoppingCart: Package, HandCoins, CalendarCheck, Wallet, CalendarClock, HeartHandshake, Receipt, Megaphone, Ticket, Briefcase, Inbox, Sparkles };
 
   const kpiData = (vertical.kpis || []).map(k => {
@@ -106,12 +105,12 @@ export default function Dashboard() {
     const raw = stats?.[field];
     const hasData = raw !== undefined && raw !== null;
     let value = hasData ? (k.currency ? `₦${raw.toLocaleString()}` : raw.toLocaleString()) : "—";
-    const trend = hasData ? (k.trendUp === true ? "+today" : (k.trend ?? "—")) : "No data yet";
+    const trend = hasData ? "" : "No data yet";
     return {
       label: k.label,
       value,
       trend,
-      trendUp: hasData ? k.trendUp : null,
+      trendUp: null,
       icon: Icon,
       color: k.color,
       page: k.page,
@@ -187,7 +186,7 @@ export default function Dashboard() {
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>DukaDesk Plan</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
-            {currentPlan?.plan || "Starter Plan"}
+            {currentPlan?.plan || "No subscription data"}
             {currentPlan && currentPlan.plan === "Starter Plan" && (
               <span style={{ fontSize: 10, fontWeight: 700, color: "#92400E", background: "#FFF8ED", border: "1px solid rgba(244,160,38,0.3)", borderRadius: 8, padding: "2px 6px" }}>DukaDesk</span>
             )}
@@ -243,9 +242,7 @@ export default function Dashboard() {
                 <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Revenue Trend</span>
                 <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>Last 30 days</div>
               </div>
-              <span style={{ fontSize: 13, color: "#2ECC71", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                <TrendingUp size={14} /> +18%
-              </span>
+
             </div>
             {revenueData.length === 0 ? <Empty icon={<TrendingUp size={32} color="#9CA3AF" />} message="No revenue data yet" sub="Revenue will appear once you start receiving orders" /> : (
             <ResponsiveContainer width="100%" height={220}>
@@ -301,11 +298,11 @@ export default function Dashboard() {
 
           <div style={{ ...cardStyle }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>App Status</div>
-              <div style={{ marginBottom: 16, padding: "12px 14px", background: deployedApp ? "#F0FDF4" : "#FFF8ED", border: `1px solid ${deployedApp ? "#86EFAC" : AMBER}`, borderRadius: 10, display: "flex", alignItems: "center", gap: 10 }}>
-                <Store size={20} color={deployedApp ? "#2ECC71" : AMBER} />
+              <div style={{ marginBottom: 16, padding: "12px 14px", background: isLive ? "#F0FDF4" : "#FFF8ED", border: `1px solid ${isLive ? "#86EFAC" : AMBER}`, borderRadius: 10, display: "flex", alignItems: "center", gap: 10 }}>
+                <Store size={20} color={isLive ? "#2ECC71" : AMBER} />
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: deployedApp ? "#065F46" : "#92400E" }}>{deployedApp?.appName || setup?.appName || "Your App"} {deployedApp ? "is live" : "not yet deployed"}</div>
-                  <div style={{ fontSize: 12, color: deployedApp ? "#065F46" : "#92400E" }}>{deployedApp ? "Scannable QR ready" : "Complete the wizard to go live"}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: isLive ? "#065F46" : "#92400E" }}>{deployedApp?.appName || setup?.appName || "Your App"} {isLive ? "is live" : "not yet deployed"}</div>
+                  <div style={{ fontSize: 12, color: isLive ? "#065F46" : "#92400E" }}>{isLive ? "Published" : "Publish your app to go live"}</div>
                 </div>
               </div>
             {statusItems.map((r, i) => (
@@ -321,6 +318,7 @@ export default function Dashboard() {
 
           <div style={{ ...cardStyle, textAlign: "center" }}>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Your QR Code</div>
+            {storeUrl ? <>
             <div style={{ width: 100, height: 100, background: "#F3F4F6", borderRadius: 10, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, border: "1px solid #E8E8F0" }}><QrCode size={44} color="#9CA3AF" /></div>
             <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 12, wordBreak: "break-all" }}>{storeUrl}</div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -337,6 +335,7 @@ export default function Dashboard() {
                 fontWeight: 600, cursor: "pointer",
               }}>Download</button>
             </div>
+            </> : <Empty icon={<QrCode size={32} />} message="No published app link" />}
           </div>
         </div>
       </div>

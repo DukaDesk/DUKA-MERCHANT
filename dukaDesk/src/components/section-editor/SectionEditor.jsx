@@ -562,7 +562,7 @@ export default function SectionEditor({ store, onBack }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           </button>
 
-          <button onClick={() => store.saveToServer()} style={iconBtn} title="Save to Server">
+          <button onClick={() => store.saveToServer()} style={iconBtn} title="Save your draft without publishing">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           </button>
 
@@ -595,12 +595,12 @@ export default function SectionEditor({ store, onBack }) {
               : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>}
           </button>
 
-          <button onClick={handleShowReleases} style={iconBtn} title="Release History">
+          <button onClick={handleShowReleases} style={iconBtn} title="View published versions and restore a release">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </button>
 
           <div style={{ position: "relative" }}>
-            <button onClick={() => setShowExport(!showExport)} style={iconBtn} title="Export">
+            <button onClick={() => setShowExport(!showExport)} style={iconBtn} title="Download your app design">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </button>
             {showExport && (
@@ -638,6 +638,7 @@ export default function SectionEditor({ store, onBack }) {
 
           <button
             onClick={handlePublish}
+            title="Publish this app for users to open in DukaDesk"
             disabled={isPublishing}
             style={{
               ...primaryBtn,

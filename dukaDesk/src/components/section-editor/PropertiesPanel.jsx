@@ -1,3 +1,4 @@
+import { getMerchant } from "../../services/api";
 import ButtonGallery from "./ButtonGallery";
 import { getComponentCatalog } from "./componentCatalog";
 import IconPicker from "./IconPicker";
@@ -539,7 +540,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
             { key: "general", label: "General" },
             { key: "styling", label: "Styling" },
           ].map(t => (
-            <button key={t.key} onClick={() => setActiveTab(t.key)} style={{ flex: 1, padding: "6px 0", border: "none", borderRadius: theme.radius.sm, cursor: "pointer", fontFamily: "'Sora',sans-serif", fontSize: 12, fontWeight: 700, background: activeTab === t.key ? theme.active : "transparent", color: activeTab === t.key ? "#5B3A00" : theme.textSecondary, transition: `all ${theme.transition}` }}>{t.label}</button>
+            <button key={t.key} title={t.key === "general" ? "Edit selected content and actions" : "Edit selected colors, spacing, and appearance"} onClick={() => setActiveTab(t.key)} style={{ flex: 1, padding: "6px 0", border: "none", borderRadius: theme.radius.sm, cursor: "pointer", fontFamily: "'Sora',sans-serif", fontSize: 12, fontWeight: 700, background: activeTab === t.key ? theme.active : "transparent", color: activeTab === t.key ? "#5B3A00" : theme.textSecondary, transition: `all ${theme.transition}` }}>{t.label}</button>
           ))}
         </div>
         <button onClick={() => setSearchOpen(o => !o)} title={searchOpen ? "Close search" : "Search"} style={{ ...iconBtn, padding: "7px 9px", flexShrink: 0, background: searchOpen ? theme.hoverAmber : theme.surface, borderColor: searchOpen ? theme.active : theme.border, color: searchOpen ? theme.active : theme.textSecondary }}>
@@ -1090,7 +1091,7 @@ export function ActionEditor({ value = "", onChange, screens }) {
   const [rawMode, setRawMode] = useState(false);
   const parsed = parsePreviewActionJson(value);
   const selectedType = parsed?.type || "";
-  const rawJsonActive = rawMode || (value.trim() !== "" && (!parsed || !["navigate", "pop", "refresh"].includes(parsed.type)));
+  const rawJsonActive = rawMode || (value.trim() !== "" && (!parsed || !["navigate", "pop", "refresh", "submit_form", "api_request"].includes(parsed.type)));
 
   const applyAction = (action) => onChange(action ? JSON.stringify(action, null, 2) : "");
 
@@ -1102,11 +1103,13 @@ export function ActionEditor({ value = "", onChange, screens }) {
           { type: "navigate", label: "Open Screen" },
           { type: "pop", label: "Go Back" },
           { type: "refresh", label: "Refresh" },
+          { type: "submit_form", label: "Submit form" },
+
         ].map(opt => (
           <button key={opt.type}
             onClick={() => {
               setRawMode(false);
-              applyAction(!opt.type ? null : opt.type === "navigate" ? { type: "navigate", payload: { screenId: "" } } : { type: opt.type });
+              applyAction(!opt.type ? null : opt.type === "navigate" ? { type: "navigate", payload: { screenId: "" } } : ["submit_form", "api_request"].includes(opt.type) ? { type: opt.type, payload: { endpoint: "", method: opt.type === "submit_form" ? "POST" : "GET", data: {} } } : { type: opt.type });
             }}
             style={{
               padding: "5px 11px", borderRadius: 999, cursor: "pointer", fontFamily: "'Inter',sans-serif",
@@ -1146,6 +1149,15 @@ export function ActionEditor({ value = "", onChange, screens }) {
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
+      ) : ["submit_form", "api_request"].includes(selectedType) ? (
+        <div style={{ display: "grid", gap: 8 }}>
+          <label>Form ID<input aria-label="Backend form ID" value={parsed.payload?.formId || ""} onChange={e => {
+            const merchant = getMerchant() || {};
+            const merchantId = merchant.merchantId || merchant.tenantId;
+            const formId = e.target.value.trim();
+            applyAction({ type: selectedType, payload: { formId, endpoint: merchantId && formId ? '/api/v1/merchants/' + encodeURIComponent(merchantId) + '/forms/' + encodeURIComponent(formId) + (selectedType === 'submit_form' ? '/submit' : '') : '', method: selectedType === 'submit_form' ? 'POST' : 'GET' } });
+          }} style={textInput} /></label>
+        </div>
       ) : parsed ? (
         <div style={{ fontSize: 11, color: theme.textMuted, background: theme.hover, borderRadius: theme.radius.sm, padding: "8px 10px", lineHeight: 1.5 }}>
           Action: <b style={{ color: theme.text }}>{parsed.type}</b>

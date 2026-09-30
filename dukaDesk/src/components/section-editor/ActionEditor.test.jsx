@@ -13,3 +13,12 @@ it("attaches a screen, edits an existing object action, and clears the attachmen
   fireEvent.click(screen.getByRole("button", { name: "Open Screen" }));
   expect(screen.getByLabelText("Destination page").value).toBe("");
 });
+
+it("configures a backend form submission", () => {
+  function Harness() { const [value, setValue] = useState(""); return <><ActionEditor value={value} onChange={setValue} screens={[]} /><output>{value}</output></>; }
+  render(<Harness />);
+  fireEvent.click(screen.getByRole('button', { name: 'Submit form' }));
+  fireEvent.change(screen.getByLabelText('Backend form ID'), { target: { value: 'contact' } });
+  expect(JSON.parse(screen.getByRole('status').textContent)).toMatchObject({ type: 'submit_form', payload: { method: 'POST', formId: 'contact' } });
+  expect(screen.queryByLabelText('Backend endpoint')).toBeNull();
+});

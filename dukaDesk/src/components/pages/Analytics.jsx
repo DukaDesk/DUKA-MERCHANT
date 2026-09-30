@@ -11,6 +11,7 @@ const PIE_COLORS = [AMBER, NAVY, "#E74C3C"];
 
 export default function Analytics() {
   const isMobile = useIsMobile();
+  const [summary, setSummary] = useState({});
   const [rev, setRev] = useState([]);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -25,22 +26,22 @@ export default function Analytics() {
       getRevenueData().catch(() => []),
       getOrderStats().catch(() => []),
       getTopProducts().catch(() => []),
-      getAnalyticsSummary().catch(() => ({})),
-    ]).then(([r, o, p]) => { setRev(r); setOrders(o); setProducts(p); })
+      getAnalyticsSummary(),
+    ]).then(([r, o, p, s]) => { setRev(r); setOrders(o); setProducts(p); setSummary(s); })
       .catch(() => setError("Failed to load analytics"))
       .finally(() => setLoading(false));
   };
   useEffect(loadAnalytics, []);
 
-  const totalRevenue = rev.length > 0 ? rev[rev.length - 1].v : 0;
+  const totalRevenue = summary?.revenue?.totalRevenue;
 
   if (loading) return <Loading message="Loading analytics..." />;
   if (error) return <ErrorState message={error} onRetry={loadAnalytics} />;
 
   const metrics = [
-    { icon: DollarSign, label: "Revenue", value: `₦${totalRevenue.toLocaleString()}`, trend: "+18%", up: true, color: AMBER },
-    { icon: TrendingUp, label: "Orders", value: orders.reduce((a, o) => a + o.value, 0).toString(), trend: "This period", up: null, color: "#3B82F6" },
-    { icon: Star, label: "Avg Rating", value: "4.8", trend: "(234 reviews)", up: null, color: "#EC4899" },
+    { icon: DollarSign, label: "Revenue", value: totalRevenue == null ? "No data" : `${summary.revenue.currency || "NGN"} ${totalRevenue.toLocaleString()}`, trend: "", up: null, color: AMBER },
+    { icon: TrendingUp, label: "Orders", value: summary?.orderCount == null ? "No data" : String(summary.orderCount), trend: "This period", up: null, color: "#3B82F6" },
+    { icon: Star, label: "Avg Rating", value: "No data", trend: "No rating data", up: null, color: "#EC4899" },
   ];
 
   return (
@@ -57,8 +58,8 @@ export default function Analytics() {
             <option>This Month</option>
           </select>
           <button onClick={() => {
-            const csv = [["Week","Revenue","Orders","Scans"].join(","), ...rev.map((r,i)=>
-              [r.w, r.v, orders[i]?.value||0, scans[i]?.scans||0].join(",")
+            const csv = [["Week","Revenue"].join(","), ...rev.map(r=>
+              [r.w, r.v].join(",")
             )].join("\n");
             const blob = new Blob([csv], {type:"text/csv"});
             const url = URL.createObjectURL(blob);

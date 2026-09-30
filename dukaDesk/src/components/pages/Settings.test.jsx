@@ -53,11 +53,11 @@ describe("Settings page", () => {
     expect(await screen.findByText("Cancel")).toBeTruthy();
   });
 
-  it("renders hour values for each day", async () => {
+  it("leaves opening hours blank when no business data is available", async () => {
     render(<Settings />);
-    const openHours = screen.getAllByDisplayValue("09:00 - 18:00");
-    expect(openHours.length).toBe(4);
-    const closed = screen.getByDisplayValue("Closed");
-    expect(closed.id).toBe("settings-hours-sunday");
+    const hours = screen.getAllByPlaceholderText("Closed");
+    expect(hours).toHaveLength(7);
+    hours.forEach(input => expect(input.value).toBe(""));
+    expect(screen.queryByDisplayValue("merchant@example.com")).toBeNull();
   });
 });

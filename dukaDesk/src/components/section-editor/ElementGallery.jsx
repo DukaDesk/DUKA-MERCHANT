@@ -435,6 +435,7 @@ export default function ElementGallery({ browseType, store, selectedSectionId, o
             {config.screenVariants.map((v) => (
               <button
                 key={v.id}
+                title={`Add ${v.label} screen`}
                 onClick={() => addScreenLayout(v)}
                 style={{
                   display: "flex", flexDirection: "column", gap: 6, alignItems: "stretch",
@@ -468,6 +469,7 @@ export default function ElementGallery({ browseType, store, selectedSectionId, o
             {config?.variants?.map((v) => (
               <button
                 key={v.id}
+                title={canAdd ? `Add ${v.label}` : "Select a screen or section first"}
                 onClick={() => add(v)}
                 disabled={!canAdd}
                 style={{

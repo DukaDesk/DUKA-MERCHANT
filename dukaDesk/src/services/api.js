@@ -27,153 +27,18 @@ function buildIntegrationCatalog(connected) {
     ...cat,
     items: cat.items.map(item => ({
       ...item,
-      active: item.active || connectedNames.has(item.name),
+      active: connectedNames.has(item.name),
     })),
   }));
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   DEMO MODE — FRONTEND-ONLY DUMMY DATA  [DEMO]
-   ═══════════════════════════════════════════════════════════════════
-   The backend is unavailable (tenant API calls were failing with
-   "only tenant owner can perform this action"), so every tenant-scoped
-   call below has been commented out and replaced with realistic sample
-   data kept in localStorage. Auth, profile and notification endpoints
-   are untouched. To restore real API calls, un-comment the httpClient
-   lines in each function and delete the demo helpers above them.
-   ═══════════════════════════════════════════════════════════════════ */
-
-const DEMO_STORE_KEY = "dukadesk_demo_store";
-
-const DEMO_PLANS = [
-  {
-    name: "Starter",
-    label: "₦9,000/month",
-    color: "#6B7280",
-    current: false,
-    features: { "Up to 50 products": true, "Custom domain": false, "Advanced analytics": false, "Priority support": false, "Team members": 1 },
-  },
-  {
-    name: "Business",
-    label: "₦25,000/month",
-    color: "#1B4332",
-    current: false,
-    features: { "Up to 50 products": true, "Custom domain": true, "Advanced analytics": true, "Priority support": true, "Team members": 5 },
-  },
-  {
-    name: "Enterprise",
-    label: "₦75,000/month",
-    color: "#F4A026",
-    current: false,
-    features: { "Unlimited products": true, "Custom domain": true, "Advanced analytics": true, "Priority support": true, "Team members": 25 },
-  },
-];
-
-function demoSeed() {
-  return {
-    merchant: {
-      id: "merchant_demo_001",
-      name: "Ada's Kitchen",
-      slug: "adas-kitchen",
-      category: "Restaurant",
-      status: "active",
-      createdAt: new Date().toISOString(),
-    },
-    tenant: {
-      id: "tenant_demo_001",
-      name: "Ada's Kitchen",
-      slug: "adas-kitchen",
-      category: "Restaurant",
-      status: "active",
-      createdAt: new Date().toISOString(),
-    },
-    config: {
-      app: {
-        appName: "Ada's Kitchen",
-        businessName: "Ada's Kitchen",
-        slug: "adas-kitchen",
-        storeUrl: "dukadesk.app/adas-kitchen",
-        category: "Restaurant",
-        template: "Classic Dine",
-        tagline: "Home-cooked Nigerian favourites, delivered fresh.",
-        color: "#1B4332",
-        logo: null,
-        selectedIntegrations: ["Paystack"],
-        bizDesc: "Your favourite local kitchen serving rich, smoky jollof and more.",
-        phone: "+234 801 234 5678",
-        address: "12 Admiralty Way, Lekki Phase 1",
-        hours: [],
-        status: "live",
-        updatedAt: new Date().toISOString(),
-      },
-      compliance: {
-        businessName: "Ada's Kitchen",
-        businessType: "Restaurant",
-        status: "approved",
-        complianceDone: true,
-        submittedAt: new Date().toISOString(),
-      },
-      profile: null,
-      design: null,
-      releases: [],
-      deployed: null,
-      integrationConfigs: {},
-    },
-    products: [
-      { id: "p_1001", name: "Jollof Rice & Chicken", cat: "Mains", price: 2500, stock: 24, status: "In Stock", img: "soup" },
-      { id: "p_1002", name: "Peppered Gizzard", cat: "Small Chops", price: 1800, stock: 40, status: "In Stock", img: "drumstick" },
-      { id: "p_1003", name: "Grilled Tilapia", cat: "Mains", price: 4500, stock: 0, status: "Out of Stock", img: "fish" },
-      { id: "p_1004", name: "Egusi Soup + Eba", cat: "Mains", price: 3200, stock: 12, status: "Low Stock", img: "cookingpot" },
-      { id: "p_1005", name: "Chicken Shawarma", cat: "Small Chops", price: 2000, stock: 18, status: "In Stock", img: "sandwich" },
-      { id: "p_1006", name: "Chapman Cocktail", cat: "Drinks", price: 1500, stock: 35, status: "In Stock", img: "cupsoda" },
-    ],
-    orders: [
-      { id: "#ORD-1001", customer: "Chidinma Okafor", items: "2x Jollof Rice & Chicken, 1x Chapman", total: 6500, payment: "Card", status: "Pending", date: "Today, 2:30 PM", address: "14 Admiralty Way, Lekki Phase 1" },
-      { id: "#ORD-1002", customer: "Emeka Nwosu", items: "1x Grilled Tilapia, 2x Peppered Gizzard", total: 8100, payment: "Transfer", status: "Processing", date: "Today, 1:05 PM", address: "5 Bourdillon Road, Ikoyi" },
-      { id: "#ORD-1003", customer: "Fatima Bello", items: "3x Egusi Soup + Eba", total: 10100, payment: "Card", status: "Completed", date: "Yesterday", address: "8 Akin Adesola St, Victoria Island" },
-      { id: "#ORD-1004", customer: "Tunde Adeyemi", items: "1x Chicken Shawarma, 1x Chapman", total: 3700, payment: "Cash", status: "Cancelled", date: "Yesterday", address: "22 Ozumba Mbadiwe, VI" },
-      { id: "#ORD-1005", customer: "Ngozi Uche", items: "4x Jollof Rice & Chicken", total: 10600, payment: "Card", status: "Completed", date: "Mon", address: "3 Yacht Road, Lekki Phase 2" },
-    ],
-    coupons: [
-      { id: "c_1", code: "WELCOME15", type: "percentage", value: 15, usage: 42, maxUsage: 200, minOrder: 3000, expires: "2026-12-31", status: "Active" },
-      { id: "c_2", code: "JOLOFF5", type: "fixed", value: 500, usage: 18, maxUsage: 100, minOrder: 2000, expires: "2026-10-31", status: "Active" },
-    ],
-    subscription: {
-      plan: "Business",
-      label: "₦25,000/month",
-      renews: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      features: ["Unlimited products", "Custom domain", "Advanced analytics", "Priority support"],
-    },
-    billingHistory: [
-      { date: "Jul 25, 2026", desc: "Business plan — monthly", amount: "₦25,000", status: "Paid" },
-      { date: "Jun 25, 2026", desc: "Business plan — monthly", amount: "₦25,000", status: "Paid" },
-      { date: "May 25, 2026", desc: "Business plan — monthly", amount: "₦25,000", status: "Paid" },
-    ],
-    integrations: [{ provider: "Paystack", name: "Paystack" }],
-  };
-}
-
+// Disconnected features expose empty states instead of local sample records.
+const DEMO_PLANS = [];
 function demoStore() {
-  try {
-    const raw = localStorage.getItem(DEMO_STORE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      // Migration: ensure both merchant and tenant exist (merchants rename)
-      if (parsed.tenant && !parsed.merchant) parsed.merchant = { ...parsed.tenant, id: parsed.tenant.id.replace('tenant_', 'merchant_') };
-      if (parsed.merchant && !parsed.tenant) parsed.tenant = { ...parsed.merchant, id: parsed.merchant.id.replace('merchant_', 'tenant_') };
-      return parsed;
-    }
-  } catch { /* ignore */ }
-  const seed = demoSeed();
-  try { localStorage.setItem(DEMO_STORE_KEY, JSON.stringify(seed)); } catch { /* ignore */ }
-  return seed;
+  return { merchant: {}, tenant: {}, config: {}, products: [], orders: [], coupons: [], subscription: null, billingHistory: [], integrations: [] };
 }
+function demoSave() { throw new Error('This feature is not connected to the backend yet.'); }
 
-function demoSave(store) {
-  try { localStorage.setItem(DEMO_STORE_KEY, JSON.stringify(store)); } catch { /* ignore */ }
-}
-
-/* ───── Token ───── */
 export function setToken(t) {
   if (t) localStorage.setItem("dukadesk_token", t);
   else localStorage.removeItem("dukadesk_token");
@@ -690,19 +555,8 @@ export async function saveDashboardModules(modules) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getDashboardStats() {
-  try {
-    const summary = await getAnalyticsSummary();
-    return {
-      customers: summary?.customers || 0,
-      revenue: summary?.revenue || 0,
-      unreadMessages: summary?.unreadMessages || 0,
-      avgRating: summary?.avgRating || 0,
-      reviewsCount: summary?.reviewsCount || 0,
-      appStatus: "live",
-    };
-  } catch {
-    return { customers: 0, revenue: 0, unreadMessages: 0, avgRating: 0, reviewsCount: 0, appStatus: "unknown" };
-  }
+  const summary = await getAnalyticsSummary();
+  return { revenue: summary?.revenue?.totalRevenue, orders: summary?.orderCount, booking: summary?.bookings?.total, currency: summary?.revenue?.currency };
 }
 
 export async function getRevenue() {
@@ -714,29 +568,7 @@ export async function getRevenue() {
 }
 
 export async function getActivity() {
-  // [DEMO] Real call commented out (backend unavailable):
-  // const merchant = getMerchant();
-  // const tenantId = merchant?.tenantId;
-  // if (!tenantId) return [];
-  // const res = await httpClient.get(`${tenantPath(tenantId)}/orders`, { params: { limit: 5 } });
-  // const orders = res.data || res;
-  // if (Array.isArray(orders)) {
-  //   return orders.map(o => ({
-  //     icon: "🛒",
-  //     title: `New order from ${o.customer || "customer"}`,
-  //     sub: `₦${(o.total || 0).toLocaleString()}`,
-  //     time: o.date || "recent",
-  //     color: "#F4A026",
-  //   }));
-  // }
-  // return [];
-  return (demoStore().orders || []).slice(0, 5).map(o => ({
-    icon: "🛒",
-    title: `New order from ${o.customer || "customer"}`,
-    sub: `₦${(o.total || 0).toLocaleString()}`,
-    time: o.date || "recent",
-    color: "#F4A026",
-  }));
+  return [];
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1034,55 +866,24 @@ export async function deleteCoupon(id) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getRevenueData() {
-  // [DEMO] const merchant = getMerchant();
-  // [DEMO] const tenantId = merchant?.tenantId;
-  // [DEMO] const res = await httpClient.get(`/api/v1/analytics/reports/revenue`, { params: { tenantId } });
-  // [DEMO] return unwrapList(res);
-  return [
-    { w: "Week 1", v: 182000, week: "Week 1", revenue: 182000 },
-    { w: "Week 2", v: 224500, week: "Week 2", revenue: 224500 },
-    { w: "Week 3", v: 210000, week: "Week 3", revenue: 210000 },
-    { w: "Week 4", v: 285000, week: "Week 4", revenue: 285000 },
-  ];
+  // Revenue endpoint currently supplies totals, not a time series.
+  return [];
 }
 
 export async function getOrderStats() {
-  // [DEMO] const merchant = getMerchant();
-  // [DEMO] const tenantId = merchant?.tenantId;
-  // [DEMO] const res = await httpClient.get(`${tenantPath(tenantId)}/orders`);
-  // [DEMO] return unwrapList(res);
-  return [
-    { name: "Completed", value: 24 },
-    { name: "Pending", value: 6 },
-    { name: "Cancelled", value: 3 },
-  ];
+  return [];
 }
 
 export async function getTopProducts() {
-  // [DEMO] const merchant = getMerchant();
-  // [DEMO] const tenantId = merchant?.tenantId;
-  // [DEMO] const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
-  // [DEMO] return unwrapList(res);
-  return [
-    { name: "Jollof Rice & Chicken", views: 1240, orders: 86, revenue: 215000, trend: "up" },
-    { name: "Egusi Soup + Eba", views: 980, orders: 54, revenue: 172800, trend: "up" },
-    { name: "Peppered Gizzard", views: 720, orders: 41, revenue: 73800, trend: "down" },
-  ];
+  return [];
 }
 
 export async function getAnalyticsSummary() {
-  // [DEMO] const merchant = getMerchant();
-  // [DEMO] const tenantId = merchant?.tenantId;
-  // [DEMO] const res = await httpClient.get(`/api/v1/analytics/summary`, { params: { tenantId } });
-  // [DEMO] return res.data || res;
-  return {
-    customers: 328,
-    revenue: 285000,
-    unreadMessages: 4,
-    avgRating: 4.8,
-    reviewsCount: 234,
-    orders: 33,
-  };
+  const merchant = getMerchant();
+  const tenantId = merchant?.merchantId || merchant?.tenantId;
+  if (!tenantId || isDemoId(tenantId)) return {};
+  const res = await httpClient.get('/api/v1/analytics/summary', { params: { tenantId } });
+  return res.data || res;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

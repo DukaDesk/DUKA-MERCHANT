@@ -86,15 +86,15 @@ const COMPONENT_FALLBACK = FileText;
 
 // Tab definitions — 100px column, top to bottom, last two at bottom
 const TABS_TOP = [
-  { id: "page-content", label: "App sections", icon: PageContentIcon },
-  { id: "element", label: "Elements", icon: ElementIcon },
-  { id: "third-party", label: "Third Party", icon: ThirdPartyIcon },
-  { id: "templates", label: "Templates", icon: TemplatesIcon },
-  { id: "settings", label: "Settings", icon: SettingsIcon },
+  { id: "page-content", hint: "Manage splash, sections, and navigation tabs", label: "App sections", icon: PageContentIcon },
+  { id: "element", hint: "Browse layouts, screens, and components", label: "Elements", icon: ElementIcon },
+  { id: "third-party", hint: "Manage app integrations", label: "Third Party", icon: ThirdPartyIcon },
+  { id: "templates", hint: "Choose a starter design", label: "Templates", icon: TemplatesIcon },
+  { id: "settings", hint: "Edit app name, slug, and branding", label: "Settings", icon: SettingsIcon },
 ];
 const TABS_BOTTOM = [
-  { id: "version-history", label: "Version History", icon: HistoryIcon },
-  { id: "live-chat", label: "Live Chat", icon: ChatIcon },
+  { id: "version-history", hint: "View previous published versions", label: "Version History", icon: HistoryIcon },
+  { id: "live-chat", hint: "Open support", label: "Live Chat", icon: ChatIcon },
 ];
 
 function PageContentIcon({ active }) {
@@ -426,7 +426,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
           <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Background</div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <ColorInput value={splash.backgroundColor || "#1A1A2E"} onChange={(v) => store.setSplash({ backgroundColor: v, backgroundImage: "" })} />
-            <button onClick={() => document.getElementById("splash-bg-upload")?.click()} style={{ ...iconBtn, padding: "5px 8px", fontSize: 11, gap: 4 }}>
+            <button title="Upload a splash background image" onClick={() => document.getElementById("splash-bg-upload")?.click()} style={{ ...iconBtn, padding: "5px 8px", fontSize: 11, gap: 4 }}>
               <Upload size={12} /> {splash.backgroundImage ? "Change image" : "Upload image"}
             </button>
             {splash.backgroundImage && (
@@ -448,7 +448,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Logo</div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <button onClick={() => document.getElementById("splash-logo-upload")?.click()} style={{ ...iconBtn, padding: "5px 8px", fontSize: 11, gap: 4 }}>
+            <button title="Upload a splash logo" onClick={() => document.getElementById("splash-logo-upload")?.click()} style={{ ...iconBtn, padding: "5px 8px", fontSize: 11, gap: 4 }}>
               <Upload size={12} /> {splashLogo ? "Change logo" : "Upload logo"}
             </button>
             {splash.logo && (
@@ -573,7 +573,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
           </div>
         </>
       )}
-      <button onClick={() => store.addTab({ label: "New Tab", icon: "Home", screenId: "" })} style={{ width: "100%", marginTop: 8, padding: "8px", borderRadius: theme.radius.md, border: `1.5px dashed ${theme.border}`, background: "transparent", color: theme.textSecondary, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+      <button title="Add a navigation tab" onClick={() => store.addTab({ label: "New Tab", icon: "Home", screenId: "" })} style={{ width: "100%", marginTop: 8, padding: "8px", borderRadius: theme.radius.md, border: `1.5px dashed ${theme.border}`, background: "transparent", color: theme.textSecondary, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
         <Layout size={12} /> Add Tab
       </button>
     </div>
@@ -654,7 +654,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
               <span style={{ color: theme.border, cursor: "grab", display: "flex", flexShrink: 0 }}>
                 <svg width="10" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6" /><circle cx="15" cy="5" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="9" cy="19" r="1.6" /><circle cx="15" cy="19" r="1.6" /></svg>
               </span>
-              <button onClick={(e) => { e.stopPropagation(); toggleExpand(id); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 1, color: theme.textMuted, display: "flex", flexShrink: 0 }}>
+              <button title="Expand or collapse section contents" onClick={(e) => { e.stopPropagation(); toggleExpand(id); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 1, color: theme.textMuted, display: "flex", flexShrink: 0 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)" }}>
                   <polyline points="6 9 12 15 18 9" />
                 </svg>
@@ -667,7 +667,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
               {isLinked && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3B6FE0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>}
               <div style={{ display: "flex", gap: 2, alignItems: "center", flexShrink: 0 }}>
                 <button onClick={(e) => { e.stopPropagation(); store.setSectionVisible(null, id, hidden); }} style={{ ...iconBtnSmall, color: hidden ? theme.textMuted : "#374151", background: "none", border: "none", cursor: "pointer", padding: 3, display: "flex" }} title={hidden ? "Hidden — click to show" : "Visible — click to hide"}>{hidden ? <EyeOffSVG /> : <EyeSVG />}</button>
-                <button onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === id ? null : id); }} style={{ ...iconBtnSmall, background: "none", border: "none", cursor: "pointer", padding: "3px 6px", color: theme.textMuted, display: "flex" }}><DotsSVG /></button>
+                <button title="Section options" aria-label="Section options" onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === id ? null : id); }} style={{ ...iconBtnSmall, background: "none", border: "none", cursor: "pointer", padding: "3px 6px", color: theme.textMuted, display: "flex" }}><DotsSVG /></button>
               </div>
             </div>
             {isOpen && (
@@ -733,7 +733,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
                           if (it.special === "section") onAddSection?.();
                           else onBrowse?.(it.category ? "components:" + it.category : it.label);
                         }}
-                        title={comingSoon ? "Coming soon" : it.label}
+                        title={comingSoon ? "Coming soon" : `Browse ${it.label.toLowerCase()}`}
                         style={{
                           display: "flex", alignItems: "center", gap: 8, width: "100%",
                           padding: "4px 6px", borderRadius: theme.radius.sm,
@@ -872,6 +872,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
             return (
               <button
                 key={tab.id}
+                title={tab.hint}
                 onClick={() => { setActiveTab(tab.id); if (tab.id !== "element") onBrowse?.(null); }}
                 style={{
                   display: "flex",
@@ -900,6 +901,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
             return (
               <button
                 key={tab.id}
+                title={tab.hint}
                 onClick={() => { setActiveTab(tab.id); if (tab.id !== "element") onBrowse?.(null); }}
                 style={{
                   display: "flex",
