@@ -116,3 +116,14 @@ it("shows screen properties and component categories for a selected screen", () 
   expect(store.renameScreen).toHaveBeenCalledWith("home", "Shop");
   expect(screen.getByRole("button", { name: "Text" })).toBeTruthy();
 });
+
+it.each(['1/2|1/2', '1/3|2/3', '2/3|1/3', '1/3|1/3|1/3'])('selects the exact empty column when its plus is clicked: %s', template => {
+  const store = fixture();
+  store.screen.bodySections[0].components = [{ id: 'columns', type: 'row', props: { template }, children: [] }];
+  const choose = vi.fn();
+  render(<SectionRenderer store={store} selectedSectionId="outer" selectedComponentId="columns" onSelectSection={vi.fn()} onSelectComponent={vi.fn()} onChooseComponents={choose} />);
+  const plus = screen.getAllByRole('button', { name: 'Select section' })[1];
+  fireEvent.click(plus.querySelector('path'));
+  expect(choose).toHaveBeenCalledWith({ sectionId: 'outer', parentId: 'columns', index: 1 }, 'choose');
+  expect(plus.closest('[title="Select empty slot to add content"]').style.border).toContain('2px solid');
+});

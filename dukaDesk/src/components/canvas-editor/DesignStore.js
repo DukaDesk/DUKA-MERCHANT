@@ -1,5 +1,14 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { getDesignData, saveDesignData } from "../../services/api";
+import {
+  writeSnapshot,
+  readSnapshot,
+  queueSync,
+  readOutbox,
+  clearOutbox,
+  clearCache,
+  flushOutbox,
+} from "../../services/designCache";
 import { getComponentType } from "./componentTypes";
 
 let nextId = 1;
@@ -116,7 +125,27 @@ function ensureMetaSlug(data) {
 }
 
 function loadLocalFallback() {
+  // Newest-first: pending outbox (edits the server never confirmed) beats the
+  // last snapshot; the legacy single-key install is adopted when present.
   try {
+    const outbox = readOutbox();
+    if (outbox?.design) {
+      const parsed = outbox.design;
+      if (parsed?.meta && parsed?.screens && parsed?.shared) {
+        parsed.savedSections = parsed.savedSections || [];
+        return migrateScreens(parsed);
+      }
+    }
+    const snapshot = readSnapshot();
+    if (snapshot?.design) {
+      const parsed = snapshot.design;
+      if (parsed?.meta && parsed?.screens && parsed?.shared) {
+        const sid = parsed.navigation?.initialScreen || Object.keys(parsed.screens)[0];
+        if (!parsed.screens[sid]) parsed.screens[Object.keys(parsed.screens)[0]] = { name: "Home", backgroundColor: "#FCF8FA", bodySections: [] };
+        parsed.savedSections = parsed.savedSections || [];
+        return migrateScreens(parsed);
+      }
+    }
     const saved = localStorage.getItem("dukadesk_design");
     if (saved) {
       const parsed = JSON.parse(saved);
@@ -137,8 +166,7 @@ export function useDesignStore(initialData, options = {}) {
   const dirtyRef = useRef(false);
   const [data, setData] = useState(() => initialData || loadLocalFallback() || getDefaultData());
   const [serverLastSaved, setServerLastSaved] = useState(null);
-  const [currentScreenId, setCurrentScreenId] = useState(data.navigation.initialScreen);
-  const [selectedIds, setSelectedIds] = useState([]);
+  const [currentScreenId, setCurrentScreenId] = useState(data.navigation.initialScreen);  const [selectedIds, setSelectedIds] = useState([]);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [selectedComponentId, setSelectedComponentId] = useState(null);
   const [bumpVal, bumpHistory] = useState(0); void bumpVal;
@@ -147,6 +175,11 @@ export function useDesignStore(initialData, options = {}) {
   const [assets, setAssets] = useState([]);
   const [lastSaved, setLastSaved] = useState(null);
   const [savingToServer, setSavingToServer] = useState(false);
+  // syncStatus: 'synced' | 'syncing' | 'pending' | 'local' | 'error'
+  // 'local' = saved on this PC, sync not attempted yet; 'pending' = backend
+  // unreachable, queued with retries; 'error' = local save itself failed.
+  const [syncStatus, setSyncStatus] = useState(readOutbox() ? "pending" : "local");
+  const [localDegraded, setLocalDegraded] = useState(false);
   const saveTimerRef = useRef(null);
   const apiSaveTimerRef = useRef(null);
 
@@ -158,6 +191,19 @@ export function useDesignStore(initialData, options = {}) {
       setHydrated(true);
       return;
     }
+    // Never let a stale server copy clobber unsynced local work: when the
+    // outbox holds edits the backend never confirmed, keep it and flush in
+    // the background instead of overwriting it.
+    if (readOutbox()) {
+      setSyncStatus("pending");
+      setSavingToServer(true);
+      flushOutbox(saveDesignData, 0, status => {
+        if (status === "synced") setServerLastSaved(new Date());
+        setSyncStatus(status === "synced" ? "synced" : "pending");
+        setSavingToServer(false);
+      }).finally(() => setHydrated(true));
+      return;
+    }
     getDesignData().then(apiData => {
       if (!templateLoadedRef.current && apiData?.meta && apiData?.screens && apiData?.shared) {
         if (!Array.isArray(apiData.savedSections)) apiData.savedSections = [];
@@ -165,6 +211,8 @@ export function useDesignStore(initialData, options = {}) {
         setData(apiData);
         setCurrentScreenId(apiData.navigation?.initialScreen || Object.keys(apiData.screens)[0]);
         setServerLastSaved(new Date());
+        setSyncStatus("synced");
+        writeSnapshot(apiData);
       }
     }).catch(() => {}).finally(() => setHydrated(true));
   }, []);
@@ -182,11 +230,15 @@ export function useDesignStore(initialData, options = {}) {
     if (deferSave && !dirtyRef.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      try {
-        localStorage.setItem("dukadesk_design", JSON.stringify(data));
+      // Local-first: this write must succeed even with no backend.
+      const result = writeSnapshot(data);
+      if (result.ok) {
         setLastSaved(new Date());
-        // eslint-disable-next-line no-empty
-      } catch {}
+        setLocalDegraded(result.degraded);
+        setSyncStatus(prev => (prev === "synced" ? "local" : prev));
+      } else {
+        setSyncStatus("error");
+      }
     }, 300);
     return () => clearTimeout(saveTimerRef.current);
   }, [data, hydrated]);
@@ -197,7 +249,14 @@ export function useDesignStore(initialData, options = {}) {
     if (apiSaveTimerRef.current) clearTimeout(apiSaveTimerRef.current);
     apiSaveTimerRef.current = setTimeout(() => {
       setSavingToServer(true);
-      saveDesignData(data).then(() => { setServerLastSaved(new Date()); setSavingToServer(false); }).catch(() => setSavingToServer(false));
+      setSyncStatus("syncing");
+      // Queue first so a failed request keeps the newest design for retry.
+      queueSync(data);
+      flushOutbox(saveDesignData, 0, status => {
+        if (status === "synced") setServerLastSaved(new Date());
+        setSyncStatus(status === "synced" ? "synced" : "pending");
+        setSavingToServer(false);
+      });
     }, 2000);
     return () => clearTimeout(apiSaveTimerRef.current);
   }, [data, hydrated]);
@@ -205,19 +264,34 @@ export function useDesignStore(initialData, options = {}) {
   const saveToServer = useCallback(async () => {
     if (apiSaveTimerRef.current) clearTimeout(apiSaveTimerRef.current);
     setSavingToServer(true);
+    setSyncStatus("syncing");
     try {
-      await saveDesignData(data);
-      setServerLastSaved(new Date());
-      // eslint-disable-next-line no-empty
-    } catch {} finally {
+      queueSync(data);
+      const ok = await flushOutbox(saveDesignData, 0, status => {
+        if (status === "synced") setServerLastSaved(new Date());
+      });
+      setSyncStatus(ok ? "synced" : "pending");
+    } catch {
+      setSyncStatus("pending");
+    } finally {
       setSavingToServer(false);
     }
   }, [data]);
 
+  const retrySync = useCallback(() => {
+    setSavingToServer(true);
+    setSyncStatus("syncing");
+    flushOutbox(saveDesignData, 0, status => {
+      if (status === "synced") setServerLastSaved(new Date());
+      setSyncStatus(status === "synced" ? "synced" : "pending");
+      setSavingToServer(false);
+    });
+  }, []);
+
   const clearDesign = useCallback(() => {
     dirtyRef.current = true;
-    // eslint-disable-next-line no-empty
-    try { localStorage.removeItem("dukadesk_design"); } catch {}
+    clearCache();
+    setSyncStatus("local");
     setData(getDefaultData());
     undoStack.current = [];
     redoStack.current = [];
@@ -624,6 +698,10 @@ export function useDesignStore(initialData, options = {}) {
         locked: false, visible: true, zIndex: container.children.length,
         children: [],
       };
+      // Preserve empty leading columns when inserting into a later row slot.
+      if (container.type === 'row' && Number.isInteger(index) && index >= 0) {
+        while (container.children.length < index) container.children.push({ id: genId(), type: 'nested_section', props: {}, children: [] });
+      }
       const pos = Math.max(0, Math.min(index, container.children.length));
       container.children.splice(pos, 0, comp);
     });
@@ -939,6 +1017,7 @@ export function useDesignStore(initialData, options = {}) {
 
     // Persistence
     lastSaved, serverLastSaved, savingToServer, saveToServer, clearDesign,
+    syncStatus, localDegraded, retrySync,
 
     // Assets
     assets, addAsset, removeAsset,

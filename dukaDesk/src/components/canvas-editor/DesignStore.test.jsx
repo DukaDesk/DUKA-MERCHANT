@@ -32,3 +32,17 @@ it("adds the first component to an empty screen in one undoable edit", () => {
   act(() => result.current.undo());
   expect(result.current.screen.bodySections).toHaveLength(0);
 });
+
+it('inserts in the selected later column without moving content to the first column or root', () => {
+  localStorage.clear();
+  const initial = getDefaultData();
+  const { result } = renderHook(() => useDesignStore(initial, { deferSave: true }));
+  let row;
+  act(() => { row = result.current.addComponentToScreen('row', { template: '1/3|1/3|1/3' }); });
+  act(() => result.current.insertComponentAt(row.sectionId, row.id, 2, 'button', { label: 'Third' }));
+  const section = result.current.screen.bodySections[0];
+  expect(section.components).toHaveLength(1);
+  expect(section.components[0].children).toHaveLength(3);
+  expect(section.components[0].children[2].props.label).toBe('Third');
+  expect(section.components[0].children[0].children).toEqual([]);
+});

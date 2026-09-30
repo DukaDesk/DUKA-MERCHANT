@@ -140,10 +140,11 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
   };
 
   /* Recursively render a component. Containers (carousel, nested_section) embed their children inline. */
-  const addSectionControl = (sectionId, parentId) => (
+  const addSectionControl = (sectionId, parentId, index, selectSlot) => (
     <div style={{ display: "flex", justifyContent: "center", padding: 8 }}>
       <button type="button" aria-label="Select section" onClick={event => {
         event.stopPropagation();
+        if (selectSlot) { selectSlot(); return; }
         if (parentId) onSelectComponent?.(sectionId, parentId);
         else onSelectSection?.(sectionId);
       }} style={{ width: 32, height: 32, padding: 0, border: 0, borderRadius: 8, background: "transparent", color: theme.textMuted, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
@@ -341,7 +342,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
                 {Array.from({ length: N }).map((_, c) => {
                   const index = start + c;
                   const slotKey = `${comp.id}:${index}`;
-                  const isSlotSelected = selectedSlot === slotKey;
+                  const isSlotSelected = selectedSlot === slotKey && selectedSectionId === sectionId && selectedComponentId === comp.id;
                   if (index < children.length) {
                     const child = children[index];
                     const isChildSelected = selectedComponentId === child.id;
@@ -372,7 +373,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
                         background: isSlotSelected ? "rgba(244,160,38,0.06)" : "transparent",
                       }}
                     >
-                      {addSectionControl(sectionId, comp.id, index)}
+                      {addSectionControl(sectionId, comp.id, index, () => { setSelectedSlot(slotKey); onSelectComponent(sectionId, comp.id); onChooseComponents?.({ sectionId, parentId: comp.id, index }, "choose"); })}
                     </div>
                   );
                 })}

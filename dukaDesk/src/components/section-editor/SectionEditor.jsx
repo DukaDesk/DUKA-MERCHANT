@@ -139,6 +139,7 @@ export default function SectionEditor({ store, onBack }) {
 
   const handleSelectSection = useCallback((sectionId) => {
     setSelectedScreenId(null);
+    setLayoutTarget(null);
     setSelectedSectionId(sectionId);
     setSelectedComponentId(null);
     setFocusSubKey(null);
@@ -147,6 +148,8 @@ export default function SectionEditor({ store, onBack }) {
   }, []);
 
   const handleSelectComponent = useCallback((sectionId, compId) => {
+    setSelectedScreenId(null);
+    setLayoutTarget(null);
     setSelectedSectionId(sectionId);
     setSelectedComponentId(compId);
     setFocusSubKey(null);
@@ -155,18 +158,18 @@ export default function SectionEditor({ store, onBack }) {
   }, []);
 
   const handleBrowseElements = value => {
-    setLayoutTarget(null);
+    const selected = (store.screen?.bodySections || []).find(section => section.id === selectedSectionId);
+    const section = selected && (store.resolveSection?.(selected) || selected);
+    let target = null;
+    const visit = (nodes, parent = null) => { for (const node of nodes || []) {
+      const container = ["nested_section", "row", "carousel"].includes(node.type) ? node : parent;
+      if (node.id === selectedComponentId) target = container;
+      visit(node.children, container);
+    } };
+    visit(section?.components);
+    setLayoutTarget(previous => target ? (previous?.sectionId === selectedSectionId && previous.parentId === target.id ? previous : { sectionId: selectedSectionId, parentId: target.id, index: target.children?.length || 0 }) : null);
     if (value?.startsWith("components:")) {
-      const selected = (store.screen?.bodySections || []).find(section => section.id === selectedSectionId);
-      const section = selected && (store.resolveSection?.(selected) || selected);
-      let target = null;
-      const visit = (nodes, parent = null) => { for (const node of nodes || []) {
-        const container = node.type === "nested_section" ? node.id : parent;
-        if (node.id === selectedComponentId) target = container;
-        visit(node.children, container);
-      } };
-      visit(section?.components);
-      setSelectedComponentId(target); setFocusSubKey(null); setNavSelected(false);
+      setSelectedComponentId(target?.id || null); setFocusSubKey(null); setNavSelected(false);
     }
     setBrowseType(value);
   };
@@ -388,11 +391,22 @@ export default function SectionEditor({ store, onBack }) {
 
   const serverLastSaved = store.serverLastSaved;
   const savingToServer = store.savingToServer;
-  const saveStatus = savingToServer
-    ? "Saving to server..."
-    : serverLastSaved
-      ? `Saved ${formatTimeAgo(serverLastSaved)}`
-      : "";
+  const syncStatus = store.syncStatus || (savingToServer ? "syncing" : serverLastSaved ? "synced" : "local");
+  const lastSaved = store.lastSaved;
+  const saveStatus = syncStatus === "syncing" || savingToServer
+    ? "Syncing..."
+    : syncStatus === "pending"
+      ? "Saved on this PC • sync pending — click to retry"
+      : syncStatus === "error"
+        ? "Couldn't save on this PC — storage may be full"
+        : syncStatus === "local"
+          ? (lastSaved ? `Saved on this PC ${formatTimeAgo(lastSaved)}` : "Saved on this PC")
+          : serverLastSaved
+            ? `Synced ${formatTimeAgo(serverLastSaved)}`
+            : "";
+  const saveDot = syncStatus === "pending" || syncStatus === "syncing" || savingToServer
+    ? "#D97706"
+    : (syncStatus === "error" ? "#DC2626" : (serverLastSaved || lastSaved ? theme.success : theme.textSecondary));
 
   if (previewMode) {
     const screen = data.screens[previewCurrentScreen];
@@ -540,9 +554,10 @@ export default function SectionEditor({ store, onBack }) {
             onMouseLeave={() => setHoveredIcon(null)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
-          <span style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 4, color: savingToServer ? "#D97706" : (serverLastSaved ? theme.success : theme.textSecondary) }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: savingToServer ? "#D97706" : (serverLastSaved ? theme.success : theme.textSecondary), display: "inline-block" }} />
+          <span onClick={() => { if (syncStatus === "pending" && store.retrySync) store.retrySync(); }} title={syncStatus === "pending" ? "Retry sync now" : saveStatus} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 4, color: saveDot, cursor: syncStatus === "pending" ? "pointer" : "default" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: saveDot, display: "inline-block" }} />
             {saveStatus}
+            {store.localDegraded ? " (images pending)" : ""}
           </span>
         </div>
 
@@ -797,7 +812,7 @@ export default function SectionEditor({ store, onBack }) {
             <PropertiesPanel
               screenSelected={selectedScreenId === store.currentScreenId && !selectedSectionId && !selectedComponentId && !navSelected}
               onChooseCategory={category => setBrowseType("components:" + category)}
-              insertionTarget={browseType?.startsWith("components:") ? layoutTarget : null}
+              insertionTarget={layoutTarget}
               componentCategory={browseType?.startsWith("components:") ? browseType.slice(11) : null}
               store={store}
               selectedSectionId={selectedSectionId}
