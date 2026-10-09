@@ -6,6 +6,7 @@ import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import { INTEGRATION_BADGE_COLORS, INTEGRATION_DETAILS } from "../../config/integrations";
 import { getIntegrations, toggleIntegration, getIntegrationConfig, setIntegrationConfig } from "../../services/api";
+import { useVertical } from "../../runtime/VerticalContext";
 import { Loading, Empty } from "../layout/States";
 import IntegrationConfigPanel from "./IntegrationConfigPanel";
 
@@ -15,6 +16,7 @@ export default function IntegrationDetails() {
   const { name } = useParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { categoryLower } = useVertical();
   const [integration, setIntegration] = useState(null);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState(false);
@@ -47,7 +49,7 @@ export default function IntegrationDetails() {
   }, [configPanel]);
 
   if (loading) return <Loading message={`Loading ${name}...`} />;
-  if (!integration) return <Empty icon="ðŸ”Œ" message="Integration not found" sub="This integration doesn't exist or has been removed" action={<button onClick={() => navigate("/dashboard/integrations")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Back to Integrations</button>} />;
+  if (!integration) return <Empty icon="🧩" message="Tool not found" sub="This tool doesn't exist or has been removed" action={<button onClick={() => navigate("/dashboard/more-tools")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Back to More Tools</button>} />;
 
   const bc = INTEGRATION_BADGE_COLORS[integration.badge] || INTEGRATION_BADGE_COLORS.Free;
 
@@ -59,8 +61,8 @@ export default function IntegrationDetails() {
 
   return (
     <div style={{ animation: "fadeIn 0.35s ease" }}>
-      <button onClick={() => navigate("/dashboard/integrations")} style={{ background: "none", border: "none", color: "#6B7280", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 14, marginBottom: 20, padding: 0 }}>
-        <ArrowLeft size={16} /> Back to Integrations
+      <button onClick={() => navigate("/dashboard/more-tools")} style={{ background: "none", border: "none", color: "#6B7280", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 14, marginBottom: 20, padding: 0 }}>
+        <ArrowLeft size={16} /> Back to More Tools
       </button>
 
       <div style={{ ...cardStyle, marginBottom: 24 }}>
@@ -80,7 +82,7 @@ export default function IntegrationDetails() {
                   await toggleIntegration(integration.name);
                   setActive(!active);
                   active ? toast.info(`${integration.name} disabled`) : toast.success(`${integration.name} enabled!`);
-                } catch { toast.error("Failed to toggle integration"); }
+                } catch { toast.error("Failed to toggle tool"); }
               }} style={{
                 background: active ? "#2ECC71" : AMBER, color: active ? "#fff" : NAVY, border: "none",
                 borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer",
@@ -103,7 +105,7 @@ export default function IntegrationDetails() {
       {details?.types && (
         <div style={{ ...cardStyle, marginBottom: 24 }}>
           <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: NAVY, margin: "0 0 6px" }}>Types & Modes</h3>
-          <p style={{ color: "#6B7280", fontSize: 14, margin: "0 0 20px" }}>Choose the variant that best suits your business.</p>
+          <p style={{ color: "#6B7280", fontSize: 14, margin: "0 0 20px" }}>Choose the variant that best suits your {categoryLower}.</p>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
             {details.types.map((t, i) => {
               const selected = selectedTypes.includes(t.name);

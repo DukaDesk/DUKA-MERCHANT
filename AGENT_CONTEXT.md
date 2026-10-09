@@ -12,6 +12,13 @@ The `merchant-portal/` repository contains the Business Dashboard — an adminis
 
 ## Recent Changes (Session 2026-07-24)
 
+### AI-Assisted Builder Agent (2026-10-08)
+- Section Editor includes a visible `Build with AI` chat for app/screen/section/component and visual navigation requests.
+- Agent output is a bounded declarative proposal built from the registered component/property catalog; unknown components, unsupported props, action/code fields, and external asset URLs are rejected or stripped.
+- The complete proposed design must pass `ValidationEngine` before an explicit `Apply to canvas` action sends it through the undo-aware `DesignStore.loadTemplate` path.
+- Backend/identity/data-model/integration and unsupported runtime requests must be declined with an explanation; placeholder business content must be disclosed.
+- Current transport uses authenticated `POST /api/v1/ai/complete` without caller-supplied identity fields. This is transitional; server-owned prompt policy, tenant attribution, quotas, and structured output validation are tracked in `DUKA-BACKEND/docs/BUILDER_AGENT_BACKEND_TODO.md` and specified in `KNOWLEDGE-BASE/builder/AI_ASSISTED_BUILDER.md`.
+
 ### Mock Data Removed
 - Deleted `src/services/mockData.js`, `mockData.test.js`, `PreviewDataProvider.js`
 - All API functions now hit real backend — no mock fallback branches

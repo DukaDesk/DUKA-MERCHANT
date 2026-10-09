@@ -23,7 +23,7 @@ const PRIMITIVE_ICONS = {
 export default function Integrations() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { modules: enabledIds, isEnabled, toggleModule, savingModules } = useVertical();
+  const { modules: enabledIds, isEnabled, toggleModule, savingModules, vertical, categoryName, resetModules } = useVertical();
   const [integrations, setIntegrations] = useState([]);
   const [relevantNames, setRelevantNames] = useState(null);
   const [appTemplate, setAppTemplate] = useState(null);
@@ -61,7 +61,7 @@ export default function Integrations() {
       } else {
         setIntegrations(list);
       }
-    }).catch(() => setError("Failed to load integrations"))
+    }).catch(() => setError("Failed to load tools"))
     .finally(() => setLoading(false));
   };
   useEffect(loadIntegrations, []);
@@ -76,7 +76,7 @@ export default function Integrations() {
 
   const toggle = async (catIdx, itemIdx) => {
     const item = integrations[catIdx].items[itemIdx];
-    if (item.locked) { toast.info("Upgrade to Growth plan to unlock Premium integrations"); return; }
+    if (item.locked) { toast.info("Upgrade to Growth plan to unlock Premium tools"); return; }
     try {
       await toggleIntegration(item.name);
       setIntegrations(prev => prev.map((cat, ci) =>
@@ -88,22 +88,22 @@ export default function Integrations() {
         }
       ));
       item.active ? toast.info(`${item.name} removed`) : toast.success(`${item.name} added to your app!`);
-    } catch { toast.error("Failed to toggle integration"); }
+    } catch { toast.error("Failed to toggle tool"); }
   };
 
   const activeItems = integrations.flatMap(cat => cat.items.filter(i => i.active));
   const cats = ["All", ...(integrations.map(c => c.cat))];
   const filtered = catFilter === "All" ? integrations : integrations.filter(c => c.cat === catFilter);
 
-  if (loading) return <Loading message="Loading integrations..." />;
+  if (loading) return <Loading message="Loading tools..." />;
   if (error) return <ErrorState message={error} onRetry={loadIntegrations} />;
-  if (integrations.length === 0) return <Empty icon="ðŸ”Œ" message="No integrations available" sub="Integration categories will appear here" />;
+  if (integrations.length === 0) return <Empty icon="🧩" message="No tools available" sub="Tool categories will appear here" />;
 
   return (
     <div style={{ position: "relative" }}>
       <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: "0 0 4px" }}>Integrations</h2>
+          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: "0 0 4px" }}>More Tools</h2>
           <p style={{ color: "#6B7280", margin: 0 }}>Choose features to power your back-office and your app. Add or remove anytime.</p>
         </div>
         <button onClick={() => setFeatureOpen(true)} style={{ background: "none", border: `1.5px solid var(--border)`, borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, color: NAVY, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
@@ -112,13 +112,18 @@ export default function Integrations() {
       </div>
 
       <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 12, flexWrap: "wrap" }}>
           <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, display: "flex", alignItems: "center", gap: 8 }}>
-            <LayoutGrid size={17} /> Dashboard Primitives
+            <LayoutGrid size={17} /> Dashboard Tools
           </span>
-          <span style={{ fontSize: 12, color: "#6B7280" }}>{enabledIds.length} installed on your desk</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 12, color: "#6B7280" }}>{enabledIds.length} installed on your {categoryName.toLowerCase()} desk</span>
+            <button onClick={async () => { try { await resetModules(); toast.success(`Reset to ${categoryName} defaults`); } catch { toast.error("Reset failed"); } }} disabled={savingModules} style={{ background: "none", border: "1px solid #E8E8F0", borderRadius: 16, padding: "4px 12px", fontSize: 12, fontWeight: 600, color: NAVY, cursor: "pointer" }}>
+              Reset to {categoryName} defaults
+            </button>
+          </span>
         </div>
-        <p style={{ color: "#6B7280", fontSize: 13, margin: "0 0 16px" }}>These control what appears in your dashboard and sidebar. We ship the essentials for your category — add or remove what you need.</p>
+        <p style={{ color: "#6B7280", fontSize: 13, margin: "0 0 16px" }}>These control what appears in your dashboard and sidebar. We ship the {categoryName.toLowerCase()}-specific essentials — {vertical?.deskLabel || `${categoryName} Desk`} ships with {(vertical?.modules || []).slice(0, 3).map(m => m.label).join(", ")}{(vertical?.adminPages?.length ? ` plus ${(vertical.adminPages || []).map(p => p.label).join(", ")}` : "")} — add or remove what you need.</p>
         {PRIMITIVE_GROUPS.map(group => {
           const items = PRIMITIVES.filter(p => p.group === group);
           if (!items.length) return null;
@@ -156,7 +161,7 @@ export default function Integrations() {
         <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
           <Store size={18} color={AMBER} />
           <div style={{ fontSize: 13, color: "#92400E" }}>
-            Showing integrations compatible with your <strong>{appTemplate}</strong> app. {integrations.flatMap(c => c.items).length} available.
+            Showing tools compatible with your <strong>{appTemplate}</strong> app. {integrations.flatMap(c => c.items).length} available.
           </div>
         </div>
       )}
@@ -164,7 +169,7 @@ export default function Integrations() {
         <div style={{ background: "#EFF6FF", border: "1px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
           <Store size={18} color="#3B82F6" />
           <div style={{ fontSize: 13, color: "#1E40AF" }}>
-            Complete the app setup wizard to see integrations tailored to your template. Showing all integrations for now.
+            Complete the app setup wizard to see tools tailored to your template. Showing all tools for now.
           </div>
         </div>
       )}
@@ -174,7 +179,7 @@ export default function Integrations() {
           <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Active ({activeItems.length})</span>
         </div>
         {activeItems.length === 0 && (
-          <p style={{ color: "#9CA3AF", fontSize: 14, textAlign: "center", padding: "20px 0" }}>No integrations active yet. Add one below.</p>
+          <p style={{ color: "#9CA3AF", fontSize: 14, textAlign: "center", padding: "20px 0" }}>No tools active yet. Add one below.</p>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {activeItems.map((item, i) => (
@@ -234,7 +239,7 @@ export default function Integrations() {
         })}
 
         <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 10, padding: 16, marginTop: 8 }}>
-          <div style={{ fontSize: 13, color: "#92400E" }}>ðŸ’¡ You can add or remove integrations anytime. Changes go live within seconds.</div>
+          <div style={{ fontSize: 13, color: "#92400E" }}>💡 You can add or remove tools anytime. Changes go live within seconds.</div>
         </div>
       </div>
 

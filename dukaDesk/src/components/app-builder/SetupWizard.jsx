@@ -13,9 +13,10 @@ import {
 } from "../../config/wizard";
 import { INTEGRATION_BADGE_COLORS } from "../../config/integrations";
 import TemplateGallery from "./TemplateGallery";
+import { useVertical } from "../../runtime/VerticalContext";
 
-const SETUP_STEPS = ["Templates", "Branding", "Business Info", "Integrations"];
-const STEP_LABELS = ["Choose template", "Brand your app", "Business info", "Integrations"];
+const SETUP_STEPS = ["Templates", "Branding", "Info", "More Tools"];
+const STEP_LABELS = ["Choose template", "Brand your app", "Details", "More tools"];
 const defaultHours = () => WIZARD_DAYS.map((d, i) => ({ day: d, open: i < 5, start: "09:00", end: "22:00" }));
 
 export function SetupWizard({
@@ -33,6 +34,7 @@ export function SetupWizard({
 }) {
   const navigate = useNavigate();
   const isMobile = isMobileProp ?? useIsMobile();
+  const { categoryName = "Business", categoryLower = "business" } = useVertical();
   const saved = initialData || {};
   const [step, setStep] = useState(0);
   const [data, setData] = useState({
@@ -327,15 +329,15 @@ export function SetupWizard({
   function renderStep() {
     switch (step) {
       case 0: return <TemplateGallery value={data.template} onChange={handleTemplateSelect} onSkip={onSkipToEditor} isMobile={isMobile} />;
-      case 1: return <SetupBranding data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} />;
-      case 2: return <SetupBusiness data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} />;
+      case 1: return <SetupBranding data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} categoryName={categoryName} />;
+      case 2: return <SetupBusiness data={data} setData={setData} errors={errors} setErrors={setErrors} isMobile={isMobile} categoryName={categoryName} categoryLower={categoryLower} />;
       case 3: return <SetupIntegrations data={data} setData={setData} isMobile={isMobile} />;
       default: return null;
     }
   }
 }
 
-function SetupBranding({ data, setData, errors, setErrors, isMobile }) {
+function SetupBranding({ data, setData, errors, setErrors, isMobile, categoryName = "Business" }) {
   const logoInputRef = useRef(null);
   const [focused, setFocused] = useState(null);
   const handleLogoUpload = (e) => {
@@ -367,7 +369,7 @@ function SetupBranding({ data, setData, errors, setErrors, isMobile }) {
           </div>
         </div>
         <div style={{ marginBottom: 16 }}>
-          <label style={labelStyle}>App / Business Name *</label>
+          <label style={labelStyle}>App / {categoryName} Name *</label>
           <input value={data.appName} onChange={e => { setData(d => ({ ...d, appName: e.target.value })); if (errors.appName) setErrors(e => ({ ...e, appName: "" })); }}
             style={{ ...inputStyle, borderColor: errors.appName ? "#E74C3C" : focused === "appName" ? AMBER : undefined }}
             onFocus={() => setFocused("appName")} onBlur={() => setFocused(null)} placeholder="Ada's Kitchen" />
@@ -402,14 +404,14 @@ function SetupBranding({ data, setData, errors, setErrors, isMobile }) {
   );
 }
 
-function SetupBusiness({ data, setData, errors, setErrors, isMobile }) {
+function SetupBusiness({ data, setData, errors, setErrors, isMobile, categoryName = "Business", categoryLower = "business" }) {
   const [focused, setFocused] = useState(null);
   return (
     <div style={{ maxWidth: 600 }}>
-      <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Tell customers about your business</h2>
+      <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 36, color: NAVY, margin: "0 0 8px" }}>Tell customers about your {categoryLower}</h2>
       <p style={{ color: "#6B7280", fontSize: isMobile ? 14 : 16, margin: "0 0 32px" }}>This information appears on your store page in the DukaDesk app.</p>
       <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>About Your Business</label>
+        <label style={labelStyle}>About Your {categoryName}</label>
         <textarea value={data.bizDesc} onChange={e => setData(d => ({ ...d, bizDesc: e.target.value }))} placeholder="Tell customers what makes you special..." style={{ ...inputStyle, height: 100, resize: "vertical", paddingTop: 12 }} />
         <div style={{ textAlign: "right", fontSize: 11, color: "#9CA3AF" }}>{(data.bizDesc || "").length}/500</div>
       </div>
@@ -422,7 +424,7 @@ function SetupBusiness({ data, setData, errors, setErrors, isMobile }) {
         {errors.phone && <div style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.phone}</div>}
       </div>
       <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>Business Address</label>
+        <label style={labelStyle}>{categoryName} Address</label>
         <input value={data.address} onChange={e => setData(d => ({ ...d, address: e.target.value }))} placeholder="12 Admiralty Way, Lekki, Lagos" style={{ ...inputStyle, borderColor: focused === "address" ? AMBER : undefined }} onFocus={() => setFocused("address")} onBlur={() => setFocused(null)} />
       </div>
       <div style={{ marginBottom: 24 }}>

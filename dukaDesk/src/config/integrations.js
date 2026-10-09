@@ -27,7 +27,7 @@ export const INTEGRATION_DETAILS = {
   },
   "Bank Transfer": {
     preview: "Landmark",
-    summary: "Display your business bank details so customers can pay directly by transfer.",
+    summary: "Display your bank details so customers can pay directly by transfer.",
     types: [
       { name: "Single Account", icon: "Landmark", desc: "One bank account for all payments", popular: true },
       { name: "Multiple Accounts", icon: "Building2", desc: "Different accounts for different branches" },
@@ -73,7 +73,7 @@ export const INTEGRATION_DETAILS = {
     summary: "Let customers book appointments directly. Choose slot durations and availability.",
     types: [
       { name: "Standard Booking", icon: "Calendar", desc: "Fixed time slots with configurable duration", popular: true },
-      { name: "Open Hours", icon: "Clock", desc: "Customers pick any time within business hours" },
+      { name: "Open Hours", icon: "Clock", desc: "Customers pick any time within opening hours" },
       { name: "Multi-Service", icon: "Store", desc: "Different services with different durations & prices" },
     ],
   },
@@ -126,7 +126,7 @@ export const INTEGRATION_DETAILS = {
     summary: "Chat with customers in real-time from your dashboard. Supports images and typing indicators.",
     types: [
       { name: "Live Chat", icon: "MessageCircle", desc: "Real-time conversation with customers", popular: true },
-      { name: "Auto-Reply", icon: "Bot", desc: "Automatic replies during business hours" },
+      { name: "Auto-Reply", icon: "Bot", desc: "Automatic replies during opening hours" },
       { name: "Quick Replies", icon: "Zap", desc: "Pre-saved responses for common questions" },
     ],
   },

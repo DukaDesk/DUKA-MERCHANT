@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../contexts";
+import { useVertical } from "../../runtime/VerticalContext";
 import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../../theme";
@@ -15,6 +16,7 @@ const badge = { fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius:
 export default function IntegrationConfigPanel({ integration, config, onConfig, onSave, onRemove }) {
   const isMobile = useIsMobile();
   const { merchant } = useAuth();
+  const { categoryName = "Business", categoryLower = "business" } = useVertical();
   const setVal = (key, val) => onConfig(integration.name, { ...config, [key]: val });
   const getVal = (key, def) => config?.[key] ?? def;
 
@@ -66,7 +68,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
           <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 8, padding: 14, marginBottom: 20 }}>
             <div style={{ fontSize: 13, color: "#92400E" }}> Your keys are encrypted at rest. Never share your secret key.</div>
           </div>
-          {input("Business Name", "businessName", merchant?.business || "My Store")}
+          {input(categoryName + " Name", "businessName", merchant?.business || "My Store")}
           {input("Public Key", "publicKey", "pk_live_xxxxxxxxxxxx")}
           <div style={fieldStyle}>
             <label style={labelStyle}>Secret Key</label>
@@ -95,7 +97,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
           <div style={{ background: "#EEF2FF", border: "1px solid #A5B4FC", borderRadius: 8, padding: 14, marginBottom: 20 }}>
             <div style={{ fontSize: 13, color: "#312E81" }}> Pan-African payments — accept cards, mobile money & bank transfer.</div>
           </div>
-          {input("Business Name", "businessName", merchant?.business || "My Store")}
+          {input(categoryName + " Name", "businessName", merchant?.business || "My Store")}
           {input("Public Key", "publicKey", "FLWPUBK-xxxxxxxxxxxx")}
           <div style={fieldStyle}>
             <label style={labelStyle}>Secret Key</label>
@@ -238,7 +240,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
             <div style={{ fontSize: 13, color: "#0369A1" }}> Let customers book appointments directly from your app.</div>
           </div>
           <div style={fieldStyle}>
-            <label style={labelStyle}>Business Hours</label>
+            <label style={labelStyle}>{categoryName} Hours</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {DAYS.map(d => (
                 <button key={d} onClick={() => {
@@ -400,11 +402,11 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
-              <label style={labelStyle}>Business hours start</label>
+              <label style={labelStyle}>{categoryName} hours start</label>
               <input value={getVal("hoursStart", "09:00")} onChange={e => setVal("hoursStart", e.target.value)} type="time" style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Business hours end</label>
+              <label style={labelStyle}>{categoryName} hours end</label>
               <input value={getVal("hoursEnd", "18:00")} onChange={e => setVal("hoursEnd", e.target.value)} type="time" style={inputStyle} />
             </div>
           </div>
@@ -415,7 +417,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
             </select>
           </div>
           {textarea("Auto-reply message", "autoReply", `Hi!  Thanks for reaching out to ${merchant?.business || "our store"}. We'll respond shortly.`)}
-          {textarea("Away message", "awayMsg", `We're currently closed. We'll reply as soon as we reopen during business hours.`)}
+          {textarea("Away message", "awayMsg", `We're currently closed. We'll reply as soon as we reopen during opening hours.`)}
           {toggle("Show typing indicator", "typingIndicator", true)}
           {toggle("Read receipts", "readReceipts", true)}
           {toggle("Customer can send images", "allowImages", true)}
@@ -496,16 +498,16 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
           {input("Agent display name", "agentName", merchant?.name || "Support Team")}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
-              <label style={labelStyle}>Business hours start</label>
+              <label style={labelStyle}>{categoryName} hours start</label>
               <input value={getVal("hoursStart", "09:00")} onChange={e => setVal("hoursStart", e.target.value)} type="time" style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Business hours end</label>
+              <label style={labelStyle}>{categoryName} hours end</label>
               <input value={getVal("hoursEnd", "18:00")} onChange={e => setVal("hoursEnd", e.target.value)} type="time" style={inputStyle} />
             </div>
           </div>
           {select("Response time SLA", "responseSla", ["Instant", "5 min", "15 min", "30 min", "1 hour"])}
-          {textarea("Away message", "awayMsg", `We're currently offline. Leave a message and we'll get back to you during business hours.`)}
+          {textarea("Away message", "awayMsg", `We're currently offline. Leave a message and we'll get back to you during opening hours.`)}
           {toggle("Show estimated wait time", "showWaitTime", true)}
           {toggle("File attachment support", "fileAttach", true)}
         </>);

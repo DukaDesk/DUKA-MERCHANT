@@ -1,10 +1,22 @@
 import { BUSINESS_CATEGORIES } from "./taxonomy";
 
-export const WIZARD_STEPS = ["Category", "Template", "Branding", "Business Info", "Integrations"];
+export const WIZARD_STEPS = ["Category", "Template", "Branding", "Details", "More Tools"];
 
 export const WIZARD_CATEGORIES = BUSINESS_CATEGORIES.map(({ label, icon, desc }) => ({ name: label, icon, desc }));
 
 export const WIZARD_PREVIEW_DATA = {
+  Business: { categories: ["New Arrivals", "Clothing", "Electronics"], items: [{ emoji: "👗", name: "African Print Dress", price: "₦15,000" }, { emoji: "📱", name: "Wireless Earbuds", price: "₦8,500" }], cta: "Buy Now", badge: "Online" },
+  Corporate: { categories: ["Services", "Advisory", "Retainers"], items: [{ emoji: "💼", name: "Strategy Session", price: "₦50,000" }, { emoji: "📊", name: "Audit Package", price: "₦120,000" }], cta: "Request Quote", badge: "Online" },
+  Legal: { categories: ["Practice Areas", "Attorneys", "Insights"], items: [{ emoji: "⚖️", name: "Legal Consultation", price: "₦25,000" }, { emoji: "📄", name: "Contract Review", price: "₦40,000" }], cta: "Book Consultation", badge: "Open" },
+  Religion: { categories: ["Upcoming", "Sermons", "Ministries"], items: [{ emoji: "📖", name: "Sunday Service", price: "10:00 AM" }, { emoji: "🙏", name: "Prayer Meeting", price: "Wed 6:00 PM" }], cta: "Join Us", badge: "Welcome" },
+  Education: { categories: ["Announcements", "Timetable", "Events"], items: [{ emoji: "📚", name: "Term 2 Exams", price: "Mar 15" }, { emoji: "🏆", name: "Sports Day", price: "Apr 10" }], cta: "View Details", badge: "Open" },
+  Healthcare: { categories: ["Services", "Doctors", "Health Tips"], items: [{ emoji: "🩺", name: "General Checkup", price: "₦10,000" }, { emoji: "💊", name: "Prescription Refill", price: "₦5,000" }], cta: "Book Visit", badge: "Open Now" },
+  "Food & Hospitality": { categories: ["Popular", "Mains", "Drinks"], items: [{ emoji: "🍛", name: "Jollof Rice", price: "₦2,500" }, { emoji: "🍗", name: "Grilled Chicken", price: "₦4,500" }], cta: "Add to Cart", badge: "Open Now" },
+  Services: { categories: ["Services", "Popular", "Special Offers"], items: [{ emoji: "💇", name: "Hair Styling", price: "₦8,000" }, { emoji: "💆", name: "Full Body Massage", price: "₦15,000" }], cta: "Book Now", badge: "Open Now" },
+  Events: { categories: ["Upcoming", "Past", "Featured"], items: [{ emoji: "🎪", name: "Live Concert", price: "₦5,000" }, { emoji: "🎤", name: "Comedy Night", price: "₦3,000" }], cta: "Get Tickets", badge: "Online" },
+  Nonprofit: { categories: ["Campaigns", "Impact", "Volunteer"], items: [{ emoji: "🤝", name: "Feed 100 Families", price: "₦2,000" }, { emoji: "📚", name: "School Kits", price: "₦5,000" }], cta: "Donate", badge: "Welcome" },
+  Personal: { categories: ["Portfolio", "Services", "Testimonials"], items: [{ emoji: "🌟", name: "Brand Shoot", price: "₦30,000" }, { emoji: "📸", name: "Consultation", price: "₦10,000" }], cta: "Enquire", badge: "Online" },
+  // Legacy fallbacks (pre-broad-taxonomy values still stored on some tenants)
   Restaurant: { categories: ["Popular", "Mains", "Drinks"], items: [{ emoji: "🍛", name: "Jollof Rice", price: "₦2,500" }, { emoji: "🍗", name: "Grilled Chicken", price: "₦4,500" }], cta: "Add to Cart", badge: "Open Now" },
   Ecommerce: { categories: ["New Arrivals", "Clothing", "Electronics"], items: [{ emoji: "👗", name: "African Print Dress", price: "₦15,000" }, { emoji: "📱", name: "Wireless Earbuds", price: "₦8,500" }], cta: "Buy Now", badge: "Online" },
   "Food Vendor": { categories: ["Popular", "Specials", "Combo"], items: [{ emoji: "🌮", name: "Spicy Shawarma", price: "₦3,000" }, { emoji: "🥤", name: "Zobo Drink", price: "₦500" }], cta: "Order Now", badge: "Open Now" },

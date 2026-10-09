@@ -144,7 +144,7 @@ const SCREEN_BUILDERS = {
   splash: () => ([
     { type: "image_block", props: { alt: "Logo" } },
     { type: "text_block", props: { text: "DukaDesk", fontSize: 28, fontWeight: "800", alignment: "center" } },
-    { type: "text_block", props: { text: "Your business, in your pocket", fontSize: 14, alignment: "center", color: "#6B7280" } },
+    { type: "text_block", props: { text: "Your desk, in your pocket", fontSize: 14, alignment: "center", color: "#6B7280" } },
   ]),
   dashboard: () => ([
     { type: "hero_banner", props: { title: "Good morning, Ada", subtitle: "Here's what's happening today", badge: "LIVE", color: "#1A1A2E", variant: "left", radius: 16, height: 140 } },
@@ -239,7 +239,7 @@ const SCREEN_BUILDERS = {
   ]),
 };
 
-const ICON_NAMES = ["Star", "Heart", "Bell", "Home", "User", "Settings", "Search", "Mail", "Phone", "Camera", "Check", "Info"];
+const ICON_NAMES = ["Star", "Heart", "Bell", "Home", "User", "Settings", "Search", "Mail", "Phone", "Camera", "Check", "Info", "ShoppingCart", "ShoppingBag", "MapPin", "Calendar", "Clock", "Wallet", "Gift", "Tag", "CreditCard", "Truck", "Store", "Music"];
 
 const GALLERY = {
   Layout: {

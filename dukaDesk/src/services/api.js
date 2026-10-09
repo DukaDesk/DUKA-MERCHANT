@@ -295,6 +295,17 @@ function buildMerchant(user, tenant = null) {
   const realTenant = nested || tenant;
   const tenantId = realTenant?.id || tenant?.tenantId || null;
   const tenantSlug = realTenant?.slug || tenant?.slug || null;
+  // Category flag: prefer explicit backend fields (tenant.category,
+  // tenant.businessCategory, user.category) so the frontend can remember
+  // the desk configuration. Falls back to local hydration via tenant config.
+  const backendCategory =
+    realTenant?.category ||
+    realTenant?.businessCategory ||
+    realTenant?.deskCategory ||
+    tenant?.category ||
+    user?.category ||
+    user?.businessCategory ||
+    "";
   return {
     id: user.id,
     name,
@@ -309,20 +320,31 @@ function buildMerchant(user, tenant = null) {
     tenantSlug,
     status: user.status,
     role: user.role || "tenant_owner",
+    ...(backendCategory ? { category: backendCategory } : {}),
   };
 }
 
 async function hydrateMerchantCategory(merchant) {
-  if (!merchant?.tenantId) return merchant;
-  let category = merchant.category;
+  if (!merchant) return merchant;
+  // 1) explicit category on the merchant/user payload (backend flag)
+  let category = merchant.category || merchant.businessCategory || merchant.deskCategory || "";
+  // 2) previous local merchant (preserves category across logins)
   if (!category) {
     const prev = getMerchant();
     if (prev?.id === merchant.id) category = prev?.category || "";
   }
+  // 3) local setup (chosen at signup / onboarding before backend syncs)
   if (!category) {
     try {
+      const setup = getSetupData();
+      category = setup?.category || "";
+    } catch { /* ignore */ }
+  }
+  // 4) tenant config app.category (current backend storage)
+  if (!category && merchant?.tenantId) {
+    try {
       const { data } = await readConfig(merchant.tenantId);
-      category = data?.app?.category || "";
+      category = data?.app?.category || data?.category || "";
     } catch { /* best-effort */ }
   }
   const next = category ? { ...merchant, category } : merchant;
@@ -369,6 +391,10 @@ export async function signup(body) {
     lastName,
     password: body.password,
     ...(body.businessName ? { businessName: body.businessName } : {}),
+    // Desk category preset at signup — backend should persist this as the
+    // tenant category flag (see DUKA-BACKEND DESK_CATEGORY_FLAG_TODO.md).
+    // Sent best-effort today; frontend also presets locally regardless.
+    ...(body.category ? { category: body.category, businessCategory: body.category } : {}),
   });
 
   const payload = res.data || res;
@@ -379,7 +405,20 @@ export async function signup(body) {
 
   const tenant = await fetchTenantSilently(user?.tenantId);
 
-  const merchant = await hydrateMerchantCategory(buildMerchant(user, tenant));
+  let merchant = await hydrateMerchantCategory(buildMerchant(user, tenant));
+  // Preset dashboard locally from the signup category so the first
+  // dashboard render already shows the right tools (e.g. Donations for
+  // Church, Orders for shops) even before the backend echoes the flag.
+  if (body.category) {
+    merchant = { ...merchant, category: body.category };
+    setMerchant(merchant);
+    try {
+      const saved = getSetupData();
+      if (!saved?.category || saved.category !== body.category) {
+        setSetupData({ ...(saved || {}), category: body.category });
+      }
+    } catch { /* ignore */ }
+  }
   return { token: accessToken, merchant };
 }
 
@@ -409,8 +448,11 @@ export async function logout() {
   setRefreshToken(null);
 }
 
-export async function googleSignIn(idToken) {
-  const res = await httpClient.post("/api/v1/auth/google", { idToken });
+export async function googleSignIn(idToken, extra = {}) {
+  const res = await httpClient.post("/api/v1/auth/google", {
+    idToken,
+    ...(extra?.category ? { category: extra.category, businessCategory: extra.category } : {}),
+  });
 
   const payload = res.data || res;
   const { user, accessToken, refreshToken } = payload || {};
@@ -425,7 +467,11 @@ export async function googleSignIn(idToken) {
 
   const tenant = await fetchTenantSilently(user?.tenantId);
 
-  const merchant = await hydrateMerchantCategory(buildMerchant(user, tenant));
+  let merchant = await hydrateMerchantCategory(buildMerchant(user, tenant));
+  if (extra?.category) {
+    merchant = { ...merchant, category: extra.category };
+    setMerchant(merchant);
+  }
   return { token: accessToken, merchant };
 }
 
@@ -483,11 +529,20 @@ export async function getMyApp() {
   if (!tenantId) return null;
   const { data } = await readConfig(tenantId);
   const app = data.app || {};
+  let submission = null;
+  if (!isDemoId(tenantId)) {
+    try {
+      // Silent: backends deployed before the review-flow endpoint return 404 here.
+      const response = await httpClient.get(`/api/v1/merchants/${encodeURIComponent(tenantId)}/publishing/submission`, { silent: true });
+      submission = response?.data ?? response;
+    } catch { /* older backend deployment */ }
+  }
   let published = app.lastPublished || data.deployed || {};
   let status = app.status;
   if (!isDemoId(tenantId)) {
     try { published = await readPublished(tenantId); status = 'live'; }
     catch { published = {}; status = 'unverified'; }
+    if (submission?.status === 'in_review' || submission?.status === 'rejected') status = submission.status;
   }
   const identity = published.identity || {};
   const branding = published.branding || {};
@@ -501,6 +556,8 @@ export async function getMyApp() {
   return {
     ...app,
     status,
+    submissionReason: submission?.release?.releaseNotes || null,
+    submissionVersion: submission?.release?.version || null,
     version: published.version,
     appName: publishedName || app.appName,
     slug: publishedSlug || app.slug,
@@ -509,13 +566,19 @@ export async function getMyApp() {
   };
 }
 
-export async function saveCategory(category) {
+export async function saveCategory(category, modules = null) {
   const merchant = getMerchant();
+  if (merchant) {
+    setMerchant({ ...merchant, category });
+  }
+  const saved = getSetupData();
+  const list = Array.isArray(modules) ? modules : saved?.modules;
+  setSetupData({ ...(saved || {}), category, ...(list ? { modules: list } : {}) });
   const tenantId = merchant?.tenantId;
   if (!tenantId) return { success: false };
   const { data } = await readConfig(tenantId);
   await writeConfig(tenantId, {
-    app: { ...(data.app || {}), category, updatedAt: new Date().toISOString() },
+    app: { ...(data.app || {}), category, ...(list ? { modules: list } : {}), updatedAt: new Date().toISOString() },
   });
   return { success: true };
 }
@@ -942,7 +1005,7 @@ export async function updateTenant(id, body) {
     return { ...store.tenant };
   }
   try {
-    const res = await httpClient.put(`/api/v1/merchants/${id}`, body);
+    const res = await httpClient.put("/api/v1/app/merchants", body);
     const data = res.data || res;
     const m = getMerchant();
     if (m && data) {
@@ -1110,6 +1173,22 @@ export async function saveDesignData(design) {
   const merchantId = merchant?.merchantId || merchant?.tenantId;
   if (!merchantId) return;
   await writeConfig(merchantId, { design });
+}
+
+export async function requestBuilderAgentCompletion({ prompt, systemPrompt }) {
+  const response = await httpClient.post("/api/v1/ai/complete", {
+    prompt,
+    systemPrompt,
+    provider: "openai",
+    temperature: 0.2,
+    maxTokens: 2400,
+  }, { silent: true });
+  const payload = response?.data ?? response;
+  const result = payload?.data ?? payload;
+  if (typeof result?.output !== "string" || !result.output.trim()) {
+    throw new Error("The AI service returned no proposal. Please try again.");
+  }
+  return result.output;
 }
 
 export async function getPublishedDefinition(merchantId) {

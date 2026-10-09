@@ -20,7 +20,7 @@ export default function Dashboard() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { merchant } = useAuth();
-  const { vertical } = useVertical();
+  const { vertical, category, categoryName, categoryLower } = useVertical();
   const { modules: enabledIds } = useVertical();
   const enabledModulesSet = new Set(enabledIds);
   const moduleGate = (id) => !id || PRIMITIVE_BY_ID[id] === undefined || enabledModulesSet.has(id);
@@ -80,9 +80,9 @@ export default function Dashboard() {
   const setup = getSetupData();
   const statusItems = [
     { dot: "#7C3AED", label: merchant?.name || "Merchant", sub: merchant?.email || "No email" },
-    { dot: "#0D9488", label: merchant?.business || "Business", sub: merchant?.phone || "No phone" },
+    { dot: "#0D9488", label: merchant?.business || `${categoryName} name`, sub: merchant?.phone || "No phone" },
     ...(deployedApp?.category ? [{ dot: AMBER, label: "Category: " + deployedApp.category, sub: "Template: " + (deployedApp?.template || "Not set") }] : []),
-    ...(setup?.selectedIntegrations?.length ? [{ dot: "#7C3AED", label: `${setup.selectedIntegrations.length} Integrations Enabled`, sub: setup.selectedIntegrations.slice(0,4).join(", ") + (setup.selectedIntegrations.length > 4 ? "..." : "") }] : []),
+    ...(setup?.selectedIntegrations?.length ? [{ dot: "#7C3AED", label: `${setup.selectedIntegrations.length} Tools Enabled`, sub: setup.selectedIntegrations.slice(0,4).join(", ") + (setup.selectedIntegrations.length > 4 ? "..." : "") }] : []),
   ];
 
   const copyLink = () => { navigator.clipboard.writeText(storeUrl); setQrCopied(true); toast.success("Store link copied!"); setTimeout(() => setQrCopied(false), 2000); };
@@ -128,7 +128,7 @@ export default function Dashboard() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
           <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: 0 }}>Overview</h2>
-          <p style={{ color: "#6B7280", fontSize: 14, marginTop: 4 }}>Your {vertical.label.toLowerCase()} at a glance</p>
+          <p style={{ color: "#6B7280", fontSize: 14, marginTop: 4 }}>Your {categoryLower} at a glance</p>
         </div>
         <button onClick={() => navigate("/my-app")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <Smartphone size={16} /> My app
@@ -142,12 +142,29 @@ export default function Dashboard() {
               <ShieldCheck size={20} color={AMBER} />
             </div>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>Complete business verification</div>
-              <div style={{ fontSize: 13, color: "#6B7280" }}>Verify your business to unlock Desk Design and go live.</div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>Complete {categoryLower} verification</div>
+              <div style={{ fontSize: 13, color: "#6B7280" }}>Verify your {categoryLower} to unlock Desk Design and go live.</div>
             </div>
           </div>
           <button onClick={() => navigate("/compliance")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
             Start Verification <ArrowRight size={15} />
+          </button>
+        </div>
+      )}
+
+      {!category && (
+        <div style={{ ...cardStyle, marginBottom: 20, background: "linear-gradient(135deg, #EFF6FF, #F5F8FF)", border: "1px solid rgba(59,130,246,0.35)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 40, height: 40, background: "#3B82F618", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Sparkles size={20} color="#3B82F6" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>Set your desk type</div>
+              <div style={{ fontSize: 13, color: "#6B7280" }}>Pick Business, Corporate, Legal, Religion, Education… and we re-tailor your dashboard tools automatically.</div>
+            </div>
+          </div>
+          <button onClick={() => navigate("/dashboard/profile")} style={{ background: NAVY, color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+            Set desk type <ArrowRight size={15} />
           </button>
         </div>
       )}
@@ -172,7 +189,7 @@ export default function Dashboard() {
           <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.name || "—"}</div>
         </div>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
-          <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Business</div>
+          <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>{categoryName} name</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{merchant?.business || "—"}</div>
         </div>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
@@ -206,7 +223,7 @@ export default function Dashboard() {
             <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{deployedApp?.template || setup?.template || "—"}</div>
           </div>
           <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
-            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Integrations</div>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Tools</div>
             <div style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{(deployedApp?.selectedIntegrations?.length || setup?.selectedIntegrations?.length || 0) + " enabled"}</div>
           </div>
         </>}

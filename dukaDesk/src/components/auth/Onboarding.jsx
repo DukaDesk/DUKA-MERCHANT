@@ -4,7 +4,7 @@ import { Store, ArrowLeft, ArrowRight, Check, Search } from "lucide-react";
 import PropTypes from "prop-types";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../../theme";
-import { ONBOARDING_CATEGORIES } from "../../config/taxonomy";
+import { ONBOARDING_CATEGORIES, resolveCanonicalCategory } from "../../config/taxonomy";
 import { useAuth } from "../../contexts";
 import { useVertical } from "../../runtime/VerticalContext";
 import { updateTenant, getMerchant, ensureTenant } from "../../services/api";
@@ -14,14 +14,17 @@ export default function Onboarding({ onAuth }) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { merchant } = useAuth();
-  const { setCategory } = useVertical();
+  const { setCategory, category: activeCategory, categoryName } = useVertical();
   const [step, setStep] = useState(0);
   const [name, setName] = useState(() => {
     const m = getMerchant();
     return (merchant?.business || m?.business || "").trim();
   });
   const [search, setSearch] = useState("");
-  const [categoryId, setCategoryId] = useState(merchant?.category || null);
+  const [categoryId, setCategoryId] = useState(() => {
+    const raw = merchant?.category || activeCategory || null;
+    return resolveCanonicalCategory(raw) || raw || null;
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -41,12 +44,16 @@ export default function Onboarding({ onAuth }) {
   };
 
   const finishSetup = async (key) => {
+    // Extended onboarding picks (Cafe, Pharmacy, ...) map to their broad
+    // industry preset; legacy keys map via alias — always store canonical.
+    const found = ONBOARDING_CATEGORIES.find(c => c.key === key);
+    const canonical = found?.preset || resolveCanonicalCategory(key) || key;
     setSaving(true); setError("");
     try {
       await saveName();
-      await setCategory(key);
+      await setCategory(canonical);
       const m1 = getMerchant();
-      onAuth?.({ ...(m1 || {}), category: key });
+      onAuth?.({ ...(m1 || {}), category: canonical });
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
@@ -68,8 +75,10 @@ export default function Onboarding({ onAuth }) {
   };
 
   const pick = async (key) => {
-    setCategoryId(key);
-    await finishSetup(key);
+    const found = ONBOARDING_CATEGORIES.find(c => c.key === key);
+    const canonical = found?.preset || resolveCanonicalCategory(key) || key;
+    setCategoryId(canonical);
+    await finishSetup(canonical);
   };
 
   return (
@@ -116,7 +125,8 @@ export default function Onboarding({ onAuth }) {
             </div>
             <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: "12px 0 6px" }}>What are you building?</h1>
             <p style={{ color: "#6B7280", fontSize: 14, margin: "0 0 24px", lineHeight: 1.6 }}>
-              Pick the type that fits best. You can change this anytime — we'll tailor your desk to match ({name || merchant?.business || "your name"}) later.
+              Pick the type that fits best. You can change this anytime — we'll tailor your {categoryId ? `${categoryId.toLowerCase()} desk` : "desk"} to match ({name || merchant?.business || "your name"}) later.
+              {activeCategory ? ` Current: ${categoryName}. Picking a new type re-presets your tools.` : ""}
             </p>
             <div style={{ position: "relative", marginBottom: 20 }}>
               <Search size={17} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9CA3AF", zIndex: 1 }} />

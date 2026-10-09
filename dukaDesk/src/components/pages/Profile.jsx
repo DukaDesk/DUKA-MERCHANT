@@ -5,6 +5,8 @@ import { useAuth } from "../../contexts";
 import { toast } from "react-toastify";
 import { NAVY, AMBER, cardStyle, inputStyle, labelStyle } from "../../theme";
 import { getMerchantProfile, updateMerchantProfile, getCurrentPlan, deactivateAccount, reactivateAccount, permanentlyDeleteAccount, getDeactivationStatus } from "../../services/api";
+import { useVertical } from "../../runtime/VerticalContext";
+import { BUSINESS_CATEGORIES, resolveCanonicalCategory } from "../../config/taxonomy";
 import { Loading, ErrorState } from "../layout/States";
 import { Store, Mail, Phone, User, Save, ArrowLeft, Sparkles, AlertTriangle, Undo2, Trash2, X } from "lucide-react";
 
@@ -12,9 +14,11 @@ export default function Profile() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { merchant: contextMerchant, handleAuth, logout } = useAuth();
+  const { categoryName, categoryLower, category, setCategory } = useVertical();
   const [profile, setProfile] = useState(null);
-  const [form, setForm] = useState({ name: "", business: "", email: "", phone: "" });
+  const [form, setForm] = useState({ name: "", business: "", email: "", phone: "", category: "" });
   const [saving, setSaving] = useState(false);
+  const [savingCategory, setSavingCategory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPlan, setCurrentPlan] = useState(null);
@@ -28,7 +32,8 @@ export default function Profile() {
     setLoading(true);
     getMerchantProfile().then(m => {
       setProfile(m);
-      setForm({ name: m.name || "", business: m.business || "", email: m.email || "", phone: m.phone || "" });
+      const rawCat = m.category || category || "";
+      setForm({ name: m.name || "", business: m.business || "", email: m.email || "", phone: m.phone || "", category: resolveCanonicalCategory(rawCat) || rawCat || "" });
     }).catch(() => setError("Failed to load profile"))
     .finally(() => setLoading(false));
     getCurrentPlan().then(p => setCurrentPlan(p)).catch(() => {});
@@ -37,14 +42,22 @@ export default function Profile() {
   useEffect(loadProfile, []);
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.business.trim()) { toast.error("Name and business name are required"); return; }
+    if (!form.name.trim() || !form.business.trim()) { toast.error(`Name and ${categoryLower} name are required`); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { toast.error("Invalid email format"); return; }
     if (form.phone && !/^[\d\s\+\-\(\)]{7,20}$/.test(form.phone)) { toast.error("Invalid phone number format"); return; }
     setSaving(true);
     try {
       const updated = await updateMerchantProfile({ name: form.name, business: form.business, email: form.email, phone: form.phone });
-      setProfile(updated);
-      handleAuth(updated);
+      const merged = { ...updated, category: form.category || updated.category || category };
+      setProfile(merged);
+      handleAuth(merged);
+      // Persist desk-type change (if any) and re-preset dashboard tools.
+      if (form.category && form.category !== category) {
+        setSavingCategory(true);
+        try { await setCategory(form.category); } catch { /* best-effort */ }
+        finally { setSavingCategory(false); }
+        handleAuth({ ...merged, category: form.category });
+      }
       toast.success("Profile updated!");
     } catch {
       toast.error("Failed to update profile");
@@ -109,6 +122,11 @@ export default function Profile() {
           <div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY }}>{profile?.name || "Merchant"}</div>
             <div style={{ fontSize: 14, color: "#6B7280" }}>{profile?.business || ""}</div>
+            {(profile?.category || category) && (
+              <div style={{ display: "inline-block", fontSize: 12, fontWeight: 700, color: NAVY, background: "#FFF8ED", border: "1px solid rgba(244,160,38,0.35)", borderRadius: 12, padding: "2px 10px", marginTop: 6 }}>
+                {profile?.category || category} Desk
+              </div>
+            )}
             <div style={{ fontSize: 13, color: "#9CA3AF", marginTop: 4 }}>
               Joined {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "recently"}
             </div>
@@ -143,10 +161,10 @@ export default function Profile() {
               </div>
             </div>
             <div>
-              <label htmlFor="profile-business-name" style={labelStyle}>Business Name</label>
+              <label htmlFor="profile-business-name" style={labelStyle}>{categoryName} Name</label>
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <Store size={16} style={{ position: "absolute", left: 12, color: "#9CA3AF" }} />
-                <input id="profile-business-name" name="profile-business-name" style={{ ...inputStyle, paddingLeft: 36 }} value={form.business} onChange={e => setForm(f => ({ ...f, business: e.target.value }))} placeholder="Business name" />
+                <input id="profile-business-name" name="profile-business-name" style={{ ...inputStyle, paddingLeft: 36 }} value={form.business} onChange={e => setForm(f => ({ ...f, business: e.target.value }))} placeholder={`${categoryName} name`} />
               </div>
             </div>
             <div>
@@ -163,9 +181,22 @@ export default function Profile() {
                 <input id="profile-phone" name="profile-phone" style={{ ...inputStyle, paddingLeft: 36 }} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone number" />
               </div>
             </div>
+            <div>
+              <label htmlFor="profile-desk-category" style={labelStyle}>Desk type</label>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <Store size={16} style={{ position: "absolute", left: 12, color: "#9CA3AF" }} />
+                <select id="profile-desk-category" name="profile-desk-category" style={{ ...inputStyle, paddingLeft: 36, appearance: "none", cursor: "pointer" }} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                  <option value="">Select desk type…</option>
+                  {BUSINESS_CATEGORIES.map(c => (
+                    <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 6 }}>Changing desk type re-presets your dashboard tools (e.g. Religion → Donations).</p>
+            </div>
           </div>
-          <button onClick={handleSave} disabled={saving} style={{ marginTop: 20, background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 28px", fontSize: 14, fontWeight: 700, cursor: saving ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s" }}>
-            <Save size={16} /> {saving ? "Saving..." : "Save Changes"}
+          <button onClick={handleSave} disabled={saving || savingCategory} style={{ marginTop: 20, background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 28px", fontSize: 14, fontWeight: 700, cursor: saving || savingCategory ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s" }}>
+            <Save size={16} /> {saving || savingCategory ? "Saving..." : "Save Changes"}
           </button>
         </div>
 

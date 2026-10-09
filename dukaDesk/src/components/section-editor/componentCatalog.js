@@ -1,4 +1,4 @@
-import { getComponentsByCategory, getComponentType } from "../canvas-editor/componentTypes";
+import { getComponentsByCategory, getComponentType, ICON_LIBRARY } from "../canvas-editor/componentTypes";
 
 // Authoring choices only: existing saved component types remain supported.
 export function getComponentCatalog() {
@@ -23,6 +23,27 @@ export function getComponentCatalog() {
         { ...getComponentType("category_pills"), catalogId: "icon-pill-set", label: "Icon Pill Set", defaultProps: { cats: [{ label: "Popular", icon: "Star", active: true }, { label: "Favorites", icon: "Heart" }, { label: "Recent", icon: "Clock" }] } },
         preset("text-pressable", "Text Pressable", { icon: "", variant: "ghost", color: "#1A1A2E" }),
         preset("icon-pressable", "Icon Pressable", { icon: "Heart", label: "Favorite", showLabel: "false", variant: "ghost", color: "#1A1A2E", width: 44, height: 44 })
+      );
+    }
+    if (category.key === "icons") {
+      const icon = getComponentType("icon");
+      const chevron = getComponentType("chevron");
+      const arrow = getComponentType("arrow");
+      const glyph = (catalogId, label, name) => ({ ...icon, catalogId, label, defaultProps: { ...icon.defaultProps, name, size: 24, width: 40, height: 40 } });
+      const dir = (catalogId, label, direction) => ({ ...chevron, catalogId, label, defaultProps: { ...chevron.defaultProps, direction, size: 24, width: 40, height: 40 } });
+      const labelOverrides = { X: "Close", Plus: "Add", Minus: "Remove", ArrowLeftRight: "Left / Right Arrows", ArrowDownUp: "Up / Down Arrows" };
+      const iconGlyphs = Object.keys(ICON_LIBRARY).map(name => {
+        const label = labelOverrides[name] || name.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+        const catalogId = `icon-${name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()}`;
+        return glyph(catalogId, label, name);
+      });
+      components.splice(0, components.length,
+        ...iconGlyphs,
+        dir("arrow-right", "Arrow Right", "right"),
+        dir("arrow-left", "Arrow Left", "left"),
+        dir("arrow-up", "Arrow Up", "up"),
+        dir("arrow-down", "Arrow Down", "down"),
+        { ...arrow, catalogId: "line-arrow", label: "Line Arrow" }
       );
     }
     if (category.key === "text") {

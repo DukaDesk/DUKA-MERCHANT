@@ -12,7 +12,7 @@ export default function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { merchant } = useAuth();
-  const { vertical } = useVertical();
+  const { vertical, categoryName, categoryLower } = useVertical();
   const page = location.pathname.split("/")[2] || "dashboard";
   const greetingName = merchant?.name?.split(" ")[0] || "there";
   const [search, setSearch] = useState("");
@@ -20,13 +20,14 @@ export default function Topbar() {
 
   const pageTitles = {
     dashboard: "Overview",
-    compliance: "Compliance",
+    compliance: `${categoryName} Compliance`,
     "my-app": "My App",
     ...(vertical.topbarTitles || {}),
     analytics: "Analytics",
     messages: vertical.topbarTitles?.messages || "Messages",
     marketing: "Marketing",
-    integrations: "Integrations",
+    integrations: "More Tools",
+    "more-tools": "More Tools",
     billing: "Billing",
   };
 
@@ -79,7 +80,7 @@ export default function Topbar() {
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             onKeyDown={e => e.key === "Enter" && toast.info(`Searching for "${search}"...`)}
-            placeholder="Search orders, products..."
+            placeholder={`Search ${categoryLower} tools...`}
             style={{ background: "none", border: "none", outline: "none", fontSize: 13, color: NAVY, width: "100%", fontFamily: "inherit" }}
           />
         </div>

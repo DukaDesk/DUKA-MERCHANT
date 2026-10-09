@@ -17,7 +17,7 @@ export const PRIMITIVES = [
   { id: "analytics", label: "Analytics", icon: "BarChart3", group: "Insights", desc: "Revenue, traffic & conversion overview", flags: ["analytics"], widgets: ["kpi_revenue", "revenue_trend"] },
   { id: "messages", label: "Messages", icon: "MessageSquare", group: "Communication", desc: "Chat with customers in real-time", flags: ["notifications"], widgets: ["messages_unread"] },
   { id: "marketing", label: "Marketing", icon: "Megaphone", group: "Communication", desc: "Campaigns, broadcasts & offers", flags: ["analytics", "notifications"], widgets: ["marketing_campaigns"] },
-  { id: "integrations", label: "Integrations", icon: "Link2", group: "Integrations", desc: "Install & manage connected features", flags: ["integrations"], widgets: ["integrations_active"] },
+  { id: "integrations", label: "More Tools", icon: "Link2", group: "More Tools", desc: "Install & manage connected features", flags: ["integrations"], widgets: ["integrations_active"] },
   { id: "billing", label: "Billing", icon: "CreditCard", group: "Account", desc: "Plans, payments & invoices", flags: [], widgets: ["billing_plan"] },
   { id: "team", label: "Team", icon: "Users", group: "Account", desc: "Invite members & set permissions", flags: [], widgets: ["team_members"] },
   { id: "settings", label: "Settings", icon: "Settings", group: "Account", desc: "Profile, desk & notification settings", flags: [], widgets: [] },
@@ -39,7 +39,7 @@ export const PRIMITIVES = [
 
 export const PRIMITIVE_BY_ID = Object.fromEntries(PRIMITIVES.map(p => [p.id, p]));
 
-export const PRIMITIVE_GROUPS = ["Insights", "Communication", "Commerce", "Sector", "Account", "Integrations"];
+export const PRIMITIVE_GROUPS = ["Insights", "Communication", "Commerce", "Sector", "Account", "More Tools"];
 
 export function getPrimitive(id) {
   return PRIMITIVE_BY_ID[id] || null;

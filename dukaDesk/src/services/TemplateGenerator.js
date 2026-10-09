@@ -242,7 +242,7 @@ function generateInfoScreen(config) {
           variant: "default",
           items: [
             { icon: "📞", label: "Call Us", value: config.phone || "+234 800 000 0000", action: "call" },
-            { icon: "📍", label: "Address", value: config.address || "12 Business Street, Lagos" },
+            { icon: "📍", label: "Address", value: config.address || "12 Admiralty Way, Lagos" },
             { icon: "🕐", label: "Hours", value: config.hours?.length ? config.hours[0] : "Mon-Sun: 8AM - 10PM" },
             { icon: "📧", label: "Email", value: "hello@" + (config.appName || "").toLowerCase().replace(/\s+/g, "") + ".com", action: "email" },
           ],
@@ -466,7 +466,7 @@ export function getDefaultTemplateConfig(category = "Restaurant") {
     tagline: "",
     color: "#1B4332",
     logo: null,
-    businessName: "My Business",
+    businessName: "My Desk",
     bizDesc: "",
     phone: "",
     address: "",

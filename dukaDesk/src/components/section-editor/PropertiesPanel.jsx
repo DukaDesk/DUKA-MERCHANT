@@ -256,7 +256,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                 ) : field.type === "bg" ? (
                   <FillEditor value={val} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} />
                 ) : field.type === "color" ? (
-                  <ColorInput value={val || "#000000"} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} />
+                  <ColorInput value={val ?? (field.allowTransparent ? "transparent" : "#000000")} allowTransparent={field.allowTransparent} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} />
                 ) : field.type === "select" ? (
                   <select value={val || (field.options?.[0] || "")}
                     onChange={e => store.updateProp(selectedSectionId, component.id, field.key, e.target.value)}
@@ -296,14 +296,6 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
               </div>
             );
           })}
-
-          {/* Button extras */}
-          {component.type === "button" && (
-            <div style={{ marginBottom: 12 }}>
-              <label style={labelStyle}>Background Color</label>
-              <ColorInput value={component.props?.background || "#F4A026"} onChange={(v) => store.updateProp(selectedSectionId, component.id, "background", v)} />
-            </div>
-          )}
 
           {/* Container children (carousel, nested_section, etc.) */}
           {def?.container && (
@@ -475,6 +467,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
     const init={};
     if(focusedField?.styleable && focusedField?.kind==="text") init["sub-text-style"]=true;
     else if(stylingGroupKeys.length) stylingGroupKeys.forEach((k,i)=> init[k]= i===0);
+    if(component?.type === "button") { init.background = true; init.border = true; }
     // keep sub-text-style open even when other groups exist
     if(focusedField?.styleable && focusedField?.kind==="text" && stylingGroupKeys.length) stylingGroupKeys.forEach((k,i)=> { if(init[k]===undefined) init[k]=false; });
     setStylingOpen(init);
@@ -517,14 +510,19 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
             </button>
             {open && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 6 }}>
-                {items.map(compDef => (
+                {items.map(compDef => {
+                  const presetGlyph = compDef.type === "icon" && compDef.defaultProps?.name ? getLucideIcon(compDef.defaultProps.name) : null;
+                  const chevronDir = compDef.type === "chevron" ? { right: "ArrowRight", left: "ArrowLeft", up: "ArrowUp", down: "ArrowDown" }[compDef.defaultProps?.direction] : null;
+                  const chevronGlyph = chevronDir ? getLucideIcon(chevronDir) : null;
+                  return (
                   <button key={compDef.catalogId || compDef.type} title={compDef.comingSoon ? "Coming soon" : compDef.label} onClick={() => {
                     addCatalogComponent(compDef);
                   }} disabled={addDisabled || compDef.comingSoon} style={{ padding: "6px 4px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: addDisabled ? "not-allowed" : "pointer", textAlign: "center", fontSize: 10, fontWeight: 500, color: theme.textSecondary, opacity: addDisabled ? 0.45 : 1 }}>
-                    <div style={{ fontSize: 16, marginBottom: 1, color: theme.textMuted }}><IconRender icon={COMPONENT_ICONS[compDef.type] || compDef.icon || FileText} size={16} /></div>
+                    <div style={{ fontSize: 16, marginBottom: 1, color: theme.textMuted }}><IconRender icon={presetGlyph || chevronGlyph || COMPONENT_ICONS[compDef.type] || compDef.icon || FileText} size={16} /></div>
                     <div style={{ fontSize: 9, lineHeight: 1.2 }}>{compDef.label}</div>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -676,6 +674,22 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                           </div>
                           <div style={{ marginBottom: 10 }}><label style={labelStyle}>Letter Spacing (px)</label><input type="number" step="0.5" value={getVal("letterSpacing",0)} onChange={e => { const v=Number(e.target.value); store.updateTextStyle(selectedSectionId, component.id, subKey, "letterSpacing", Number.isFinite(v)?v:0); }} style={textInput} /></div>
                           <div style={{ marginBottom: 4 }}><label style={labelStyle}>Color</label><ColorInput value={getVal("color", "#1C1B1D")} onChange={v => store.updateTextStyle(selectedSectionId, component.id, subKey, "color", v)} /></div>
+                          <div style={{ borderTop: `1px solid ${theme.borderLight}`, marginTop: 12, paddingTop: 12 }}>
+                            <div style={{ marginBottom: 10 }}>
+                              <label style={labelStyle}>Text Alignment</label>
+                              <select aria-label={`${focusedField.label} alignment`} value={getVal("alignment", "left")} onChange={event => store.updateTextStyle(selectedSectionId, component.id, subKey, "alignment", event.target.value)} style={{ ...textInput, cursor: "pointer" }}>
+                                <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
+                              </select>
+                            </div>
+                            <div style={{ marginBottom: 10 }}>
+                              <label style={labelStyle}>Text Margin (px)</label>
+                              <SpacingEditor labelPrefix={`${focusedField.label} margin`} value={getVal("margin", {})} onChange={value => store.updateTextStyle(selectedSectionId, component.id, subKey, "margin", value)} />
+                            </div>
+                            <div>
+                              <label style={labelStyle}>Text Padding (px)</label>
+                              <SpacingEditor labelPrefix={`${focusedField.label} padding`} value={getVal("padding", {})} onChange={value => store.updateTextStyle(selectedSectionId, component.id, subKey, "padding", value)} />
+                            </div>
+                          </div>
                           <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
                             <button onClick={() => onSelectComponent?.(selectedSectionId, component.id)} style={{ flex: 1, padding: "6px 0", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Back to component</button>
                           </div>
@@ -697,10 +711,10 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                   </AccPanel>
                 ))}
                 {/* Spacing — component-level, shown for every component */}
-                {!focusedField && !selectedItem && <>
+                {!selectedItem && <>
                 <AccPanel id="spacing" open={!!stylingOpen.spacing} onToggle={toggleStyling} title="Spacing" icon={ArrowLeftRight}>
-                  <div style={{ marginBottom: 10 }}><label style={labelStyle}>Margin (px)</label><SpacingEditor value={component.props?.margin || {}} onChange={v => store.updateProp(selectedSectionId, component.id, "margin", v)} /></div>
-                  <div style={{ marginBottom: 4 }}><label style={labelStyle}>Padding (px)</label><SpacingEditor value={component.props?.padding} onChange={v => store.updateProp(selectedSectionId, component.id, "padding", v)} /></div>
+                  <div style={{ marginBottom: 10 }}><label style={labelStyle}>Margin (px)</label><SpacingEditor labelPrefix="Component margin" value={component.props?.margin || {}} onChange={v => store.updateProp(selectedSectionId, component.id, "margin", v)} /></div>
+                  <div style={{ marginBottom: 4 }}><label style={labelStyle}>Padding (px)</label><SpacingEditor labelPrefix="Component padding" value={component.props?.padding} onChange={v => store.updateProp(selectedSectionId, component.id, "padding", v)} /></div>
                 </AccPanel>
                 <AccPanel id="effects" open={!!stylingOpen.effects} onToggle={toggleStyling} title="Effects" icon={Sparkles}>
                   <div style={{ marginBottom: 10 }}><label style={labelStyle}>Elevation</label><select value={component.props?.elevation || "none"} onChange={e => store.updateProp(selectedSectionId, component.id, "elevation", e.target.value)} style={{ ...textInput, cursor: "pointer" }}><option value="none">None</option><option value="soft">Soft</option><option value="medium">Medium</option><option value="raised">Raised</option></select></div>
@@ -1035,7 +1049,7 @@ function FieldEditor({ field, value, onChange, focused, onClearProp, screens }) 
       ) : field.type === "bg" ? (
         <FillEditor value={value} onChange={onChange} />
       ) : field.type === "color" ? (
-        <ColorInput value={value || "#000000"} onChange={onChange} />
+        <ColorInput value={value ?? (field.allowTransparent ? "transparent" : "#000000")} allowTransparent={field.allowTransparent} onChange={onChange} />
       ) : field.type === "select" ? (
         <select value={value || (field.options?.[0] || "")}
           onChange={e => onChange(e.target.value)}
@@ -1173,7 +1187,7 @@ export function ActionEditor({ value = "", onChange, screens }) {
   );
 }
 
-function SpacingEditor({ value, onChange }) {
+function SpacingEditor({ value, onChange, labelPrefix = "Spacing" }) {
   const { theme, textInput } = useEditorTheme();
   const v = value && typeof value === "object" ? value : {};
   const set = (side, num) => onChange({ ...v, [side]: num });
@@ -1188,7 +1202,7 @@ function SpacingEditor({ value, onChange }) {
       {SIDES.map(({ key, label }) => (
         <div key={key}>
           <div style={{ fontSize: 9, color: theme.textMuted, textAlign: "center", marginBottom: 2 }}>{label}</div>
-          <input type="number" value={v[key] ?? 0}
+          <input type="number" aria-label={`${labelPrefix} ${key}`} value={v[key] ?? 0}
             onChange={e => { const n = Number(e.target.value); set(key, Number.isFinite(n) ? n : 0); }}
             style={{ ...textInput, textAlign: "center", padding: "5px 2px" }} />
         </div>

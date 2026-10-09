@@ -30,6 +30,10 @@ vi.mock("lucide-react", () => ({
   Building: "svg", Palette: "svg", RefreshCw: "svg",
 }));
 
+vi.mock("../../runtime/VerticalContext", () => ({
+  useVertical: () => ({ categoryName: "Business", categoryLower: "business", vertical: { topbarTitles: {} } }),
+}));
+
 import Settings from "./Settings";
 
 describe("Settings page", () => {

@@ -18,7 +18,7 @@ export function validateProject(projectData) {
     errors.push({ path: "meta", message: "Missing app metadata", severity: "error" });
   } else {
     if (!meta.appName || !meta.appName.trim()) {
-      errors.push({ path: "meta.appName", message: "App name is required", severity: "error", fix: "Enter a business or app name in the Branding step" });
+      errors.push({ path: "meta.appName", message: "App name is required", severity: "error", fix: "Enter a desk or app name in the Branding step" });
     }
     if (meta.appName && meta.appName.length > 50) {
       warnings.push({ path: "meta.appName", message: "App name is too long (max 50 characters)", severity: "warning" });

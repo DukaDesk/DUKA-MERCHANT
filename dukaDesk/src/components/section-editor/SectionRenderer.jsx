@@ -176,7 +176,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
       };
       const tbFocused = isSubFocused(comp.id, "text");
       rendered = (
-        <div style={{ ...tbStyle, padding: "2px 16px", cursor: "text", ...(tbFocused ? { outline: `1.5px solid ${theme.selection}`, outlineOffset: 1, borderRadius: 4, background: "rgba(244,160,38,0.08)" } : {}) }} onClick={(e) => handleSubClick(e, sectionId, comp.id, "text")}>
+      <div style={{ ...tbStyle, cursor: "text", ...(tbFocused ? { outline: `1.5px solid ${theme.selection}`, outlineOffset: 1, borderRadius: 4, background: "rgba(244,160,38,0.08)" } : {}) }} onClick={(e) => handleSubClick(e, sectionId, comp.id, "text")}>
           {renderInlineText(comp, "text", val, sectionId)}
         </div>
       );
