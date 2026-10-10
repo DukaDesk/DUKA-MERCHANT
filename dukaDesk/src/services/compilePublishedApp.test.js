@@ -38,12 +38,12 @@ it('read-back verification detects dropped nested fields despite matching versio
   expect(containsPublishedSnapshot(actual, expected)).toBe(false);
 });
 
-it('preserves splash enablement, timing and explicitly authored content', () => {
+it('preserves splash enablement and explicitly authored content, with fixed 2s timing', () => {
   const project = fixture('merchant-project.json');
   project.splash = { enabled: false, durationMs: 1800, screen: { screenId: 'custom-splash', layout: { kind: 'column', children: [{ type: 'text_block', props: { text: 'Brand launch' } }] } } };
   const result = compileDesignToPublishedApp(project, '1', 'now');
   expect(result.splash.enabled).toBe(false);
-  expect(result.splash.durationMs).toBe(1800);
+  expect(result.splash.durationMs).toBe(2000);
   expect(result.splash.screen.screenId).toBe('custom-splash');
   expect(result.splash.screen.layout.children[0].props.text).toBe('Brand launch');
 });

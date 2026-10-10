@@ -48,4 +48,40 @@ describe("TemplateGenerator", () => {
       "booking_summary",
     ]);
   });
+
+  it("generates starters for new catalog verticals", () => {
+    const pharmacy = generateShopTemplate(config("Pharmacy", "Care Plus"));
+
+    expect(pharmacy.screens.map(screen => screen.screenId).sort()).toEqual(["cart", "info", "orders", "shop"]);
+
+    const salon = generateShopTemplate(config("Salon & Beauty", "Glow Studio"));
+
+    expect(salon.screens.map(screen => screen.screenId).sort()).toEqual(["info", "orders", "profile", "services"]);
+  });
+
+  it("resolves taxonomy preset keys to catalog entries with legacy fallback", () => {
+    const healthcare = generateShopTemplate(config("Healthcare", "Care Plus"));
+
+    expect(healthcare.screens.map(screen => screen.screenId).sort()).toEqual(["cart", "info", "orders", "shop"]);
+
+    const unknown = generateShopTemplate(config("Does Not Exist", "Nope"));
+
+    expect(unknown.screens.map(screen => screen.screenId)).toEqual(["menu", "info", "orders", "services"]);
+  });
+
+  it("lists new verticals in the template catalog", () => {
+    const catalog = getGeneratedTemplateCatalog();
+    const names = catalog.map(category => category.name);
+
+    expect(names).toContain("Pharmacy");
+    expect(names).toContain("Salon & Beauty");
+    expect(names).toContain("Law Firm");
+    expect(names).toContain("Logistics");
+
+    const pharmacy = catalog.find(category => category.name === "Pharmacy");
+    const carePlus = pharmacy.templates.find(template => template.name === "Care Plus");
+
+    expect(carePlus.primaryColor).toBe("#0D9488");
+    expect(carePlus.features).toEqual(["shop", "cart", "orders", "info"]);
+  });
 });

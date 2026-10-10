@@ -232,7 +232,7 @@
   "splash": {
     "backgroundColor": "#223344",
     "backgroundImage": "/uploads/splash.webp",
-    "durationMs": 1200,
+    "durationMs": 2000,
     "screen": {
       "screenId": "__published_splash__",
       "layout": {

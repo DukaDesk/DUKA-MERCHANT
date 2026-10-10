@@ -198,7 +198,8 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
     content: source.content || {},
     splash: source.splash ? {
       ...source.splash,
-      durationMs: source.splash.durationMs ?? 500,
+      // Fixed product constant: splash always shows 2s, not merchant-configurable.
+      durationMs: 2000,
       screen: source.splash.screen ? { ...source.splash.screen, layout: source.splash.screen.layout ? { ...source.splash.screen.layout, children: (source.splash.screen.layout.children || []).map(compileNode) } : undefined } : { screenId: '__published_splash__', layout: {
         kind: 'column', flex: 1, justifyContent: 'center', alignItems: 'center', gap: 18, padding: 24,
         backgroundColor: source.splash.backgroundColor || primary,

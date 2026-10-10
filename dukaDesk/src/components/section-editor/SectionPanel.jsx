@@ -419,9 +419,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
         <label style={{ fontSize: 12, color: theme.textSecondary }}>
           <input type="checkbox" checked={splash.enabled !== false} onChange={event => store.setSplash({ enabled: event.target.checked })} /> Enabled
         </label>
-        <label style={{ fontSize: 12, color: theme.textSecondary }}>Duration (seconds)
-          <input type="number" min="0" step="0.1" style={{ width: 64, marginLeft: 8, padding: "4px 6px", fontSize: 12, border: "1px solid " + theme.border, borderRadius: theme.radius.sm, background: theme.surface, color: theme.text }} value={(splash.durationMs ?? 500) / 1000} onChange={event => { const durationMs = Math.round(Number(event.target.value) * 1000); if (Number.isFinite(durationMs) && durationMs >= 0) store.setSplash({ durationMs }); }} />
-        </label>
+        <div style={{ fontSize: 12, color: theme.textSecondary }}>Shows for 2 seconds on app launch (fixed).</div>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Background</div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

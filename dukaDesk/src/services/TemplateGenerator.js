@@ -1,118 +1,42 @@
-const CATEGORY_SCREENS = {
-  Restaurant: ["menu", "orders", "reservations", "info"],
-  Ecommerce: ["shop", "cart", "orders", "profile"],
-  "Food Vendor": ["menu", "orders", "pickup", "info"],
-  Grocery: ["shop", "cart", "orders", "profile"],
-  Church: ["events", "giving", "sermons", "community"],
-  School: ["timetable", "fees", "announcements", "grades"],
-  Booking: ["services", "calendar", "bookings", "info"],
-};
+import {
+  VERTICAL_CATALOG,
+  resolveCategoryKey,
+  getCategoryScreens,
+  getBaseTemplate as getCatalogBaseTemplate,
+  getScreenVariants as getCatalogScreenVariants,
+  getPreviewData as getCatalogPreviewData,
+  getCatalog as getVerticalCatalog,
+  normalizeTemplateName as normalizeCatalogTemplateName,
+} from "../config/verticalCatalog.js";
 
-const BASE_TEMPLATES = {
-  Restaurant: {
-    "Classic Dine": { theme: { primary: "#1B4332", secondary: "#F4A026", bg: "#FAFAFA", card: "#FFFFFF" }, style: "light" },
-    "Modern Bites": { theme: { primary: "#0F0F1A", secondary: "#F4A026", bg: "#1A1A2E", card: "#252540" }, style: "dark" },
-    "Fresh & Bright": { theme: { primary: "#2ECC71", secondary: "#F4A026", bg: "#F0FDF4", card: "#FFFFFF" }, style: "light" },
-  },
-  Ecommerce: {
-    Storefront: { theme: { primary: "#0D9488", secondary: "#0F0F1A", bg: "#FAFAFA", card: "#FFFFFF" }, style: "light" },
-    "Flash Sale": { theme: { primary: "#E74C3C", secondary: "#F4A026", bg: "#1A1A2E", card: "#252540" }, style: "dark" },
-    "Minimal Shop": { theme: { primary: "#7C3AED", secondary: "#F4A026", bg: "#FAFAFA", card: "#FFFFFF" }, style: "light" },
-  },
-  "Food Vendor": {
-    "Street Eats": { theme: { primary: "#EA580C", secondary: "#F4A026", bg: "#1A1A2E", card: "#252540" }, style: "dark" },
-    "Home Kitchen": { theme: { primary: "#1B4332", secondary: "#F4A026", bg: "#FEF8ED", card: "#FFFFFF" }, style: "light" },
-    "Fast Bites": { theme: { primary: "#0D9488", secondary: "#F4A026", bg: "#FAFAFA", card: "#FFFFFF" }, style: "light" },
-  },
-  Grocery: {
-    "Market Fresh": { theme: { primary: "#2ECC71", secondary: "#F4A026", bg: "#F0FDF4", card: "#FFFFFF" }, style: "light" },
-    "Corner Shop": { theme: { primary: "#1B4332", secondary: "#F4A026", bg: "#FEF8ED", card: "#FFFFFF" }, style: "light" },
-    "Bulk Buy": { theme: { primary: "#7C3AED", secondary: "#F4A026", bg: "#1A1A2E", card: "#252540" }, style: "dark" },
-  },
-  Church: {
-    Cathedral: { theme: { primary: "#1B4332", secondary: "#F4A026", bg: "#FAFAFA", card: "#FFFFFF" }, style: "light" },
-    "Community Light": { theme: { primary: "#F4A026", secondary: "#1B4332", bg: "#FEF8ED", card: "#FFFFFF" }, style: "light" },
-    "Youth Vibes": { theme: { primary: "#EC4899", secondary: "#F4A026", bg: "#1A1A2E", card: "#252540" }, style: "dark" },
-  },
-  School: {
-    "Academy Pro": { theme: { primary: "#0D9488", secondary: "#F4A026", bg: "#FAFAFA", card: "#FFFFFF" }, style: "light" },
-    "Bright Minds": { theme: { primary: "#EC4899", secondary: "#F4A026", bg: "#FDF2F8", card: "#FFFFFF" }, style: "light" },
-    "Smart Campus": { theme: { primary: "#7C3AED", secondary: "#F4A026", bg: "#1A1A2E", card: "#252540" }, style: "dark" },
-  },
-  Booking: {
-    Scheduler: { theme: { primary: "#0D9488", secondary: "#F4A026", bg: "#FAFAFA", card: "#FFFFFF" }, style: "light" },
-    "Spa Lounge": { theme: { primary: "#1B4332", secondary: "#F4A026", bg: "#F0FDF4", card: "#FFFFFF" }, style: "light" },
-    "Quick Book": { theme: { primary: "#7C3AED", secondary: "#F4A026", bg: "#1A1A2E", card: "#252540" }, style: "dark" },
-  },
-};
+// Derived views over the data-driven catalog (same shapes as the legacy
+// inline constants; call sites below are unchanged).
+const CATEGORY_SCREENS = Object.fromEntries(
+  VERTICAL_CATALOG.map(entry => [entry.key, entry.screens])
+);
+
+const BASE_TEMPLATES = Object.fromEntries(
+  VERTICAL_CATALOG.map(entry => [entry.key, entry.templates])
+);
+
+const WIZARD_PREVIEW_DATA_LOCAL = Object.fromEntries(
+  VERTICAL_CATALOG.map(entry => [entry.key, entry.preview])
+);
+
+const TEMPLATE_SCREEN_VARIANTS = Object.fromEntries(
+  VERTICAL_CATALOG.flatMap(entry => Object.entries(entry.variants))
+);
 
 function getBaseTemplate(category, template) {
-  const normalized = normalizeTemplateName(template);
-  return BASE_TEMPLATES[category]?.[normalized] || BASE_TEMPLATES.Restaurant["Classic Dine"];
+  return getCatalogBaseTemplate(resolveCategoryKey(category), template);
 }
 
 function normalizeTemplateName(template) {
-  const raw = String(template || "").split("/").pop();
-  return raw.replace(/[-_]+([a-z])/g, (_, letter) => ` ${letter.toUpperCase()}`).replace(/^./, letter => letter.toUpperCase());
+  return normalizeCatalogTemplateName(template);
 }
 
-const WIZARD_PREVIEW_DATA_LOCAL = {
-  Restaurant: { categories: ["Popular", "Mains", "Drinks", "Desserts"], items: [
-    { name: "Jollof Rice", price: "₦2,500", desc: "Rich, smoky jollof rice", emoji: "Utensils" },
-    { name: "Grilled Chicken", price: "₦3,000", desc: "Char-grilled and spicy", emoji: "Drumstick" },
-  ] },
-  Ecommerce: { categories: ["New Arrivals", "Clothing", "Electronics"], items: [
-    { name: "Everyday Tote", price: "₦18,000", desc: "Durable canvas carryall", emoji: "ShoppingBag" },
-    { name: "Wireless Headphones", price: "₦42,000", desc: "Comfortable all-day audio", emoji: "Headphones" },
-  ] },
-  "Food Vendor": { categories: ["Popular", "Specials", "Combo"], items: [
-    { name: "Suya Combo", price: "₦4,500", desc: "Beef suya with sides", emoji: "Utensils" },
-    { name: "Chicken Wrap", price: "₦3,200", desc: "Freshly grilled to order", emoji: "Sandwich" },
-  ] },
-  Grocery: { categories: ["Fruits", "Beverages", "Snacks"], items: [
-    { name: "Fresh Fruit Box", price: "₦8,500", desc: "Seasonal fruit selection", emoji: "Apple" },
-    { name: "Sparkling Water", price: "₦1,200", desc: "Pack of six bottles", emoji: "GlassWater" },
-  ] },
-  Church: { categories: ["Upcoming", "Sermons", "Ministries"], items: [
-    { name: "Sunday Service", price: "Free", desc: "Join us this Sunday", emoji: "Heart" },
-    { name: "Youth Fellowship", price: "Free", desc: "Weekly community gathering", emoji: "Users" },
-  ] },
-  School: { categories: ["Announcements", "Timetable", "Events"], items: [
-    { name: "Term Opening", price: "Today", desc: "Welcome back to school", emoji: "Calendar" },
-    { name: "Parent Meeting", price: "Friday", desc: "Main hall, 4:00 PM", emoji: "Users" },
-  ] },
-  Booking: { categories: ["Services", "Popular", "Special Offers"], items: [
-    { name: "Consultation", price: "₦10,000", desc: "One-hour appointment", emoji: "Calendar" },
-    { name: "Premium Session", price: "₦25,000", desc: "Extended focused session", emoji: "Star" },
-  ] },
-};
-
-const TEMPLATE_SCREEN_VARIANTS = {
-  "Classic Dine": ["menu", "orders", "reservations", "info"],
-  "Modern Bites": ["menu", "shop", "orders", "profile"],
-  "Fresh & Bright": ["menu", "info", "orders"],
-  Storefront: ["shop", "cart", "orders", "profile"],
-  "Flash Sale": ["shop", "cart", "orders"],
-  "Minimal Shop": ["shop", "profile", "orders"],
-  "Street Eats": ["menu", "pickup", "orders", "info"],
-  "Home Kitchen": ["menu", "orders", "info"],
-  "Fast Bites": ["menu", "pickup", "orders"],
-  "Market Fresh": ["shop", "cart", "orders", "info"],
-  "Corner Shop": ["shop", "orders", "profile"],
-  "Bulk Buy": ["shop", "cart", "orders", "profile"],
-  Cathedral: ["events", "giving", "sermons", "community"],
-  "Community Light": ["events", "community", "giving"],
-  "Youth Vibes": ["events", "community", "live", "giving"],
-  "Academy Pro": ["timetable", "assignments", "announcements", "parent"],
-  "Bright Minds": ["announcements", "grades", "parent"],
-  "Smart Campus": ["timetable", "fees", "assignments", "announcements"],
-  Scheduler: ["services", "calendar", "bookings", "info"],
-  "Spa Lounge": ["services", "calendar", "bookings", "profile"],
-  "Quick Book": ["services", "bookings", "info"],
-};
-
 function generateMenuScreen(config) {
-  const preview = WIZARD_PREVIEW_DATA_LOCAL[config.category] || WIZARD_PREVIEW_DATA_LOCAL.Ecommerce;
+  const preview = WIZARD_PREVIEW_DATA_LOCAL[resolveCategoryKey(config.category)] || WIZARD_PREVIEW_DATA_LOCAL.Ecommerce;
   const dataBinding = getDataBinding(config.category);
   
   return {
@@ -156,7 +80,7 @@ function generateMenuScreen(config) {
 }
 
 function generateShopScreen(config) {
-  const preview = WIZARD_PREVIEW_DATA_LOCAL[config.category] || WIZARD_PREVIEW_DATA_LOCAL.Ecommerce;
+  const preview = WIZARD_PREVIEW_DATA_LOCAL[resolveCategoryKey(config.category)] || WIZARD_PREVIEW_DATA_LOCAL.Ecommerce;
   const dataBinding = getDataBinding(config.category);
   return {
     screenId: "shop",
@@ -356,7 +280,7 @@ function generateScreens(config) {
   const screens = [];
   const template = normalizeTemplateName(config.template);
   const screenTypes = TEMPLATE_SCREEN_VARIANTS[template]
-    || CATEGORY_SCREENS[config.category]
+    || CATEGORY_SCREENS[resolveCategoryKey(config.category)]
     || CATEGORY_SCREENS.Restaurant;
 
   if (screenTypes.includes("menu")) screens.push(generateMenuScreen(config));
@@ -388,7 +312,7 @@ function generateScreens(config) {
 function generateNavigation(config) {
   const template = normalizeTemplateName(config.template);
   const screenTypes = TEMPLATE_SCREEN_VARIANTS[template]
-    || CATEGORY_SCREENS[config.category]
+    || CATEGORY_SCREENS[resolveCategoryKey(config.category)]
     || CATEGORY_SCREENS.Restaurant;
   const icons = {
     menu: "restaurant-outline", shop: "storefront-outline", services: "calendar-outline",
@@ -501,3 +425,7 @@ function getDataBinding(category) {
       : "commerce.products";
   return { source, filters: { isActive: true }, limit: 20 };
 }
+
+// Data-driven catalog passthrough for consumers (Wizard, setup flows).
+export { VERTICAL_CATALOG, getVerticalCatalog };
+
