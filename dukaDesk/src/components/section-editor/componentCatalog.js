@@ -54,7 +54,8 @@ export function getComponentCatalog() {
       );
       components.push({ type: "accordion", label: "Accordion", comingSoon: true });
     }
-    if (category.key === "media") components.push({ type: "video", label: "Video", comingSoon: true });
+    // NOTE: the "video" type is listed automatically from the media category
+    // (registered in canvas-editor/componentTypes) — do not push it here.
     return { ...category, label: category.key === "text" ? "Text" : category.key === "layout" ? "Containers & Spacing" : category.label, components };
   }).filter(category => category.components.length);
 }

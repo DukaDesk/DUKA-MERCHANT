@@ -73,6 +73,13 @@ function CarouselPreview({ theme }) {
     </div>
   );
 }
+function VideoPreview({ theme }) {
+  return (
+    <div style={{ width: "100%", height: 42, borderRadius: 6, background: "#111827", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: 22, height: 22, borderRadius: "50%", background: theme.active, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10 }}>▶</div>
+    </div>
+  );
+}
 function ScreenPreview({ label, description, icon: IconCmp, accent, theme }) {
   return (
     <div style={{ width: "100%", display: "flex", gap: 8, alignItems: "flex-start", minHeight: 56 }}>
@@ -337,7 +344,12 @@ const GALLERY = {
       { id: "circle", label: "Circle", type: "image_block", props: {}, Preview: (t) => <ImagePreview shape="circle" theme={t} /> },
     ],
   },
-  Video: { icon: Video, comingSoon: true },
+  Video: {
+    icon: Video,
+    variants: [
+      { id: "video", label: "Video", type: "video", props: {}, Preview: (t) => <VideoPreview theme={t} /> },
+    ],
+  },
 };
 
 export default function ElementGallery({ browseType, store, selectedSectionId, selectedComponentId, onClose, insertionTarget, onAdded }) {

@@ -443,8 +443,43 @@ registerComponentType("image_block", {
   },
 });
 
-registerComponentType("rectangle", {
-  type: "rectangle",
+registerComponentType("video", {
+  type: "video",
+  label: "Video",
+  icon: Video,
+  category: "media",
+  defaultWidth: 200,
+  defaultHeight: 220,
+  defaultProps: { source: "", poster: "", autoplay: "false", muted: "false", loop: "false", controls: "true", contentFit: "cover", height: 220 },
+  subElements: [
+    { key: "source", label: "Video URL", icon: Video, kind: "text" },
+    { key: "poster", label: "Poster Image", icon: ImageIcon, kind: "image" },
+  ],
+  propFields: [
+    { key: "source", label: "Video URL", type: "text" },
+    { key: "poster", label: "Poster Image URL", type: "text" },
+    { key: "autoplay", label: "Autoplay", type: "select", options: ["true", "false"] },
+    { key: "muted", label: "Muted", type: "select", options: ["true", "false"] },
+    { key: "loop", label: "Loop", type: "select", options: ["true", "false"] },
+    { key: "controls", label: "Player Controls", type: "select", options: ["true", "false"] },
+    { key: "contentFit", label: "Object Fit", type: "select", options: ["cover", "contain", "fill"], group: "layout" },
+    { key: "height", label: "Height (px)", type: "number", group: "layout" },
+  ],
+  render: (props) => {
+    const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : 220;
+    return (
+    <div style={{ width: "100%", height: h, overflow: "hidden", borderRadius: 8, background: "#111827", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {props.source ? (
+        <video src={props.source} poster={props.poster || undefined} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted playsInline preload="metadata" />
+      ) : (
+        <span style={{ color: "#9CA3AF", fontSize: 12 }}>No video — paste a video URL</span>
+      )}
+    </div>
+    );
+  },
+});
+
+registerComponentType("rectangle", {  type: "rectangle",
   label: "Rectangle",
   icon: Square,
   category: "shapes",
