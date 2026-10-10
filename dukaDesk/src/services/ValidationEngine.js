@@ -153,6 +153,15 @@ function checkNavAction(action, actionPath, compLabel, screenIds, errors) {
   // Path-style destinations ("/shop") are canonicalized at compile time when
   // they name an existing screen — only validate explicit screenIds here.
   if (!Object.prototype.hasOwnProperty.call(payload, "screenId")) return;
+  if (!payload.screenId) {
+    errors.push({
+      path: actionPath,
+      message: `Component "${compLabel}" has no destination page chosen yet`,
+      severity: "error",
+      fix: `Choose one of: ${screenIds.join(", ") || "(no screens yet)"}`,
+    });
+    return;
+  }
   if (!screenIds.includes(payload.screenId)) {
     errors.push({
       path: actionPath,

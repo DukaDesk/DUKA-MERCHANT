@@ -27,7 +27,10 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
         try { parsed = JSON.parse(value); } catch { throw new Error("Invalid component action: " + copy.key); }
       }
       if (!parsed || typeof parsed.type !== "string" || !parsed.type) throw new Error("Invalid component action: " + copy.key);
-      if (["navigate", "push", "replace", "switch_screen"].includes(parsed.type) && Object.prototype.hasOwnProperty.call(parsed.payload || {}, "screenId") && !sourceScreens[parsed.payload.screenId]) throw new Error("Choose an existing destination page for: " + copy.key + " (\"" + parsed.payload.screenId + "\" does not exist — available: " + Object.keys(sourceScreens).join(", ") + ")");
+      if (["navigate", "push", "replace", "switch_screen"].includes(parsed.type) && Object.prototype.hasOwnProperty.call(parsed.payload || {}, "screenId") && !sourceScreens[parsed.payload.screenId]) {
+        const dest = parsed.payload.screenId || "(no destination page chosen yet)";
+        throw new Error("Choose an existing destination page for: " + copy.key + " (\"" + dest + "\" is not a page — available: " + Object.keys(sourceScreens).join(", ") + ")");
+      }
       // Canonicalize path-style destinations ("/shop") to screenId when they
       // name an existing screen. The backend validator and mobile resolver
       // both accept push, but screenId is the canonical contract form.

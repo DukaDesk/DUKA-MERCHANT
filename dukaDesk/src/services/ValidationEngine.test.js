@@ -40,8 +40,18 @@ describe('freeform builder validation', () => {
     const result = compileDesignToPublishedApp(draft, '1.0.0', '2026-09-29T00:00:00Z');
     expect(result.screens.book.layout.children[0].layout.children[0].props.tapAction.payload.screenId).toBe('book');
   });
-  it('flags malformed action JSON with a located error', () => {
-    const draft = project([{ id: 'broken', type: 'button', props: { tapAction: '{oops' } }]);
+  it('tells the merchant when no destination page was chosen yet', () => {
+    const draft = project([
+      { id: 'promo-banner', type: 'hero_banner', props: { offers: [{ tapAction: JSON.stringify({ type: 'navigate', payload: { screenId: '' } }) }, {}, {}] } },
+    ]);
+    const result = validateProject(draft);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].message).toContain('promo-banner › item 1');
+    expect(result.errors[0].message).toContain('no destination page chosen yet');
+    expect(result.errors[0].fix).toContain('book');
+  });
+  it('flags malformed action JSON with a located error', () => {    const draft = project([{ id: 'broken', type: 'button', props: { tapAction: '{oops' } }]);
     const result = validateProject(draft);
     expect(result.valid).toBe(false);
     expect(result.errors[0].path).toContain('components[0].props.tapAction');
