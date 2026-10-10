@@ -60,13 +60,14 @@ export function validateProject(projectData) {
   /* ── Shared checks ── */
   // Mobile apps often have no header/footer chrome — shared sections are optional.
   // Only validate them when they actually contain components; empty is intentional, not a warning.
+  const allScreenIds = screens ? Object.keys(screens) : [];
   if (shared) {
     const regTypes = supportedDraftTypes();
     if (shared.header?.components?.length > 0) {
-      validateSection(shared.header, "shared.header", errors, warnings, regTypes);
+      validateSection(shared.header, "shared.header", errors, warnings, regTypes, allScreenIds);
     }
     if (shared.footer?.components?.length > 0) {
-      validateSection(shared.footer, "shared.footer", errors, warnings, regTypes);
+      validateSection(shared.footer, "shared.footer", errors, warnings, regTypes, allScreenIds);
     }
   }
 
@@ -88,7 +89,7 @@ export function validateProject(projectData) {
         warnings.push({ path: `${prefix}.bodySections`, message: `Screen "${screen.name || screenId}" is empty — add sections or components`, severity: "warning" });
       }
       sections.forEach((sec, i) => {
-        validateSection(sec, `${prefix}.bodySections[${i}]`, errors, warnings, regTypes);
+        validateSection(sec, `${prefix}.bodySections[${i}]`, errors, warnings, regTypes, allScreenIds);
       });
     });
   }
@@ -101,7 +102,7 @@ export function validateProject(projectData) {
   };
 }
 
-function validateSection(section, path, errors, warnings, regTypes) {
+function validateSection(section, path, errors, warnings, regTypes, screenIds = []) {
   if (!section) return;
 
 
@@ -116,8 +117,87 @@ function validateSection(section, path, errors, warnings, regTypes) {
     } else if (!regTypes.includes(comp.type)) {
       errors.push({ path: `${compPath}.type`, message: `Unknown component type "${comp.type}"`, severity: "error", fix: `Register "${comp.type}" or use one of: ${regTypes.join(", ")}` });
     }
+    validateComponentActions(comp, compPath, screenIds, errors);
     (comp.children || []).forEach((child, i) => validateComponent(child, compPath + '.children[' + i + ']'));
     (comp.layout?.children || []).forEach((child, i) => validateComponent(child, compPath + '.layout.children[' + i + ']'));
   };
   section.components.forEach((comp, i) => validateComponent(comp, path + '.components[' + i + ']'));
+}
+
+/* ── Action destination checks (mirrors compilePublishedApp.parse) ── */
+// A navigate/push/replace/switch_screen whose payload names a screenId must
+// point at an existing screen — otherwise publish fails late with
+// "Choose an existing destination page". Surface it here with a location.
+const NAV_ACTION_TYPES = ["navigate", "push", "replace", "switch_screen"];
+
+function asActionObject(value) {
+  if (value == null || value === "") return null;
+  if (typeof value === "object") return value;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return { __invalid: true, __raw: value };
+    }
+  }
+  return null;
+}
+
+function checkNavAction(action, actionPath, compLabel, screenIds, errors) {
+  if (!action || typeof action.type !== "string" || !action.type) {
+    errors.push({ path: actionPath, message: `Component "${compLabel}" has a malformed action (missing type)`, severity: "error", fix: "Re-link the tap action in the editor" });
+    return;
+  }
+  if (!NAV_ACTION_TYPES.includes(action.type)) return;
+  const payload = action.payload || {};
+  // Path-style destinations ("/shop") are canonicalized at compile time when
+  // they name an existing screen — only validate explicit screenIds here.
+  if (!Object.prototype.hasOwnProperty.call(payload, "screenId")) return;
+  if (!screenIds.includes(payload.screenId)) {
+    errors.push({
+      path: actionPath,
+      message: `Component "${compLabel}" links to page "${payload.screenId}" which does not exist`,
+      severity: "error",
+      fix: `Point it to one of: ${screenIds.join(", ") || "(no screens yet)"}`,
+    });
+  }
+}
+
+function validateComponentActions(comp, compPath, screenIds, errors) {
+  const label = comp.key || comp.id || comp.type || compPath;
+  const merged = { ...(comp.actions || {}), ...(comp.props?.actions || {}) };
+  for (const [name, raw] of Object.entries(merged)) {
+    const action = asActionObject(raw);
+    if (raw != null && raw !== "" && !action) continue;
+    if (action && action.__invalid) {
+      errors.push({ path: `${compPath}.actions.${name}`, message: `Component "${label}" has an unreadable action (not valid JSON)`, severity: "error", fix: "Re-link the tap action in the editor" });
+      continue;
+    }
+    if (action) checkNavAction(action, `${compPath}.actions.${name}`, label, screenIds, errors);
+  }
+  const propAction = asActionObject(comp.props?.action);
+  if (typeof comp.props?.action === "string" && comp.props.action && propAction?.__invalid) {
+    errors.push({ path: `${compPath}.props.action`, message: `Component "${label}" has an unreadable action (not valid JSON)`, severity: "error", fix: "Re-link the tap action in the editor" });
+  } else if (propAction && !propAction.__invalid) {
+    checkNavAction(propAction, `${compPath}.props.action`, label, screenIds, errors);
+  }
+  const tapAction = asActionObject(comp.props?.tapAction);
+  if (typeof comp.props?.tapAction === "string" && comp.props.tapAction && tapAction?.__invalid) {
+    errors.push({ path: `${compPath}.props.tapAction`, message: `Component "${label}" has an unreadable tap action (not valid JSON)`, severity: "error", fix: "Re-link the tap action in the editor" });
+  } else if (tapAction && !tapAction.__invalid) {
+    checkNavAction(tapAction, `${compPath}.props.tapAction`, label, screenIds, errors);
+  }
+  for (const key of ["cats", "categories", "items", "offers", "orders", "rows"]) {
+    const list = comp.props?.[key];
+    if (!Array.isArray(list)) continue;
+    list.forEach((item, i) => {
+      if (!item?.tapAction) return;
+      const action = asActionObject(item.tapAction);
+      if (action?.__invalid) {
+        errors.push({ path: `${compPath}.props.${key}[${i}].tapAction`, message: `Item ${i + 1} in "${label}" has an unreadable tap action`, severity: "error", fix: "Re-link the tap action in the editor" });
+      } else if (action) {
+        checkNavAction(action, `${compPath}.props.${key}[${i}].tapAction`, `${label} › item ${i + 1}`, screenIds, errors);
+      }
+    });
+  }
 }

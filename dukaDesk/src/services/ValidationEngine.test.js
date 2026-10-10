@@ -18,4 +18,33 @@ describe('freeform builder validation', () => {
     expect(result.valid).toBe(false);
     expect(result.errors[0].path).toContain('children[0].type');
   });
+  it('flags tap actions pointing at missing screens before publish', () => {
+    const draft = project([
+      { id: 'promo-banner', type: 'hero_banner', props: { title: 'Sale', tapAction: JSON.stringify({ type: 'navigate', payload: { screenId: 'ghost-page' } }) } },
+      { id: 'ok-btn', type: 'button', props: {}, actions: { tap: { type: 'switch_screen', payload: { screenId: 'book' } } } },
+    ]);
+    const result = validateProject(draft);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].path).toContain('components[0].props.tapAction');
+    expect(result.errors[0].message).toContain('promo-banner');
+    expect(result.errors[0].message).toContain('ghost-page');
+    expect(result.errors[0].fix).toContain('book');
+    expect(() => compileDesignToPublishedApp(draft, '1.0.0', '2026-09-29T00:00:00Z')).toThrow(/ghost-page.*book/);
+  });
+  it('accepts path-style destinations that name existing screens', () => {
+    const draft = project([
+      { id: 'banner', type: 'hero_banner', props: { title: 'Hi', tapAction: JSON.stringify({ type: 'push', payload: { push: '/book' } }) } },
+    ]);
+    expect(validateProject(draft).errors).toEqual([]);
+    const result = compileDesignToPublishedApp(draft, '1.0.0', '2026-09-29T00:00:00Z');
+    expect(result.screens.book.layout.children[0].layout.children[0].props.tapAction.payload.screenId).toBe('book');
+  });
+  it('flags malformed action JSON with a located error', () => {
+    const draft = project([{ id: 'broken', type: 'button', props: { tapAction: '{oops' } }]);
+    const result = validateProject(draft);
+    expect(result.valid).toBe(false);
+    expect(result.errors[0].path).toContain('components[0].props.tapAction');
+    expect(result.errors[0].message).toContain('broken');
+  });
 });
