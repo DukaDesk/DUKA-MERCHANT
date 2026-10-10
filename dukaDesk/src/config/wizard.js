@@ -1,8 +1,8 @@
-import { BUSINESS_CATEGORIES } from "./taxonomy";
+import { COMMERCE_CATEGORIES } from "./taxonomy";
 
 export const WIZARD_STEPS = ["Category", "Template", "Branding", "Details", "More Tools"];
 
-export const WIZARD_CATEGORIES = BUSINESS_CATEGORIES.map(({ label, icon, desc }) => ({ name: label, icon, desc }));
+export const WIZARD_CATEGORIES = COMMERCE_CATEGORIES.map(({ label, icon, desc }) => ({ name: label, icon, desc }));
 
 export const WIZARD_PREVIEW_DATA = {
   Business: { categories: ["New Arrivals", "Clothing", "Electronics"], items: [{ emoji: "👗", name: "African Print Dress", price: "₦15,000" }, { emoji: "📱", name: "Wireless Earbuds", price: "₦8,500" }], cta: "Buy Now", badge: "Online" },

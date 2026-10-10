@@ -22,6 +22,14 @@ export const DESK_CATEGORIES = [
    imports (Auth signup, Profile, Compliance) pick up the broad list. */
 export const BUSINESS_CATEGORIES = DESK_CATEGORIES;
 
+/* Commerce-only subset (product decision 2026-10-10): while the platform
+   faces business dashboards, only buying/selling categories are selectable
+   during signup/signin onboarding and profile edits. Existing users on other
+   categories keep their data; pickers grandfather the current value. */
+export const COMMERCE_CATEGORY_KEYS = ["Business", "Food & Hospitality", "Services", "Healthcare"];
+
+export const COMMERCE_CATEGORIES = DESK_CATEGORIES.filter(c => COMMERCE_CATEGORY_KEYS.includes(c.key));
+
 /* Legacy → canonical mapping for users registered before the broad
    taxonomy (e.g. Church → Religion, Booking → Services). */
 export const CATEGORY_ALIASES = {
@@ -118,6 +126,10 @@ export const ONBOARDING_CATEGORIES = [
 ];
 
 export const CATEGORY_KEYS = DESK_CATEGORIES.map(c => c.key);
+
+export const ONBOARDING_COMMERCE_CATEGORIES = ONBOARDING_CATEGORIES.filter(c =>
+  COMMERCE_CATEGORY_KEYS.includes(c.key) || COMMERCE_CATEGORY_KEYS.includes(c.preset)
+);
 
 export function getCategoryByKey(key) {
   return DESK_CATEGORIES.find(c => c.key === key) || null;

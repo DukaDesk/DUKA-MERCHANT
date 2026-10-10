@@ -6,7 +6,7 @@ import { useIsMobile } from "../../hooks/useMediaQuery";
 import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, RED, PURPLE, inputStyle, labelStyle } from "../../theme";
 import { login, signup, forgotPassword, confirmPasswordReset, setToken, googleSignIn } from "../../services/api";
-import { BUSINESS_CATEGORIES } from "../../config/taxonomy";
+import { COMMERCE_CATEGORIES } from "../../config/taxonomy";
 import { getVertical } from "../../config/verticals";
 import { verticalPresetModules } from "../../config/primitives";
 import { setSetupData, getSetupData, saveDashboardModules } from "../../services/api";
@@ -342,7 +342,7 @@ function SignupForm({ onAuth, setPage }) {
           <label htmlFor="desk-category" style={labelStyle}>What best describes your desk? *</label>
           <select id="desk-category" value={deskCategory} onChange={e => { setDeskCategory(e.target.value); setErrors(er => ({ ...er, deskCategory: "" })); }} style={{ ...inputStyle, appearance: "none", borderColor: errors.deskCategory ? "#E74C3C" : undefined }}>
             <option value="">Select desk type…</option>
-            {BUSINESS_CATEGORIES.map(c => (
+            {COMMERCE_CATEGORIES.map(c => (
               <option key={c.key} value={c.key}>{c.icon} {c.label} — {c.desc}</option>
             ))}
           </select>
@@ -356,7 +356,7 @@ function SignupForm({ onAuth, setPage }) {
               })()}
             </p>
           ) : (
-            <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 8 }}>We preset your dashboard tools — e.g. a Religion desk gets Donations, a shop gets Orders.</p>
+            <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 8 }}>We preset your dashboard tools — e.g. a shop gets Orders, a restaurant gets Reservations.</p>
           )}
         </div>
         <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 20 }}>

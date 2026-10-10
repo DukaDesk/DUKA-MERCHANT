@@ -4,7 +4,7 @@ import { Store, ArrowLeft, ArrowRight, Check, Search } from "lucide-react";
 import PropTypes from "prop-types";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../../theme";
-import { ONBOARDING_CATEGORIES, resolveCanonicalCategory } from "../../config/taxonomy";
+import { ONBOARDING_COMMERCE_CATEGORIES, resolveCanonicalCategory } from "../../config/taxonomy";
 import { useAuth } from "../../contexts";
 import { useVertical } from "../../runtime/VerticalContext";
 import { updateTenant, getMerchant, ensureTenant } from "../../services/api";
@@ -28,7 +28,7 @@ export default function Onboarding({ onAuth }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const filtered = ONBOARDING_CATEGORIES.filter(c =>
+  const filtered = ONBOARDING_COMMERCE_CATEGORIES.filter(c =>
     !search || c.label.toLowerCase().includes(search.toLowerCase()) || (c.desc || "").toLowerCase().includes(search.toLowerCase())
   );
 
@@ -46,7 +46,7 @@ export default function Onboarding({ onAuth }) {
   const finishSetup = async (key) => {
     // Extended onboarding picks (Cafe, Pharmacy, ...) map to their broad
     // industry preset; legacy keys map via alias — always store canonical.
-    const found = ONBOARDING_CATEGORIES.find(c => c.key === key);
+    const found = ONBOARDING_COMMERCE_CATEGORIES.find(c => c.key === key);
     const canonical = found?.preset || resolveCanonicalCategory(key) || key;
     setSaving(true); setError("");
     try {
@@ -75,7 +75,7 @@ export default function Onboarding({ onAuth }) {
   };
 
   const pick = async (key) => {
-    const found = ONBOARDING_CATEGORIES.find(c => c.key === key);
+    const found = ONBOARDING_COMMERCE_CATEGORIES.find(c => c.key === key);
     const canonical = found?.preset || resolveCanonicalCategory(key) || key;
     setCategoryId(canonical);
     await finishSetup(canonical);

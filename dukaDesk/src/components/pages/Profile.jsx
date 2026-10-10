@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import { NAVY, AMBER, cardStyle, inputStyle, labelStyle } from "../../theme";
 import { getMerchantProfile, updateMerchantProfile, getCurrentPlan, deactivateAccount, reactivateAccount, permanentlyDeleteAccount, getDeactivationStatus } from "../../services/api";
 import { useVertical } from "../../runtime/VerticalContext";
-import { BUSINESS_CATEGORIES, resolveCanonicalCategory } from "../../config/taxonomy";
+import { COMMERCE_CATEGORIES, resolveCanonicalCategory } from "../../config/taxonomy";
 import { Loading, ErrorState } from "../layout/States";
 import { Store, Mail, Phone, User, Save, ArrowLeft, Sparkles, AlertTriangle, Undo2, Trash2, X } from "lucide-react";
 
@@ -187,12 +187,16 @@ export default function Profile() {
                 <Store size={16} style={{ position: "absolute", left: 12, color: "#9CA3AF" }} />
                 <select id="profile-desk-category" name="profile-desk-category" style={{ ...inputStyle, paddingLeft: 36, appearance: "none", cursor: "pointer" }} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                   <option value="">Select desk type…</option>
-                  {BUSINESS_CATEGORIES.map(c => (
+                  {/* Grandfathered: existing non-commerce desks keep showing their current type (disabled) */}
+                  {form.category && !COMMERCE_CATEGORIES.some(c => c.key === form.category) && (
+                    <option key={form.category} value={form.category} disabled>{form.category} (current)</option>
+                  )}
+                  {COMMERCE_CATEGORIES.map(c => (
                     <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
                   ))}
                 </select>
               </div>
-              <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 6 }}>Changing desk type re-presets your dashboard tools (e.g. Religion → Donations).</p>
+              <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 6 }}>Changing desk type re-presets your dashboard tools for buying and selling.</p>
             </div>
           </div>
           <button onClick={handleSave} disabled={saving || savingCategory} style={{ marginTop: 20, background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 28px", fontSize: 14, fontWeight: 700, cursor: saving || savingCategory ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s" }}>
