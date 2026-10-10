@@ -1102,13 +1102,16 @@ function parsePreviewActionJson(value) {
 }
 
 /* Friendly JSON action editor: preset chips + target screen dropdown, raw-JSON fallback. */
-export function ActionEditor({ value = "", onChange, screens }) {
+export function ActionEditor({ value = "", onChange, screens = [] }) {
   if (value && typeof value === "object") value = JSON.stringify(value, null, 2);
   const { theme, textInput } = useEditorTheme();
   const [rawMode, setRawMode] = useState(false);
   const parsed = parsePreviewActionJson(value);
   const selectedType = parsed?.type || "";
   const rawJsonActive = rawMode || (value.trim() !== "" && (!parsed || !["navigate", "pop", "refresh", "submit_form", "api_request"].includes(parsed.type)));
+  // Publishable defaults: a fresh nav action points at the first screen so a
+  // publish can never fail on a blank destination.
+  const defaultScreenId = screens[0]?.id || "";
 
   const applyAction = (action) => onChange(action ? JSON.stringify(action, null, 2) : "");
 
@@ -1126,7 +1129,7 @@ export function ActionEditor({ value = "", onChange, screens }) {
           <button key={opt.type}
             onClick={() => {
               setRawMode(false);
-              applyAction(!opt.type ? null : opt.type === "navigate" ? { type: "navigate", payload: { screenId: "" } } : ["submit_form", "api_request"].includes(opt.type) ? { type: opt.type, payload: { endpoint: "", method: opt.type === "submit_form" ? "POST" : "GET", data: {} } } : { type: opt.type });
+              applyAction(!opt.type ? null : opt.type === "navigate" ? { type: "navigate", payload: { screenId: defaultScreenId } } : ["submit_form", "api_request"].includes(opt.type) ? { type: opt.type, payload: { endpoint: "", method: opt.type === "submit_form" ? "POST" : "GET", data: {} } } : { type: opt.type });
             }}
             style={{
               padding: "5px 11px", borderRadius: 999, cursor: "pointer", fontFamily: "'Inter',sans-serif",

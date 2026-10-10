@@ -11,7 +11,7 @@ it("attaches a screen, edits an existing object action, and clears the attachmen
   fireEvent.click(screen.getByRole("button", { name: "Do nothing" }));
   expect(screen.queryByLabelText("Destination page")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Open Screen" }));
-  expect(screen.getByLabelText("Destination page").value).toBe("");
+  expect(screen.getByLabelText("Destination page").value).toBe("home");
 });
 
 it("configures a backend form submission", () => {

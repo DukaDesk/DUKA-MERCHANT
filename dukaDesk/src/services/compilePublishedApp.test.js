@@ -27,6 +27,16 @@ describe('published reconstruction contract', () => {
     const result = compileDesignToPublishedApp(project, '1', 'now');
     expect(result.screens.home.fixedBottom).toHaveLength(1);
   });
+  it('publishes bottom tabs in the arranged navigation order', () => {
+    const project = fixture('merchant-project.json');
+    project.navigation.tabs = [
+      { id: 't2', label: 'Orders', icon: 'Cart', screenId: 'details' },
+      { id: 't1', label: 'Home', icon: 'Home', screenId: 'home' },
+    ];
+    const result = compileDesignToPublishedApp(project, '1', 'now');
+    const bar = result.screens.home.fixedBottom.find(node => node.type === 'tab_bar');
+    expect(bar.props.tabs.map(tab => tab.screenId)).toEqual(['details', 'home']);
+  });
 });
 
 it('read-back verification detects dropped nested fields despite matching version and screen IDs', () => {
