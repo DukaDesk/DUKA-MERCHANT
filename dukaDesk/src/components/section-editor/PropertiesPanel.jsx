@@ -964,7 +964,7 @@ function iconBtnSmallReStyle(theme, iconBtn){ return { ...iconBtn, padding: "1px
 
 /* ── General / Styling tab bar (optional search via lens icon) ── */
 function FieldTabBar({ activeTab, onTab, searchOpen, onToggleSearch, query, onQueryChange }) {
-  const { theme } = useEditorTheme();
+  const { theme, iconBtn, textInput } = useEditorTheme();
   return (
     <div style={{ borderBottom: `1px solid ${theme.border}`, padding: "8px 12px 10px", background: theme.surface }}>
       <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: searchOpen ? 10 : 0 }}>

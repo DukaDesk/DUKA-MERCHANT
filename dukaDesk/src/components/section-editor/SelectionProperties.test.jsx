@@ -97,8 +97,8 @@ it("keeps button fill and border colors independent and lets border reset to tra
 
   expect(screen.getByText("Fill Color")).toBeTruthy();
   expect(screen.getByText("Border Color")).toBeTruthy();
-  expect(screen.getByDisplayValue("#123456")).toBeTruthy();
-  expect(screen.getByDisplayValue("#654321")).toBeTruthy();
+  expect(screen.getAllByDisplayValue("#123456")).toHaveLength(2);
+  expect(screen.getAllByDisplayValue("#654321")).toHaveLength(2);
   fireEvent.click(screen.getByRole("button", { name: "Set transparent" }));
   expect(store.updateProp).toHaveBeenCalledWith("section", "button", "borderColor", "transparent");
 });
