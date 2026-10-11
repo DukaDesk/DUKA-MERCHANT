@@ -146,9 +146,11 @@ const SCREEN_BUILDERS = {
   product: () => ([
     { type: "image_block", props: { alt: "Product photo" } },
     { type: "text_block", props: { text: "Product name", fontSize: 22, fontWeight: "800" } },
+    { type: "text_block", props: { text: "Short hook — one line on why buyers want this", fontSize: 13, fontWeight: "600", color: "#374151" } },
     { type: "text_block", props: { text: "₦2,500 · was ₦5,000 (−50%)", fontSize: 16, fontWeight: "700" } },
     { type: "rating", props: { value: 5, color: "#F4A644", size: 18 } },
     { type: "text_block", props: { text: "Full product description goes here — ingredients, sizing, care and delivery notes.", fontSize: 13, fontWeight: "400", color: "#6B7280" } },
+    { type: "text_block", props: { text: "500 g · 20 × 15 × 10 cm · SKU PRD-001", fontSize: 12, fontWeight: "500", color: "#6B7280" } },
     { type: "divider", props: { color: "#E5E1E3", thickness: 1 } },
     { type: "info_list", props: { items: [{ label: "Category", value: "Mains" }, { label: "Availability", value: "In stock" }, { label: "SKU", value: "PRD-001" }] } },
     { type: "text_block", props: { text: "#bestseller #spicy", fontSize: 12, fontWeight: "500", color: "#6B7280" } },

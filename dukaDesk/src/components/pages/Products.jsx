@@ -25,7 +25,10 @@ export function discountPercent(price, compareAt) {
   return Math.round(((was - current) / was) * 100);
 }
 
-const emptyForm = () => ({ name: "", description: "", cat: "", categoryId: "", price: "", compareAt: "", stock: "", badge: "", tags: "", images: [], newCat: "" });
+const emptyForm = () => ({ name: "", description: "", shortDescription: "", weight: "", weightUnit: "kg", length: "", width: "", height: "", dimensionUnit: "cm", sku: "", cat: "", categoryId: "", price: "", compareAt: "", stock: "", badge: "", tags: "", images: [], newCat: "" });
+
+const WEIGHT_UNITS = ["kg", "g", "lb", "oz"];
+const DIMENSION_UNITS = ["cm", "m", "in"];
 
 export default function Products() {
   const isMobile = useIsMobile();
@@ -86,12 +89,22 @@ export default function Products() {
 
   const saveProduct = async () => {
     if (!form.name || !form.price) { toast.error("Name and price are required"); return; }
+    if (!form.description?.trim()) { toast.error("Description is required — buyers need to know what this is"); return; }
     try {
       const categoryId = await resolveCategoryId().catch(() => form.categoryId || null);
       const tags = String(form.tags || "").split(",").map(t => t.trim()).filter(Boolean);
+      const numOrNull = (v) => (v === "" || v == null ? null : Number(v));
       const body = {
         name: form.name.trim(),
-        description: form.description?.trim() || undefined,
+        description: form.description.trim(),
+        shortDescription: form.shortDescription?.trim() || null,
+        weight: numOrNull(form.weight),
+        weightUnit: form.weight === "" ? null : form.weightUnit,
+        length: numOrNull(form.length),
+        width: numOrNull(form.width),
+        height: numOrNull(form.height),
+        dimensionUnit: (form.length === "" && form.width === "" && form.height === "") ? null : form.dimensionUnit,
+        sku: form.sku?.trim() || undefined,
         price: Number(form.price),
         compareAtPrice: form.compareAt === "" ? null : Number(form.compareAt),
         stock: Number(form.stock) || 0,
@@ -174,6 +187,14 @@ export default function Products() {
     setForm({
       name: p.name || "",
       description: p.description || "",
+      shortDescription: p.shortDescription || "",
+      weight: p.weight != null ? String(p.weight) : "",
+      weightUnit: p.weightUnit || "kg",
+      length: p.length != null ? String(p.length) : "",
+      width: p.width != null ? String(p.width) : "",
+      height: p.height != null ? String(p.height) : "",
+      dimensionUnit: p.dimensionUnit || "cm",
+      sku: p.sku || "",
       cat: p.cat || "",
       categoryId: p.categoryId || "",
       price: String(p.price ?? ""),
@@ -286,6 +307,9 @@ export default function Products() {
                 <div style={{ padding: 16 }}>
                   <div style={{ fontWeight: 600, fontSize: 15, color: NAVY, marginBottom: 4 }}>{p.name}</div>
                   <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 8 }}>{p.cat}</div>
+                  {p.shortDescription ? (
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 }}>{p.shortDescription}</div>
+                  ) : null}
                   {p.description ? (
                     <div style={{ fontSize: 13, color: "#4B5563", marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.description}</div>
                   ) : null}
@@ -337,8 +361,39 @@ export default function Products() {
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Jollof Rice & Chicken" style={inputStyle} />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={labelStyle}>Description</label>
-                <textarea value={form.description || ""} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Tasty details customers see on the store…" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
+                <label style={labelStyle}>Description *</label>
+                <textarea value={form.description || ""} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What buyers need to know — materials, usage, care…" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={labelStyle}>Short description</label>
+                <input value={form.shortDescription} onChange={e => setForm(f => ({ ...f, shortDescription: e.target.value }))} placeholder="One line for cards and search results" style={inputStyle} />
+              </div>
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ marginBottom: 16, flex: 1 }}>
+                  <label style={labelStyle}>Weight</label>
+                  <input type="number" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} placeholder="e.g. 500" style={inputStyle} />
+                </div>
+                <div style={{ marginBottom: 16, flex: 1 }}>
+                  <label style={labelStyle}>Weight unit</label>
+                  <select value={form.weightUnit} onChange={e => setForm(f => ({ ...f, weightUnit: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
+                    {WEIGHT_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+                <div style={{ marginBottom: 16, flex: 1 }}>
+                  <label style={labelStyle}>SKU</label>
+                  <input value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} placeholder="Optional" style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={labelStyle}>Dimensions (L × W × H)</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {["length", "width", "height"].map(k => (
+                    <input key={k} type="number" value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} placeholder={k[0].toUpperCase()} style={{ ...inputStyle, flex: 1 }} />
+                  ))}
+                  <select value={form.dimensionUnit} onChange={e => setForm(f => ({ ...f, dimensionUnit: e.target.value }))} style={{ ...inputStyle, cursor: "pointer", flex: 1 }}>
+                    {DIMENSION_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
               </div>
               <div style={{ marginBottom: 16 }}>
                 <label style={labelStyle}>Category</label>
