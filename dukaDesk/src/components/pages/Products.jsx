@@ -25,7 +25,7 @@ export function discountPercent(price, compareAt) {
   return Math.round(((was - current) / was) * 100);
 }
 
-const emptyForm = () => ({ name: "", cat: "", categoryId: "", price: "", compareAt: "", stock: "", badge: "", tags: "", images: [], newCat: "" });
+const emptyForm = () => ({ name: "", description: "", cat: "", categoryId: "", price: "", compareAt: "", stock: "", badge: "", tags: "", images: [], newCat: "" });
 
 export default function Products() {
   const isMobile = useIsMobile();
@@ -35,6 +35,7 @@ export default function Products() {
   const [categories, setCategories] = useState([]);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState("All");
   const [panel, setPanel] = useState(null);
   const [form, setForm] = useState(emptyForm());
   const [selected, setSelected] = useState([]);
@@ -56,7 +57,11 @@ export default function Products() {
   const statusOf = (p) => deriveStatus(p.stock);
   const filtered = products.filter(p => {
     if (filter !== "All" && statusOf(p) !== filter) return false;
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (catFilter !== "All" && (p.cat || "") !== catFilter) return false;
+    if (search) {
+      const haystack = `${p.name} ${p.description || ""} ${p.cat || ""} ${(p.tags || []).join(" ")}`.toLowerCase();
+      if (!haystack.includes(search.toLowerCase())) return false;
+    }
     return true;
   });
 
@@ -86,6 +91,7 @@ export default function Products() {
       const tags = String(form.tags || "").split(",").map(t => t.trim()).filter(Boolean);
       const body = {
         name: form.name.trim(),
+        description: form.description?.trim() || undefined,
         price: Number(form.price),
         compareAtPrice: form.compareAt === "" ? null : Number(form.compareAt),
         stock: Number(form.stock) || 0,
@@ -145,6 +151,7 @@ export default function Products() {
           name: cols[nameIdx] || "Untitled",
           price: Number(cols[priceIdx]) || 0,
           compareAtPrice: col(cols, "compareat") || col(cols, "original price") ? Number(col(cols, "compareat") || col(cols, "original price")) : null,
+          description: col(cols, "description"),
           cat: col(cols, "category"),
           stock: Number(col(cols, "stock")) || 0,
           badge: col(cols, "badge"),
@@ -166,6 +173,7 @@ export default function Products() {
   const openEdit = (p) => {
     setForm({
       name: p.name || "",
+      description: p.description || "",
       cat: p.cat || "",
       categoryId: p.categoryId || "",
       price: String(p.price ?? ""),
@@ -231,6 +239,10 @@ export default function Products() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..." style={{ background: "none", border: "none", outline: "none", fontSize: 14, color: NAVY, flex: 1, fontFamily: "inherit" }} />
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <select value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: "none", background: "#F3F4F6", color: "#6B7280", fontSize: 13, cursor: "pointer" }}>
+            <option value="All">All categories</option>
+            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+          </select>
           {["All", ...STATUS_OPTS].map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{
               padding: "6px 14px", borderRadius: 8,
@@ -274,6 +286,9 @@ export default function Products() {
                 <div style={{ padding: 16 }}>
                   <div style={{ fontWeight: 600, fontSize: 15, color: NAVY, marginBottom: 4 }}>{p.name}</div>
                   <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 8 }}>{p.cat}</div>
+                  {p.description ? (
+                    <div style={{ fontSize: 13, color: "#4B5563", marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.description}</div>
+                  ) : null}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>₦{Number(p.price || 0).toLocaleString()}</span>
                     {p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price) ? (
@@ -322,6 +337,10 @@ export default function Products() {
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Jollof Rice & Chicken" style={inputStyle} />
               </div>
               <div style={{ marginBottom: 16 }}>
+                <label style={labelStyle}>Description</label>
+                <textarea value={form.description || ""} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Tasty details customers see on the store…" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
+              </div>
+              <div style={{ marginBottom: 16 }}>
                 <label style={labelStyle}>Category</label>
                 <select value={form.categoryId || ""} onChange={e => {
                   const v = e.target.value;
@@ -340,7 +359,7 @@ export default function Products() {
               </div>
               <div style={{ display: "flex", gap: 12 }}>
                 <div style={{ marginBottom: 16, flex: 1 }}>
-                  <label style={labelStyle}>Price (₦) *</label>
+                  <label style={labelStyle}>Discount price (₦) *</label>
                   <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="2500" style={inputStyle} />
                 </div>
                 <div style={{ marginBottom: 16, flex: 1 }}>
