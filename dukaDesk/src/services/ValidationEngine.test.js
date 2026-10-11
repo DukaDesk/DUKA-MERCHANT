@@ -51,10 +51,19 @@ describe('freeform builder validation', () => {
     expect(result.errors[0].message).toContain('no destination page chosen yet');
     expect(result.errors[0].fix).toContain('book');
   });
-  it('flags malformed action JSON with a located error', () => {    const draft = project([{ id: 'broken', type: 'button', props: { tapAction: '{oops' } }]);
+  it('flags malformed action JSON with a located error', () => {
+    const draft = project([{ id: 'broken', type: 'button', props: { tapAction: '{oops' } }]);
     const result = validateProject(draft);
     expect(result.valid).toBe(false);
     expect(result.errors[0].path).toContain('components[0].props.tapAction');
     expect(result.errors[0].message).toContain('broken');
+  });
+  it('warns (not errors) on hand-typed menu items without a store link', () => {
+    const draft = project([
+      { id: 'grid', type: 'menu_grid', props: { items: [{ name: 'Typed', price: '₦9' }, { productId: 'p1', name: 'Linked', price: 100 }] } },
+    ]);
+    const result = validateProject(draft);
+    expect(result.valid).toBe(true);
+    expect(result.warnings.some(w => w.message.includes('typed by hand'))).toBe(true);
   });
 });

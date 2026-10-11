@@ -253,6 +253,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                     value={Array.isArray(val) ? val : []}
                     onChange={(list) => store.updateProp(selectedSectionId, component.id, field.key, list)}
                     productPicker={component.type === "menu_grid" && field.key === "items"}
+                    manualAdd={!(component.type === "menu_grid" && field.key === "items")}
                   />
                 ) : field.type === "bg" ? (
                   <FillEditor value={val} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} />
@@ -1463,7 +1464,7 @@ function ProductPicker({ onPick }) {
   );
 }
 
-function ListFieldEditor({ fields, value, onChange, productPicker }) {
+function ListFieldEditor({ fields, value, onChange, productPicker, manualAdd = true }) {
   const { theme, textInput, labelStyle, iconBtn, iconBtnDanger } = useEditorTheme();
   const items = value || [];
   const [openIdx, setOpenIdx] = useState(0);
@@ -1506,7 +1507,9 @@ function ListFieldEditor({ fields, value, onChange, productPicker }) {
         <ProductPicker onPick={(item) => { onChange([...items, item]); setOpenIdx(items.length); }} />
       ) : null}
       {items.length === 0 && (
-        <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8 }}>No items yet.</div>
+        <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8 }}>
+          {productPicker ? "No items yet — add products on the Products page, then pick them here." : "No items yet."}
+        </div>
       )}
       {items.map((it, idx) => {
         const open = openIdx === idx;
@@ -1591,7 +1594,7 @@ function ListFieldEditor({ fields, value, onChange, productPicker }) {
         );
       })}
 
-      <button onClick={addItem} style={{ ...iconBtn, width: "100%", padding: "8px 0", borderStyle: "dashed", fontSize: 12, fontWeight: 600, color: theme.active, marginTop: 4 }}>
+      <button onClick={addItem} style={{ ...iconBtn, width: "100%", padding: "8px 0", borderStyle: "dashed", fontSize: 12, fontWeight: 600, color: theme.active, marginTop: 4, display: manualAdd ? undefined : "none" }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Add item
       </button>

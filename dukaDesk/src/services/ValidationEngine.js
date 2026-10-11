@@ -117,6 +117,12 @@ function validateSection(section, path, errors, warnings, regTypes, screenIds = 
     } else if (!regTypes.includes(comp.type)) {
       errors.push({ path: `${compPath}.type`, message: `Unknown component type "${comp.type}"`, severity: "error", fix: `Register "${comp.type}" or use one of: ${regTypes.join(", ")}` });
     }
+    if (comp.type === "menu_grid" && Array.isArray(comp.props?.items)) {
+      const unlinked = comp.props.items.filter(item => item && typeof item === "object" && !item.productId).length;
+      if (unlinked > 0) {
+        warnings.push({ path: `${compPath}.props.items`, message: `${unlinked} menu item${unlinked === 1 ? "" : "s"} ${unlinked === 1 ? "was" : "were"} typed by hand — pick store products so prices, photos and stock stay in sync`, severity: "warning" });
+      }
+    }
     validateComponentActions(comp, compPath, screenIds, errors);
     (comp.children || []).forEach((child, i) => validateComponent(child, compPath + '.children[' + i + ']'));
     (comp.layout?.children || []).forEach((child, i) => validateComponent(child, compPath + '.layout.children[' + i + ']'));

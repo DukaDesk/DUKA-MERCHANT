@@ -775,6 +775,82 @@ export async function createProductCategory(body) {
   return { id: created?.id, name: created?.name || body.name, slug: created?.slug || "" };
 }
 
+/* ── Builder product slots ────────────────────────────────────────────
+   Menu grids must show the merchant's real catalog, never hand-typed
+   placeholders. These helpers map live products into builder menu items
+   and scan a design replacing placeholder grids on template select. */
+
+export function mapProductToMenuItem(p) {
+  if (!p || typeof p !== "object") return null;
+  const images = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
+  return {
+    productId: p.id,
+    id: p.id,
+    name: p.name || "Untitled",
+    price: Number(p.price) || 0,
+    compareAtPrice: p.compareAtPrice ?? null,
+    oldPrice: p.compareAtPrice != null ? String(p.compareAtPrice) : "",
+    desc: p.shortDescription || p.description || p.cat || "",
+    description: p.description || p.cat || "",
+    shortDescription: p.shortDescription || "",
+    image: images[0] || "",
+    badge: p.badge || "",
+    tags: Array.isArray(p.tags) ? [...p.tags] : [],
+    weight: p.weight ?? null,
+    weightUnit: p.weightUnit || null,
+    length: p.length ?? null,
+    width: p.width ?? null,
+    height: p.height ?? null,
+    dimensionUnit: p.dimensionUnit || null,
+    sku: p.sku || "",
+  };
+}
+
+function hydrateComponentTree(node, products) {
+  if (!node || typeof node !== "object") return node;
+  const copy = Array.isArray(node) ? [...node] : { ...node };
+  if (!Array.isArray(node) && node.type === "menu_grid" && products.length > 0) {
+    copy.props = { ...(node.props || {}), items: products.map(mapProductToMenuItem).filter(Boolean) };
+  }
+  for (const key of ["children", "components"]) {
+    if (Array.isArray(copy[key])) copy[key] = copy[key].map(child => hydrateComponentTree(child, products));
+  }
+  if (copy.layout && typeof copy.layout === "object") {
+    copy.layout = { ...copy.layout };
+    if (Array.isArray(copy.layout.children)) copy.layout.children = copy.layout.children.map(child => hydrateComponentTree(child, products));
+  }
+  if (copy.props && typeof copy.props === "object" && copy.type !== "menu_grid") {
+    const props = { ...copy.props };
+    for (const key of ["cats", "categories", "items", "offers", "orders", "rows"]) {
+      if (Array.isArray(props[key])) props[key] = props[key].map(child => hydrateComponentTree(child, products));
+    }
+    copy.props = props;
+  }
+  return copy;
+}
+
+/** Replace every menu_grid's hand-typed items with the live catalog.
+ *  Returns the design unchanged when the catalog is empty. */
+export function hydrateDesignWithProducts(design, products) {
+  const list = Array.isArray(products) ? products.filter(Boolean) : [];
+  if (!design || typeof design !== "object" || list.length === 0) return design;
+  const copy = JSON.parse(JSON.stringify(design));
+  if (copy.screens && typeof copy.screens === "object") {
+    for (const key of Object.keys(copy.screens)) {
+      const screen = copy.screens[key];
+      if (Array.isArray(screen?.bodySections)) {
+        screen.bodySections = screen.bodySections.map(section => ({
+          ...section,
+          components: Array.isArray(section.components)
+            ? section.components.map(comp => hydrateComponentTree(comp, list))
+            : section.components,
+        }));
+      }
+    }
+  }
+  return copy;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    ORDERS
    ═══════════════════════════════════════════════════════════════════ */

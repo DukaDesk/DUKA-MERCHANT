@@ -21,7 +21,7 @@ vi.mock("axios", () => {
   return { default: mock };
 });
 
-import { getProducts, createProduct, updateProduct, adjustProductStock, getProductCategories, createProductCategory } from "./api";
+import { getProducts, createProduct, updateProduct, adjustProductStock, getProductCategories, createProductCategory, mapProductToMenuItem, hydrateDesignWithProducts } from "./api";
 import httpClient from "./httpClient";
 
 const mockHttpClient = vi.mocked(httpClient);
@@ -86,5 +86,46 @@ describe("live product endpoints", () => {
     await expect(getProductCategories()).resolves.toEqual([{ id: "c1", name: "Grains", slug: "grains" }]);
     mockHttpClient.post.mockResolvedValueOnce({ data: { success: true, data: { id: "c2", name: "Oils", slug: "oils" } } });
     await expect(createProductCategory({ name: "Oils" })).resolves.toMatchObject({ id: "c2", name: "Oils" });
+  });
+});
+
+describe("builder product slots", () => {
+  const product = {
+    id: "p1", name: "Beans", price: 1500, compareAtPrice: 2000,
+    shortDescription: "Staple", description: "Long desc", cat: "Grains",
+    images: ["https://img/1"], badge: "HOT", tags: ["staple"],
+    weight: 500, weightUnit: "g", sku: "BNS-1",
+  };
+
+  it("maps a store product into a menu item slot", () => {
+    expect(mapProductToMenuItem(product)).toMatchObject({
+      productId: "p1", id: "p1", name: "Beans", price: 1500,
+      desc: "Staple", image: "https://img/1", badge: "HOT",
+    });
+    expect(mapProductToMenuItem(null)).toBeNull();
+  });
+
+  it("replaces placeholder grids with the live catalog on template select", () => {
+    const design = {
+      screens: {
+        home: { bodySections: [{ id: "s1", components: [
+          { id: "g1", type: "menu_grid", props: { items: [{ name: "Typed by hand", price: "₦9" }] } },
+          { id: "t1", type: "text_block", props: { text: "Hello" } },
+        ] }] },
+      },
+    };
+    const result = hydrateDesignWithProducts(design, [product]);
+    const grid = result.screens.home.bodySections[0].components[0];
+    expect(grid.props.items).toHaveLength(1);
+    expect(grid.props.items[0]).toMatchObject({ productId: "p1", name: "Beans" });
+    expect(result.screens.home.bodySections[0].components[1].props.text).toBe("Hello");
+    // Input design is not mutated.
+    expect(design.screens.home.bodySections[0].components[0].props.items[0].name).toBe("Typed by hand");
+  });
+
+  it("leaves designs untouched when the catalog is empty", () => {
+    const design = { screens: { home: { bodySections: [] } } };
+    expect(hydrateDesignWithProducts(design, [])).toBe(design);
+    expect(hydrateDesignWithProducts(null, [product])).toBeNull();
   });
 });

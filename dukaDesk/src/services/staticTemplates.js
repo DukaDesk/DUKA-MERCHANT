@@ -1,6 +1,7 @@
 import { loadAllTemplateScreens } from "./TemplateLoader";
 import httpClient from "./httpClient";
 import { getComponentType } from "../components/canvas-editor/componentTypes";
+import { getProducts, hydrateDesignWithProducts } from "./api";
 
 const catalogCache = new Map();
 
@@ -391,18 +392,28 @@ function isValidTemplateManifest(manifest, screens) {
 }
 
 export async function loadTemplateForCanvas(templateId) {
+  // Scan-and-fix: whatever template is selected, menu grids are filled with
+  // the merchant's live catalog — never hand-typed placeholders. A missing
+  // catalog never blocks the load (placeholders stay as fallback).
+  const hydrate = async (design) => {
+    try {
+      return hydrateDesignWithProducts(design, await getProducts());
+    } catch {
+      return design;
+    }
+  };
   // Local templates live under /templates/<folder>/<id>/ and are addressed as
   // `folder/id`. Anything else is a backend template UUID.
   if (!isBackendTemplateId(templateId)) {
     const { manifest, screens } = await loadAllTemplateScreens(templateId);
     if (!isValidTemplateManifest(manifest, screens)) throw new Error(`Template ${templateId} has no content`);
-    return convertManifestToDesign(manifest, screens);
+    return hydrate(convertManifestToDesign(manifest, screens));
   }
   try {
     const res = await httpClient.get(`/api/v1/templates/${encodeURIComponent(templateId)}`);
     const body = res?.data ?? res;
     const template = body?.data ?? body;
-    if (isValidBackendTemplate(template)) return convertBackendTemplateToDesign(template);
+    if (isValidBackendTemplate(template)) return hydrate(convertBackendTemplateToDesign(template));
   } catch {
     // backend template unavailable — fall through to the error below
   }
