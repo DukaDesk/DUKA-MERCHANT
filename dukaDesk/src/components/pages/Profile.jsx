@@ -192,7 +192,7 @@ export default function Profile() {
                     <option key={form.category} value={form.category} disabled>{form.category} (current)</option>
                   )}
                   {COMMERCE_CATEGORIES.map(c => (
-                    <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
+                    <option key={c.key} value={c.key}>{c.label}</option>
                   ))}
                 </select>
               </div>
