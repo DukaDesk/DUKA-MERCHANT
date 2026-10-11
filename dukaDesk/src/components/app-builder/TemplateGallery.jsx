@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { NAVY, AMBER } from "../../theme";
 import { getTemplateCatalog } from "../../services/staticTemplates";
+import { isCommerceTemplateCategory } from "../../config/verticalCatalog";
 
 function getInitials(name) {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
@@ -15,8 +16,10 @@ export default function TemplateGallery({ value, onChange, isMobile, loading = f
 
   useEffect(() => {
     let mounted = true;
+    // Commerce-only: template categories outside buying/selling are hidden
+    // so a merchant can only pick (never type) a business desk.
     getTemplateCatalog()
-      .then(cats => { if (mounted) setCatalog(cats); })
+      .then(cats => { if (mounted) setCatalog(cats.filter(cat => isCommerceTemplateCategory(cat.name))); })
       .catch(() => { if (mounted) setError("Failed to load templates"); });
     return () => { mounted = false; };
   }, []);

@@ -6,6 +6,7 @@ import {
   DESK_CATEGORIES,
 } from "./taxonomy";
 import { WIZARD_CATEGORIES } from "./wizard";
+import { isCommerceTemplateCategory } from "./verticalCatalog";
 
 describe("commerce-only category pickers", () => {
   it("restricts selectable desk types to buying/selling categories", () => {
@@ -27,5 +28,14 @@ describe("commerce-only category pickers", () => {
 
   it("offers only commerce categories in the setup wizard", () => {
     expect([...WIZARD_CATEGORIES.map(c => c.name)].sort()).toEqual(["Business", "Food & Hospitality", "Healthcare", "Services"]);
+  });
+
+  it("classifies template catalog categories as commerce or not", () => {
+    for (const name of ["Restaurant", "Ecommerce", "Food Vendor", "Grocery", "Booking", "Pharmacy", "Salon & Beauty", "Logistics"]) {
+      expect(isCommerceTemplateCategory(name)).toBe(true);
+    }
+    for (const name of ["Church", "School", "Law Firm", "Unknown Category"]) {
+      expect(isCommerceTemplateCategory(name)).toBe(false);
+    }
   });
 });

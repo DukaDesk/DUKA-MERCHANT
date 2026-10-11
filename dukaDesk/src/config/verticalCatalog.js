@@ -14,6 +14,8 @@
  * silently skipped by the generator.
  */
 
+import { COMMERCE_CATEGORY_KEYS } from "./taxonomy.js";
+
 export const VERTICAL_CATALOG = [
   {
     key: "Restaurant",
@@ -243,6 +245,27 @@ export const VERTICAL_CATALOG = [
     },
   },
 ];
+
+/** Legacy/new catalog names → canonical taxonomy keys. */
+const CATALOG_TO_CANONICAL = {
+  Restaurant: "Food & Hospitality",
+  Ecommerce: "Business",
+  "Food Vendor": "Food & Hospitality",
+  Grocery: "Food & Hospitality",
+  Church: "Religion",
+  School: "Education",
+  Booking: "Services",
+  Pharmacy: "Healthcare",
+  "Salon & Beauty": "Services",
+  "Law Firm": "Legal",
+  Logistics: "Services",
+};
+
+/** Whether a template-catalog category belongs to buying/selling. */
+export function isCommerceTemplateCategory(name) {
+  const canonical = CATALOG_TO_CANONICAL[name] || resolveCategoryKey(name);
+  return COMMERCE_CATEGORY_KEYS.includes(canonical);
+}
 
 /** Taxonomy preset keys (config/taxonomy.js) → catalog keys. */
 const TAXONOMY_PRESET_MAP = {
