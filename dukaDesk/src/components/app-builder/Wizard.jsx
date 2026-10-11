@@ -1,18 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import QRCode from "qrcode";
 import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER } from "../../theme";
 import { setSetupData, getSetupData, deployApp } from "../../services/api";
-import { WIZARD_CATEGORIES, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_COLORS, WIZARD_DAYS, WIZARD_PUBLISH_STEPS, getTemplateIntegrationNames } from "../../config/wizard";
+import { WIZARD_CATEGORIES, WIZARD_ALWAYS_INCLUDED, WIZARD_INTEGRATIONS, WIZARD_COLORS, WIZARD_DAYS, getTemplateIntegrationNames } from "../../config/wizard";
 import { INTEGRATION_BADGE_COLORS } from "../../config/integrations";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";
 import { generateShopTemplate } from "../../services/TemplateGenerator";
 import { resolveTemplateId } from "../../services/staticTemplates";
 import { SetupWizard } from "./SetupWizard";
 import { TemplatePreview } from "../template/TemplateRenderer";
-import { Share2, Download, QrCode, ExternalLink, Edit2 } from "lucide-react";
+import { Check, Edit2 } from "lucide-react";
 
 const CATEGORY_TO_TEMPLATE = {
   Restaurant: "Restaurant / Cafe",
@@ -147,109 +146,30 @@ export default function Wizard() {
 }
 
 function Published({ data, isMobile, navigate }) {
-  const [copied, setCopied] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState(null);
-  const [shareSupported, setShareSupported] = useState(false);
   const appName = data?.appName || "Your App";
-  const slug = appName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  const storeUrl = `dukadesk.app/${slug}`;
-  const qrSize = isMobile ? 120 : 160;
-  const fullUrl = `https://${storeUrl}`;
-
-  useEffect(() => {
-    QRCode.toDataURL(fullUrl, { width: qrSize * 2, margin: 1 }).then(setQrDataUrl).catch(() => {});
-    setShareSupported(navigator.share !== undefined);
-  }, [fullUrl, qrSize]);
-
-  const copy = () => { navigator.clipboard.writeText(fullUrl); setCopied(true); toast.success("Store link copied!"); setTimeout(() => setCopied(false), 2000); };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: appName, text: `Check out my app: ${appName}`, url: fullUrl });
-      } catch (e) { if (e.name !== "AbortError") copy(); }
-    } else {
-      copy();
-    }
-  };
-
-  const downloadQR = () => {
-    if (!qrDataUrl) { toast.error("QR code not ready"); return; }
-    const a = document.createElement("a"); a.href = qrDataUrl; a.download = `${slug}-qr.png`; a.click();
-    toast.success("QR code downloaded!");
-  };
 
   return (
     <div style={{ minHeight: "100vh", background: "#F7F8FA", display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 16 : 40 }}>
-      <div style={{ textAlign: "center", maxWidth: 780, animation: "slideUp 0.5s ease" }}>
-        <div style={{ width: 80, height: 80, background: "#F0FDF4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 40 }}>ðŸŽ‰</div>
-        <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: isMobile ? 32 : 44, color: NAVY, marginBottom: 8 }}>Your App is Ready!</h1>
-        <p style={{ color: "#6B7280", fontSize: isMobile ? 16 : 18, marginBottom: 32 }}>{appName} has been built and saved. ðŸš€</p>
-
-        <div style={{ background: "#fff", borderRadius: 16, padding: isMobile ? 24 : 36, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", marginBottom: 24, border: "1px solid #E8E8F0", textAlign: "left" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-            <div style={{ width: 48, height: 48, background: (data?.color || AMBER) + "15", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{data?.logo || "ðŸ“±"}</div>
+      <div style={{ textAlign: "center", maxWidth: 680, animation: "slideUp 0.5s ease" }}>
+        <div style={{ width: 72, height: 72, background: "#FFF7E8", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}><Check size={32} color={NAVY} /></div>
+        <h1 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: isMobile ? 30 : 40, color: NAVY, marginBottom: 8 }}>Setup saved</h1>
+        <p style={{ color: "#6B7280", fontSize: isMobile ? 16 : 18, marginBottom: 28 }}>{appName} is not live yet. Finish building the app, then submit it for admin review.</p>
+        <div style={{ background: "#fff", borderRadius: 16, padding: isMobile ? 22 : 30, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", marginBottom: 24, border: "1px solid #E8E8F0", textAlign: "left" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+            <div style={{ width: 48, height: 48, background: (data?.color || AMBER) + "15", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{data?.logo || <Edit2 size={22} color={NAVY} />}</div>
             <div>
               <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY }}>{appName}</div>
-              <div style={{ color: "#9CA3AF", fontSize: 13 }}>{data?.tagline || data?.category} Â· {data?.template}</div>
+              <div style={{ color: "#9CA3AF", fontSize: 13 }}>{data?.tagline || data?.category} | {data?.template}</div>
             </div>
-            <span style={{ marginLeft: "auto", background: "#F0FDF4", color: "#065F46", fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 20 }}>â— Built</span>
+            <span style={{ marginLeft: "auto", background: "#FFF7E8", color: "#8A5A00", fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 20 }}>Draft</span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 16 }}>
-            {[
-              { label: "Category", value: data?.category },
-              { label: "Template", value: data?.template },
-              { label: "Integrations", value: (data?.selectedIntegrations?.length || 0) + " selected" },
-              { label: "Store URL", value: storeUrl },
-            ].map((r, i) => (
-              <div key={i} style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 14px" }}>
-                <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>{r.label}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{r.value}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button onClick={handleShare} style={{ background: shareSupported ? "#2563EB" : AMBER, color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Share2 size={14} /> {shareSupported ? "Share App" : "Copy Link"}
-            </button>
-            <button onClick={downloadQR} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Download size={14} /> Download QR
-            </button>
-            <button onClick={copy} style={{ background: copied ? "#2ECC71" : "none", color: copied ? "#fff" : NAVY, border: `1.5px solid ${copied ? "#2ECC71" : "#E8E8F0"}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <QrCode size={14} /> {copied ? "Copied!" : "Copy Link"}
-            </button>
-          </div>
-        </div>
-
-        <div style={{ background: "#fff", borderRadius: 16, padding: isMobile ? 24 : 36, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 24 : 40, textAlign: "left", marginBottom: 32, border: "1px solid #E8E8F0" }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Your QR Code</div>
-            {qrDataUrl ? <img src={qrDataUrl} alt="QR code" style={{ width: qrSize, height: qrSize, borderRadius: 12, margin: "0 auto 16px", display: "block" }} /> : <div style={{ width: qrSize, height: qrSize, background: "#F3F4F6", borderRadius: 12, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 60 : 80 }}>â–£</div>}
-            <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 16, wordBreak: "break-all" }}>{fullUrl}</div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-              <button onClick={downloadQR} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <Download size={14} /> Download PNG
-              </button>
-              <button onClick={copy} style={{ background: copied ? "#2ECC71" : "none", color: copied ? "#fff" : NAVY, border: `1.5px solid ${copied ? "#2ECC71" : "#E8E8F0"}`, borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <QrCode size={14} /> {copied ? "Copied!" : "Copy Link"}
-              </button>
-            </div>
-          </div>
-          <div>
-            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>What Happens Next</div>
-            {WIZARD_PUBLISH_STEPS.map((step, i) => (
-              <div key={i} style={{ display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-start" }}>
-                <div style={{ width: 26, height: 26, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: NAVY, flexShrink: 0 }}>{i + 1}</div>
-                <span style={{ fontSize: 14, color: "#374151", lineHeight: 1.5 }}>{step}</span>
-              </div>
-            ))}
-          </div>
+          <p style={{ color: "#4B5563", lineHeight: 1.6, margin: 0 }}>After you submit from the app builder, an administrator will review the saved design. Public links and QR codes become available after approval.</p>
         </div>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={() => navigate("/dashboard")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "14px 40px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Go to My Dashboard â†’</button>
-          <button onClick={() => navigate("/canvas-editor")} style={{ background: "none", color: NAVY, border: "2px solid #E8E8F0", borderRadius: 10, padding: "14px 40px", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: "'Sora',sans-serif", display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <Edit2 size={18} /> Open in Canvas Editor
+          <button onClick={() => navigate("/canvas-editor")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "14px 32px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif", display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Edit2 size={18} /> Continue in App Builder
           </button>
+          <button onClick={() => navigate("/dashboard")} style={{ background: "none", color: NAVY, border: "2px solid #E8E8F0", borderRadius: 10, padding: "14px 32px", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Go to dashboard</button>
         </div>
       </div>
     </div>

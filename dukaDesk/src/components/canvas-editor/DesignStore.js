@@ -271,8 +271,10 @@ export function useDesignStore(initialData, options = {}) {
         if (status === "synced") setServerLastSaved(new Date());
       });
       setSyncStatus(ok ? "synced" : "pending");
+      return ok;
     } catch {
       setSyncStatus("pending");
+      return false;
     } finally {
       setSavingToServer(false);
     }

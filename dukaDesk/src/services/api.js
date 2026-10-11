@@ -455,13 +455,16 @@ export async function deployApp(appData) {
       phone: appData.phone || "",
       address: appData.address || "",
       hours: appData.hours || [],
-      status: "live",
+      status: "draft",
       updatedAt: new Date().toISOString(),
     },
   });
 
-  await publishTenant(tenantId);
-  return { app: { appName, slug, storeUrl }, message: "App deployed successfully!" };
+  return {
+    app: { appName, slug, storeUrl },
+    status: "draft",
+    message: "Setup saved. Finish your app design in the builder, then submit it for admin review.",
+  };
 }
 
 export async function updateApp(appData) {
@@ -1008,16 +1011,9 @@ export async function updateTenantConfig(id, body) {
 }
 
 export async function publishTenant(id) {
-  try {
-    const res = await httpClient.post(`/api/v1/merchants/${id}/publish`);
-    return res.data || res;
-  } catch (e) {
-    console.warn("[publishTenant] backend unavailable, demo fallback", e?.message);
-  }
-  const store = demoStore();
-  if (store.config?.app) store.config.app.status = "live";
-  demoSave(store);
-  return { id, published: true };
+  if (isDemoId(id)) return { id, appStatus: "in_review", status: "in_review" };
+  const res = await httpClient.post("/api/v1/app/merchants/review/submit", {}, { silentSuccess: true });
+  return res.data || res;
 }
 
 async function readConfig(tenantId) {
