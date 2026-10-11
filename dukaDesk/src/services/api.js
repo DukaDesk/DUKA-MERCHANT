@@ -647,42 +647,101 @@ function tenantPath(tenantId) {
   return merchantPath(tenantId);
 }
 
+function mapBackendProduct(p) {
+  if (!p || typeof p !== "object") return null;
+  const images = Array.isArray(p.images)
+    ? p.images.map(img => (typeof img === "string" ? img : img?.url)).filter(Boolean)
+    : [];
+  return {
+    id: p.id,
+    name: p.name || "Untitled",
+    cat: p.category?.name || "",
+    categoryId: p.categoryId || p.category?.id || null,
+    price: Number(p.price) || 0,
+    compareAtPrice: p.compareAtPrice != null ? Number(p.compareAtPrice) : null,
+    stock: Number(p.stock ?? p.quantity ?? 0) || 0,
+    images,
+    // Legacy icon-key fallback for products created before image uploads.
+    img: images[0] || p.img || "soup",
+    badge: p.badge || "",
+    tags: Array.isArray(p.tags) ? p.tags : [],
+    description: p.description || "",
+    sku: p.sku || "",
+    isActive: p.isActive !== false,
+  };
+}
+
+function mapPortalProduct(body) {
+  const toNumberOrNull = (v) => (v === "" || v == null ? null : Number(v));
+  return {
+    name: body.name,
+    description: body.description || undefined,
+    price: Number(body.price) || 0,
+    compareAtPrice: toNumberOrNull(body.compareAtPrice),
+    currency: "NGN",
+    stock: Number(body.stock) || 0,
+    sku: body.sku || undefined,
+    categoryId: body.categoryId || undefined,
+    images: Array.isArray(body.images) ? body.images.filter(Boolean) : undefined,
+    badge: body.badge || null,
+    tags: Array.isArray(body.tags) ? body.tags : [],
+    isActive: body.isActive !== false,
+  };
+}
+
 export async function getProducts() {
-  // [DEMO] const merchant = getMerchant();
-  // [DEMO] const tenantId = merchant?.tenantId;
-  // [DEMO] const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
-  // [DEMO] return unwrapList(res);
-  return demoStore().products || [];
+  try {
+    const merchant = getMerchant();
+    const tenantId = merchant?.merchantId || merchant?.tenantId;
+    if (!tenantId) return [];
+    const res = await httpClient.get(`/api/v1/merchants/${encodeURIComponent(tenantId)}/products`, { params: { limit: 100 }, silent: true });
+    return unwrapList(res).map(mapBackendProduct).filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 export async function createProduct(body) {
-  // [DEMO] const merchant = getMerchant();
-  // [DEMO] const tenantId = merchant?.tenantId;
-  // [DEMO] const res = await httpClient.post(`${tenantPath(tenantId)}/products`, body);
-  // [DEMO] return res.data || res;
-  const store = demoStore();
-  const created = { ...body, id: `p_${Date.now()}` };
-  store.products = [created, ...(store.products || [])];
-  demoSave(store);
-  return created;
+  const res = await httpClient.post("/api/v1/app/commerce/products", mapPortalProduct(body));
+  const created = mapBackendProduct(res?.data ?? res);
+  if (!created?.id) throw new Error("Product creation returned no product");
+  return { ...body, ...created };
 }
 
 export async function updateProduct(id, body) {
-  // [DEMO] const res = await httpClient.put(`/api/v1/products/${id}`, body);
-  // [DEMO] return res.data || res;
-  const store = demoStore();
-  store.products = (store.products || []).map(p => (p.id === id ? { ...p, ...body, id } : p));
-  demoSave(store);
-  return { ...body, id };
+  const res = await httpClient.put(`/api/v1/app/commerce/products/${encodeURIComponent(id)}`, mapPortalProduct(body));
+  const updated = mapBackendProduct(res?.data ?? res);
+  return { ...body, ...(updated || {}), id };
 }
 
 export async function deleteProduct(id) {
-  // [DEMO] const res = await httpClient.delete(`/api/v1/products/${id}`);
-  // [DEMO] return res.data || res;
-  const store = demoStore();
-  store.products = (store.products || []).filter(p => p.id !== id);
-  demoSave(store);
+  await httpClient.delete(`/api/v1/app/commerce/products/${encodeURIComponent(id)}`);
   return { id };
+}
+
+export async function getProductCategories() {
+  try {
+    const merchant = getMerchant();
+    const tenantId = merchant?.merchantId || merchant?.tenantId;
+    if (!tenantId) return [];
+    const res = await httpClient.get(`/api/v1/merchants/${encodeURIComponent(tenantId)}/categories`, { silent: true });
+    return unwrapList(res)
+      .map(c => ({ id: c?.id, name: c?.name || "", slug: c?.slug || "" }))
+      .filter(c => c.id && c.name);
+  } catch {
+    return [];
+  }
+}
+
+export async function createProductCategory(body) {
+  const res = await httpClient.post("/api/v1/app/commerce/categories", {
+    name: body.name,
+    slug: body.slug,
+    description: body.description || undefined,
+    image: body.image || undefined,
+  });
+  const created = res?.data ?? res;
+  return { id: created?.id, name: created?.name || body.name, slug: created?.slug || "" };
 }
 
 /* ═══════════════════════════════════════════════════════════════════

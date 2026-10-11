@@ -1,5 +1,5 @@
 import { resolveInsertionTarget } from "./insertionTarget";
-import { getMerchant } from "../../services/api";
+import { getMerchant, getProducts } from "../../services/api";
 import ButtonGallery from "./ButtonGallery";
 import { getComponentCatalog } from "./componentCatalog";
 import IconPicker from "./IconPicker";
@@ -252,6 +252,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                     fields={field.fields}
                     value={Array.isArray(val) ? val : []}
                     onChange={(list) => store.updateProp(selectedSectionId, component.id, field.key, list)}
+                    productPicker={component.type === "menu_grid" && field.key === "items"}
                   />
                 ) : field.type === "bg" ? (
                   <FillEditor value={val} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} />
@@ -1407,7 +1408,54 @@ function FillEditor({ value, onChange }) {
   );
 }
 
-function ListFieldEditor({ fields, value, onChange }) {
+/* Pick a live store product to auto-fill a menu item slot. */
+function ProductPicker({ onPick }) {
+  const { theme, textInput } = useEditorTheme();
+  const [products, setProducts] = useState(null);
+  const [selectedId, setSelectedId] = useState("");
+  useEffect(() => {
+    let live = true;
+    getProducts()
+      .then(list => { if (live) setProducts(Array.isArray(list) ? list : []); })
+      .catch(() => { if (live) setProducts([]); });
+    return () => { live = false; };
+  }, []);
+  if (products === null) {
+    return <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8 }}>Loading products…</div>;
+  }
+  if (products.length === 0) return null;
+  return (
+    <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+      <select aria-label="Pick a store product" value={selectedId} onChange={e => setSelectedId(e.target.value)} style={{ ...textInput, flex: 1, cursor: "pointer", fontSize: 12 }}>
+        <option value="">Fill from store product…</option>
+        {products.map(p => (
+          <option key={p.id} value={p.id}>{p.name} — ₦{Number(p.price || 0).toLocaleString()}</option>
+        ))}
+      </select>
+      <button
+        disabled={!selectedId}
+        onClick={() => {
+          const p = products.find(x => x.id === selectedId);
+          if (!p) return;
+          onPick({
+            productId: p.id,
+            name: p.name,
+            price: Number(p.price) || 0,
+            desc: p.description || p.cat || "",
+            description: p.description || p.cat || "",
+            image: (p.images && p.images[0]) || "",
+            badge: p.badge || "",
+            compareAtPrice: p.compareAtPrice ?? null,
+          });
+          setSelectedId("");
+        }}
+        style={{ padding: "6px 12px", borderRadius: theme.radius.md, border: "none", background: selectedId ? theme.active : theme.hover, color: selectedId ? "#5B3A00" : theme.textSecondary, fontSize: 12, fontWeight: 600, cursor: selectedId ? "pointer" : "not-allowed", fontFamily: "'Inter',sans-serif" }}
+      >Fill</button>
+    </div>
+  );
+}
+
+function ListFieldEditor({ fields, value, onChange, productPicker }) {
   const { theme, textInput, labelStyle, iconBtn, iconBtnDanger } = useEditorTheme();
   const items = value || [];
   const [openIdx, setOpenIdx] = useState(0);
@@ -1446,6 +1494,9 @@ function ListFieldEditor({ fields, value, onChange }) {
 
   return (
     <div>
+      {productPicker ? (
+        <ProductPicker onPick={(item) => { onChange([...items, item]); setOpenIdx(items.length); }} />
+      ) : null}
       {items.length === 0 && (
         <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8 }}>No items yet.</div>
       )}
