@@ -647,8 +647,13 @@ function tenantPath(tenantId) {
   return merchantPath(tenantId);
 }
 
-function mapBackendProduct(p) {
-  if (!p || typeof p !== "object") return null;
+function unwrapBody(res) {
+  const body = res?.data ?? res;
+  if (body && typeof body === "object" && body.success === true && "data" in body) return body.data;
+  return body;
+}
+
+function mapBackendProduct(p) {  if (!p || typeof p !== "object") return null;
   const images = Array.isArray(p.images)
     ? p.images.map(img => (typeof img === "string" ? img : img?.url)).filter(Boolean)
     : [];
@@ -703,20 +708,29 @@ export async function getProducts() {
 
 export async function createProduct(body) {
   const res = await httpClient.post("/api/v1/app/commerce/products", mapPortalProduct(body));
-  const created = mapBackendProduct(res?.data ?? res);
+  const created = mapBackendProduct(unwrapBody(res));
   if (!created?.id) throw new Error("Product creation returned no product");
   return { ...body, ...created };
 }
 
 export async function updateProduct(id, body) {
   const res = await httpClient.put(`/api/v1/app/commerce/products/${encodeURIComponent(id)}`, mapPortalProduct(body));
-  const updated = mapBackendProduct(res?.data ?? res);
+  const updated = mapBackendProduct(unwrapBody(res));
   return { ...body, ...(updated || {}), id };
 }
 
 export async function deleteProduct(id) {
   await httpClient.delete(`/api/v1/app/commerce/products/${encodeURIComponent(id)}`);
   return { id };
+}
+
+export async function adjustProductStock(id, delta) {
+  const res = await httpClient.post(`/api/v1/app/commerce/products/${encodeURIComponent(id)}/adjust-stock`, { delta: Number(delta) || 0 });
+  const body = unwrapBody(res);
+  return {
+    stock: Number(body?.stock),
+    reservedStock: Number(body?.reservedStock ?? 0),
+  };
 }
 
 export async function getProductCategories() {
@@ -740,7 +754,7 @@ export async function createProductCategory(body) {
     description: body.description || undefined,
     image: body.image || undefined,
   });
-  const created = res?.data ?? res;
+  const created = unwrapBody(res);
   return { id: created?.id, name: created?.name || body.name, slug: created?.slug || "" };
 }
 
