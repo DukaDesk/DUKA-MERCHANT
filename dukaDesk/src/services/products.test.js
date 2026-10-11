@@ -63,6 +63,7 @@ describe("live product endpoints", () => {
     expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/app/commerce/products", expect.objectContaining({
       name: "Rice", price: 5000, stock: 2, tags: ["a", "b"], badge: "NEW", images: ["https://img/9"],
     }));
+    expect(mockHttpClient.post.mock.calls[0][1].slug).toBe("rice");
     expect(created.id).toBe("p9");
   });
 

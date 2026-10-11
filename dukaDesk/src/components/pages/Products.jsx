@@ -128,7 +128,10 @@ export default function Products() {
         setProducts(p => [created, ...p]);
         toast.success("Product added!");
       }
-    } catch { toast.error("Failed to save product"); }
+    } catch (err) {
+      const serverMessage = err?.response?.data?.message || err?.message;
+      toast.error(serverMessage && serverMessage !== "Failed to save product" ? serverMessage : "Failed to save product");
+    }
     setPanel(null);
   };
 

@@ -685,8 +685,10 @@ function mapBackendProduct(p) {  if (!p || typeof p !== "object") return null;
 
 function mapPortalProduct(body) {
   const toNumberOrNull = (v) => (v === "" || v == null ? null : Number(v));
+  const slug = (body.slug || String(body.name || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) || undefined;
   return {
     name: body.name,
+    slug,
     description: body.description || undefined,
     shortDescription: body.shortDescription || undefined,
     weight: body.weight ?? undefined,
@@ -762,9 +764,10 @@ export async function getProductCategories() {
 }
 
 export async function createProductCategory(body) {
+  const slug = body.slug || String(body.name || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   const res = await httpClient.post("/api/v1/app/commerce/categories", {
     name: body.name,
-    slug: body.slug,
+    slug: slug || undefined,
     description: body.description || undefined,
     image: body.image || undefined,
   });
