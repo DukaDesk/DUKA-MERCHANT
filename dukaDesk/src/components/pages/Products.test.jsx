@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { deriveStatus, discountPercent } from "./Products";
+import { deriveStatus, discountPercent, DESCRIPTION_MAX, SHORT_DESCRIPTION_MAX } from "./Products";
 
 describe("product status automation", () => {
   it("marks zero stock out of stock", () => {
@@ -13,6 +13,13 @@ describe("product status automation", () => {
     expect(deriveStatus(5)).toBe("Low Stock");
     expect(deriveStatus(6)).toBe("In Stock");
     expect(deriveStatus(100)).toBe("In Stock");
+  });
+});
+
+describe("copy limits", () => {
+  it("caps descriptions at 800 and short descriptions at 100", () => {
+    expect(DESCRIPTION_MAX).toBe(800);
+    expect(SHORT_DESCRIPTION_MAX).toBe(100);
   });
 });
 

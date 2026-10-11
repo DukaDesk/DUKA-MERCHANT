@@ -9,6 +9,9 @@ import { Loading, Empty, ErrorState } from "../layout/States";
 
 // Stock at or below this is "Low Stock"; zero is always "Out of Stock".
 const LOW_STOCK_AT = 5;
+// Buyer-education copy limits: full description 800, short hook 100.
+export const DESCRIPTION_MAX = 800;
+export const SHORT_DESCRIPTION_MAX = 100;
 export const STATUS_OPTS = ["In Stock", "Low Stock", "Out of Stock"];
 
 export function deriveStatus(stock) {
@@ -90,6 +93,8 @@ export default function Products() {
   const saveProduct = async () => {
     if (!form.name || !form.price) { toast.error("Name and price are required"); return; }
     if (!form.description?.trim()) { toast.error("Description is required — buyers need to know what this is"); return; }
+    if (form.description.trim().length > DESCRIPTION_MAX) { toast.error(`Description must be ${DESCRIPTION_MAX} characters or less`); return; }
+    if ((form.shortDescription || "").length > SHORT_DESCRIPTION_MAX) { toast.error(`Short description must be ${SHORT_DESCRIPTION_MAX} characters or less`); return; }
     try {
       const categoryId = await resolveCategoryId().catch(() => form.categoryId || null);
       const tags = String(form.tags || "").split(",").map(t => t.trim()).filter(Boolean);
@@ -361,12 +366,12 @@ export default function Products() {
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Jollof Rice & Chicken" style={inputStyle} />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={labelStyle}>Description *</label>
-                <textarea value={form.description || ""} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What buyers need to know — materials, usage, care…" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
+                <label style={labelStyle}>Description * ({(form.description || "").length}/{DESCRIPTION_MAX})</label>
+                <textarea value={form.description || ""} maxLength={DESCRIPTION_MAX} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What buyers need to know — materials, usage, care…" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={labelStyle}>Short description</label>
-                <input value={form.shortDescription} onChange={e => setForm(f => ({ ...f, shortDescription: e.target.value }))} placeholder="One line for cards and search results" style={inputStyle} />
+                <label style={labelStyle}>Short description ({(form.shortDescription || "").length}/{SHORT_DESCRIPTION_MAX})</label>
+                <input value={form.shortDescription} maxLength={SHORT_DESCRIPTION_MAX} onChange={e => setForm(f => ({ ...f, shortDescription: e.target.value }))} placeholder="One line for cards and search results" style={inputStyle} />
               </div>
               <div style={{ display: "flex", gap: 12 }}>
                 <div style={{ marginBottom: 16, flex: 1 }}>
