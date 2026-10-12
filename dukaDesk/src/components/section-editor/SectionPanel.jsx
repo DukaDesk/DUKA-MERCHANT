@@ -1,3 +1,4 @@
+import DataRequestEditor from './DataRequestEditor';
 import { getComponentCatalog } from "./componentCatalog";
 import { promptDialog } from "../common/dialogs";
 import { useState, useEffect } from "react";
@@ -580,6 +581,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
   const renderPageContent = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {renderSplashCard()}
+      <DataRequestEditor store={store} />
       <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 11, color: theme.text, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span>App sections</span>
         <span style={{ fontSize: 10, color: theme.textMuted, fontWeight: 400 }}>{bodySections.length}</span>

@@ -82,3 +82,9 @@ it("canonicalizes path-style push destinations to screenId", () => {
   const node = compileDesignToPublishedApp(project, "1", "now").screens.home.layout.children[0].layout.children[0];
   expect(node.props.tapAction.payload.screenId).toBe("details");
 });
+
+it('preserves the merchant data request in the published definition', () => {
+ const project = fixture('merchant-project.json');
+ project.meta.dataRequest = { enabled: true, purpose: 'Delivery updates', fields: ['name','phone'], requiredFor: ['checkout'] };
+ expect(compileDesignToPublishedApp(project, '1', 'now').dataRequest).toEqual(project.meta.dataRequest);
+});

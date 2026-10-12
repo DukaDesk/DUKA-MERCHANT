@@ -290,7 +290,6 @@ const GALLERY = {
     screenVariants: [
       { id: "dashboard", label: "Dashboard", description: "Quick summary of key data, recent activity and shortcuts.", icon: LayoutDashboard, tabIcon: "LayoutGrid", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.dashboard },
       { id: "login", label: "Login & Sign-Up", description: "Secure email + social login, OTP ready.", icon: LogIn, tabIcon: "Key", accent: "#0D9488", background: "#FFFFFF", build: SCREEN_BUILDERS.login },
-      { id: "profile", label: "Profile & Settings", description: "Personal details, password and app preferences.", icon: UserCog, tabIcon: "User", accent: "#7C3AED", background: "#FCF8FA", build: SCREEN_BUILDERS.profile },
       { id: "notifications", label: "Notifications", description: "Alerts, updates and messages.", icon: Bell, tabIcon: "Bell", accent: "#F4A026", background: "#FCF8FA", build: SCREEN_BUILDERS.notifications },
       { id: "support", label: "Help & Support", description: "FAQs, contact form and live chat.", icon: LifeBuoy, tabIcon: "HelpCircle", accent: "#0EA5E9", background: "#FFFFFF", build: SCREEN_BUILDERS.support },
       { id: "billing", label: "Billing & Plan", description: "Payment methods, invoices and pricing plans.", icon: CreditCard, tabIcon: "CreditCard", accent: "#7C3AED", background: "#FCF8FA", build: SCREEN_BUILDERS.billing },

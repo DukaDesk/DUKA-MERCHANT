@@ -22,7 +22,7 @@ describe("TemplateGenerator", () => {
     const modern = generateShopTemplate(config("Restaurant", "Modern Bites"));
 
     expect(classic.navigation.tabs.map(tab => tab.screenId)).toEqual(["menu", "orders", "reservations", "info"]);
-    expect(modern.navigation.tabs.map(tab => tab.screenId)).toEqual(["menu", "shop", "orders", "profile"]);
+    expect(modern.navigation.tabs.map(tab => tab.screenId)).toEqual(["menu", "shop", "orders"]);
   });
 
   it("publishes generated template options for the gallery", () => {
@@ -56,7 +56,7 @@ describe("TemplateGenerator", () => {
 
     const salon = generateShopTemplate(config("Salon & Beauty", "Glow Studio"));
 
-    expect(salon.screens.map(screen => screen.screenId).sort()).toEqual(["info", "orders", "profile", "services"]);
+    expect(salon.screens.map(screen => screen.screenId).sort()).toEqual(["info", "orders", "services"]);
   });
 
   it("resolves taxonomy preset keys to catalog entries with legacy fallback", () => {

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts";
+import { formatMoney, getMerchantCurrency } from "../../utils/currency";
 import { Search, X, ArrowLeft, Package, AlertTriangle, TrendingUp } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { toast } from "react-toastify";
@@ -11,6 +13,8 @@ import { Loading, Empty, ErrorState } from "../layout/States";
 export default function Inventory() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { merchant } = useAuth() || {};
+  const currency = getMerchantCurrency(merchant);
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
@@ -81,7 +85,7 @@ export default function Inventory() {
         {[
           { label: "Total Items", value: items.length, icon: Package, color: NAVY },
           { label: "Low Stock Alerts", value: lowItems.length, icon: AlertTriangle, color: lowItems.length > 0 ? RED : GREEN },
-          { label: "Stock Value", value: `₦${totalValue.toLocaleString()}`, icon: TrendingUp, color: AMBER },
+          { label: "Stock Value", value: formatMoney(totalValue, currency), icon: TrendingUp, color: AMBER },
           { label: "Out of Stock", value: items.filter(i => statusOf(i) === "Out of Stock").length, icon: Package, color: RED },
         ].map((k, i) => (
           <div key={k.label} style={{ ...statCard, animation: `fadeIn 0.3s ease ${i * 0.1}s both` }}>
@@ -155,8 +159,8 @@ export default function Inventory() {
                         <span style={{ fontSize: 14, fontWeight: 700, color: status === "In Stock" ? NAVY : RED }}>{stock}</span>
                       </td>
                       <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>{reserved}</td>
-                      <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: NAVY }}>₦{Number(item.price || 0).toLocaleString()}</td>
-                      <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>₦{(stock * Number(item.price || 0)).toLocaleString()}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: NAVY }}>{formatMoney(item.price, currency)}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>{formatMoney(stock * Number(item.price || 0), currency)}</td>
                       <td style={{ padding: "12px 16px" }}>
                         <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: sc.bg, color: sc.color }}>{status}</span>
                       </td>

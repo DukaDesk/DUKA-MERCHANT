@@ -290,7 +290,7 @@ function generateScreens(config) {
   if (screenTypes.includes("info")) screens.push(generateInfoScreen(config));
   if (screenTypes.includes("orders")) screens.push(generateOrdersScreen(config));
   if (screenTypes.includes("cart")) screens.push(generateCartScreen(config));
-  if (screenTypes.includes("profile")) screens.push(generateProfileScreen(config));
+
   if (screenTypes.includes("reservations")) screens.push(generateBookingScreen(config));
   if (screenTypes.includes("pickup")) screens.push(generateOrdersScreen(config));
   if (screenTypes.includes("calendar")) screens.push(generateBookingScreen(config));
@@ -336,7 +336,7 @@ function generateNavigation(config) {
 
   return {
     initialScreen: screenTypes[0] || "menu",
-    tabs: screenTypes.map(id => ({
+    tabs: screenTypes.filter(id => id !== "profile").map(id => ({
       label: labels[id] || id,
       icon: icons[id] || "grid-outline",
       screenId: id,
@@ -409,7 +409,7 @@ export function getGeneratedTemplateCatalog() {
       name,
       category,
       tags: [definition.style === "dark" ? "Dark" : "Light", "Starter"],
-      features: TEMPLATE_SCREEN_VARIANTS[name] || CATEGORY_SCREENS[category] || [],
+      features: (TEMPLATE_SCREEN_VARIANTS[name] || CATEGORY_SCREENS[category] || []).filter(id => id !== "profile"),
       preview: "",
       primaryColor: definition.theme.primary,
       secondaryColor: definition.theme.secondary,

@@ -3,6 +3,8 @@ import { Search, Plus, X, Upload, Trash2, Package, ImagePlus } from "lucide-reac
 import { toast } from "react-toastify";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { usePermission } from "../../hooks/usePermission";
+import { useAuth } from "../../contexts";
+import { formatMoney, currencySymbol, getMerchantCurrency } from "../../utils/currency";
 import { NAVY, AMBER, inputStyle, labelStyle, cardStyle, statusBadge, glidePanel } from "../../theme";
 import { getProducts, createProduct, updateProduct, deleteProduct, getProductCategories, createProductCategory, uploadMediaAsset } from "../../services/api";
 import { Loading, Empty, ErrorState } from "../layout/States";
@@ -37,6 +39,9 @@ export default function Products() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { can } = usePermission();
+  const { merchant } = useAuth() || {};
+  const currency = getMerchantCurrency(merchant);
+  const sym = currencySymbol(currency);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [filter, setFilter] = useState("All");
@@ -322,10 +327,10 @@ export default function Products() {
                     <div style={{ fontSize: 13, color: "#4B5563", marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.description}</div>
                   ) : null}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>₦{Number(p.price || 0).toLocaleString()}</span>
+                    <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>{formatMoney(p.price, currency)}</span>
                     {p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price) ? (
                       <>
-                        <span style={{ fontSize: 13, color: "#9CA3AF", textDecoration: "line-through" }}>₦{Number(p.compareAtPrice).toLocaleString()}</span>
+                        <span style={{ fontSize: 13, color: "#9CA3AF", textDecoration: "line-through" }}>{formatMoney(p.compareAtPrice, currency)}</span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: "#E74C3C", padding: "2px 8px", borderRadius: 8 }}>-{pct}%</span>
                       </>
                     ) : null}
@@ -422,11 +427,11 @@ export default function Products() {
               </div>
               <div style={{ display: "flex", gap: 12 }}>
                 <div style={{ marginBottom: 16, flex: 1 }}>
-                  <label style={labelStyle}>Discount price (₦) *</label>
+                  <label style={labelStyle}>Discount price ({sym}) *</label>
                   <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="2500" style={inputStyle} />
                 </div>
                 <div style={{ marginBottom: 16, flex: 1 }}>
-                  <label style={labelStyle}>Original price (₦)</label>
+                  <label style={labelStyle}>Original price ({sym})</label>
                   <input type="number" value={form.compareAt} onChange={e => setForm(f => ({ ...f, compareAt: e.target.value }))} placeholder="Optional — shows sale" style={inputStyle} />
                 </div>
               </div>

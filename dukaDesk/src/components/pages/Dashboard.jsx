@@ -12,7 +12,7 @@ import { PRIMITIVE_BY_ID } from "../../config/primitives";
 import { Loading, Empty, ErrorState } from "../layout/States";
 import { useDispatchAction } from "../../runtime/RuntimeContext";
 import { useVertical } from "../../runtime/VerticalContext";
-import { EventBus } from "../../runtime/EventBus";
+import { formatMoney, currencySymbol, getMerchantCurrency } from "../../utils/currency";import { EventBus } from "../../runtime/EventBus";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -20,6 +20,7 @@ export default function Dashboard() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { merchant } = useAuth();
+  const currency = getMerchantCurrency(merchant);
   const { vertical, category, categoryName, categoryLower } = useVertical();
   const { modules: enabledIds } = useVertical();
   const enabledModulesSet = new Set(enabledIds);
@@ -104,7 +105,7 @@ export default function Dashboard() {
     const Icon = iconMap[k.icon] || Package;
     const raw = stats?.[field];
     const hasData = raw !== undefined && raw !== null;
-    let value = hasData ? (k.currency ? `₦${raw.toLocaleString()}` : raw.toLocaleString()) : "—";
+    let value = hasData ? (k.currency ? formatMoney(raw, currency) : raw.toLocaleString()) : "—";
     const trend = hasData ? "" : "No data yet";
     return {
       label: k.label,
@@ -117,8 +118,8 @@ export default function Dashboard() {
     };
   }).filter(Boolean);
 
-  function format(value, currency) {
-    if (currency) return `₦${(value || 0).toLocaleString()}`;
+  function format(value, isCurrency) {
+    if (isCurrency) return formatMoney(value, currency);
     if (typeof value === "number") return value.toLocaleString();
     return value;
   }
@@ -267,8 +268,8 @@ export default function Dashboard() {
                 <defs><linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={AMBER} stopOpacity={0.25}/><stop offset="100%" stopColor={AMBER} stopOpacity={0}/></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                 <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={v => `₦${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={v => [`₦${v.toLocaleString()}`, "Revenue"]} contentStyle={{ borderRadius: 10, border: "1px solid #E8E8F0", boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }} />
+                <YAxis tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={v => `${currencySymbol(currency)}${(v/1000).toFixed(0)}k`} />
+                <Tooltip formatter={v => [`${currencySymbol(currency)}${v.toLocaleString()}`, "Revenue"]} contentStyle={{ borderRadius: 10, border: "1px solid #E8E8F0", boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }} />
                 <Area type="monotone" dataKey="revenue" stroke={AMBER} strokeWidth={3} fill="url(#revGrad)" dot={{ fill: AMBER, r: 4, strokeWidth: 2, stroke: "#fff" }} activeDot={{ r: 6 }} />
               </AreaChart>
             </ResponsiveContainer>

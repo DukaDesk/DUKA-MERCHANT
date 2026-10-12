@@ -5,15 +5,16 @@ import { useAuth } from "../../contexts";
 import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, PURPLE, cardStyle, inputStyle, labelStyle, btnPrimary, btnSecondary, pageHeading, pageSubtitle, transition } from "../../theme";
 import { Store, Mail, Phone, MapPin, Globe, Clock, Save, ArrowLeft, Building, Palette, RefreshCw } from "lucide-react";
-import { getMerchant, updateTenant, getTenantConfig, updateTenantConfig } from "../../services/api";
+import { getMerchant, updateTenant, getTenantConfig, updateTenantConfig, setMerchant } from "../../services/api";
 import { useVertical } from "../../runtime/VerticalContext";
+import { CURRENCIES, DEFAULT_CURRENCY } from "../../utils/currency";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 export default function Settings() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { merchant } = useAuth();
+  const { merchant, handleAuth } = useAuth();
   const { categoryName, categoryLower } = useVertical();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -27,6 +28,7 @@ export default function Settings() {
     country: "",
     website: "",
     timezone: "Africa/Lagos",
+    currency: DEFAULT_CURRENCY,
     hours: {},
     accentColor: AMBER,
     logo: null,
@@ -48,6 +50,7 @@ export default function Settings() {
             businessName: p.businessName || f.businessName,
             hours: p.hours || f.hours,
             accentColor: p.accentColor || f.accentColor,
+            currency: p.currency || merchant?.currency || DEFAULT_CURRENCY,
           }));
         }
       }).catch(() => {});
@@ -85,12 +88,17 @@ export default function Settings() {
               country: form.country,
               website: form.website,
               timezone: form.timezone,
+              currency: form.currency,
               hours: form.hours,
               accentColor: form.accentColor,
             },
           },
         });
       }
+      const current = getMerchant() || merchant || {};
+      const next = { ...current, currency: form.currency || DEFAULT_CURRENCY };
+      setMerchant(next);
+      if (typeof handleAuth === "function") handleAuth(next);
       toast.success("Settings saved successfully!");
     } catch {
       toast.error("Failed to save settings");
@@ -235,6 +243,14 @@ export default function Settings() {
                 <option value="Africa/Johannesburg">Africa/Johannesburg (UTC+2)</option>
                 <option value="America/New_York">America/New_York (UTC-5)</option>
                 <option value="Europe/London">Europe/London (UTC+0)</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="settings-currency" style={labelStyle}>Currency</label>
+              <select id="settings-currency" name="settings-currency" style={inputStyle} value={form.currency} onChange={e => handleChange("currency", e.target.value)}>
+                {CURRENCIES.map(c => (
+                  <option key={c.code} value={c.code}>{c.symbol} — {c.label} ({c.code})</option>
+                ))}
               </select>
             </div>
           </div>

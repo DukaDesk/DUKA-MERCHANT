@@ -177,6 +177,7 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
     },
     runtime: { version: "1.0.0", ...source.runtime },
     permissions: source.permissions || {},
+    dataRequest: meta.dataRequest || source.dataRequest,
     localization: { defaultLocale: "en", supportedLocales: ["en"], ...source.localization },
     assets: {
       ...source.assets,

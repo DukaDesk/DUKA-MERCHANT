@@ -1,3 +1,4 @@
+import { isPlatformProfileScreen } from './businessScreens';
 import { loadAllTemplateScreens } from "./TemplateLoader";
 import httpClient from "./httpClient";
 import { getComponentType } from "../components/canvas-editor/componentTypes";
@@ -229,7 +230,7 @@ export function convertManifestToDesign(manifest, screens) {
     ? nav.screens.map(s => ({ id: s.id, data: allScreens[s.id] }))
     : Object.entries(allScreens).map(([id, data]) => ({ id, data }));
 
-  screenEntries.forEach(({ id, data }) => {
+  screenEntries.filter(({ id, data }) => !isPlatformProfileScreen(id, data?.title)).forEach(({ id, data }) => {
     const name = data?.title || id;
     screensOut[id] = {
       name,
@@ -262,10 +263,10 @@ export function convertManifestToDesign(manifest, screens) {
       logo: null,
     },
     navigation: {
-      initialScreen: nav.initialScreen || Object.keys(screensOut)[0],
+      initialScreen: screensOut[nav.initialScreen] ? nav.initialScreen : Object.keys(screensOut)[0],
       style: nav.style || {},
       tabs: Array.isArray(nav.tabs)
-        ? nav.tabs.map((t, i) => ({ id: `tab_${i}_${Date.now()}`, label: t.label || "Tab", icon: tabEmoji(t.icon) || t.icon || "\uD83D\uDCCB", screenId: t.screenId || "", color: t.color || undefined }))
+        ? nav.tabs.filter(t => screensOut[t.screenId]).map((t, i) => ({ id: `tab_${i}_${Date.now()}`, label: t.label || "Tab", icon: tabEmoji(t.icon) || t.icon || "\uD83D\uDCCB", screenId: t.screenId || "", color: t.color || undefined }))
         : [],
     },
     shared: {
@@ -317,7 +318,7 @@ export function convertBackendTemplateToDesign(template) {
   const config = template?.config || {};
   const theme = config.theme || {};
   const bgColor = theme.backgroundColor || "#FCF8FA";
-  const pages = Array.isArray(config.pages) ? config.pages : [];
+  const pages = (Array.isArray(config.pages) ? config.pages : []).filter(page => !isPlatformProfileScreen(page.slug || page.id, page.name));
   const screensOut = {};
 
   pages.forEach((page, pi) => {
