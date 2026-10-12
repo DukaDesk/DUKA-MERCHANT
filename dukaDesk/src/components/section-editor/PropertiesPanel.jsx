@@ -587,7 +587,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                 </div>
                 </>}
                 {component.type === "image_block" && <ImageUploader currentSrc={component.props?.src} onUpload={(v) => store.updateProp(selectedSectionId, component.id, "src", v)} />}
-                 {generalFields.length === 0 ? null : generalFields.map(field => <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />)}
+                 {generalFields.length === 0 ? null : generalFields.map(field => <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} lockList={component.type === "menu_grid" && field.key === "items"} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />)}
                 {!focusedField && <PressProperties onSelectTarget={selectPropertyTarget} key={component.id} component={component} fields={fields} focusKey={focusSubKey?.compId === component.id ? focusSubKey.key : null} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} onChange={(key, value) => store.updateProp(selectedSectionId, component.id, key, value)} />}
                 {/* Container children - content structure */}
                 {def?.container && (
@@ -709,8 +709,8 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                 ) : stylingGroupKeys.map(gk => (
                   <AccPanel key={gk} id={gk} open={!!stylingOpen[gk]} onToggle={toggleStyling} title={STYLING_GROUP_META[gk].label} icon={STYLING_GROUP_META[gk].icon}>
                      {stylingGroups[gk].map(field => (
-                       <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />
-                    ))}
+                       <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} lockList={component.type === "menu_grid" && field.key === "items"} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />
+                     ))}
                   </AccPanel>
                 ))}
                 {/* Spacing — component-level, shown for every component */}
@@ -1028,7 +1028,7 @@ function groupForField(field) {
 }
 
 /* Shared field editor used by General tab, Styling tab, and search results. */
-function FieldEditor({ field, value, onChange, focused, onClearProp, screens }) {
+function FieldEditor({ field, value, onChange, focused, onClearProp, screens, lockList = false }) {
   const { theme, textInput, labelStyle } = useEditorTheme();
   const isRadius = field.type === "radius" || /radius/i.test(String(field.key||""));
   return (
@@ -1048,6 +1048,9 @@ function FieldEditor({ field, value, onChange, focused, onClearProp, screens }) 
           fields={field.fields}
           value={Array.isArray(value) ? value : []}
           onChange={onChange}
+          productPicker={lockList}
+          manualAdd={!lockList}
+          lockProductFields={lockList}
         />
       ) : field.type === "bg" ? (
         <FillEditor value={value} onChange={onChange} />

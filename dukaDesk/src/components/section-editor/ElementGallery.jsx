@@ -300,7 +300,7 @@ const GALLERY = {
       { id: "calendar", label: "Calendar & Booking", description: "Bookings, meetings and deadlines.", icon: CalendarDays, tabIcon: "Calendar", accent: "#2ECC71", background: "#FFFFFF", build: SCREEN_BUILDERS.calendar },
       { id: "checkout", label: "Checkout", description: "Cart summary with totals and Pay action.", icon: Monitor, tabIcon: "ShoppingCart", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.checkout },
       { id: "sales", label: "Sales", description: "Simple product + price list starter.", icon: Monitor, tabIcon: "Tag", accent: "#6B7280", background: "#FCF8FA", build: SCREEN_BUILDERS.sales },
-      { id: "product", label: "Product", description: "Product detail page with photo, price, description and add-to-cart.", icon: Monitor, tabIcon: "Tag", accent: "#F4A026", background: "#FCF8FA", build: SCREEN_BUILDERS.product },
+      { id: "product", label: "Product", description: "Product detail page with photo, price, description and add-to-cart. No tab is created — hook one up from the Tabs editor if needed.", icon: Monitor, tabIcon: "", accent: "#F4A026", background: "#FCF8FA", build: SCREEN_BUILDERS.product },
       { id: "home", label: "Home", description: "Hero + image + CTA starter.", icon: Monitor, tabIcon: "Home", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.home },
       { id: "splash", label: "Splash", description: "App-entry logo screen (no nav tab).", icon: Monitor, tabIcon: "", accent: "#1A1A2E", background: "#1A1A2E", build: SCREEN_BUILDERS.splash },
     ],
