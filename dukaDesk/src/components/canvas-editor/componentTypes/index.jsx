@@ -754,7 +754,7 @@ registerComponentType("header_bar", {
 
 registerComponentType("menu_grid", {
   type: "menu_grid",
-  label: "Menu Grid",
+  label: "Product Grid",
   icon: ClipboardList,
   category: "commerce",
   defaultWidth: 358,

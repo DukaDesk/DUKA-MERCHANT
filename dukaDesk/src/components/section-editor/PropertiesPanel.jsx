@@ -1,5 +1,5 @@
 import { resolveInsertionTarget } from "./insertionTarget";
-import { getMerchant, getProducts } from "../../services/api";
+import { getMerchant, getProducts, mapProductToMenuItem } from "../../services/api";
 import ButtonGallery from "./ButtonGallery";
 import { getComponentCatalog } from "./componentCatalog";
 import IconPicker from "./IconPicker";
@@ -254,6 +254,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                     onChange={(list) => store.updateProp(selectedSectionId, component.id, field.key, list)}
                     productPicker={component.type === "menu_grid" && field.key === "items"}
                     manualAdd={!(component.type === "menu_grid" && field.key === "items")}
+                    lockProductFields={component.type === "menu_grid" && field.key === "items"}
                   />
                 ) : field.type === "bg" ? (
                   <FillEditor value={val} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} />
@@ -1409,11 +1410,9 @@ function FillEditor({ value, onChange }) {
   );
 }
 
-/* Pick a live store product to auto-fill a menu item slot. */
-function ProductPicker({ onPick }) {
-  const { theme, textInput } = useEditorTheme();
+/* Shared store-product source for pickers (one fetch per mount). */
+function useStoreProducts() {
   const [products, setProducts] = useState(null);
-  const [selectedId, setSelectedId] = useState("");
   useEffect(() => {
     let live = true;
     getProducts()
@@ -1421,6 +1420,40 @@ function ProductPicker({ onPick }) {
       .catch(() => { if (live) setProducts([]); });
     return () => { live = false; };
   }, []);
+  return products;
+}
+
+/* Swap the linked store product on an existing slot, keeping styling overrides. */
+function ProductSwapPicker({ currentId, onSwap }) {
+  const { textInput } = useEditorTheme();
+  const products = useStoreProducts();
+  if (products === null || products.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <label style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", display: "block", marginBottom: 4, fontFamily: "'Inter',sans-serif" }}>Linked product</label>
+      <select
+        aria-label="Linked store product"
+        value={currentId || ""}
+        onChange={e => {
+          const found = products.find(p => p.id === e.target.value);
+          if (found) onSwap(found);
+        }}
+        style={{ ...textInput, cursor: "pointer", fontSize: 12 }}
+      >
+        <option value="">Select a store product…</option>
+        {products.map(p => (
+          <option key={p.id} value={p.id}>{p.name} — ₦{Number(p.price || 0).toLocaleString()}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/* Pick a live store product to auto-fill a menu item slot. */
+function ProductPicker({ onPick }) {
+  const { theme, textInput } = useEditorTheme();
+  const products = useStoreProducts();
+  const [selectedId, setSelectedId] = useState("");
   if (products === null) {
     return <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8 }}>Loading products…</div>;
   }
@@ -1464,8 +1497,7 @@ function ProductPicker({ onPick }) {
   );
 }
 
-function ListFieldEditor({ fields, value, onChange, productPicker, manualAdd = true }) {
-  const { theme, textInput, labelStyle, iconBtn, iconBtnDanger } = useEditorTheme();
+export function ListFieldEditor({ fields, value, onChange, productPicker, manualAdd = true, lockProductFields = false }) {  const { theme, textInput, labelStyle, iconBtn, iconBtnDanger } = useEditorTheme();
   const items = value || [];
   const [openIdx, setOpenIdx] = useState(0);
 
@@ -1473,6 +1505,20 @@ function ListFieldEditor({ fields, value, onChange, productPicker, manualAdd = t
     const next = items.map((it, i) => i === idx ? { ...it, [key]: v } : it);
     onChange(next);
   };
+
+  // Swap the linked product on an existing slot, keeping styling overrides.
+  const swapItemProduct = (idx, product) => {
+    const current = items[idx] || {};
+    const mapped = mapProductToMenuItem(product);
+    if (!mapped) return;
+    const next = items.map((it, i) => i === idx ? { ...mapped, background: current.background } : it);
+    onChange(next);
+  };
+
+  // Product slots: details live on the Products page — only styling is editable here.
+  const visibleFields = lockProductFields
+    ? fields.filter(f => groupForField(f) === "styling")
+    : fields;
 
   const addItem = () => {
     const blank = {};
@@ -1529,8 +1575,10 @@ function ListFieldEditor({ fields, value, onChange, productPicker, manualAdd = t
                 cursor: "pointer", background: open ? theme.hoverAmber : "transparent",
               }}
             >
-              {imgField && <CompactImageUploader value={it[imgField.key]} size={30}
-                onUpload={(v) => updateItem(idx, imgField.key, v)} />}
+              {imgField && (lockProductFields
+                ? (it[imgField.key] ? <img src={it[imgField.key]} alt="" style={{ width: 30, height: 30, borderRadius: 6, objectFit: "cover" }} /> : null)
+                : <CompactImageUploader value={it[imgField.key]} size={30}
+                  onUpload={(v) => updateItem(idx, imgField.key, v)} />)}
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: "'Inter',sans-serif" }}>
                 {title}
               </span>
@@ -1544,7 +1592,10 @@ function ListFieldEditor({ fields, value, onChange, productPicker, manualAdd = t
             {/* Expanded fields */}
             {open && (
               <div style={{ padding: "8px 10px", background: theme.surface }}>
-                {fields.map(f => {
+                {lockProductFields ? (
+                  <ProductSwapPicker currentId={it.productId} onSwap={(product) => swapItemProduct(idx, product)} />
+                ) : null}
+                {visibleFields.map(f => {
                   const v = it[f.key];
                   return (
                     <div key={f.key} style={{ marginBottom: 8 }}>
@@ -1622,6 +1673,14 @@ export function PressProperties({ component, fields = [], focusKey, screens, onC
   const item = selected.startsWith("item:") ? props[listKey][index] : null;
   const itemValue = typeof item === "string" ? { label: item } : item;
   const updateItem = patch => onChange(listKey, props[listKey].map((entry, i) => i === index ? { ...itemValue, ...patch } : entry));
+  // Menu-grid slots are store-linked: details live on the Products page —
+  // only the linked product (swap) and styling fields are editable here.
+  const lockItemFields = !!itemValue && component.type === "menu_grid";
+  const swapItemProduct = (product) => {
+    const mapped = mapProductToMenuItem(product);
+    if (!mapped) return;
+    updateItem({ ...mapped, background: itemValue.background });
+  };
   const value = itemValue ? itemValue.tapAction : selected.startsWith("event:") ? events[listKey] : props.tapAction ?? props.action;
   return <div style={{ marginTop: 12 }}>
     {mode === "general" && <>
@@ -1629,7 +1688,10 @@ export function PressProperties({ component, fields = [], focusKey, screens, onC
     <select aria-label="Selected pressable" value={selected} onChange={event => { setTarget(event.target.value); onSelectTarget?.(event.target.value); }} style={textInput}>
       {options.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
     </select></>}
-    {itemValue && (fields.find(field => field.key === listKey)?.fields || [{ key: "label", label: "Label", type: "text" }]).filter(field => (groupForField(field) === "styling") === (mode === "styling")).map(field => <FieldEditor key={field.key} field={field} value={itemValue[field.key]} onChange={value => updateItem({ [field.key]: value })} screens={screens} />)}
+    {itemValue && lockItemFields ? (
+      <ProductSwapPicker currentId={itemValue.productId} onSwap={swapItemProduct} />
+    ) : null}
+    {itemValue && (fields.find(field => field.key === listKey)?.fields || [{ key: "label", label: "Label", type: "text" }]).filter(field => lockItemFields ? groupForField(field) === "styling" : (groupForField(field) === "styling") === (mode === "styling")).map(field => <FieldEditor key={field.key} field={field} value={itemValue[field.key]} onChange={value => updateItem({ [field.key]: value })} screens={screens} />)}
     {mode === "general" && <>
     <label style={labelStyle}>On press / Attach page</label>
     <ActionEditor key={selected} value={value ?? ""} screens={screens} onChange={value => {
