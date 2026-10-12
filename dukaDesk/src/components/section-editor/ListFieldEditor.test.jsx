@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { it, expect } from "vitest";
 import { ListFieldEditor } from "./PropertiesPanel";
+import { getComponentType } from "../canvas-editor/componentTypes";
 
 const FIELDS = [
   { key: "name", label: "Name", type: "text" },
@@ -21,4 +22,12 @@ it("locks product slots to picker plus styling (no manual details)", () => {
 it("keeps manual editing for non-product lists", () => {
   render(<ListFieldEditor fields={FIELDS} value={ITEMS} onChange={() => {}} />);
   expect(screen.getByDisplayValue("Beans")).toBeTruthy();
+});
+
+it("offers text and price color styling on product grid items", () => {
+  const def = getComponentType("menu_grid");
+  const itemFields = def.propFields.find(f => f.key === "items").fields;
+  const byKey = Object.fromEntries(itemFields.map(f => [f.key, f]));
+  expect(byKey.textColor.type).toBe("color");
+  expect(byKey.priceColor.type).toBe("color");
 });

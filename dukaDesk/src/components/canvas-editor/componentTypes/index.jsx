@@ -812,6 +812,8 @@ registerComponentType("menu_grid", {
         { key: "emoji", label: "Icon", type: "icon", placeholder: "Utensils" },
         { key: "image", label: "Image", type: "image" },
         { key: "background", label: "Card Background", type: "bg" },
+        { key: "textColor", label: "Text Color", type: "color" },
+        { key: "priceColor", label: "Price Color", type: "color" },
       ],
     },
   ],
