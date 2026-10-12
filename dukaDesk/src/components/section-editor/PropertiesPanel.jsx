@@ -1658,7 +1658,7 @@ export function ListFieldEditor({ fields, value, onChange, productPicker, manual
 
 // One property channel follows the current component, event or selected list item.
 export function PressProperties({ component, fields = [], focusKey, screens, onChange, mode = "general", onSelectTarget }) {
-  const { labelStyle, textInput } = useEditorTheme();
+  const { labelStyle, textInput, theme } = useEditorTheme();
   const [target, setTarget] = useState(focusKey || "component");
   useEffect(() => { setTarget(focusKey || "component"); }, [focusKey]);
   const props = component.props || {};
@@ -1670,10 +1670,26 @@ export function PressProperties({ component, fields = [], focusKey, screens, onC
       if (Array.isArray(props[key])) props[key].forEach((item, index) => options.push({ id: "item:" + key + ":" + index, label: typeof item === "string" ? item : item.label || item.name || item.title || "Item " + (index + 1) }));
     });
   }
-  const selected = options.some(option => option.id === target) ? target : "component";
-  const [, listKey, indexText] = selected.split(":");
-  const index = Number(indexText);
-  const item = selected.startsWith("item:") ? props[listKey][index] : null;
+  // Item targets may carry a text-part suffix from canvas selection
+  // ("item:items:2" or "item:items:name:2").
+  const parseItemTarget = (id) => {
+    if (typeof id !== "string" || !id.startsWith("item:")) return null;
+    const segs = id.split(":");
+    if (segs.length < 3) return null;
+    const index = Number(segs[segs.length - 1]);
+    if (!Number.isInteger(index)) return null;
+    const listKey = segs[1];
+    const part = segs.length > 3 ? segs.slice(2, -1).join(":") : null;
+    if (!Array.isArray(props[listKey]) || !props[listKey][index]) return null;
+    return { listKey, index, part };
+  };
+  const parsedTarget = parseItemTarget(target);
+  const selected = parsedTarget || options.some(option => option.id === target) ? target : "component";
+  const parsed = parseItemTarget(selected);
+  const listKey = parsed?.listKey;
+  const index = parsed?.index ?? NaN;
+  const textPart = parsed?.part ?? null;
+  const item = parsed ? props[listKey][index] : null;
   const itemValue = typeof item === "string" ? { label: item } : item;
   const updateItem = patch => onChange(listKey, props[listKey].map((entry, i) => i === index ? { ...itemValue, ...patch } : entry));
   // Menu-grid slots are store-linked: details live on the Products page —
@@ -1690,9 +1706,24 @@ export function PressProperties({ component, fields = [], focusKey, screens, onC
     <label style={labelStyle}>Editing</label>
     <select aria-label="Selected pressable" value={selected} onChange={event => { setTarget(event.target.value); onSelectTarget?.(event.target.value); }} style={textInput}>
       {options.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+      {parsed && textPart && !options.some(option => option.id === selected) ? (
+        <option key={selected} value={selected}>Item text: {textPart}</option>
+      ) : null}
     </select></>}
     {itemValue && lockItemFields ? (
       <ProductSwapPicker currentId={itemValue.productId} onSwap={swapItemProduct} />
+    ) : null}
+    {itemValue && lockItemFields && textPart ? (
+      <div style={{ marginBottom: 12 }}>
+        <label style={labelStyle}>Text: {textPart} color</label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <ColorInput value={itemValue.textStyles?.[textPart]?.color || "#000000"} onChange={(v) => updateItem({ textStyles: { ...(itemValue.textStyles || {}), [textPart]: { ...(itemValue.textStyles?.[textPart] || {}), color: v } } })} />
+          {itemValue.textStyles?.[textPart]?.color ? (
+            <button onClick={() => { const next = { ...(itemValue.textStyles || {}) }; if (next[textPart]) { delete next[textPart].color; if (Object.keys(next[textPart]).length === 0) delete next[textPart]; } updateItem({ textStyles: next }); }} style={{ fontSize: 11, border: "none", background: "none", color: theme.danger, cursor: "pointer", fontWeight: 600 }}>Reset</button>
+          ) : null}
+        </div>
+        <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4 }}>Tip: click the name, price or description text on the canvas to style it. Empty resets to the brand default.</div>
+      </div>
     ) : null}
     {itemValue && (fields.find(field => field.key === listKey)?.fields || [{ key: "label", label: "Label", type: "text" }]).filter(field => lockItemFields ? groupForField(field) === "styling" : (groupForField(field) === "styling") === (mode === "styling")).map(field => <FieldEditor key={field.key} field={field} value={itemValue[field.key]} onChange={value => updateItem({ [field.key]: value })} screens={screens} />)}
     {mode === "general" && <>

@@ -812,8 +812,6 @@ registerComponentType("menu_grid", {
         { key: "emoji", label: "Icon", type: "icon", placeholder: "Utensils" },
         { key: "image", label: "Image", type: "image" },
         { key: "background", label: "Card Background", type: "bg" },
-        { key: "textColor", label: "Text Color", type: "color" },
-        { key: "priceColor", label: "Price Color", type: "color" },
       ],
     },
   ],
@@ -894,13 +892,19 @@ registerComponentType("menu_grid", {
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}><IconGlyph name={it.emoji || "Utensils"} size={props.iconSize || 26} /></div>
               )}
-              <div style={{ fontSize: 12, fontWeight: 600, color: props.textColor || "#1C1B1D", lineHeight: 1.25 }}>{it.name || "Item"}</div>
-              {it.desc && <div style={{ fontSize: 10.5, color: "#6B7280", lineHeight: 1.3, marginTop: 2 }}>{it.desc}</div>}
+              <div
+                onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items:name"); } : undefined}
+                style={{ fontSize: 12, fontWeight: 600, color: it.textStyles?.name?.color || it.textColor || props.textColor || "#1C1B1D", lineHeight: 1.25, cursor: props.onItemPress ? "text" : undefined, ...(props.itemSelectionStyle?.("items:name", i) || {}) }}>{it.name || "Item"}</div>
+              {it.desc && <div
+                onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items:desc"); } : undefined}
+                style={{ fontSize: 10.5, color: it.textStyles?.desc?.color || "#6B7280", lineHeight: 1.3, marginTop: 2, cursor: props.onItemPress ? "text" : undefined, ...(props.itemSelectionStyle?.("items:desc", i) || {}) }}>{it.desc}</div>}
               <div style={{ marginTop: 3 }}>
                 {it.oldPrice && (
                   <span style={{ fontSize: 10.5, color: "#9CA3AF", fontWeight: 600, textDecoration: "line-through", marginRight: 5 }}>{it.oldPrice}</span>
                 )}
-                {it.price && <span style={{ fontSize: 11.5, color: props.priceColor || "#F4A026", fontWeight: 700 }}>{it.price}</span>}
+                {it.price && <span
+                  onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items:price"); } : undefined}
+                  style={{ fontSize: 11.5, color: it.textStyles?.price?.color || it.priceColor || props.priceColor || "#F4A026", fontWeight: 700, cursor: props.onItemPress ? "text" : undefined, ...(props.itemSelectionStyle?.("items:price", i) || {}) }}>{it.price}</span>}
               </div>
             </div>
           );

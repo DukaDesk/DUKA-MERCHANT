@@ -28,3 +28,66 @@ it("clicking a rendered pill selects its list position without selecting its par
   expect(select).toHaveBeenCalledWith({ label: "Drinks" }, 1, "cats");
   expect(parent).not.toHaveBeenCalled();
 });
+
+const FIELDS = [{ key: "items", label: "Menu Items", type: "list", fields: [
+  { key: "name", label: "Name", type: "text" },
+  { key: "background", label: "Card Background", type: "bg" },
+]}];
+
+function gridComponent() {
+  return {
+    type: "menu_grid",
+    props: {
+      items: [{ productId: "p1", name: "Beans", price: 1500 }],
+    },
+  };
+}
+
+it("parses canvas text-part targets and offers the part color editor", () => {
+  const onChange = vi.fn();
+  render(
+    <PressProperties
+      component={gridComponent()}
+      fields={FIELDS}
+      focusKey="item:items:name:0"
+      screens={[]}
+      onChange={onChange}
+    />
+  );
+  expect(screen.getByText("Text: name color")).toBeTruthy();
+  expect(screen.queryByText("Name")).toBeNull();
+});
+
+it("writes the picked color into the item textStyles", () => {
+  const onChange = vi.fn();
+  const { container } = render(
+    <PressProperties
+      component={gridComponent()}
+      fields={FIELDS}
+      focusKey="item:items:price:0"
+      screens={[]}
+      onChange={onChange}
+    />
+  );
+  const input = container.querySelector('input[type="color"]');
+  expect(input).toBeTruthy();
+  fireEvent.change(input, { target: { value: "#ff0000" } });
+  expect(onChange).toHaveBeenCalledWith(
+    "items",
+    [{ productId: "p1", name: "Beans", price: 1500, textStyles: { price: { color: "#ff0000" } } }]
+  );
+});
+
+it("still accepts legacy whole-item targets", () => {
+  const onChange = vi.fn();
+  render(
+    <PressProperties
+      component={gridComponent()}
+      fields={FIELDS}
+      focusKey="item:items:0"
+      screens={[]}
+      onChange={onChange}
+    />
+  );
+  expect(screen.queryByText(/Text: .* color/)).toBeNull();
+});

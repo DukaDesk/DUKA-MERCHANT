@@ -24,10 +24,13 @@ it("keeps manual editing for non-product lists", () => {
   expect(screen.getByDisplayValue("Beans")).toBeTruthy();
 });
 
-it("offers text and price color styling on product grid items", () => {
+it("offers text styling through selectable text, not repetitive color rows", () => {
   const def = getComponentType("menu_grid");
   const itemFields = def.propFields.find(f => f.key === "items").fields;
-  const byKey = Object.fromEntries(itemFields.map(f => [f.key, f]));
-  expect(byKey.textColor.type).toBe("color");
-  expect(byKey.priceColor.type).toBe("color");
+  const keys = itemFields.map(f => f.key);
+  // No per-item color rows — name/price/desc are styled by selecting the
+  // text on the canvas (item.textStyles), edited in the styling flow.
+  expect(keys).not.toContain("textColor");
+  expect(keys).not.toContain("priceColor");
+  expect(keys).toContain("background");
 });
