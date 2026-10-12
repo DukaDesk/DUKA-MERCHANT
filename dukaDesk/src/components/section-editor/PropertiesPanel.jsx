@@ -1,5 +1,16 @@
 import { resolveInsertionTarget } from "./insertionTarget";
-import { getMerchant, getProducts, mapProductToMenuItem } from "../../services/api";
+import { getMerchant, getProducts, mapProductToMenuItem, mapProductToOffer } from "../../services/api";
+
+/* Menu grids and promotion lists show store products — never hand-typed data. */
+function isStoreLinkedList(componentType, fieldKey) {
+  return (componentType === "menu_grid" && fieldKey === "items")
+    || (componentType === "promotion_list" && fieldKey === "offers");
+}
+
+function mapSlotItem(componentType, product) {
+  if (!product) return null;
+  return componentType === "promotion_list" ? mapProductToOffer(product) : mapProductToMenuItem(product);
+}
 import ButtonGallery from "./ButtonGallery";
 import { getComponentCatalog } from "./componentCatalog";
 import IconPicker from "./IconPicker";
@@ -252,9 +263,10 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                     fields={field.fields}
                     value={Array.isArray(val) ? val : []}
                     onChange={(list) => store.updateProp(selectedSectionId, component.id, field.key, list)}
-                    productPicker={component.type === "menu_grid" && field.key === "items"}
-                    manualAdd={!(component.type === "menu_grid" && field.key === "items")}
-                    lockProductFields={component.type === "menu_grid" && field.key === "items"}
+                    productPicker={isStoreLinkedList(component.type, field.key)}
+                    manualAdd={!isStoreLinkedList(component.type, field.key)}
+                    lockProductFields={isStoreLinkedList(component.type, field.key)}
+                    slotKind={component.type === "promotion_list" ? "offer" : "menu"}
                   />
                 ) : field.type === "bg" ? (
                   <FillEditor value={val} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} />
@@ -587,7 +599,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                 </div>
                 </>}
                 {component.type === "image_block" && <ImageUploader currentSrc={component.props?.src} onUpload={(v) => store.updateProp(selectedSectionId, component.id, "src", v)} />}
-                 {generalFields.length === 0 ? null : generalFields.map(field => <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} lockList={component.type === "menu_grid" && field.key === "items"} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />)}
+                 {generalFields.length === 0 ? null : generalFields.map(field => <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} lockList={isStoreLinkedList(component.type, field.key)} slotKind={component.type === "promotion_list" ? "offer" : "menu"} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />)}
                 {!focusedField && <PressProperties onSelectTarget={selectPropertyTarget} key={component.id} component={component} fields={fields} focusKey={focusSubKey?.compId === component.id ? focusSubKey.key : null} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} onChange={(key, value) => store.updateProp(selectedSectionId, component.id, key, value)} />}
                 {/* Container children - content structure */}
                 {def?.container && (
@@ -709,7 +721,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                 ) : stylingGroupKeys.map(gk => (
                   <AccPanel key={gk} id={gk} open={!!stylingOpen[gk]} onToggle={toggleStyling} title={STYLING_GROUP_META[gk].label} icon={STYLING_GROUP_META[gk].icon}>
                      {stylingGroups[gk].map(field => (
-                       <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} lockList={component.type === "menu_grid" && field.key === "items"} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />
+                       <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} lockList={isStoreLinkedList(component.type, field.key)} slotKind={component.type === "promotion_list" ? "offer" : "menu"} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />
                      ))}
                   </AccPanel>
                 ))}
@@ -1028,7 +1040,7 @@ function groupForField(field) {
 }
 
 /* Shared field editor used by General tab, Styling tab, and search results. */
-function FieldEditor({ field, value, onChange, focused, onClearProp, screens, lockList = false }) {
+function FieldEditor({ field, value, onChange, focused, onClearProp, screens, lockList = false, slotKind = "menu" }) {
   const { theme, textInput, labelStyle } = useEditorTheme();
   const isRadius = field.type === "radius" || /radius/i.test(String(field.key||""));
   return (
@@ -1051,6 +1063,7 @@ function FieldEditor({ field, value, onChange, focused, onClearProp, screens, lo
           productPicker={lockList}
           manualAdd={!lockList}
           lockProductFields={lockList}
+          slotKind={slotKind}
         />
       ) : field.type === "bg" ? (
         <FillEditor value={value} onChange={onChange} />
@@ -1452,8 +1465,9 @@ function ProductSwapPicker({ currentId, onSwap }) {
   );
 }
 
-/* Pick a live store product to auto-fill a menu item slot. */
-function ProductPicker({ onPick }) {
+/* Pick a live store product to auto-fill a slot. mapItem converts the
+   raw product (menu items vs promotion offers differ). */
+function ProductPicker({ onPick, mapItem }) {
   const { theme, textInput } = useEditorTheme();
   const products = useStoreProducts();
   const [selectedId, setSelectedId] = useState("");
@@ -1474,24 +1488,7 @@ function ProductPicker({ onPick }) {
         onClick={() => {
           const p = products.find(x => x.id === selectedId);
           if (!p) return;
-          onPick({
-            productId: p.id,
-            name: p.name,
-            price: Number(p.price) || 0,
-            desc: p.shortDescription || p.description || p.cat || "",
-            description: p.description || p.cat || "",
-            shortDescription: p.shortDescription || "",
-            weight: p.weight ?? "",
-            weightUnit: p.weightUnit || "",
-            length: p.length ?? "",
-            width: p.width ?? "",
-            height: p.height ?? "",
-            dimensionUnit: p.dimensionUnit || "",
-            sku: p.sku || "",
-            image: (p.images && p.images[0]) || "",
-            badge: p.badge || "",
-            compareAtPrice: p.compareAtPrice ?? null,
-          });
+          onPick((mapItem || mapProductToMenuItem)(p));
           setSelectedId("");
         }}
         style={{ padding: "6px 12px", borderRadius: theme.radius.md, border: "none", background: selectedId ? theme.active : theme.hover, color: selectedId ? "#5B3A00" : theme.textSecondary, fontSize: 12, fontWeight: 600, cursor: selectedId ? "pointer" : "not-allowed", fontFamily: "'Inter',sans-serif" }}
@@ -1500,9 +1497,11 @@ function ProductPicker({ onPick }) {
   );
 }
 
-export function ListFieldEditor({ fields, value, onChange, productPicker, manualAdd = true, lockProductFields = false }) {  const { theme, textInput, labelStyle, iconBtn, iconBtnDanger } = useEditorTheme();
+export function ListFieldEditor({ fields, value, onChange, productPicker, manualAdd = true, lockProductFields = false, slotKind = "menu" }) {  const { theme, textInput, labelStyle, iconBtn, iconBtnDanger } = useEditorTheme();
   const items = value || [];
   const [openIdx, setOpenIdx] = useState(0);
+
+  const mapSlot = (product) => mapSlotItem(slotKind, product);
 
   const updateItem = (idx, key, v) => {
     const next = items.map((it, i) => i === idx ? { ...it, [key]: v } : it);
@@ -1512,7 +1511,7 @@ export function ListFieldEditor({ fields, value, onChange, productPicker, manual
   // Swap the linked product on an existing slot, keeping styling overrides.
   const swapItemProduct = (idx, product) => {
     const current = items[idx] || {};
-    const mapped = mapProductToMenuItem(product);
+    const mapped = mapSlot(product);
     if (!mapped) return;
     const next = items.map((it, i) => i === idx ? { ...mapped, background: current.background } : it);
     onChange(next);
@@ -1553,7 +1552,7 @@ export function ListFieldEditor({ fields, value, onChange, productPicker, manual
   return (
     <div>
       {productPicker ? (
-        <ProductPicker onPick={(item) => { onChange([...items, item]); setOpenIdx(items.length); }} />
+        <ProductPicker mapItem={mapSlot} onPick={(item) => { onChange([...items, item]); setOpenIdx(items.length); }} />
       ) : null}
       {items.length === 0 && (
         <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8 }}>
@@ -1692,11 +1691,12 @@ export function PressProperties({ component, fields = [], focusKey, screens, onC
   const item = parsed ? props[listKey][index] : null;
   const itemValue = typeof item === "string" ? { label: item } : item;
   const updateItem = patch => onChange(listKey, props[listKey].map((entry, i) => i === index ? { ...itemValue, ...patch } : entry));
-  // Menu-grid slots are store-linked: details live on the Products page —
-  // only the linked product (swap) and styling fields are editable here.
-  const lockItemFields = !!itemValue && component.type === "menu_grid";
+  // Store-linked slots (menu items, promotion offers): details live on the
+  // Products page — only the linked product (swap) and styling fields are
+  // editable here.
+  const lockItemFields = !!itemValue && isStoreLinkedList(component.type, listKey);
   const swapItemProduct = (product) => {
-    const mapped = mapProductToMenuItem(product);
+    const mapped = mapSlotItem(component.type === "promotion_list" ? "offer" : "menu", product);
     if (!mapped) return;
     updateItem({ ...mapped, background: itemValue.background });
   };

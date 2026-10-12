@@ -123,6 +123,12 @@ function validateSection(section, path, errors, warnings, regTypes, screenIds = 
         warnings.push({ path: `${compPath}.props.items`, message: `${unlinked} menu item${unlinked === 1 ? "" : "s"} ${unlinked === 1 ? "was" : "were"} typed by hand — pick store products so prices, photos and stock stay in sync`, severity: "warning" });
       }
     }
+    if (comp.type === "promotion_list" && Array.isArray(comp.props?.offers)) {
+      const unlinked = comp.props.offers.filter(offer => offer && typeof offer === "object" && !offer.productId).length;
+      if (unlinked > 0) {
+        warnings.push({ path: `${compPath}.props.offers`, message: `${unlinked} promotion${unlinked === 1 ? "" : "s"} ${unlinked === 1 ? "was" : "were"} typed by hand — pick store products so prices, photos and stock stay in sync`, severity: "warning" });
+      }
+    }
     validateComponentActions(comp, compPath, screenIds, errors);
     (comp.children || []).forEach((child, i) => validateComponent(child, compPath + '.children[' + i + ']'));
     (comp.layout?.children || []).forEach((child, i) => validateComponent(child, compPath + '.layout.children[' + i + ']'));

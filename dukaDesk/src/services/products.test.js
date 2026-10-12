@@ -21,7 +21,7 @@ vi.mock("axios", () => {
   return { default: mock };
 });
 
-import { getProducts, createProduct, updateProduct, adjustProductStock, getProductCategories, createProductCategory, mapProductToMenuItem, hydrateDesignWithProducts } from "./api";
+import { getProducts, createProduct, updateProduct, adjustProductStock, getProductCategories, createProductCategory, mapProductToMenuItem, mapProductToOffer, hydrateDesignWithProducts } from "./api";
 import httpClient from "./httpClient";
 
 const mockHttpClient = vi.mocked(httpClient);
@@ -127,5 +127,28 @@ describe("builder product slots", () => {
     const design = { screens: { home: { bodySections: [] } } };
     expect(hydrateDesignWithProducts(design, [])).toBe(design);
     expect(hydrateDesignWithProducts(null, [product])).toBeNull();
+  });
+
+  it("maps a store product into a promotion offer slot", () => {
+    expect(mapProductToOffer(product)).toMatchObject({
+      productId: "p1", title: "Beans", subtitle: "Staple",
+      image: "https://img/1", badge: "HOT",
+    });
+    expect(mapProductToOffer(null)).toBeNull();
+  });
+
+  it("replaces placeholder offers with the live catalog on template select", () => {
+    const design = {
+      screens: {
+        home: { bodySections: [{ id: "s1", components: [
+          { id: "o1", type: "promotion_list", props: { offers: [{ title: "Typed deal" }] } },
+        ] }] },
+      },
+    };
+    const result = hydrateDesignWithProducts(design, [product]);
+    expect(result.screens.home.bodySections[0].components[0].props.offers).toHaveLength(1);
+    expect(result.screens.home.bodySections[0].components[0].props.offers[0]).toMatchObject({
+      productId: "p1", title: "Beans",
+    });
   });
 });

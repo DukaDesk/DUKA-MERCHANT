@@ -66,4 +66,12 @@ describe('freeform builder validation', () => {
     expect(result.valid).toBe(true);
     expect(result.warnings.some(w => w.message.includes('typed by hand'))).toBe(true);
   });
+  it('warns on hand-typed promotions without a store link', () => {
+    const draft = project([
+      { id: 'promos', type: 'promotion_list', props: { offers: [{ title: 'Typed deal' }, { productId: 'p1', title: 'Linked' }] } },
+    ]);
+    const result = validateProject(draft);
+    expect(result.valid).toBe(true);
+    expect(result.warnings.some(w => w.path.includes('props.offers'))).toBe(true);
+  });
 });

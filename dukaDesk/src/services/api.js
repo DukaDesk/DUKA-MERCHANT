@@ -780,8 +780,7 @@ export async function createProductCategory(body) {
    placeholders. These helpers map live products into builder menu items
    and scan a design replacing placeholder grids on template select. */
 
-export function mapProductToMenuItem(p) {
-  if (!p || typeof p !== "object") return null;
+export function mapProductToMenuItem(p) {  if (!p || typeof p !== "object") return null;
   const images = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
   return {
     productId: p.id,
@@ -806,11 +805,31 @@ export function mapProductToMenuItem(p) {
   };
 }
 
+export function mapProductToOffer(p) {
+  if (!p || typeof p !== "object") return null;
+  const images = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
+  return {
+    productId: p.id,
+    id: p.id,
+    title: p.name || "Untitled",
+    subtitle: p.shortDescription || p.description || p.cat || "",
+    description: p.description || "",
+    price: Number(p.price) || 0,
+    compareAtPrice: p.compareAtPrice ?? null,
+    image: images[0] || "",
+    badge: p.badge || "",
+    tags: Array.isArray(p.tags) ? [...p.tags] : [],
+  };
+}
+
 function hydrateComponentTree(node, products) {
   if (!node || typeof node !== "object") return node;
   const copy = Array.isArray(node) ? [...node] : { ...node };
   if (!Array.isArray(node) && node.type === "menu_grid" && products.length > 0) {
     copy.props = { ...(node.props || {}), items: products.map(mapProductToMenuItem).filter(Boolean) };
+  }
+  if (!Array.isArray(node) && node.type === "promotion_list" && products.length > 0) {
+    copy.props = { ...(node.props || {}), offers: products.map(mapProductToOffer).filter(Boolean) };
   }
   for (const key of ["children", "components"]) {
     if (Array.isArray(copy[key])) copy[key] = copy[key].map(child => hydrateComponentTree(child, products));
