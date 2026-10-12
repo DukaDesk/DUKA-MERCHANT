@@ -2,6 +2,7 @@ import PreviewTabBar from "./PreviewTabBar";
 import { useState, useRef } from "react";
 import { IconGlyph, getComponentType, resolveBackground, ROW_TEMPLATES, applyTextStyle, resolveTextStyle, getLucideIcon } from "../canvas-editor/componentTypes";
 import { useEditorTheme } from "./editorTheme.jsx";
+import ContextMenu from "./ContextMenu";
 
 
 function sanitizeNum(value, fallback) {
@@ -26,6 +27,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState("");
   const editRef = useRef(null);
+  const [ctxMenu, setCtxMenu] = useState(null);
 
   if (!screen) return null;
 
@@ -436,6 +438,7 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
       <div
         key={comp.id}
         onClick={(e) => { e.stopPropagation(); onSelectComponent(sectionId, comp.id); }}
+        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onSelectComponent(sectionId, comp.id); setCtxMenu({ x: e.clientX, y: e.clientY, sectionId, compId: comp.id }); }}
         onMouseEnter={() => setHoveredCompId(comp.id)}
         onMouseLeave={() => setHoveredCompId(null)}
         style={{
@@ -517,6 +520,19 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
       </div>
 
       {/* Hidden file inputs */}
+      {ctxMenu ? (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          label="Component options"
+          onClose={() => setCtxMenu(null)}
+          items={[
+            { id: "edit", label: "Edit", onSelect: () => onSelectComponent(ctxMenu.sectionId, ctxMenu.compId) },
+            { id: "duplicate", label: "Duplicate", onSelect: () => store.duplicateComponentInSection(ctxMenu.sectionId, ctxMenu.compId) },
+            { id: "delete", label: "Delete", danger: true, onSelect: () => store.removeComponentFromSection(ctxMenu.sectionId, ctxMenu.compId) },
+          ]}
+        />
+      ) : null}
     </div>
   );
 }

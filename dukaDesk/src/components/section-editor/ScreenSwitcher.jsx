@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useEditorTheme } from "./editorTheme.jsx";
 import { getLucideIcon } from "../canvas-editor/componentTypes";
 import { Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import ContextMenu from "./ContextMenu";
 
 export default function ScreenSwitcher({ store }) {
   const { theme, iconBtn, iconBtnDanger } = useEditorTheme();
@@ -13,6 +14,7 @@ export default function ScreenSwitcher({ store }) {
   const [showNavEditor, setShowNavEditor] = useState(false);
   const [editingScreenId, setEditingScreenId] = useState(null);
   const [screenNameInput, setScreenNameInput] = useState("");
+  const [ctxMenu, setCtxMenu] = useState(null);
 
   useEffect(() => {
     const handleShortcut = event => {
@@ -55,6 +57,7 @@ export default function ScreenSwitcher({ store }) {
               aria-label={`${s.name || sid} screen${index < 9 ? `, shortcut ${index + 1}` : ""}`}
               title={`Switch to ${s.name || sid}${index < 9 ? ` (Ctrl/Command+${index + 1})` : ""}`}
               onClick={() => { store.setCurrentScreenId(sid); }}
+              onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, sid }); }}
               style={{
                 padding: "5px 8px", borderRadius: theme.radius.md,
                 border: active ? `1px solid ${theme.active}` : `1px solid transparent`,
@@ -124,8 +127,7 @@ export default function ScreenSwitcher({ store }) {
       <button
         type="button"
         aria-label="Add screen"
-        title="Add a blank screen"
-        onClick={() => {
+        title="Add a blank screen"        onClick={() => {
           const sid = store.addScreen(null, "New Page");
           store.setCurrentScreenId(sid);
         }}
@@ -221,6 +223,19 @@ export default function ScreenSwitcher({ store }) {
           ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Tab</button>
         </div>
       )}
+      {ctxMenu ? (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          label="Screen options"
+          onClose={() => setCtxMenu(null)}
+          items={[
+            { id: "edit", label: `Rename "${data.screens[ctxMenu.sid]?.name || ctxMenu.sid}"`, onSelect: () => { setEditingScreenId(ctxMenu.sid); setScreenNameInput(data.screens[ctxMenu.sid]?.name || ctxMenu.sid); store.setCurrentScreenId(ctxMenu.sid); } },
+            { id: "duplicate", label: "Duplicate screen", onSelect: () => { const newId = store.addScreen(null, ((data.screens[ctxMenu.sid]?.name || "New Page") + " (copy)")); store.setCurrentScreenId(newId); } },
+            { id: "delete", label: "Delete screen", danger: true, disabled: screenIds.length <= 1, onSelect: async () => { const sid = ctxMenu.sid; if (await confirmDialog(`Delete "${data.screens[sid]?.name || sid}"?`)) store.removeScreen(sid); } },
+          ]}
+        />
+      ) : null}
     </div>
   );
 }

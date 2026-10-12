@@ -63,4 +63,27 @@ describe("ScreenSwitcher", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add screen" }));
     expect(store.addScreen).toHaveBeenCalledWith(null, "New Page");
   });
+
+  it("opens a right-click menu with edit, duplicate and delete for tabs", () => {
+    const store = makeStore();
+    render(<ScreenSwitcher store={store} />);
+
+    const tab = screen.getByRole("tab", { name: "Services screen, shortcut 2" });
+    fireEvent.contextMenu(tab);
+    expect(screen.getByRole("menu", { name: "Screen options" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("menuitem", { name: /Duplicate screen/ }));
+    expect(store.addScreen).toHaveBeenCalledWith(null, "Services (copy)");
+    expect(store.setCurrentScreenId).toHaveBeenCalledWith("new-screen");
+  });
+
+  it("renames through the tab context menu", () => {
+    const store = makeStore();
+    render(<ScreenSwitcher store={store} />);
+
+    fireEvent.contextMenu(screen.getByRole("tab", { name: "Home screen, shortcut 1" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Rename "Home"/ }));
+    fireEvent.change(screen.getByDisplayValue("Home"), { target: { value: "Landing" } });
+    fireEvent.keyDown(screen.getByDisplayValue("Landing"), { key: "Enter" });
+    expect(store.renameScreen).toHaveBeenCalledWith("home", "Landing");
+  });
 });
