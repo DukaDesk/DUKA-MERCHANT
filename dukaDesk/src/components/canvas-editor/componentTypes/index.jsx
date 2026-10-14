@@ -17,7 +17,9 @@ import {
   ToggleLeft, CheckSquare, Pencil, Boxes, GalleryHorizontal, CreditCard, PanelTop, List, AlignLeft,
   Tag,
   Square, Utensils, Drumstick, CupSoda, GlassWater, Bike, Sun, Coffee, Pizza, Cake, Apple, Store, Package, Truck, Receipt, Ticket, Bookmark, Award, Crown, Shield, Lock, Key, Mail, MessageCircle, Headphones, Music, Play, Globe, Building2, Briefcase, GraduationCap, BookOpen, Dumbbell, Stethoscope, Flower2, Leaf, PawPrint, Car, Plane, Train, Hotel, Bed, Map, Navigation, Users, UserPlus, LogOut, HelpCircle, Wrench, Laptop, Smartphone,
+  Pill, Sandwich, Scale,
 } from "lucide-react";
+import { TemplateIcon } from "../../template/TemplateIcon";
 
 export function registerComponentType(typeName, def) {
   types[typeName] = def;
@@ -62,11 +64,11 @@ export const ICON_LIBRARY = {
   Clock, Wallet, Settings, Phone, Camera, Gift, Info, Check, X, Plus, Minus,
   Trash2, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, ArrowRight,
   ArrowLeft, ArrowUp, ArrowDown, Search, Menu, Calendar, LayoutGrid, FileText, BarChart3, ClipboardList, Scissors, Tag, Compass, CreditCard, Utensils, Drumstick, CupSoda, GlassWater, Bike, Sun, Coffee, Pizza, Cake, Apple, Store, Package, Truck, Receipt, Ticket, Bookmark, Award, Crown, Shield, Lock, Key, Mail, MessageCircle, Headphones, Music, Play, Globe, Building2, Briefcase, GraduationCap, BookOpen, Dumbbell, Stethoscope, Flower2, Leaf, PawPrint, Car, Plane, Train, Hotel, Bed, Map, Navigation, Users, UserPlus, LogOut, HelpCircle, Wrench, Laptop, Smartphone,
+  Pill, Sandwich, Scale,
 };
 
 export function IconGlyph({ name, size = 24 }) {
-  const Icon = ICON_LIBRARY[name];
-  return Icon ? <Icon size={size} /> : /\p{Extended_Pictographic}/u.test(name || "") ? <span style={{ fontSize: size }}>{name}</span> : <ImageIcon size={size} />;
+  return <TemplateIcon name={name} size={size} />;
 }
 
 export function getLucideIcon(name) {

@@ -1,4 +1,5 @@
 import PreviewTabBar from "../section-editor/PreviewTabBar";
+import { TemplateIcon } from "./TemplateIcon";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { LayoutRenderer, ScreenRenderer } from "../../runtime/layouts";
 import { RuntimeContext } from "../../runtime/RuntimeContext";
@@ -332,7 +333,7 @@ function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange, 
               onClick={goBack}
               style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, padding: 0, fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}
             >
-              <span style={{ fontSize: 18 }}>←</span> Back
+              <TemplateIcon name="ChevronLeft" size={18} color="#fff" /> Back
             </button>
           )}
           <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, flex: 1, textAlign: isRoot ? "center" : "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

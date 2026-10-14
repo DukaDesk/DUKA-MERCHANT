@@ -3,6 +3,7 @@ import { useDispatchAction } from "../../runtime/RuntimeContext";
 import { registerComponent } from "../../runtime/ComponentRegistry";
 import { useBrand } from "../../runtime/BrandThemeProvider";
 import { ChevronRight } from "lucide-react";
+import { TemplateIcon } from "./TemplateIcon";
 
 function heroNum(value, fallback) {
   const n = Number(value);
@@ -162,7 +163,9 @@ export function MenuGrid({ items = [], columns = 2, variant = "default", style =
               style={{ width: "100%", height: 96, objectFit: "cover", borderRadius: 10, display: "block" }}
             />
           ) : (
-            <div style={{ fontSize: 32, textAlign: "center" }}>{item.emoji || item.img || "Utensils"}</div>
+            <div style={{ fontSize: 32, textAlign: "center", color: brand.GRAY?.[400] || "#9CA3AF", display: "flex", justifyContent: "center" }}>
+              <TemplateIcon name={item.emoji || item.img} size={32} />
+            </div>
           )}
           <div style={{ fontWeight: 700, fontSize: 14, color: brand.NAVY || '#0F0F1A' }}>{item.name}</div>
           {item.desc && <div style={{ fontSize: 12, color: brand.GRAY?.[500] || '#6B7280' }}>{item.desc}</div>}
@@ -572,7 +575,9 @@ export function CartSummary({ items = [], deliveryFee, style = {}, onAction }) {
   if (cartItems.length === 0) {
     return (
       <div style={{ background: brand.cardColor || "#fff", borderRadius: 18, padding: "40px 24px", border: `1px solid ${grayLine}`, textAlign: "center", ...style }}>
-        <div style={{ width: 72, height: 72, borderRadius: "50%", background: graySoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 32 }}>🛍️</div>
+        <div style={{ width: 72, height: 72, borderRadius: "50%", background: graySoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: grayText }}>
+          <TemplateIcon name="ShoppingBag" size={32} />
+        </div>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 17, color: navy, marginBottom: 6 }}>Your cart is empty</div>
         <div style={{ fontSize: 13, color: grayText, lineHeight: 1.5 }}>Items you add will show up here, ready for checkout.</div>
       </div>
@@ -613,7 +618,9 @@ export function CartSummary({ items = [], deliveryFee, style = {}, onAction }) {
               {isImageUrl(item.img) ? (
                 <img src={item.img} alt={item.name} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
               ) : (
-                <div style={{ width: 56, height: 56, borderRadius: 12, background: "#fff", border: `1px solid ${grayLine}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{item.img || "🛍️"}</div>
+                <div style={{ width: 56, height: 56, borderRadius: 12, background: "#fff", border: `1px solid ${grayLine}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: grayText }}>
+                  <TemplateIcon name={item.img} size={26} />
+                </div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: navy, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</div>
@@ -664,9 +671,11 @@ export function CartSummary({ items = [], deliveryFee, style = {}, onAction }) {
             boxShadow: `0 8px 20px ${amber}55`,
           }}
         >
-          <span aria-hidden="true">🔒</span> Secure Checkout · ₦{total.toLocaleString()} <span aria-hidden="true">→</span>
+          <TemplateIcon name="Lock" size={15} /> Secure Checkout · ₦{total.toLocaleString()} <TemplateIcon name="ArrowRight" size={15} />
         </button>
-        <div style={{ textAlign: "center", fontSize: 11, color: grayText, marginTop: 10 }}>🔒 Encrypted checkout · Pay on delivery or online</div>
+        <div style={{ textAlign: "center", fontSize: 11, color: grayText, marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+          <TemplateIcon name="Lock" size={11} /> Encrypted checkout · Pay on delivery or online
+        </div>
       </div>
     </div>
   );
@@ -725,8 +734,8 @@ export function PromotionList({ offers = [], style = {}, onAction }) {
           }}
           onClick={() => onAction?.("tap", { offer, index: i })}
         >
-          <div style={{ height: 120, background: offer.image ? `url(${offer.image}) center/cover` : `linear-gradient(135deg, ${brand.AMBER}, ${brand.NAVY})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 18 }}>
-            {offer.icon || "PartyPopper"}
+          <div style={{ height: 120, background: offer.image ? `url(${offer.image}) center/cover` : `linear-gradient(135deg, ${brand.AMBER}, ${brand.NAVY})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+            <TemplateIcon name={offer.icon || offer.emoji} size={30} color="#fff" />
           </div>
           <div style={{ padding: 16 }}>
             <div style={{ fontWeight: 700, fontSize: 15, color: brand.NAVY, marginBottom: 4 }}>{offer.title}</div>
@@ -759,8 +768,13 @@ export function Tabs({ items = [], position = "top", style = {} }) {
         <button
           key={i}
           onClick={() => dispatchAction && dispatchAction({ type: "switch_screen", payload: { screenId: it.screenId } })}
-          style={{ flex: 1, padding: "10px 4px", textAlign: "center", background: "transparent", border: "none", cursor: "pointer", fontSize: 11, color: i === 0 ? "#B45309" : "#6B7280", borderTop: i === 0 ? "2px solid #F4A026" : "2px solid transparent" }}
+          style={{ flex: 1, padding: "10px 4px", textAlign: "center", background: "transparent", border: "none", cursor: "pointer", fontSize: 11, color: i === 0 ? "#B45309" : "#6B7280", borderTop: i === 0 ? "2px solid #F4A026" : "2px solid transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3 }}
         >
+          {it.icon ? (
+            <span style={{ display: "flex", color: i === 0 ? "#B45309" : "#6B7280" }}>
+              <TemplateIcon name={it.icon} size={18} />
+            </span>
+          ) : null}
           <div>{it.label || `Tab ${i + 1}`}</div>
         </button>
       ))}

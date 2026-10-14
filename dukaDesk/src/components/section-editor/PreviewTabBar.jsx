@@ -1,34 +1,9 @@
-import { Megaphone, Trophy, Video } from "lucide-react";
-import { IconGlyph } from "../canvas-editor/componentTypes";
+import { TemplateIcon, IONICON_ALIASES } from "../template/TemplateIcon";
 
-const ICON_NAMES = {
-  "home-outline": "Home",
-  "storefront-outline": "Store",
-  "cart-outline": "ShoppingCart",
-  "receipt-outline": "ClipboardList",
-  "person-outline": "User",
-  "calendar-outline": "Calendar",
-  "tag-outline": "Tag",
-  "restaurant-outline": "Utensils",
-  "information-outline": "Info",
-  "megaphone-outline": "Megaphone",
-  "trophy-outline": "Trophy",
-  "heart-outline": "Heart",
-  "book-outline": "BookOpen",
-  "people-outline": "Users",
-  "clipboard-outline": "ClipboardList",
-  "videocam-outline": "Video",
-  "shop-outline": "Store",
-  "bag-outline": "ShoppingBag",
-  "card-outline": "CreditCard",
-  "grid-outline": "Briefcase",
-  "order-outline": "ClipboardList",
-  "phone-outline": "Phone",
-};
+const ICON_NAMES = IONICON_ALIASES;
 export function PreviewTabIcon({ name, size = 20 }) {
   const resolved = ICON_NAMES[name] || name || "Home";
-  const LegacyIcon = { Megaphone, Trophy, Video }[resolved];
-  return LegacyIcon ? <LegacyIcon size={size} /> : <IconGlyph name={resolved} size={size} />;
+  return <TemplateIcon name={resolved} size={size} />;
 }
 
 export default function PreviewTabBar({ navigation, activeScreen, onNavigate }) {
