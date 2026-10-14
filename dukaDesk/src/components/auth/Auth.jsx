@@ -6,7 +6,7 @@ import { useIsMobile } from "../../hooks/useMediaQuery";
 import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, RED, PURPLE, inputStyle, labelStyle } from "../../theme";
 import { login, signup, forgotPassword, confirmPasswordReset, setToken, googleSignIn } from "../../services/api";
-import { COMMERCE_CATEGORIES } from "../../config/taxonomy";
+import { ONBOARDING_COMMERCE_CATEGORIES, resolveCanonicalCategory } from "../../config/taxonomy";
 import { getVertical } from "../../config/verticals";
 import { verticalPresetModules } from "../../config/primitives";
 import { setSetupData, getSetupData, saveDashboardModules } from "../../services/api";
@@ -258,40 +258,53 @@ function SignupForm({ onAuth, setPage }) {
 
     setLoading(true);
     try {
-      const res = await signup({ fullName: form.name, email: form.email, phone: form.countryCode + form.phone, password: form.password, category: deskCategory || undefined });
+      // Granular commerce picks (Cafe, Pharmacy, ...) map to their broad
+      // industry preset — same rule as Onboarding.finishSetup. Backend,
+      // dashboard preset and stored merchant all keep the canonical key.
+      const picked = ONBOARDING_COMMERCE_CATEGORIES.find(c => c.key === deskCategory);
+      const canonical = picked?.preset || resolveCanonicalCategory(deskCategory) || deskCategory;
+      const res = await signup({ fullName: form.name, email: form.email, phone: form.countryCode + form.phone, password: form.password, category: canonical || undefined });
       console.log("[SignupForm] signup result", res);
-      // Preset the dashboard to the chosen desk category before first render:
-      // a Religion desk gets Donations/Attendance, a shop desk gets Orders/Stock, etc.
-      if (deskCategory) {
+      // Preset the dashboard to the chosen business type before first render:
+      // a shop desk gets Orders/Stock, a cafe gets the hospitality preset, etc.
+      if (canonical) {
         try {
-          const preset = verticalPresetModules(getVertical(deskCategory));
+          const preset = verticalPresetModules(getVertical(canonical));
           const saved = getSetupData();
-          setSetupData({ ...(saved || {}), category: deskCategory, modules: preset });
+          setSetupData({ ...(saved || {}), category: canonical, modules: preset });
           try { await saveDashboardModules(preset); } catch { /* backend best-effort */ }
         } catch { /* preset best-effort */ }
       }
       setToken(res.token);
-      onAuth({ ...res.merchant, ...(deskCategory ? { category: deskCategory } : {}) });
+      onAuth({ ...res.merchant, ...(canonical ? { category: canonical } : {}) });
     } catch (err) {
       console.error("[SignupForm] signup error", err);
-      setErrors({ submit: err.message || "Signup failed. Please try again." });
+      const status = err?.response?.status ?? err?.status;
+      const msg = err?.message || "";
+      if (status === 409 || /already registered|already exists|conflict/i.test(msg)) {
+        setErrors({ submit: "This email is already registered. Try logging in instead." });
+      } else {
+        setErrors({ submit: err.message || "Signup failed. Please try again." });
+      }
     } finally { setLoading(false); }
   };
 
   const handleGoogleToken = async (idToken) => {
     try {
-      const res = await googleSignIn(idToken, deskCategory ? { category: deskCategory } : {});
+      const picked = ONBOARDING_COMMERCE_CATEGORIES.find(c => c.key === deskCategory);
+      const canonical = picked?.preset || resolveCanonicalCategory(deskCategory) || deskCategory;
+      const res = await googleSignIn(idToken, canonical ? { category: canonical } : {});
       console.log("[SignupForm] google sign-in result", res);
-      if (deskCategory) {
+      if (canonical) {
         try {
-          const preset = verticalPresetModules(getVertical(deskCategory));
+          const preset = verticalPresetModules(getVertical(canonical));
           const saved = getSetupData();
-          setSetupData({ ...(saved || {}), category: deskCategory, modules: preset });
+          setSetupData({ ...(saved || {}), category: canonical, modules: preset });
           try { await saveDashboardModules(preset); } catch { /* backend best-effort */ }
         } catch { /* preset best-effort */ }
       }
       setToken(res.token);
-      onAuth({ ...res.merchant, ...(deskCategory ? { category: deskCategory } : {}) });
+      onAuth({ ...res.merchant, ...(canonical ? { category: canonical } : {}) });
     } catch (err) {
       console.error("[SignupForm] google sign-in error", err);
       setErrors({ submit: err.message || "Google sign-in failed. Please try again." });
@@ -339,10 +352,14 @@ function SignupForm({ onAuth, setPage }) {
           </button>
         } />
         <div style={{ marginBottom: 16 }}>
-          <label htmlFor="desk-category" style={labelStyle}>What best describes your desk? *</label>
+          <label htmlFor="desk-category" style={labelStyle}>What best describes your business? *</label>
           <select id="desk-category" value={deskCategory} onChange={e => { setDeskCategory(e.target.value); setErrors(er => ({ ...er, deskCategory: "" })); }} style={{ ...inputStyle, appearance: "none", borderColor: errors.deskCategory ? "#E74C3C" : undefined }}>
-            <option value="">Select desk type…</option>
-            {COMMERCE_CATEGORIES.map(c => (
+            <option value="">Select business type…</option>
+            {/* Grandfathered: a stored non-commerce type keeps showing (disabled) */}
+            {deskCategory && !ONBOARDING_COMMERCE_CATEGORIES.some(c => c.key === deskCategory) && (
+              <option key={deskCategory} value={deskCategory} disabled>{deskCategory} (current)</option>
+            )}
+            {ONBOARDING_COMMERCE_CATEGORIES.map(c => (
               <option key={c.key} value={c.key}>{c.icon} {c.label} — {c.desc}</option>
             ))}
           </select>
@@ -350,13 +367,15 @@ function SignupForm({ onAuth, setPage }) {
           {deskCategory ? (
             <p style={{ fontSize: 12, color: "#6B7280", marginTop: 8, lineHeight: 1.5 }}>
               {(() => {
-                const v = getVertical(deskCategory);
+                const picked = ONBOARDING_COMMERCE_CATEGORIES.find(c => c.key === deskCategory);
+                const canonical = picked?.preset || resolveCanonicalCategory(deskCategory) || deskCategory;
+                const v = getVertical(canonical);
                 const tools = [...(v.modules || []).slice(0, 4).map(m => m.label), ...(v.adminPages || []).map(p => p.label)].slice(0, 5).join(", ");
-                return <><strong style={{ color: NAVY }}>{v.deskLabel}</strong> preset: {tools}. You can add or remove tools later in More Tools.</>;
+                return <><strong style={{ color: NAVY }}>{picked ? picked.label : v.deskLabel}</strong>{picked?.preset ? ` (${v.deskLabel} preset)` : ""}: {tools}. You can add or remove tools later in More Tools.</>;
               })()}
             </p>
           ) : (
-            <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 8 }}>We preset your dashboard tools — e.g. a shop gets Orders, a restaurant gets Reservations.</p>
+            <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 8 }}>We preset your dashboard tools — e.g. a shop gets Orders, a cafe gets the hospitality preset with Reservations.</p>
           )}
         </div>
         <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 20 }}>

@@ -3,6 +3,12 @@ import PropTypes from "prop-types";
 
 const GSI_SRC = "https://accounts.google.com/gsi/client";
 
+// GSI initialize() must run once per client_id per page load — React
+// StrictMode double-mounts effects in dev, and Auth remounts this button on
+// login<->signup navigation, which otherwise logs
+// "[GSI_LOGGER]: google.accounts.id.initialize() is called multiple times".
+let initializedClientId = null;
+
 function loadGsi() {
   return new Promise((resolve) => {
     if (window.google?.accounts?.id) return resolve(true);
@@ -40,23 +46,36 @@ export default function GoogleSignInButton({ clientId, onToken, label }) {
     loadGsi().then((ok) => {
       if (cancelled || !ok || !holderRef.current) return;
 
+      const render = () => {
+        if (cancelled || !holderRef.current) return;
+        window.google.accounts.id.renderButton(holderRef.current, {
+          type: "standard",
+          theme: "outline",
+          size: "large",
+          width: holderRef.current.clientWidth,
+          height: 50,
+          text: "continue_with",
+          shape: "pill",
+          logo_alignment: "left",
+        });
+      };
+
+      // Already initialized for this client_id (StrictMode remount or
+      // login<->signup navigation) — just re-render the button.
+      if (initializedClientId === id && window.google.accounts.id) {
+        render();
+        return;
+      }
+
       window.google.accounts.id.initialize({
         client_id: id,
         callback: (response) => callbackRef.current?.(response.credential),
         ux_mode: "popup",
         auto_select: false,
       });
+      initializedClientId = id;
 
-      window.google.accounts.id.renderButton(holderRef.current, {
-        type: "standard",
-        theme: "outline",
-        size: "large",
-        width: holderRef.current.clientWidth,
-        height: 50,
-        text: "continue_with",
-        shape: "pill",
-        logo_alignment: "left",
-      });
+      render();
     });
     return () => { cancelled = true; };
   }, [id]);
