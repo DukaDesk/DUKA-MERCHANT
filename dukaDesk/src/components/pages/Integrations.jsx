@@ -23,7 +23,7 @@ const PRIMITIVE_ICONS = {
 export default function Integrations() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { modules: enabledIds, isEnabled, toggleModule, savingModules, vertical, categoryName, resetModules } = useVertical();
+  const { modules: enabledIds, isEnabled, toggleModule, savingModules, categoryName, resetModules } = useVertical();
   const [integrations, setIntegrations] = useState([]);
   const [relevantNames, setRelevantNames] = useState(null);
   const [appTemplate, setAppTemplate] = useState(null);
@@ -123,7 +123,6 @@ export default function Integrations() {
             </button>
           </span>
         </div>
-        <p style={{ color: "#6B7280", fontSize: 13, margin: "0 0 16px" }}>These control what appears in your dashboard and sidebar. We ship the {categoryName.toLowerCase()}-specific essentials — {vertical?.deskLabel || `${categoryName} Desk`} ships with {(vertical?.modules || []).slice(0, 3).map(m => m.label).join(", ")}{(vertical?.adminPages?.length ? ` plus ${(vertical.adminPages || []).map(p => p.label).join(", ")}` : "")} — add or remove what you need.</p>
         {PRIMITIVE_GROUPS.map(group => {
           const items = PRIMITIVES.filter(p => p.group === group);
           if (!items.length) return null;
