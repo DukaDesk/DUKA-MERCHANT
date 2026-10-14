@@ -233,7 +233,7 @@ export async function publishProject(projectData) {
 
   try {
     if (publishingId && !isDemoId(publishingId)) {
-      return { ...await submitAppForReview(manifest), validation };
+      return { ...(await submitAppForReview(manifest)), pendingReview: true, validation };
     }
 
     // Record a successful deployment only after the backend read-back matches.
@@ -241,7 +241,8 @@ export async function publishProject(projectData) {
     await saveReleases(releaseHistory);
     await saveDeployment(manifest);
   } catch (error) {
-    return { success: false, error: error?.message || 'Publishing failed', validation };
+    const status = error?.response?.status;
+    return { success: false, pending: true, error: status ? `Publishing failed (HTTP ${status})` : error?.message || 'Publishing failed', validation };
   }
 
   return { success: true, version, releaseId: release.id, validation, manifest };

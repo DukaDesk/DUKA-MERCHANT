@@ -422,7 +422,7 @@ describe("ensureTenant / deployApp", () => {
     expect(merchant.tenantId).toBe("tenant_new");
   });
 
-  it("deployApp creates tenant, writes config and publishes", async () => {
+  it("deployApp creates tenant, writes draft config for admin review", async () => {
     setupMerchant({ ...DEFAULT_MERCHANT, tenantId: null });
     mockHttpClient.post.mockResolvedValue({
       data: { id: "tenant_new", slug: "tasty-bites" },
@@ -435,10 +435,12 @@ describe("ensureTenant / deployApp", () => {
     expect(result.app.slug).toBe("tasty-bites");
     expect(mockHttpClient.put).toHaveBeenCalledWith("/api/v1/app/merchants/config", expect.objectContaining({
       config: expect.objectContaining({
-        app: expect.objectContaining({ appName: "Tasty Bites", status: "live" }),
+        app: expect.objectContaining({ appName: "Tasty Bites", status: "draft" }),
       }),
     }));
-    expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/app/merchants/publish");
+    expect(result.status).toBe("draft");
+    expect(result.message).toMatch(/review/i);
+    expect(mockHttpClient.post.mock.calls.every(([url]) => url !== "/api/v1/app/merchants/publish")).toBe(true);
   });
 
   it("deployApp reuses existing tenant", async () => {
@@ -447,10 +449,11 @@ describe("ensureTenant / deployApp", () => {
     mockHttpClient.put.mockResolvedValue({ data: {} });
     mockHttpClient.post.mockResolvedValue({ data: {} });
 
-    await deployApp({ appName: "Tasty Bites" });
+    const result = await deployApp({ appName: "Tasty Bites" });
 
     expect(mockHttpClient.put).toHaveBeenCalledWith("/api/v1/app/merchants/config", expect.anything());
-    expect(mockHttpClient.post).toHaveBeenCalledWith(`/api/v1/app/merchants/publish`);
+    expect(result.status).toBe("draft");
+    expect(mockHttpClient.post.mock.calls.every(([url]) => url !== "/api/v1/app/merchants/publish")).toBe(true);
   });
 });
 
