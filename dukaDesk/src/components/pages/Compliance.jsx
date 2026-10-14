@@ -5,10 +5,11 @@ import { NAVY, AMBER, inputStyle, labelStyle, cardStyle } from "../../theme";
 import { toast } from "react-toastify";
 import { getMerchant, submitCompliance, getComplianceStatus } from "../../services/api";
 import { BUSINESS_CATEGORIES } from "../../config/taxonomy";
+import { useVertical } from "../../runtime/VerticalContext";
 import { Store, Building2, FileText, CheckCircle, ArrowLeft, ArrowRight, Upload, X, ShieldCheck } from "lucide-react";
 
 const STEPS = [
-  { id: "business", label: "Business Info", icon: Building2 },
+  { id: "business", label: "Info", icon: Building2 },
   { id: "verification", label: "Verification", icon: FileText },
   { id: "review", label: "Review", icon: CheckCircle },
 ];
@@ -16,6 +17,7 @@ const STEPS = [
 export default function Compliance() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { categoryName, categoryLower } = useVertical();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
@@ -53,13 +55,13 @@ export default function Compliance() {
   const validate = () => {
     const e = {};
     if (step === 0) {
-      if (!form.businessName.trim()) e.businessName = "Business name is required";
-      if (!form.address.trim()) e.address = "Business address is required";
+      if (!form.businessName.trim()) e.businessName = `${categoryName} name is required`;
+      if (!form.address.trim()) e.address = `${categoryName} address is required`;
       if (!form.phone.trim()) e.phone = "Phone number is required";
     }
     if (step === 1) {
       if (!form.idDoc) e.idDoc = "ID document is required";
-      if (!form.bizDoc) e.bizDoc = "Business document is required";
+      if (!form.bizDoc) e.bizDoc = `${categoryName} document is required`;
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -117,7 +119,7 @@ export default function Compliance() {
           <ShieldCheck size={36} color="#2ECC71" />
         </div>
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: NAVY, margin: "0 0 8px" }}>Compliance Verified</h2>
-        <p style={{ color: "#6B7280", fontSize: 15, marginBottom: 28 }}>Your business verification is complete. You can now design your app.</p>
+        <p style={{ color: "#6B7280", fontSize: 15, marginBottom: 28 }}>Your {categoryLower} verification is complete. You can now design your app.</p>
         <button onClick={() => navigate("/desk-design")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "12px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
           Go to Desk Design
         </button>
@@ -132,8 +134,8 @@ export default function Compliance() {
     <div style={{ animation: "fadeIn 0.35s ease", maxWidth: 720, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
         <div>
-          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: "0 0 6px" }}>Business Compliance</h2>
-          <p style={{ color: "#6B7280", fontSize: 14, margin: 0 }}>Verify your business to unlock Desk Design and go live.</p>
+          <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: "0 0 6px" }}>{categoryName} Compliance</h2>
+          <p style={{ color: "#6B7280", fontSize: 14, margin: 0 }}>Verify your {categoryLower} to unlock Desk Design and go live.</p>
         </div>
         <button onClick={handleSkip} style={{ background: "none", border: "1.5px solid #E8E8F0", borderRadius: 8, padding: "8px 16px", fontSize: 13, color: "#6B7280", cursor: "pointer", fontWeight: 500 }}>
           Skip for now
@@ -170,18 +172,18 @@ export default function Compliance() {
       <div style={{ ...cardStyle, padding: isMobile ? 20 : 32 }}>
         {step === 0 && (
           <div>
-            <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: NAVY, margin: "0 0 24px" }}>Business Information</h3>
+            <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: NAVY, margin: "0 0 24px" }}>{categoryName} Information</h3>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
               <div style={{ gridColumn: isMobile ? "1" : "1 / -1" }}>
-                <label style={labelStyle}>Business Name *</label>
+                <label style={labelStyle}>{categoryName} Name *</label>
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                   <Store size={16} style={{ position: "absolute", left: 12, color: "#9CA3AF" }} />
-                  <input value={form.businessName} onChange={e => setForm(f => ({ ...f, businessName: e.target.value }))} placeholder="Your registered business name" style={{ ...inputStyle, paddingLeft: 36, borderColor: errors.businessName ? "#E74C3C" : undefined }} />
+                  <input value={form.businessName} onChange={e => setForm(f => ({ ...f, businessName: e.target.value }))} placeholder={`Your registered ${categoryLower} name`} style={{ ...inputStyle, paddingLeft: 36, borderColor: errors.businessName ? "#E74C3C" : undefined }} />
                 </div>
                 {errors.businessName && <div style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.businessName}</div>}
               </div>
               <div>
-                <label style={labelStyle}>Business Type</label>
+                <label style={labelStyle}>{categoryName} Type</label>
                 <select value={form.businessType} onChange={e => setForm(f => ({ ...f, businessType: e.target.value }))} style={{ ...inputStyle, appearance: "none" }}>
                   <option value="">Select type</option>
                   {Array.from(new Set(BUSINESS_CATEGORIES.map(c => c.kycType))).map(kyc => (
@@ -208,7 +210,7 @@ export default function Compliance() {
                 <input value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} placeholder="https://example.com" style={inputStyle} />
               </div>
               <div style={{ gridColumn: isMobile ? "1" : "1 / -1" }}>
-                <label style={labelStyle}>Business Address *</label>
+                <label style={labelStyle}>{categoryName} Address *</label>
                 <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Street address" style={{ ...inputStyle, borderColor: errors.address ? "#E74C3C" : undefined }} />
                 {errors.address && <div style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.address}</div>}
               </div>
@@ -241,7 +243,7 @@ export default function Compliance() {
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {[
                 { field: "idDoc", label: "Government ID", desc: "Valid passport, driver's license, or national ID", accept: "image/*,.pdf" },
-                { field: "bizDoc", label: "Business Registration", desc: "CAC certificate or business registration document", accept: "image/*,.pdf" },
+                { field: "bizDoc", label: `${categoryName} Registration`, desc: `CAC certificate or ${categoryLower} registration document`, accept: "image/*,.pdf" },
                 { field: "utrDoc", label: "Utility Bill / Address Proof", desc: "Recent utility bill or bank statement (optional)", accept: "image/*,.pdf" },
               ].map((doc) => (
                 <div key={doc.field} style={{ background: "#FAFAFA", borderRadius: 10, padding: 16, border: errors[doc.field] ? "1.5px solid #E74C3C" : "1px solid #E8E8F0" }}>
@@ -280,14 +282,14 @@ export default function Compliance() {
             <p style={{ color: "#6B7280", fontSize: 14, marginBottom: 24 }}>Please review your information before submitting.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[
-                { label: "Business Name", value: form.businessName },
-                { label: "Business Type", value: form.businessType || "—" },
+                { label: `${categoryName} Name`, value: form.businessName },
+                { label: `${categoryName} Type`, value: form.businessType || "—" },
                 { label: "Registration Number", value: form.regNumber || "—" },
                 { label: "Tax ID", value: form.taxId || "—" },
                 { label: "Phone", value: form.phone },
                 { label: "Address", value: `${form.address}, ${form.city}, ${form.state}, ${form.country}` },
                 { label: "ID Document", value: form.idDoc?.name || "Not uploaded" },
-                { label: "Business Document", value: form.bizDoc?.name || "Not uploaded" },
+                { label: `${categoryName} Document`, value: form.bizDoc?.name || "Not uploaded" },
               ].map((r, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#F9FAFB", borderRadius: 8 }}>
                   <span style={{ fontSize: 13, color: "#6B7280" }}>{r.label}</span>

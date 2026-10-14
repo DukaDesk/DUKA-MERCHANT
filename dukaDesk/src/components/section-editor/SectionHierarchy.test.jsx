@@ -5,6 +5,7 @@ import PropertiesPanel from "./PropertiesPanel";
 import SectionRenderer from "./SectionRenderer";
 import ElementGallery from "./ElementGallery";
 import { getComponentCatalog } from "./componentCatalog";
+import { ICON_LIBRARY } from "../canvas-editor/componentTypes";
 
 function fixture() {
   const child = { id: "inner", type: "nested_section", props: {}, children: [] };
@@ -52,6 +53,19 @@ it("shows only the selected category and keeps text variants distinct without du
   const keys = choices.map(item => item.catalogId || item.type);
   expect(new Set(keys).size).toBe(keys.length);
   expect(choices.some(item => item.type === "primary_button")).toBe(false);
+});
+
+it("offers every runtime-supported Lucide icon as a distinct builder palette choice", () => {
+  const icons = getComponentCatalog().find(category => category.key === "icons").components;
+  const glyphs = icons.filter(item => item.type === "icon");
+  const catalogIds = icons.map(item => item.catalogId || item.type);
+
+  expect(glyphs.length).toBe(Object.keys(ICON_LIBRARY).length);
+  expect(new Set(catalogIds).size).toBe(catalogIds.length);
+  for (const name of Object.keys(ICON_LIBRARY)) {
+    expect(glyphs.some(item => item.defaultProps.name === name)).toBe(true);
+  }
+  expect(icons.some(item => item.type === "chevron" && item.defaultProps.direction === "left")).toBe(true);
 });
 
 it("adds components without a selection and opens their properties", () => {

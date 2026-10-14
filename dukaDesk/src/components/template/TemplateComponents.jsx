@@ -124,6 +124,13 @@ function isImageUrl(src) {
 
 export function MenuGrid({ items = [], columns = 2, variant = "default", style = {}, onAction }) {
   const brand = useBrand();
+  if (!items.length) {
+    return (
+      <div style={{ background: brand.cardColor || "#fff", borderRadius: 14, padding: "32px 20px", border: `1px solid ${brand.GRAY?.[200] || '#E5E7EB'}`, textAlign: "center", color: brand.GRAY?.[500] || '#6B7280', fontSize: 13, ...style }}>
+        No products yet — add products to see them here.
+      </div>
+    );
+  }
   return (
     <div style={{
       display: "grid",
@@ -185,6 +192,13 @@ export function MenuGrid({ items = [], columns = 2, variant = "default", style =
 
 export function OrderHistory({ orders = [], showStatus = true, style = {}, onAction }) {
   const brand = useBrand();
+  if (!orders.length) {
+    return (
+      <div style={{ background: brand.cardColor || "#fff", borderRadius: 12, padding: "32px 20px", border: `1px solid ${brand.GRAY?.[200] || '#E5E7EB'}`, textAlign: "center", color: brand.GRAY?.[500] || '#6B7280', fontSize: 13, ...style }}>
+        No orders yet — orders you place will appear here.
+      </div>
+    );
+  }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, ...style }}>
       {orders.map((order, i) => (
@@ -544,62 +558,116 @@ export function LaundryBooking({ service = "Wash & Fold", price = 2500, unitLabe
 
 export function CartSummary({ items = [], deliveryFee, style = {}, onAction }) {
   const brand = useBrand();
+  const navy = brand.NAVY || "#0F0F1A";
+  const amber = brand.AMBER || "#F4A026";
+  const grayLine = brand.GRAY?.[200] || "#E5E7EB";
+  const graySoft = brand.GRAY?.[50] || "#F9FAFB";
+  const grayText = brand.GRAY?.[500] || "#6B7280";
   const cartItems = items;
   const subtotal = cartItems.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0);
   const delivery = Number(deliveryFee ?? 0);
   const total = subtotal + delivery;
-  return (
-    <div style={{ background: brand.cardColor || "#fff", borderRadius: 14, padding: 20, border: `1px solid ${brand.GRAY?.[200]}`, ...style }}>
-      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: brand.NAVY, marginBottom: 16 }}>Your Cart ({cartItems.length})</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
-        {cartItems.map(item => (
-          <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: brand.GRAY?.[50], borderRadius: 10 }}>
-            {isImageUrl(item.img) ? (
-              <img src={item.img} alt={item.name} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
-            ) : (
-              <div style={{ fontSize: 24 }}>{item.img || "ShoppingBag"}</div>
-            )}
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, color: brand.NAVY }}>{item.name}</div>
-              <div style={{ fontSize: 13, color: brand.GRAY?.[500] }}>₦{item.price?.toLocaleString()} × {item.qty}</div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={() => onAction?.("removeItem", { id: item.id })} style={{ background: "none", border: "none", cursor: "pointer", color: brand.RED, fontSize: 18 }}>−</button>
-              <span style={{ fontWeight: 700 }}>{item.qty}</span>
-              <button onClick={() => onAction?.("addItem", { id: item.id })} style={{ background: "none", border: "none", cursor: "pointer", color: brand.AMBER, fontSize: 18 }}>+</button>
-            </div>
-          </div>
-        ))}
+  const count = cartItems.reduce((n, it) => n + (it.qty || 1), 0);
+
+  if (cartItems.length === 0) {
+    return (
+      <div style={{ background: brand.cardColor || "#fff", borderRadius: 18, padding: "40px 24px", border: `1px solid ${grayLine}`, textAlign: "center", ...style }}>
+        <div style={{ width: 72, height: 72, borderRadius: "50%", background: graySoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 32 }}>🛍️</div>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 17, color: navy, marginBottom: 6 }}>Your cart is empty</div>
+        <div style={{ fontSize: 13, color: grayText, lineHeight: 1.5 }}>Items you add will show up here, ready for checkout.</div>
       </div>
-      <div style={{ borderTop: `1px solid ${brand.GRAY?.[200]}`, paddingTop: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, color: brand.GRAY?.[600] }}>
+    );
+  }
+
+  const steps = ["Cart", "Details", "Done"];
+  return (
+    <div style={{ background: brand.cardColor || "#fff", borderRadius: 18, border: `1px solid ${grayLine}`, overflow: "hidden", boxShadow: "0 8px 24px rgba(15,15,26,0.06)", ...style }}>
+      <div style={{ padding: "18px 18px 14px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 17, color: navy }}>Your Cart</div>
+          <span style={{ fontSize: 12, fontWeight: 700, color: navy, background: amber, borderRadius: 20, padding: "3px 12px" }}>{count} {count === 1 ? "item" : "items"}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }} aria-hidden="true">
+          {steps.map((label, i) => (
+            <div key={label} style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                <span style={{
+                  width: 20, height: 20, borderRadius: "50%",
+                  background: i === 0 ? navy : graySoft,
+                  color: i === 0 ? "#fff" : grayText,
+                  fontSize: 11, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>{i + 1}</span>
+                <span style={{ fontSize: 11, fontWeight: i === 0 ? 700 : 500, color: i === 0 ? navy : grayText }}>{label}</span>
+              </div>
+              {i < steps.length - 1 && <div style={{ flex: 1, height: 2, borderRadius: 2, background: grayLine }} />}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "4px 18px 6px" }}>
+        {cartItems.map(item => {
+          const qty = item.qty || 1;
+          return (
+            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: 10, background: graySoft, borderRadius: 14 }}>
+              {isImageUrl(item.img) ? (
+                <img src={item.img} alt={item.name} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
+              ) : (
+                <div style={{ width: 56, height: 56, borderRadius: 12, background: "#fff", border: `1px solid ${grayLine}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{item.img || "🛍️"}</div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: navy, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</div>
+                <div style={{ fontSize: 13, color: grayText, marginTop: 2 }}>₦{(item.price || 0).toLocaleString()} each</div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: navy }}>₦{((item.price || 0) * qty).toLocaleString()}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 2, background: "#fff", border: `1px solid ${grayLine}`, borderRadius: 20, padding: "2px 4px" }}>
+                  <button onClick={() => onAction?.("removeItem", { id: item.id })} aria-label="Decrease quantity" style={{ background: "none", border: "none", cursor: "pointer", color: navy, fontSize: 15, fontWeight: 700, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: navy, minWidth: 18, textAlign: "center" }}>{qty}</span>
+                  <button onClick={() => onAction?.("addItem", { id: item.id })} aria-label="Increase quantity" style={{ background: navy, border: "none", cursor: "pointer", color: "#fff", fontSize: 14, fontWeight: 700, width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ margin: "12px 18px 0", background: graySoft, borderRadius: 14, padding: "14px 16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: grayText }}>
           <span>Subtotal</span><span>₦{subtotal.toLocaleString()}</span>
         </div>
-        {deliveryFee != null && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, color: brand.GRAY?.[600] }}>
-          <span>Delivery</span><span>₦{delivery.toLocaleString()}</span>
+        {deliveryFee != null && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: grayText }}>
+          <span>Delivery</span><span>{delivery === 0 ? "Free" : `₦${delivery.toLocaleString()}`}</span>
         </div>}
-        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16, color: brand.NAVY }}>
-          <span>Total</span><span>₦{total.toLocaleString()}</span>
+        <div style={{ borderTop: `1px dashed ${grayLine}`, margin: "8px 0" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontWeight: 700, color: navy }}>
+          <span style={{ fontSize: 14 }}>Total</span><span style={{ fontFamily: "'Sora',sans-serif", fontSize: 22 }}>₦{total.toLocaleString()}</span>
         </div>
       </div>
-      <button
-        onClick={() => onAction?.("checkout", {})}
-        style={{
-          marginTop: 16,
-          width: "100%",
-          padding: "14px",
-          background: brand.AMBER,
-          color: brand.NAVY,
-          border: "none",
-          borderRadius: 10,
-          fontWeight: 700,
-          fontSize: 15,
-          fontFamily: "'Sora',sans-serif",
-          cursor: "pointer"
-        }}
-      >
-        Checkout
-      </button>
+      <div style={{ padding: "14px 18px 18px" }}>
+        <button
+          onClick={() => onAction?.("checkout", {})}
+          style={{
+            width: "100%",
+            padding: "15px",
+            background: `linear-gradient(135deg, ${amber}, ${amber}CC)`,
+            color: navy,
+            border: "none",
+            borderRadius: 14,
+            fontWeight: 700,
+            fontSize: 15,
+            fontFamily: "'Sora',sans-serif",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            boxShadow: `0 8px 20px ${amber}55`,
+          }}
+        >
+          <span aria-hidden="true">🔒</span> Secure Checkout · ₦{total.toLocaleString()} <span aria-hidden="true">→</span>
+        </button>
+        <div style={{ textAlign: "center", fontSize: 11, color: grayText, marginTop: 10 }}>🔒 Encrypted checkout · Pay on delivery or online</div>
+      </div>
     </div>
   );
 }

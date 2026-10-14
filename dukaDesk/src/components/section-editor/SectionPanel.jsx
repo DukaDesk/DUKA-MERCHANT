@@ -1,3 +1,4 @@
+import DataRequestEditor from './DataRequestEditor';
 import { getComponentCatalog } from "./componentCatalog";
 import { promptDialog } from "../common/dialogs";
 import { useState, useEffect } from "react";
@@ -419,9 +420,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
         <label style={{ fontSize: 12, color: theme.textSecondary }}>
           <input type="checkbox" checked={splash.enabled !== false} onChange={event => store.setSplash({ enabled: event.target.checked })} /> Enabled
         </label>
-        <label style={{ fontSize: 12, color: theme.textSecondary }}>Duration (seconds)
-          <input type="number" min="0" step="0.1" style={{ width: 64, marginLeft: 8, padding: "4px 6px", fontSize: 12, border: "1px solid " + theme.border, borderRadius: theme.radius.sm, background: theme.surface, color: theme.text }} value={(splash.durationMs ?? 500) / 1000} onChange={event => { const durationMs = Math.round(Number(event.target.value) * 1000); if (Number.isFinite(durationMs) && durationMs >= 0) store.setSplash({ durationMs }); }} />
-        </label>
+        <div style={{ fontSize: 12, color: theme.textSecondary }}>Shows for 2 seconds on app launch (fixed).</div>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Background</div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -582,6 +581,7 @@ export default function SectionPanel({ store, selectedSectionId, selectedCompone
   const renderPageContent = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {renderSplashCard()}
+      <DataRequestEditor store={store} />
       <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 11, color: theme.text, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span>App sections</span>
         <span style={{ fontSize: 10, color: theme.textMuted, fontWeight: 400 }}>{bodySections.length}</span>

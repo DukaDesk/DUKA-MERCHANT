@@ -3,6 +3,8 @@ import { Search, X, Download, Eye, Package, Printer, MapPin, Check, Circle, Arro
 import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { usePermission } from "../../hooks/usePermission";
+import { useAuth } from "../../contexts";
+import { formatMoney, currencySymbol, getMerchantCurrency } from "../../utils/currency";
 import { NAVY, AMBER, cardStyle, statusBadge, glidePanel } from "../../theme";
 import { getOrders, updateOrderStatus } from "../../services/api";
 import { Loading, Empty, ErrorState } from "../layout/States";
@@ -13,6 +15,9 @@ const tabs = ["All", "Pending", "Processing", "Completed", "Cancelled"];
 export default function Orders() {
   const isMobile = useIsMobile();
   const { can } = usePermission();
+  const { merchant } = useAuth() || {};
+  const currency = getMerchantCurrency(merchant);
+  const sym = currencySymbol(currency);
   const [orders, setOrders] = useState([]);
   const [tab, setTab] = useState("All");
   const [detail, setDetail] = useState(null);
@@ -74,9 +79,9 @@ export default function Orders() {
         <div class="row"><span class="label">Date</span><span>${order.date}</span></div>
         <hr class="divider" />
         <div class="row"><span class="label">Items</span><span>${order.items}</span></div>
-        <div class="row"><span class="label">Subtotal</span><span>₦${subtotal.toLocaleString()}</span></div>
-        <div class="row"><span class="label">Delivery</span><span>₦500</span></div>
-        <div class="row total"><span>Total</span><span>₦${total.toLocaleString()}</span></div>
+        <div class="row"><span class="label">Subtotal</span><span>${sym}${subtotal.toLocaleString()}</span></div>
+        <div class="row"><span class="label">Delivery</span><span>${sym}500</span></div>
+        <div class="row total"><span>Total</span><span>${sym}${total.toLocaleString()}</span></div>
         <div class="footer">
           <p>DukaDesk — https://dukadesk.app</p>
           <p>Thank you for your order!</p>
@@ -91,7 +96,7 @@ export default function Orders() {
   if (error) return <ErrorState message={error} onRetry={loadOrders} />;
 
   const orderStats = [
-    { label: "Today", value: `${orders.length} orders`, sub: `₦${orders.reduce((a,o) => a+o.total,0).toLocaleString()}`, color: NAVY },
+    { label: "Today", value: `${orders.length} orders`, sub: `${formatMoney(orders.reduce((a,o) => a+o.total,0), currency)}`, color: NAVY },
     { label: "Pending", value: orders.filter(o=>o.status==="Pending").length, sub: "Needs action", color: AMBER },
     { label: "Processing", value: orders.filter(o=>o.status==="Processing").length, sub: "In progress", color: "#3B82F6" },
     { label: "Completed", value: orders.filter(o=>o.status==="Completed").length, sub: "This month", color: "#2ECC71" },
@@ -161,7 +166,7 @@ export default function Orders() {
                       </div>
                     </td>
                     <td style={{ padding: "14px 16px", fontSize: 13, color: "#6B7280", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.items}</td>
-                    <td style={{ padding: "14px 16px", fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: AMBER }}>₦{o.total.toLocaleString()}</td>
+                    <td style={{ padding: "14px 16px", fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: AMBER }}>{formatMoney(o.total, currency)}</td>
                     <td style={{ padding: "14px 16px", fontSize: 13, color: "#6B7280" }}>{o.payment}</td>
                     <td style={{ padding: "14px 16px" }}>
                       <span style={{ background: ss.bg, color: ss.color, fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8 }}>{o.status}</span>
@@ -209,15 +214,15 @@ export default function Orders() {
               <div style={{ background: "#FFF8ED", borderRadius: 12, padding: 16, marginBottom: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <span style={{ color: "#6B7280", fontSize: 13 }}>Subtotal</span>
-                  <span style={{ fontSize: 13 }}>₦{(detail.total - 500).toLocaleString()}</span>
+                  <span style={{ fontSize: 13 }}>{formatMoney(detail.total - 500, currency)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #E8E8F0" }}>
                   <span style={{ color: "#6B7280", fontSize: 13 }}>Delivery</span>
-                  <span style={{ fontSize: 13 }}>₦500</span>
+                  <span style={{ fontSize: 13 }}>{formatMoney(500, currency)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontWeight: 700, color: NAVY }}>Total</span>
-                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>₦{detail.total.toLocaleString()}</span>
+                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>{formatMoney(detail.total, currency)}</span>
                 </div>
               </div>
               <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Paid via {detail.payment} · {detail.date}</div>

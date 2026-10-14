@@ -1,7 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { getVertical, DEFAULT_VERTICAL } from "../config/verticals";
+import { resolveCanonicalCategory } from "../config/taxonomy";
 import { verticalPresetModules, getPrimitive } from "../config/primitives";
 import { getMerchant, getSetupData, setSetupData, getMyApp, saveCategory, getDashboardModules, saveDashboardModules } from "../services/api";
+import { getCategoryName, getCategoryLower } from "../utils/categoryText";
 
 const VerticalContext = createContext(null);
 
@@ -9,12 +11,16 @@ export function useVertical() {
   return useContext(VerticalContext) || {
     vertical: DEFAULT_VERTICAL,
     category: null,
+    categoryName: "Business",
+    categoryLower: "business",
     loading: false,
     setCategory: () => {},
     isNewTenant: false,
     modules: [],
+    presetModules: [],
     isEnabled: () => false,
     toggleModule: () => {},
+    resetModules: () => {},
     savingModules: false,
   };
 }
@@ -22,9 +28,9 @@ export function useVertical() {
 export function VerticalProvider({ children }) {
   const [category, setCategoryState] = useState(() => {
     const merchant = getMerchant();
-    if (merchant?.category) return merchant.category;
-    const saved = getSetupData();
-    return saved?.category || null;
+    // Migrate legacy stored values (Church, Booking, ...) to broad industries.
+    const raw = merchant?.category || getSetupData()?.category || null;
+    return resolveCanonicalCategory(raw) || raw || null;
   });
   const [enabledIds, setEnabledIds] = useState(() => {
     const saved = getDashboardModules();
@@ -35,6 +41,8 @@ export function VerticalProvider({ children }) {
 
   const vertical = getVertical(category);
   const presetIds = useMemo(() => verticalPresetModules(vertical), [vertical]);
+  const categoryName = getCategoryName(vertical, category);
+  const categoryLower = getCategoryLower(vertical, category);
 
   const resolvedIds = useMemo(() => {
     if (Array.isArray(enabledIds) && enabledIds.length >= 0) return enabledIds;
@@ -48,10 +56,11 @@ export function VerticalProvider({ children }) {
       .then(app => {
         if (!active) return;
         if (app?.category) {
-          setCategoryState(app.category);
+          const canonical = resolveCanonicalCategory(app.category) || app.category;
+          setCategoryState(canonical);
           const saved = getSetupData();
-          if (saved?.category !== app.category) {
-            setSetupData({ ...(saved || {}), category: app.category });
+          if (saved?.category !== canonical) {
+            setSetupData({ ...(saved || {}), category: canonical });
           }
         }
         if (Array.isArray(app?.modules) && app.modules.length) {
@@ -63,15 +72,28 @@ export function VerticalProvider({ children }) {
     return () => { active = false; };
   }, []);
 
-  const setCategory = useCallback(async (value) => {
+  const setCategory = useCallback(async (value, opts = {}) => {
+    // Always store the canonical broad industry (legacy aliases migrate here).
+    const canonical = resolveCanonicalCategory(value) || value;
+    const nextVertical = getVertical(canonical);
+    const nextPreset = verticalPresetModules(nextVertical);
     const merchant = getMerchant();
-    const next = { ...(merchant || {}), category: value };
+    const next = { ...(merchant || {}), category: canonical };
     try { localStorage.setItem("dd_merchant", JSON.stringify(next)); } catch { /* ignore */ }
     const saved = getSetupData();
-    setSetupData({ ...(saved || {}), category: value });
-    setCategoryState(value);
+    // Preset the dashboard to the new category's default toolset so a
+    // religion desk gets Donations (not Orders) and a shop desk gets Orders.
+    // Pass { keepModules: true } only when the caller wants to preserve custom tools.
+    const modulesToSave = opts.keepModules && Array.isArray(saved?.modules) && saved.modules.length
+      ? saved.modules
+      : nextPreset;
+    setSetupData({ ...(saved || {}), category: canonical, modules: modulesToSave });
+    setEnabledIds(modulesToSave);
+    setCategoryState(canonical);
     if (merchant?.tenantId) {
-      try { await saveCategory(value); } catch { /* backend best-effort */ }
+      try { await saveCategory(canonical, modulesToSave); } catch { /* backend best-effort */ }
+    } else {
+      try { await saveDashboardModules(modulesToSave); } catch { /* local-only */ }
     }
   }, []);
 
@@ -100,15 +122,24 @@ export function VerticalProvider({ children }) {
     }
   }, [resolvedIds]);
 
+  const resetModules = useCallback(async () => {
+    setEnabledIds(presetIds);
+    try { await saveDashboardModules(presetIds); } catch { /* best-effort */ }
+  }, [presetIds]);
+
   return (
     <VerticalContext.Provider value={{
       vertical,
       category,
+      categoryName,
+      categoryLower,
       loading,
       setCategory,
       modules: resolvedIds,
+      presetModules: presetIds,
       isEnabled,
       toggleModule,
+      resetModules,
       savingModules,
     }}>
       {children}

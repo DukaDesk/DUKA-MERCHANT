@@ -14,6 +14,7 @@ import { hasPendingPublication, publishProject, buildManifestPreview, getRelease
 import { getPublishedDefinition } from "../../services/api";
 import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
+import BuilderAgentPanel from "./BuilderAgentPanel";
 
 const PREVIEW_SIZES = {
   mobile: { width: 390, height: 740, label: "Mobile", icon: "M12 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2s2-.9 2-2V4c0-1.1-.9-2-2-2z" },
@@ -86,6 +87,7 @@ export default function SectionEditor({ store, onBack }) {
   const [showReleases, setShowReleases] = useState(false);
   const [releases, setReleases] = useState([]);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showBuilderAgent, setShowBuilderAgent] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [focusSubKey, setFocusSubKey] = useState(null);
   const [navSelected, setNavSelected] = useState(false);
@@ -224,6 +226,12 @@ export default function SectionEditor({ store, onBack }) {
     }
   }, [data, previewMode]);
 
+  const handleApplyBuilderDesign = (nextDesign) => {
+    store.loadTemplate(nextDesign);
+    setShowBuilderAgent(false);
+    toast.success("AI proposal applied to canvas. Review and edit before publishing.");
+  };
+
   const handlePreviewNavigate = useCallback((screenId, mode = "replace") => {
     if (!screenId) return;
     const target = resolvePreviewTarget(screenId, data);
@@ -305,11 +313,8 @@ export default function SectionEditor({ store, onBack }) {
       return;
     }
     setPublicationPending(!!result.pending);
-    if (result.success && result.status === "in_review") {
-      toast.success("App submitted for admin approval. It will go live after approval.");
-      setTimeout(() => onBack?.(), 1200);
-    } else if (result.success) {
-      toast.success(`Published v${result.version} — mobile manifest updated!`);
+    if (result.success) {
+      toast.success(result.status === "in_review" ? `App v${result.version} submitted for admin review` : `Published v${result.version} — mobile manifest updated!`);
       if (result.verifiedPrevious) toast.info("The previous publication is confirmed. Publish again to send any newer edits.");
       else setTimeout(() => onBack?.(), 1200);
     } else if (result.pending) {
@@ -339,7 +344,7 @@ export default function SectionEditor({ store, onBack }) {
     if (result.success) {
       const history = await getReleaseHistory();
       setReleases(history);
-      toast.success(result.verifiedPrevious ? "Previous publication verified; no new rollback was sent" : "Rollback confirmed live");
+      toast.success(result.status === "in_review" ? `Rollback v${result.version} submitted for admin review` : result.verifiedPrevious ? "Previous publication verified; no new rollback was sent" : "Rollback confirmed live");
     } else if (result.pending) { toast.info(result.error); }
     else { toast.error(result.error || "Rollback failed"); }
   }, []);
@@ -591,6 +596,15 @@ export default function SectionEditor({ store, onBack }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           </button>
 
+          <button type="button" onClick={() => setShowBuilderAgent(value => !value)} style={{
+            display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px",
+            border: `1px solid ${showBuilderAgent ? theme.active : theme.border}`, borderRadius: theme.radius.md,
+            background: showBuilderAgent ? "#FFF1D6" : theme.surface, color: "#7C3F08",
+            fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+          }} title="Describe what you want to build with the DukaDesk AI agent">
+            <Sparkles size={15} /> Build with AI
+          </button>
+
           <button onClick={() => setShowTemplates(true)} className="template-cta"
             style={{
               background: "linear-gradient(135deg, #FBBF24, #F59E0B)",
@@ -838,6 +852,14 @@ export default function SectionEditor({ store, onBack }) {
           )}
         </div>
       </div>
+
+      {showBuilderAgent && <BuilderAgentPanel
+        design={data}
+        currentScreenId={store.currentScreenId}
+        theme={theme}
+        onApply={handleApplyBuilderDesign}
+        onClose={() => setShowBuilderAgent(false)}
+      />}
 
       {/* Validation errors */}
       {validationErrors && (

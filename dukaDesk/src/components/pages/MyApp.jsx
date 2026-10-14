@@ -4,10 +4,12 @@ import { Plus, LayoutTemplate, PenTool, Smartphone, Globe, Check, X, Store } fro
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle, btnSecondary } from "../../theme";
 import { getMyApp, getDesignData } from "../../services/api";
+import { useVertical } from "../../runtime/VerticalContext";
 import { Loading } from "../layout/States";
 
 export default function MyApp() {
   const navigate = useNavigate();
+  const { categoryLower } = useVertical();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const [app, setApp] = useState(null);
@@ -31,6 +33,7 @@ export default function MyApp() {
 
   const cols = isMobile ? "1fr" : isTablet ? "1fr 1fr" : "repeat(2, 1fr)";
   const isLive = app?.status === "live";
+  const statusLabel = app?.status === "in_review" ? "Awaiting admin review" : app?.status === "rejected" ? "Changes requested" : isLive ? "Live" : app?.status === "unverified" ? "Not verified" : "Draft";
   const brandColor = app?.color || AMBER;
   const storeName = app?.appName || app?.businessName || app?.business || "My App";
 
@@ -77,7 +80,7 @@ export default function MyApp() {
             <div style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}CC)`, padding: 24, color: "#fff", position: "relative" }}>
               <div style={{ position: "absolute", top: -12, right: -12, width: 96, height: 96, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
               <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>
-                <Store size={14} /> {app.category || "Your business"}
+                <Store size={14} /> {app.category || `Your ${categoryLower}`}
               </div>
               <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>{storeName}</div>
               {app.tagline && <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>{app.tagline}</div>}
@@ -93,8 +96,8 @@ export default function MyApp() {
                 <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
                   <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Status</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: NAVY }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: isLive ? "#2ECC71" : "#9CA3AF" }} />
-                    {isLive ? "Live" : app.status === "unverified" ? "Not verified" : "Draft"}
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: isLive ? "#2ECC71" : app.status === "in_review" ? AMBER : app.status === "rejected" ? "#DC2626" : "#9CA3AF" }} />
+                    {statusLabel}
                   </div>
                 </div>
                 <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
@@ -114,6 +117,8 @@ export default function MyApp() {
                   </div>
                 </div>
               </div>
+              {app.status === "in_review" && <div role="status" style={{ borderLeft: `3px solid ${AMBER}`, padding: "9px 12px", background: "#FFF8ED", color: "#78350F", fontSize: 13 }}>Your app v{app.submissionVersion} is with our team for review. It will appear in the mobile app after approval.</div>}
+              {app.status === "rejected" && <div role="status" style={{ borderLeft: "3px solid #DC2626", padding: "9px 12px", background: "#FEF2F2", color: "#991B1B", fontSize: 13 }}>Review feedback: {app.submissionReason || "Update your app and submit it again for review."}</div>}
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: "auto", paddingTop: 6 }}>
                 <button onClick={() => navigate("/canvas-editor")} style={{ flex: 1, minWidth: 140, background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "12px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "'Sora',sans-serif" }}>

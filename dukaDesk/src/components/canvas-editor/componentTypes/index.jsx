@@ -38,7 +38,7 @@ export function getTypeNames() {
 /* ── Component taxonomy (Figma-style category folders) ── */
 export const COMPONENT_CATEGORIES = [
   { key: "buttons", label: "Buttons & Actions", icon: Square },
-  { key: "icons", label: "Icons & Arrows", icon: Sparkles },
+  { key: "icons", label: "Icons", icon: Sparkles },
   { key: "inputs", label: "Inputs & Forms", icon: Pencil },
   { key: "text", label: "Text & Content", icon: Type },
   { key: "media", label: "Media", icon: ImageIcon },
@@ -95,6 +95,19 @@ export function textStyleFields(prefix) {
 export function applyTextStyle(style) {
   if (!style) return {};
   const out = {};
+  const applySpacing = key => {
+    const value = style[key];
+    if (value == null) return;
+    if (typeof value === "number" && Number.isFinite(value)) {
+      out[key] = value;
+      return;
+    }
+    if (typeof value !== "object" || Array.isArray(value)) return;
+    for (const side of ["top", "right", "bottom", "left"]) {
+      const amount = Number(value[side]);
+      if (Number.isFinite(amount)) out[`${key}${side[0].toUpperCase()}${side.slice(1)}`] = amount;
+    }
+  };
   if (style.fontFamily) out.fontFamily = `'${style.fontFamily}',sans-serif`;
   if (style.fontSize != null && style.fontSize !== "") out.fontSize = Number(style.fontSize);
   if (style.fontWeight) out.fontWeight = style.fontWeight;
@@ -104,6 +117,8 @@ export function applyTextStyle(style) {
   if (style.textTransform && style.textTransform !== "none") out.textTransform = style.textTransform;
   if (style.color) out.color = style.color;
   if (style.alignment) out.textAlign = style.alignment;
+  applySpacing("padding");
+  applySpacing("margin");
   return out;
 }
 
@@ -120,6 +135,8 @@ export function resolveTextStyle(props, subKey, defaults) {
     textTransform: bag.textTransform ?? d.textTransform,
     color: bag.color ?? d.color,
     alignment: bag.alignment ?? d.alignment,
+    padding: bag.padding ?? d.padding,
+    margin: bag.margin ?? d.margin,
   };
 }
 
@@ -242,8 +259,8 @@ registerComponentType("hero_banner", {
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,rgba(10,10,20,0.1) 0%,rgba(10,10,20,0.7) 100%)" }} />
         )}
         <div style={{ position: "relative", zIndex: 1, maxWidth: splitImage ? "58%" : "100%", width: "100%" }}>
-          {props.badge && <span style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "badge", { fontFamily: "Inter", fontSize: 11, fontWeight: "600", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#6B4200" })), { background: "#F4A026", padding: "4px 12px", borderRadius: 20, marginBottom: 12, display: "inline-block" })}>{props.badge}</span>}
-          {props.title && <div style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "title", { fontFamily: "Sora", fontSize: 22, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" })), { marginBottom: 4 })}>{props.title}</div>}
+            {props.badge && <span style={Object.assign({ background: "#F4A026", padding: "4px 12px", borderRadius: 20, marginBottom: 12, display: "inline-block" }, applyTextStyle(resolveTextStyle(props, "badge", { fontFamily: "Inter", fontSize: 11, fontWeight: "600", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#6B4200" }))) }>{props.badge}</span>}
+              {props.title && <div style={Object.assign({ marginBottom: 4 }, applyTextStyle(resolveTextStyle(props, "title", { fontFamily: "Sora", fontSize: 22, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" })))}>{props.title}</div>}
           {props.subtitle && <div style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "subtitle", { fontFamily: "Inter", fontSize: 13, fontWeight: "400", fontStyle: "normal", lineHeight: 1.4, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" })), { opacity: 0.8 })}>{props.subtitle}</div>}
         </div>
       </div>
@@ -286,7 +303,7 @@ registerComponentType("menu_item", {
     <div style={{ display: "flex", gap: 12, padding: "12px 16px", background: "#FCF8FA", borderRadius: 12, boxShadow: "0px 2px 12px rgba(0,0,0,0.08)", border: "1px solid rgba(200,197,205,0.3)", width: w, height: h, alignItems: "center" }}>
       <div style={{ width: 48, height: 48, background: "#F1EDEF", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}><IconGlyph name={props.emoji || "Utensils"} size={22} /></div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "name", { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#1C1B1D" })), { marginBottom: 2 })}>{props.name}</div>
+        <div style={Object.assign({ marginBottom: 2 }, applyTextStyle(resolveTextStyle(props, "name", { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#1C1B1D" })))}>{props.name}</div>
         {props.desc && <div style={applyTextStyle(resolveTextStyle(props, "desc", { fontFamily: "Inter", fontSize: 11, fontWeight: "400", fontStyle: "normal", lineHeight: 1.3, letterSpacing: 0, textTransform: "none", color: "#6B7280" }))}>{props.desc}</div>}
       </div>
       <span style={Object.assign({}, applyTextStyle(resolveTextStyle(props, "price", { fontFamily: "Sora", fontSize: 14, fontWeight: "700", fontStyle: "normal", lineHeight: 1.2, letterSpacing: 0, textTransform: "none", color: "#1A1A2E" })), { whiteSpace: "nowrap" })}>{props.price}</span>
@@ -385,7 +402,7 @@ registerComponentType("text_block", {
       lineHeight: props.lineHeight != null ? Number(props.lineHeight) : 1.4,
       letterSpacing: props.letterSpacing != null ? `${Number(props.letterSpacing)}px` : "normal",
       textTransform: props.textTransform && props.textTransform !== "none" ? props.textTransform : "none",
-      padding: "2px 0",
+      padding: 0,
       width: w, height: h, overflow: "hidden",
     }}>{props.text}</div>
     );
@@ -426,8 +443,43 @@ registerComponentType("image_block", {
   },
 });
 
-registerComponentType("rectangle", {
-  type: "rectangle",
+registerComponentType("video", {
+  type: "video",
+  label: "Video",
+  icon: Video,
+  category: "media",
+  defaultWidth: 200,
+  defaultHeight: 220,
+  defaultProps: { source: "", poster: "", autoplay: "false", muted: "false", loop: "false", controls: "true", contentFit: "cover", height: 220 },
+  subElements: [
+    { key: "source", label: "Video URL", icon: Video, kind: "text" },
+    { key: "poster", label: "Poster Image", icon: ImageIcon, kind: "image" },
+  ],
+  propFields: [
+    { key: "source", label: "Video URL", type: "text" },
+    { key: "poster", label: "Poster Image URL", type: "text" },
+    { key: "autoplay", label: "Autoplay", type: "select", options: ["true", "false"] },
+    { key: "muted", label: "Muted", type: "select", options: ["true", "false"] },
+    { key: "loop", label: "Loop", type: "select", options: ["true", "false"] },
+    { key: "controls", label: "Player Controls", type: "select", options: ["true", "false"] },
+    { key: "contentFit", label: "Object Fit", type: "select", options: ["cover", "contain", "fill"], group: "layout" },
+    { key: "height", label: "Height (px)", type: "number", group: "layout" },
+  ],
+  render: (props) => {
+    const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : 220;
+    return (
+    <div style={{ width: "100%", height: h, overflow: "hidden", borderRadius: 8, background: "#111827", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {props.source ? (
+        <video src={props.source} poster={props.poster || undefined} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted playsInline preload="metadata" />
+      ) : (
+        <span style={{ color: "#9CA3AF", fontSize: 12 }}>No video — paste a video URL</span>
+      )}
+    </div>
+    );
+  },
+});
+
+registerComponentType("rectangle", {  type: "rectangle",
   label: "Rectangle",
   icon: Square,
   category: "shapes",
@@ -445,7 +497,7 @@ registerComponentType("button", {
   category: "buttons",
   defaultWidth: 120,
   defaultHeight: 40,
-  defaultProps: { label: "Button", color: "#FFFFFF", background: "#1A1A2E", variant: "filled", radius: 10, fontFamily: "Inter", fontSize: 14, fontWeight: "600", textTransform: "none", action: "",
+  defaultProps: { label: "Button", color: "#FFFFFF", background: "#1A1A2E", borderColor: "transparent", borderWidth: 1.5, variant: "filled", radius: 10, fontFamily: "Inter", fontSize: 14, fontWeight: "600", textTransform: "none", action: "",
     textStyles: {
       label: { fontFamily: "Inter", fontSize: 14, fontWeight: "600", fontStyle: "normal", lineHeight: 1.25, letterSpacing: 0, textTransform: "none", color: "#FFFFFF" },
     }
@@ -453,6 +505,7 @@ registerComponentType("button", {
   subElements: [
     { key: "label", label: "Label", icon: Type, kind: "text", styleable: true },
     { key: "background", label: "Fill Color", icon: Palette, kind: "color" },
+    { key: "borderColor", label: "Border Color", icon: Square, kind: "color" },
     { key: "action", label: "Action (JSON)", icon: Zap, kind: "json" },
   ],
   propFields: [
@@ -463,7 +516,9 @@ registerComponentType("button", {
     { key: "iconPosition", label: "Icon Position", type: "select", options: ["left", "right"], group: "layout" },
     { key: "iconSize", label: "Icon Size", type: "number", group: "layout" },
     { key: "variant", label: "Variant", type: "select", options: ["filled", "outline", "ghost"], group: "layout" },
-    { key: "background", label: "Background / Border", type: "color", group: "background" },
+    { key: "background", label: "Fill Color", type: "color", group: "background" },
+    { key: "borderColor", label: "Border Color", type: "color", group: "border", allowTransparent: true },
+    { key: "borderWidth", label: "Border Width (px)", type: "number", group: "border" },
     { key: "color", label: "Text Color", type: "color", group: "colors" },
     { key: "radius", label: "Corner Radius", type: "radius", group: "border" },
     { key: "fontFamily", label: "Font Family", type: "select", options: FONT_FAMILIES, group: "typography" },
@@ -480,6 +535,8 @@ registerComponentType("button", {
     const radius = radiusVal(props.radius, 10);
     const filled = variant === "filled";
     const outlined = variant === "outline";
+    const borderColor = props.borderColor ?? (outlined ? accent : "transparent");
+    const borderWidth = Number.isFinite(Number(props.borderWidth)) ? Number(props.borderWidth) : 1.5;
     const w = props.width != null && Number(props.width) > 0 ? Number(props.width) : "100%";
     const h = props.height != null && Number(props.height) > 0 ? Number(props.height) : "100%";
     return (
@@ -491,7 +548,7 @@ registerComponentType("button", {
         <span style={{
           display: "inline-flex", flexDirection: props.iconPosition === "right" ? "row-reverse" : "row", alignItems: "center", justifyContent: "center", gap: 8, padding: props.showLabel === "false" ? 0 : "10px 24px", borderRadius: props.shape === "round" ? 999 : radius, minHeight: props.height || 44,
           background: filled ? accent : "transparent",
-          border: outlined ? `1.5px solid ${accent}` : "none",
+          border: `${borderWidth}px solid ${borderColor}`,
           color: props.color || (filled ? "#FFFFFF" : "#1C1B1D"),
           fontFamily: props.fontFamily ? `'${props.fontFamily}',sans-serif` : "'Inter',sans-serif", fontWeight: props.fontWeight || 600, fontSize: props.fontSize || 14,
           textTransform: props.textTransform && props.textTransform !== "none" ? props.textTransform : "none",
@@ -697,7 +754,7 @@ registerComponentType("header_bar", {
 
 registerComponentType("menu_grid", {
   type: "menu_grid",
-  label: "Menu Grid",
+  label: "Product Grid",
   icon: ClipboardList,
   category: "commerce",
   defaultWidth: 358,
@@ -835,13 +892,19 @@ registerComponentType("menu_grid", {
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}><IconGlyph name={it.emoji || "Utensils"} size={props.iconSize || 26} /></div>
               )}
-              <div style={{ fontSize: 12, fontWeight: 600, color: props.textColor || "#1C1B1D", lineHeight: 1.25 }}>{it.name || "Item"}</div>
-              {it.desc && <div style={{ fontSize: 10.5, color: "#6B7280", lineHeight: 1.3, marginTop: 2 }}>{it.desc}</div>}
+              <div
+                onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items:name"); } : undefined}
+                style={{ fontSize: 12, fontWeight: 600, color: it.textStyles?.name?.color || it.textColor || props.textColor || "#1C1B1D", lineHeight: 1.25, cursor: props.onItemPress ? "text" : undefined, ...(props.itemSelectionStyle?.("items:name", i) || {}) }}>{it.name || "Item"}</div>
+              {it.desc && <div
+                onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items:desc"); } : undefined}
+                style={{ fontSize: 10.5, color: it.textStyles?.desc?.color || "#6B7280", lineHeight: 1.3, marginTop: 2, cursor: props.onItemPress ? "text" : undefined, ...(props.itemSelectionStyle?.("items:desc", i) || {}) }}>{it.desc}</div>}
               <div style={{ marginTop: 3 }}>
                 {it.oldPrice && (
                   <span style={{ fontSize: 10.5, color: "#9CA3AF", fontWeight: 600, textDecoration: "line-through", marginRight: 5 }}>{it.oldPrice}</span>
                 )}
-                {it.price && <span style={{ fontSize: 11.5, color: props.priceColor || "#F4A026", fontWeight: 700 }}>{it.price}</span>}
+                {it.price && <span
+                  onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items:price"); } : undefined}
+                  style={{ fontSize: 11.5, color: it.textStyles?.price?.color || it.priceColor || props.priceColor || "#F4A026", fontWeight: 700, cursor: props.onItemPress ? "text" : undefined, ...(props.itemSelectionStyle?.("items:price", i) || {}) }}>{it.price}</span>}
               </div>
             </div>
           );
@@ -1396,12 +1459,12 @@ registerComponentType("icon", {
   label: "Icon",
   icon: Sparkles,
   category: "icons",
-  defaultWidth: 32,
-  defaultHeight: 32,
-  defaultProps: { name: "Home", size: 24, color: "#1C1B1D" },
+  defaultWidth: 40,
+  defaultHeight: 40,
+  defaultProps: { name: "Star", size: 24, color: "#1C1B1D", width: 40, height: 40 },
   propFields: [
     { key: "name", label: "Icon", type: "icon" },
-    { key: "size", label: "Size", type: "number" },
+    { key: "size", label: "Size", type: "number", group: "layout" },
     { key: "color", label: "Color", type: "color", group: "colors" },
   ],
   render: (props) => {
@@ -1421,11 +1484,11 @@ registerComponentType("chevron", {
   category: "icons",
   defaultWidth: 40,
   defaultHeight: 40,
-  defaultProps: { direction: "right", color: "#1C1B1D", size: 24 },
+  defaultProps: { direction: "right", color: "#1C1B1D", size: 24, width: 40, height: 40 },
   propFields: [
     { key: "direction", label: "Direction", type: "select", options: ["right", "left", "up", "down"] },
-    { key: "size", label: "Size", type: "number" },
-    { key: "color", label: "Color", type: "color" },
+    { key: "size", label: "Size", type: "number", group: "layout" },
+    { key: "color", label: "Color", type: "color", group: "colors" },
   ],
   render: (props) => {
     const ArrowGlyph = { right: ArrowRight, left: ArrowLeft, up: ArrowUp, down: ArrowDown }[props.direction] || ArrowRight;

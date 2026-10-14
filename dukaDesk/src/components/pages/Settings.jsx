@@ -5,14 +5,17 @@ import { useAuth } from "../../contexts";
 import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, PURPLE, cardStyle, inputStyle, labelStyle, btnPrimary, btnSecondary, pageHeading, pageSubtitle, transition } from "../../theme";
 import { Store, Mail, Phone, MapPin, Globe, Clock, Save, ArrowLeft, Building, Palette, RefreshCw } from "lucide-react";
-import { getMerchant, updateTenant, getTenantConfig, updateTenantConfig } from "../../services/api";
+import { getMerchant, updateTenant, getTenantConfig, updateTenantConfig, setMerchant } from "../../services/api";
+import { useVertical } from "../../runtime/VerticalContext";
+import { CURRENCIES, DEFAULT_CURRENCY } from "../../utils/currency";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 export default function Settings() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { merchant } = useAuth();
+  const { merchant, handleAuth } = useAuth();
+  const { categoryName, categoryLower } = useVertical();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
@@ -25,6 +28,7 @@ export default function Settings() {
     country: "",
     website: "",
     timezone: "Africa/Lagos",
+    currency: DEFAULT_CURRENCY,
     hours: {},
     accentColor: AMBER,
     logo: null,
@@ -46,6 +50,7 @@ export default function Settings() {
             businessName: p.businessName || f.businessName,
             hours: p.hours || f.hours,
             accentColor: p.accentColor || f.accentColor,
+            currency: p.currency || merchant?.currency || DEFAULT_CURRENCY,
           }));
         }
       }).catch(() => {});
@@ -58,7 +63,7 @@ export default function Settings() {
   const handleHourChange = (day, value) => setForm(f => ({ ...f, hours: { ...f.hours, [day]: value } }));
 
   const handleSave = async () => {
-    if (!form.businessName.trim()) { toast.error("Business name is required"); return; }
+    if (!form.businessName.trim()) { toast.error(`${categoryName} name is required`); return; }
     if (!form.email.trim()) { toast.error("Email is required"); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { toast.error("Invalid email format"); return; }
     if (form.phone && !/^[\d\s\+\-\(\)]{7,20}$/.test(form.phone)) { toast.error("Invalid phone number format"); return; }
@@ -83,12 +88,17 @@ export default function Settings() {
               country: form.country,
               website: form.website,
               timezone: form.timezone,
+              currency: form.currency,
               hours: form.hours,
               accentColor: form.accentColor,
             },
           },
         });
       }
+      const current = getMerchant() || merchant || {};
+      const next = { ...current, currency: form.currency || DEFAULT_CURRENCY };
+      setMerchant(next);
+      if (typeof handleAuth === "function") handleAuth(next);
       toast.success("Settings saved successfully!");
     } catch {
       toast.error("Failed to save settings");
@@ -102,7 +112,7 @@ export default function Settings() {
         <ArrowLeft size={16} /> Back to Dashboard
       </button>
       <h2 style={pageHeading}>Settings</h2>
-      <p style={pageSubtitle}>Manage your business configuration and branding</p>
+      <p style={pageSubtitle}>Manage your {categoryLower} configuration and branding</p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
@@ -112,16 +122,16 @@ export default function Settings() {
               <Building size={18} color={AMBER} />
             </div>
             <div>
-              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Business Information</div>
-              <div style={{ fontSize: 13, color: "#6B7280" }}>Your public business details</div>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>{categoryName} Information</div>
+              <div style={{ fontSize: 13, color: "#6B7280" }}>Your public {categoryLower} details</div>
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
             <div>
-              <label htmlFor="settings-business-name" style={labelStyle}>Business Name</label>
+              <label htmlFor="settings-business-name" style={labelStyle}>{categoryName} Name</label>
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <Store size={16} style={{ position: "absolute", left: 12, color: "#9CA3AF" }} />
-                <input id="settings-business-name" name="settings-business-name" style={{ ...inputStyle, paddingLeft: 36 }} value={form.businessName} onChange={e => handleChange("businessName", e.target.value)} placeholder="Business name" />
+                <input id="settings-business-name" name="settings-business-name" style={{ ...inputStyle, paddingLeft: 36 }} value={form.businessName} onChange={e => handleChange("businessName", e.target.value)} placeholder={`${categoryName} name`} />
               </div>
             </div>
             <div>
@@ -132,8 +142,8 @@ export default function Settings() {
               </div>
             </div>
             <div style={{ gridColumn: isMobile ? "auto" : "1 / -1" }}>
-              <label htmlFor="settings-description" style={labelStyle}>Business Description</label>
-              <textarea id="settings-description" name="settings-description" style={{ ...inputStyle, height: 80, padding: 12, resize: "vertical" }} value={form.businessDescription} onChange={e => handleChange("businessDescription", e.target.value)} placeholder="Describe your business" />
+              <label htmlFor="settings-description" style={labelStyle}>{categoryName} Description</label>
+              <textarea id="settings-description" name="settings-description" style={{ ...inputStyle, height: 80, padding: 12, resize: "vertical" }} value={form.businessDescription} onChange={e => handleChange("businessDescription", e.target.value)} placeholder={`Describe your ${categoryLower}`} />
             </div>
           </div>
         </div>
@@ -189,8 +199,8 @@ export default function Settings() {
               <Clock size={18} color={PURPLE} />
             </div>
             <div>
-              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Business Hours</div>
-              <div style={{ fontSize: 13, color: "#6B7280" }}>When your business is open</div>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>{categoryName} Hours</div>
+              <div style={{ fontSize: 13, color: "#6B7280" }}>When your {categoryLower} is open</div>
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
@@ -233,6 +243,14 @@ export default function Settings() {
                 <option value="Africa/Johannesburg">Africa/Johannesburg (UTC+2)</option>
                 <option value="America/New_York">America/New_York (UTC-5)</option>
                 <option value="Europe/London">Europe/London (UTC+0)</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="settings-currency" style={labelStyle}>Currency</label>
+              <select id="settings-currency" name="settings-currency" style={inputStyle} value={form.currency} onChange={e => handleChange("currency", e.target.value)}>
+                {CURRENCIES.map(c => (
+                  <option key={c.code} value={c.code}>{c.symbol} — {c.label} ({c.code})</option>
+                ))}
               </select>
             </div>
           </div>

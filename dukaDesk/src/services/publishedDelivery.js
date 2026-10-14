@@ -40,20 +40,37 @@ export async function verifyPublication(id) {
   const operation = pendingPublication(id);
   if (!operation) return { success: false, error: 'No publication is awaiting verification' };
   try {
-    const [definition, response] = await Promise.all([readPublished(id), httpClient.get('/api/v1/bff/mobile/tenant/' + encodeURIComponent(id) + '/manifest')]);
-    const bff = unwrap(response);
-    if (!containsPublishedSnapshot(definition, operation.manifest) || !containsPublishedSnapshot(bff, operation.manifest)) throw new Error('Definition and mobile manifest do not both match the submitted snapshot.');
-    // Recover a lost receipt only through the backend release record, never editor config.
-    let receipt = operation.receipt;
-    if (!receipt?.releaseId || !receipt?.checksum) {
-      const record = unwrap(await httpClient.get(path(id) + '/publishing/releases/' + encodeURIComponent(operation.manifest.version)));
-      if (!containsPublishedSnapshot(record?.manifest, operation.manifest)) throw new Error('Backend release record does not match the submitted snapshot.');
-      receipt = { releaseId: record.id, version: record.version, checksum: record.checksum, publishedAt: record.publishedAt };
+    // Silent: backends deployed before the review-flow endpoint return 404 here.
+    const response = unwrap(await httpClient.get(path(id) + '/publishing/submission', { silent: true }));
+    const release = response?.release;
+    if (release?.version !== operation.manifest.version) {
+      if (operation.kind === 'rollback' && release?.rollbackFrom === operation.manifest.version) {
+        operation.manifest = { ...operation.manifest, version: release.version };
+        remember(id, operation);
+      } else {
+        throw new Error('The latest backend submission does not match the saved request.');
+      }
     }
-    if (!receipt.releaseId || !receipt.checksum || receipt.version !== operation.manifest.version) throw new Error('Backend release receipt is missing or conflicts with the submitted version.');
-    remember(id, { ...operation, receipt });
+    if (response.status === 'in_review') {
+      sessionStorage.removeItem(key(id));
+      return { success: true, status: 'in_review', pendingReview: true, version: release.version, releaseId: release.id };
+    }
+    if (response.status === 'rejected') {
+      sessionStorage.removeItem(key(id));
+      return { success: false, status: 'rejected', error: release.releaseNotes || 'The app submission was rejected.' };
+    }
+    if (response.status !== 'live') throw new Error('The backend has not confirmed this app submission.');
+
+    const [definition, mobile] = await Promise.all([
+      readPublished(id),
+      httpClient.get('/api/v1/bff/mobile/tenant/' + encodeURIComponent(id) + '/manifest'),
+    ]);
+    const bff = unwrap(mobile);
+    if (!containsPublishedSnapshot(definition, operation.manifest) || !containsPublishedSnapshot(bff, operation.manifest)) throw new Error('Definition and mobile manifest do not both match the approved snapshot.');
+    const receipt = operation.receipt || { releaseId: release.id, version: release.version };
+    if (receipt.releaseId && receipt.releaseId !== release.id) throw new Error('The approved release does not match the saved receipt.');
     sessionStorage.removeItem(key(id));
-    return { success: true, status: 'live', version: receipt.version, releaseId: receipt.releaseId, receipt, manifest: definition };
+    return { success: true, status: 'live', version: release.version, releaseId: release.id, receipt, manifest: definition };
   } catch (error) { return pending(operation, error.message); }
 }
 export async function submitPublication(id, manifest, rollbackVersion) {
@@ -65,6 +82,21 @@ export async function submitPublication(id, manifest, rollbackVersion) {
     const suffix = rollbackVersion ? '/publishing/rollback/' + encodeURIComponent(rollbackVersion) : '/publishing/publish';
     const response = unwrap(await httpClient.post(path(id) + suffix, rollbackVersion ? {} : { version: manifest.version, manifest }, { headers: { 'Idempotency-Key': operation.idempotencyKey }, silentSuccess: true }));
     operation.receipt = { ...response, releaseId: response?.releaseId ?? response?.id };
+    if (response?.status === 'pending_review' || response?.pendingReview) {
+      if (response.version && response.version !== manifest.version) {
+        if (rollbackVersion) operation.manifest = { ...manifest, version: response.version };
+        else {
+          remember(id, operation);
+          return pending(operation, 'The server returned a different submission version.');
+        }
+      }
+      sessionStorage.removeItem(key(id));
+      return { success: true, status: 'in_review', pendingReview: true, version: response.version || manifest.version, releaseId: operation.receipt.releaseId };
+    }
+    if (!rollbackVersion && !response?.status) {
+      remember(id, operation);
+      return verifyPublication(id);
+    }
     remember(id, operation);
   } catch (error) {
     const status = error.response?.status ?? error.status;
@@ -73,7 +105,7 @@ export async function submitPublication(id, manifest, rollbackVersion) {
       // error.message already carries the interceptor-joined backend errors.
       return { success: false, status: 'rejected', error: status === 413 ? 'Backend rejected this manifest (413). Images were not removed.' : error.message || error.response?.data?.message || 'Publication rejected (' + status + ')' };
     }
-    return pending(operation, error.message || 'The request outcome is unknown.');
+    return verifyPublication(id);
   }
   return verifyPublication(id);
 }

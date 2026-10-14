@@ -6,6 +6,10 @@ import { useIsMobile } from "../../hooks/useMediaQuery";
 import { toast } from "react-toastify";
 import { NAVY, AMBER, GREEN, RED, PURPLE, inputStyle, labelStyle } from "../../theme";
 import { login, signup, forgotPassword, confirmPasswordReset, setToken, googleSignIn } from "../../services/api";
+import { ONBOARDING_COMMERCE_CATEGORIES, resolveCanonicalCategory } from "../../config/taxonomy";
+import { getVertical } from "../../config/verticals";
+import { verticalPresetModules } from "../../config/primitives";
+import { setSetupData, getSetupData, saveDashboardModules } from "../../services/api";
 import GoogleSignInButton from "./GoogleSignInButton";
 import dukaLogo from "../../assets/image/Dukalogo.png";
 
@@ -42,7 +46,7 @@ Auth.propTypes = { onAuth: PropTypes.func.isRequired };
 function LeftPanel({ page, isMobile }) {
   const copy = {
     login: { headline: "Welcome back.", sub: "Your apps, orders, and customers are waiting.", stats: ["2,000+ Merchants", "10,000+ Consumers", "500+ Apps Live"] },
-    signup: { headline: "Launch your mobile app in days.", sub: "No developers. No agencies. Just build, scan, and go live.", props: [{ Icon: Smartphone, text: "Your business gets a real mobile app" }, { Icon: TabletSmartphone, text: "Customers scan your QR code to access it" }, { Icon: BarChart3, text: "Manage everything from this dashboard" }] },
+    signup: { headline: "Launch your mobile app in days.", sub: "No developers. No agencies. Just build, scan, and go live.", props: [{ Icon: Smartphone, text: "Your desk gets a real mobile app" }, { Icon: TabletSmartphone, text: "Customers scan your QR code to access it" }, { Icon: BarChart3, text: "Manage everything from this dashboard" }] },
     forgot: { headline: "We've got you.", sub: "Password resets are quick and secure." },
     "reset-password": { headline: "Almost there.", sub: "Enter the OTP and your new password." },
   };
@@ -86,7 +90,7 @@ function LeftPanel({ page, isMobile }) {
           {["Ada", "Ibrahim", "Grace", "Fatima"].map((n, i) => (
             <div key={i} style={{ width: 32, height: 32, borderRadius: "50%", background: [GREEN, RED, PURPLE, AMBER][i], display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff", border: `2px solid ${NAVY}`, marginLeft: i > 0 ? -10 : 0, position: "relative", zIndex: 4 - i }}>{n[0]}</div>
           ))}
-          <span style={{ color: "#6B7280", fontSize: 13, marginLeft: 16 }}>Join 2,000+ Nigerian businesses</span>
+          <span style={{ color: "#6B7280", fontSize: 13, marginLeft: 16 }}>Join 2,000+ Nigerian desks</span>
         </div>
       </div>
     </div>
@@ -183,6 +187,9 @@ LoginForm.propTypes = { onAuth: PropTypes.func.isRequired, setPage: PropTypes.fu
 
 function SignupForm({ onAuth, setPage }) {
   const [form, setForm] = useState({ name: "", email: "", countryCode: "+234", phone: "", password: "", confirm: "" });
+  const [deskCategory, setDeskCategory] = useState(() => {
+    try { return getSetupData()?.category || ""; } catch { return ""; }
+  });
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -244,28 +251,60 @@ function SignupForm({ onAuth, setPage }) {
       const err = validateField(key, form[key]);
       if (err) { newErrors[key] = err; hasError = true; }
     });
+    if (!deskCategory) { newErrors.deskCategory = "Choose your desk type so we can preset your tools"; hasError = true; }
     setTouched(Object.keys(validators).reduce((acc, k) => ({ ...acc, [k]: true }), {}));
     setErrors(newErrors);
     if (hasError) return;
 
     setLoading(true);
     try {
-      const res = await signup({ fullName: form.name, email: form.email, phone: form.countryCode + form.phone, password: form.password });
+      // Granular commerce picks (Cafe, Pharmacy, ...) map to their broad
+      // industry preset — same rule as Onboarding.finishSetup. Backend,
+      // dashboard preset and stored merchant all keep the canonical key.
+      const picked = ONBOARDING_COMMERCE_CATEGORIES.find(c => c.key === deskCategory);
+      const canonical = picked?.preset || resolveCanonicalCategory(deskCategory) || deskCategory;
+      const res = await signup({ fullName: form.name, email: form.email, phone: form.countryCode + form.phone, password: form.password, category: canonical || undefined });
       console.log("[SignupForm] signup result", res);
+      // Preset the dashboard to the chosen business type before first render:
+      // a shop desk gets Orders/Stock, a cafe gets the hospitality preset, etc.
+      if (canonical) {
+        try {
+          const preset = verticalPresetModules(getVertical(canonical));
+          const saved = getSetupData();
+          setSetupData({ ...(saved || {}), category: canonical, modules: preset });
+          try { await saveDashboardModules(preset); } catch { /* backend best-effort */ }
+        } catch { /* preset best-effort */ }
+      }
       setToken(res.token);
-      onAuth(res.merchant);
+      onAuth({ ...res.merchant, ...(canonical ? { category: canonical } : {}) });
     } catch (err) {
       console.error("[SignupForm] signup error", err);
-      setErrors({ submit: err.message || "Signup failed. Please try again." });
+      const status = err?.response?.status ?? err?.status;
+      const msg = err?.message || "";
+      if (status === 409 || /already registered|already exists|conflict/i.test(msg)) {
+        setErrors({ submit: "This email is already registered. Try logging in instead." });
+      } else {
+        setErrors({ submit: err.message || "Signup failed. Please try again." });
+      }
     } finally { setLoading(false); }
   };
 
   const handleGoogleToken = async (idToken) => {
     try {
-      const res = await googleSignIn(idToken);
+      const picked = ONBOARDING_COMMERCE_CATEGORIES.find(c => c.key === deskCategory);
+      const canonical = picked?.preset || resolveCanonicalCategory(deskCategory) || deskCategory;
+      const res = await googleSignIn(idToken, canonical ? { category: canonical } : {});
       console.log("[SignupForm] google sign-in result", res);
+      if (canonical) {
+        try {
+          const preset = verticalPresetModules(getVertical(canonical));
+          const saved = getSetupData();
+          setSetupData({ ...(saved || {}), category: canonical, modules: preset });
+          try { await saveDashboardModules(preset); } catch { /* backend best-effort */ }
+        } catch { /* preset best-effort */ }
+      }
       setToken(res.token);
-      onAuth(res.merchant);
+      onAuth({ ...res.merchant, ...(canonical ? { category: canonical } : {}) });
     } catch (err) {
       console.error("[SignupForm] google sign-in error", err);
       setErrors({ submit: err.message || "Google sign-in failed. Please try again." });
@@ -312,6 +351,33 @@ function SignupForm({ onAuth, setPage }) {
             {showConfirmPw ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         } />
+        <div style={{ marginBottom: 16 }}>
+          <label htmlFor="desk-category" style={labelStyle}>What best describes your business? *</label>
+          <select id="desk-category" value={deskCategory} onChange={e => { setDeskCategory(e.target.value); setErrors(er => ({ ...er, deskCategory: "" })); }} style={{ ...inputStyle, appearance: "none", borderColor: errors.deskCategory ? "#E74C3C" : undefined }}>
+            <option value="">Select business type…</option>
+            {/* Grandfathered: a stored non-commerce type keeps showing (disabled) */}
+            {deskCategory && !ONBOARDING_COMMERCE_CATEGORIES.some(c => c.key === deskCategory) && (
+              <option key={deskCategory} value={deskCategory} disabled>{deskCategory} (current)</option>
+            )}
+            {ONBOARDING_COMMERCE_CATEGORIES.map(c => (
+              <option key={c.key} value={c.key}>{c.icon} {c.label} — {c.desc}</option>
+            ))}
+          </select>
+          {errors.deskCategory && <p style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.deskCategory}</p>}
+          {deskCategory ? (
+            <p style={{ fontSize: 12, color: "#6B7280", marginTop: 8, lineHeight: 1.5 }}>
+              {(() => {
+                const picked = ONBOARDING_COMMERCE_CATEGORIES.find(c => c.key === deskCategory);
+                const canonical = picked?.preset || resolveCanonicalCategory(deskCategory) || deskCategory;
+                const v = getVertical(canonical);
+                const tools = [...(v.modules || []).slice(0, 4).map(m => m.label), ...(v.adminPages || []).map(p => p.label)].slice(0, 5).join(", ");
+                return <><strong style={{ color: NAVY }}>{picked ? picked.label : v.deskLabel}</strong>{picked?.preset ? ` (${v.deskLabel} preset)` : ""}: {tools}. You can add or remove tools later in More Tools.</>;
+              })()}
+            </p>
+          ) : (
+            <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 8 }}>We preset your dashboard tools — e.g. a shop gets Orders, a cafe gets the hospitality preset with Reservations.</p>
+          )}
+        </div>
         <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 20 }}>
           By signing up you agree to our <span onClick={() => window.open("https://dukadesk.com/terms", "_blank")} style={{ color: AMBER, cursor: "pointer", fontWeight: 500 }}>Terms</span> & <span onClick={() => window.open("https://dukadesk.com/privacy", "_blank")} style={{ color: AMBER, cursor: "pointer", fontWeight: 500 }}>Privacy Policy</span>
         </p>

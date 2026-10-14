@@ -1,5 +1,16 @@
 import { resolveInsertionTarget } from "./insertionTarget";
-import { getMerchant } from "../../services/api";
+import { getMerchant, getProducts, mapProductToMenuItem, mapProductToOffer } from "../../services/api";
+
+/* Menu grids and promotion lists show store products — never hand-typed data. */
+function isStoreLinkedList(componentType, fieldKey) {
+  return (componentType === "menu_grid" && fieldKey === "items")
+    || (componentType === "promotion_list" && fieldKey === "offers");
+}
+
+function mapSlotItem(componentType, product) {
+  if (!product) return null;
+  return componentType === "promotion_list" ? mapProductToOffer(product) : mapProductToMenuItem(product);
+}
 import ButtonGallery from "./ButtonGallery";
 import { getComponentCatalog } from "./componentCatalog";
 import IconPicker from "./IconPicker";
@@ -252,11 +263,15 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                     fields={field.fields}
                     value={Array.isArray(val) ? val : []}
                     onChange={(list) => store.updateProp(selectedSectionId, component.id, field.key, list)}
+                    productPicker={isStoreLinkedList(component.type, field.key)}
+                    manualAdd={!isStoreLinkedList(component.type, field.key)}
+                    lockProductFields={isStoreLinkedList(component.type, field.key)}
+                    slotKind={component.type === "promotion_list" ? "offer" : "menu"}
                   />
                 ) : field.type === "bg" ? (
                   <FillEditor value={val} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} />
                 ) : field.type === "color" ? (
-                  <ColorInput value={val || "#000000"} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} />
+                  <ColorInput value={val ?? (field.allowTransparent ? "transparent" : "#000000")} allowTransparent={field.allowTransparent} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} />
                 ) : field.type === "select" ? (
                   <select value={val || (field.options?.[0] || "")}
                     onChange={e => store.updateProp(selectedSectionId, component.id, field.key, e.target.value)}
@@ -296,14 +311,6 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
               </div>
             );
           })}
-
-          {/* Button extras */}
-          {component.type === "button" && (
-            <div style={{ marginBottom: 12 }}>
-              <label style={labelStyle}>Background Color</label>
-              <ColorInput value={component.props?.background || "#F4A026"} onChange={(v) => store.updateProp(selectedSectionId, component.id, "background", v)} />
-            </div>
-          )}
 
           {/* Container children (carousel, nested_section, etc.) */}
           {def?.container && (
@@ -475,6 +482,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
     const init={};
     if(focusedField?.styleable && focusedField?.kind==="text") init["sub-text-style"]=true;
     else if(stylingGroupKeys.length) stylingGroupKeys.forEach((k,i)=> init[k]= i===0);
+    if(component?.type === "button") { init.background = true; init.border = true; }
     // keep sub-text-style open even when other groups exist
     if(focusedField?.styleable && focusedField?.kind==="text" && stylingGroupKeys.length) stylingGroupKeys.forEach((k,i)=> { if(init[k]===undefined) init[k]=false; });
     setStylingOpen(init);
@@ -517,14 +525,19 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
             </button>
             {open && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 6 }}>
-                {items.map(compDef => (
+                {items.map(compDef => {
+                  const presetGlyph = compDef.type === "icon" && compDef.defaultProps?.name ? getLucideIcon(compDef.defaultProps.name) : null;
+                  const chevronDir = compDef.type === "chevron" ? { right: "ArrowRight", left: "ArrowLeft", up: "ArrowUp", down: "ArrowDown" }[compDef.defaultProps?.direction] : null;
+                  const chevronGlyph = chevronDir ? getLucideIcon(chevronDir) : null;
+                  return (
                   <button key={compDef.catalogId || compDef.type} title={compDef.comingSoon ? "Coming soon" : compDef.label} onClick={() => {
                     addCatalogComponent(compDef);
                   }} disabled={addDisabled || compDef.comingSoon} style={{ padding: "6px 4px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: theme.surface, cursor: addDisabled ? "not-allowed" : "pointer", textAlign: "center", fontSize: 10, fontWeight: 500, color: theme.textSecondary, opacity: addDisabled ? 0.45 : 1 }}>
-                    <div style={{ fontSize: 16, marginBottom: 1, color: theme.textMuted }}><IconRender icon={COMPONENT_ICONS[compDef.type] || compDef.icon || FileText} size={16} /></div>
+                    <div style={{ fontSize: 16, marginBottom: 1, color: theme.textMuted }}><IconRender icon={presetGlyph || chevronGlyph || COMPONENT_ICONS[compDef.type] || compDef.icon || FileText} size={16} /></div>
                     <div style={{ fontSize: 9, lineHeight: 1.2 }}>{compDef.label}</div>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -586,7 +599,7 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                 </div>
                 </>}
                 {component.type === "image_block" && <ImageUploader currentSrc={component.props?.src} onUpload={(v) => store.updateProp(selectedSectionId, component.id, "src", v)} />}
-                 {generalFields.length === 0 ? null : generalFields.map(field => <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />)}
+                 {generalFields.length === 0 ? null : generalFields.map(field => <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} lockList={isStoreLinkedList(component.type, field.key)} slotKind={component.type === "promotion_list" ? "offer" : "menu"} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />)}
                 {!focusedField && <PressProperties onSelectTarget={selectPropertyTarget} key={component.id} component={component} fields={fields} focusKey={focusSubKey?.compId === component.id ? focusSubKey.key : null} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} onChange={(key, value) => store.updateProp(selectedSectionId, component.id, key, value)} />}
                 {/* Container children - content structure */}
                 {def?.container && (
@@ -676,6 +689,22 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                           </div>
                           <div style={{ marginBottom: 10 }}><label style={labelStyle}>Letter Spacing (px)</label><input type="number" step="0.5" value={getVal("letterSpacing",0)} onChange={e => { const v=Number(e.target.value); store.updateTextStyle(selectedSectionId, component.id, subKey, "letterSpacing", Number.isFinite(v)?v:0); }} style={textInput} /></div>
                           <div style={{ marginBottom: 4 }}><label style={labelStyle}>Color</label><ColorInput value={getVal("color", "#1C1B1D")} onChange={v => store.updateTextStyle(selectedSectionId, component.id, subKey, "color", v)} /></div>
+                          <div style={{ borderTop: `1px solid ${theme.borderLight}`, marginTop: 12, paddingTop: 12 }}>
+                            <div style={{ marginBottom: 10 }}>
+                              <label style={labelStyle}>Text Alignment</label>
+                              <select aria-label={`${focusedField.label} alignment`} value={getVal("alignment", "left")} onChange={event => store.updateTextStyle(selectedSectionId, component.id, subKey, "alignment", event.target.value)} style={{ ...textInput, cursor: "pointer" }}>
+                                <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
+                              </select>
+                            </div>
+                            <div style={{ marginBottom: 10 }}>
+                              <label style={labelStyle}>Text Margin (px)</label>
+                              <SpacingEditor labelPrefix={`${focusedField.label} margin`} value={getVal("margin", {})} onChange={value => store.updateTextStyle(selectedSectionId, component.id, subKey, "margin", value)} />
+                            </div>
+                            <div>
+                              <label style={labelStyle}>Text Padding (px)</label>
+                              <SpacingEditor labelPrefix={`${focusedField.label} padding`} value={getVal("padding", {})} onChange={value => store.updateTextStyle(selectedSectionId, component.id, subKey, "padding", value)} />
+                            </div>
+                          </div>
                           <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
                             <button onClick={() => onSelectComponent?.(selectedSectionId, component.id)} style={{ flex: 1, padding: "6px 0", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Back to component</button>
                           </div>
@@ -692,15 +721,15 @@ export default function PropertiesPanel({ store, selectedSectionId, selectedComp
                 ) : stylingGroupKeys.map(gk => (
                   <AccPanel key={gk} id={gk} open={!!stylingOpen[gk]} onToggle={toggleStyling} title={STYLING_GROUP_META[gk].label} icon={STYLING_GROUP_META[gk].icon}>
                      {stylingGroups[gk].map(field => (
-                       <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />
-                    ))}
+                       <FieldEditor key={field.key} field={field} value={component.props?.[field.key]} onChange={(v) => store.updateProp(selectedSectionId, component.id, field.key, v)} focused={focusedField?.key === field.key} onClearProp={onClearProp} lockList={isStoreLinkedList(component.type, field.key)} slotKind={component.type === "promotion_list" ? "offer" : "menu"} screens={Object.entries(data.screens).map(([id, screen]) => ({ id, name: screen.name || id }))} />
+                     ))}
                   </AccPanel>
                 ))}
                 {/* Spacing — component-level, shown for every component */}
-                {!focusedField && !selectedItem && <>
+                {!selectedItem && <>
                 <AccPanel id="spacing" open={!!stylingOpen.spacing} onToggle={toggleStyling} title="Spacing" icon={ArrowLeftRight}>
-                  <div style={{ marginBottom: 10 }}><label style={labelStyle}>Margin (px)</label><SpacingEditor value={component.props?.margin || {}} onChange={v => store.updateProp(selectedSectionId, component.id, "margin", v)} /></div>
-                  <div style={{ marginBottom: 4 }}><label style={labelStyle}>Padding (px)</label><SpacingEditor value={component.props?.padding} onChange={v => store.updateProp(selectedSectionId, component.id, "padding", v)} /></div>
+                  <div style={{ marginBottom: 10 }}><label style={labelStyle}>Margin (px)</label><SpacingEditor labelPrefix="Component margin" value={component.props?.margin || {}} onChange={v => store.updateProp(selectedSectionId, component.id, "margin", v)} /></div>
+                  <div style={{ marginBottom: 4 }}><label style={labelStyle}>Padding (px)</label><SpacingEditor labelPrefix="Component padding" value={component.props?.padding} onChange={v => store.updateProp(selectedSectionId, component.id, "padding", v)} /></div>
                 </AccPanel>
                 <AccPanel id="effects" open={!!stylingOpen.effects} onToggle={toggleStyling} title="Effects" icon={Sparkles}>
                   <div style={{ marginBottom: 10 }}><label style={labelStyle}>Elevation</label><select value={component.props?.elevation || "none"} onChange={e => store.updateProp(selectedSectionId, component.id, "elevation", e.target.value)} style={{ ...textInput, cursor: "pointer" }}><option value="none">None</option><option value="soft">Soft</option><option value="medium">Medium</option><option value="raised">Raised</option></select></div>
@@ -950,7 +979,7 @@ function iconBtnSmallReStyle(theme, iconBtn){ return { ...iconBtn, padding: "1px
 
 /* ── General / Styling tab bar (optional search via lens icon) ── */
 function FieldTabBar({ activeTab, onTab, searchOpen, onToggleSearch, query, onQueryChange }) {
-  const { theme } = useEditorTheme();
+  const { theme, iconBtn, textInput } = useEditorTheme();
   return (
     <div style={{ borderBottom: `1px solid ${theme.border}`, padding: "8px 12px 10px", background: theme.surface }}>
       <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: searchOpen ? 10 : 0 }}>
@@ -1011,7 +1040,7 @@ function groupForField(field) {
 }
 
 /* Shared field editor used by General tab, Styling tab, and search results. */
-function FieldEditor({ field, value, onChange, focused, onClearProp, screens }) {
+function FieldEditor({ field, value, onChange, focused, onClearProp, screens, lockList = false, slotKind = "menu" }) {
   const { theme, textInput, labelStyle } = useEditorTheme();
   const isRadius = field.type === "radius" || /radius/i.test(String(field.key||""));
   return (
@@ -1031,11 +1060,15 @@ function FieldEditor({ field, value, onChange, focused, onClearProp, screens }) 
           fields={field.fields}
           value={Array.isArray(value) ? value : []}
           onChange={onChange}
+          productPicker={lockList}
+          manualAdd={!lockList}
+          lockProductFields={lockList}
+          slotKind={slotKind}
         />
       ) : field.type === "bg" ? (
         <FillEditor value={value} onChange={onChange} />
       ) : field.type === "color" ? (
-        <ColorInput value={value || "#000000"} onChange={onChange} />
+        <ColorInput value={value ?? (field.allowTransparent ? "transparent" : "#000000")} allowTransparent={field.allowTransparent} onChange={onChange} />
       ) : field.type === "select" ? (
         <select value={value || (field.options?.[0] || "")}
           onChange={e => onChange(e.target.value)}
@@ -1088,13 +1121,16 @@ function parsePreviewActionJson(value) {
 }
 
 /* Friendly JSON action editor: preset chips + target screen dropdown, raw-JSON fallback. */
-export function ActionEditor({ value = "", onChange, screens }) {
+export function ActionEditor({ value = "", onChange, screens = [] }) {
   if (value && typeof value === "object") value = JSON.stringify(value, null, 2);
   const { theme, textInput } = useEditorTheme();
   const [rawMode, setRawMode] = useState(false);
   const parsed = parsePreviewActionJson(value);
   const selectedType = parsed?.type || "";
   const rawJsonActive = rawMode || (value.trim() !== "" && (!parsed || !["navigate", "pop", "refresh", "submit_form", "api_request"].includes(parsed.type)));
+  // Publishable defaults: a fresh nav action points at the first screen so a
+  // publish can never fail on a blank destination.
+  const defaultScreenId = screens[0]?.id || "";
 
   const applyAction = (action) => onChange(action ? JSON.stringify(action, null, 2) : "");
 
@@ -1112,7 +1148,7 @@ export function ActionEditor({ value = "", onChange, screens }) {
           <button key={opt.type}
             onClick={() => {
               setRawMode(false);
-              applyAction(!opt.type ? null : opt.type === "navigate" ? { type: "navigate", payload: { screenId: "" } } : ["submit_form", "api_request"].includes(opt.type) ? { type: opt.type, payload: { endpoint: "", method: opt.type === "submit_form" ? "POST" : "GET", data: {} } } : { type: opt.type });
+              applyAction(!opt.type ? null : opt.type === "navigate" ? { type: "navigate", payload: { screenId: defaultScreenId } } : ["submit_form", "api_request"].includes(opt.type) ? { type: opt.type, payload: { endpoint: "", method: opt.type === "submit_form" ? "POST" : "GET", data: {} } } : { type: opt.type });
             }}
             style={{
               padding: "5px 11px", borderRadius: 999, cursor: "pointer", fontFamily: "'Inter',sans-serif",
@@ -1173,7 +1209,7 @@ export function ActionEditor({ value = "", onChange, screens }) {
   );
 }
 
-function SpacingEditor({ value, onChange }) {
+function SpacingEditor({ value, onChange, labelPrefix = "Spacing" }) {
   const { theme, textInput } = useEditorTheme();
   const v = value && typeof value === "object" ? value : {};
   const set = (side, num) => onChange({ ...v, [side]: num });
@@ -1188,7 +1224,7 @@ function SpacingEditor({ value, onChange }) {
       {SIDES.map(({ key, label }) => (
         <div key={key}>
           <div style={{ fontSize: 9, color: theme.textMuted, textAlign: "center", marginBottom: 2 }}>{label}</div>
-          <input type="number" value={v[key] ?? 0}
+          <input type="number" aria-label={`${labelPrefix} ${key}`} value={v[key] ?? 0}
             onChange={e => { const n = Number(e.target.value); set(key, Number.isFinite(n) ? n : 0); }}
             style={{ ...textInput, textAlign: "center", padding: "5px 2px" }} />
         </div>
@@ -1390,15 +1426,101 @@ function FillEditor({ value, onChange }) {
   );
 }
 
-function ListFieldEditor({ fields, value, onChange }) {
-  const { theme, textInput, labelStyle, iconBtn, iconBtnDanger } = useEditorTheme();
+/* Shared store-product source for pickers (one fetch per mount). */
+function useStoreProducts() {
+  const [products, setProducts] = useState(null);
+  useEffect(() => {
+    let live = true;
+    getProducts()
+      .then(list => { if (live) setProducts(Array.isArray(list) ? list : []); })
+      .catch(() => { if (live) setProducts([]); });
+    return () => { live = false; };
+  }, []);
+  return products;
+}
+
+/* Swap the linked store product on an existing slot, keeping styling overrides. */
+function ProductSwapPicker({ currentId, onSwap }) {
+  const { textInput } = useEditorTheme();
+  const products = useStoreProducts();
+  if (products === null || products.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <label style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", display: "block", marginBottom: 4, fontFamily: "'Inter',sans-serif" }}>Linked product</label>
+      <select
+        aria-label="Linked store product"
+        value={currentId || ""}
+        onChange={e => {
+          const found = products.find(p => p.id === e.target.value);
+          if (found) onSwap(found);
+        }}
+        style={{ ...textInput, cursor: "pointer", fontSize: 12 }}
+      >
+        <option value="">Select a store product…</option>
+        {products.map(p => (
+          <option key={p.id} value={p.id}>{p.name} — ₦{Number(p.price || 0).toLocaleString()}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/* Pick a live store product to auto-fill a slot. mapItem converts the
+   raw product (menu items vs promotion offers differ). */
+function ProductPicker({ onPick, mapItem }) {
+  const { theme, textInput } = useEditorTheme();
+  const products = useStoreProducts();
+  const [selectedId, setSelectedId] = useState("");
+  if (products === null) {
+    return <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8 }}>Loading products…</div>;
+  }
+  if (products.length === 0) return null;
+  return (
+    <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+      <select aria-label="Pick a store product" value={selectedId} onChange={e => setSelectedId(e.target.value)} style={{ ...textInput, flex: 1, cursor: "pointer", fontSize: 12 }}>
+        <option value="">Fill from store product…</option>
+        {products.map(p => (
+          <option key={p.id} value={p.id}>{p.name} — ₦{Number(p.price || 0).toLocaleString()}</option>
+        ))}
+      </select>
+      <button
+        disabled={!selectedId}
+        onClick={() => {
+          const p = products.find(x => x.id === selectedId);
+          if (!p) return;
+          onPick((mapItem || mapProductToMenuItem)(p));
+          setSelectedId("");
+        }}
+        style={{ padding: "6px 12px", borderRadius: theme.radius.md, border: "none", background: selectedId ? theme.active : theme.hover, color: selectedId ? "#5B3A00" : theme.textSecondary, fontSize: 12, fontWeight: 600, cursor: selectedId ? "pointer" : "not-allowed", fontFamily: "'Inter',sans-serif" }}
+      >Fill</button>
+    </div>
+  );
+}
+
+export function ListFieldEditor({ fields, value, onChange, productPicker, manualAdd = true, lockProductFields = false, slotKind = "menu" }) {  const { theme, textInput, labelStyle, iconBtn, iconBtnDanger } = useEditorTheme();
   const items = value || [];
   const [openIdx, setOpenIdx] = useState(0);
+
+  const mapSlot = (product) => mapSlotItem(slotKind, product);
 
   const updateItem = (idx, key, v) => {
     const next = items.map((it, i) => i === idx ? { ...it, [key]: v } : it);
     onChange(next);
   };
+
+  // Swap the linked product on an existing slot, keeping styling overrides.
+  const swapItemProduct = (idx, product) => {
+    const current = items[idx] || {};
+    const mapped = mapSlot(product);
+    if (!mapped) return;
+    const next = items.map((it, i) => i === idx ? { ...mapped, background: current.background } : it);
+    onChange(next);
+  };
+
+  // Product slots: details live on the Products page — only styling is editable here.
+  const visibleFields = lockProductFields
+    ? fields.filter(f => groupForField(f) === "styling")
+    : fields;
 
   const addItem = () => {
     const blank = {};
@@ -1429,8 +1551,13 @@ function ListFieldEditor({ fields, value, onChange }) {
 
   return (
     <div>
+      {productPicker ? (
+        <ProductPicker mapItem={mapSlot} onPick={(item) => { onChange([...items, item]); setOpenIdx(items.length); }} />
+      ) : null}
       {items.length === 0 && (
-        <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8 }}>No items yet.</div>
+        <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8 }}>
+          {productPicker ? "No items yet — add products on the Products page, then pick them here." : "No items yet."}
+        </div>
       )}
       {items.map((it, idx) => {
         const open = openIdx === idx;
@@ -1450,8 +1577,10 @@ function ListFieldEditor({ fields, value, onChange }) {
                 cursor: "pointer", background: open ? theme.hoverAmber : "transparent",
               }}
             >
-              {imgField && <CompactImageUploader value={it[imgField.key]} size={30}
-                onUpload={(v) => updateItem(idx, imgField.key, v)} />}
+              {imgField && (lockProductFields
+                ? (it[imgField.key] ? <img src={it[imgField.key]} alt="" style={{ width: 30, height: 30, borderRadius: 6, objectFit: "cover" }} /> : null)
+                : <CompactImageUploader value={it[imgField.key]} size={30}
+                  onUpload={(v) => updateItem(idx, imgField.key, v)} />)}
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: "'Inter',sans-serif" }}>
                 {title}
               </span>
@@ -1465,7 +1594,10 @@ function ListFieldEditor({ fields, value, onChange }) {
             {/* Expanded fields */}
             {open && (
               <div style={{ padding: "8px 10px", background: theme.surface }}>
-                {fields.map(f => {
+                {lockProductFields ? (
+                  <ProductSwapPicker currentId={it.productId} onSwap={(product) => swapItemProduct(idx, product)} />
+                ) : null}
+                {visibleFields.map(f => {
                   const v = it[f.key];
                   return (
                     <div key={f.key} style={{ marginBottom: 8 }}>
@@ -1515,7 +1647,7 @@ function ListFieldEditor({ fields, value, onChange }) {
         );
       })}
 
-      <button onClick={addItem} style={{ ...iconBtn, width: "100%", padding: "8px 0", borderStyle: "dashed", fontSize: 12, fontWeight: 600, color: theme.active, marginTop: 4 }}>
+      <button onClick={addItem} style={{ ...iconBtn, width: "100%", padding: "8px 0", borderStyle: "dashed", fontSize: 12, fontWeight: 600, color: theme.active, marginTop: 4, display: manualAdd ? undefined : "none" }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Add item
       </button>
@@ -1525,7 +1657,7 @@ function ListFieldEditor({ fields, value, onChange }) {
 
 // One property channel follows the current component, event or selected list item.
 export function PressProperties({ component, fields = [], focusKey, screens, onChange, mode = "general", onSelectTarget }) {
-  const { labelStyle, textInput } = useEditorTheme();
+  const { labelStyle, textInput, theme } = useEditorTheme();
   const [target, setTarget] = useState(focusKey || "component");
   useEffect(() => { setTarget(focusKey || "component"); }, [focusKey]);
   const props = component.props || {};
@@ -1537,20 +1669,63 @@ export function PressProperties({ component, fields = [], focusKey, screens, onC
       if (Array.isArray(props[key])) props[key].forEach((item, index) => options.push({ id: "item:" + key + ":" + index, label: typeof item === "string" ? item : item.label || item.name || item.title || "Item " + (index + 1) }));
     });
   }
-  const selected = options.some(option => option.id === target) ? target : "component";
-  const [, listKey, indexText] = selected.split(":");
-  const index = Number(indexText);
-  const item = selected.startsWith("item:") ? props[listKey][index] : null;
+  // Item targets may carry a text-part suffix from canvas selection
+  // ("item:items:2" or "item:items:name:2").
+  const parseItemTarget = (id) => {
+    if (typeof id !== "string" || !id.startsWith("item:")) return null;
+    const segs = id.split(":");
+    if (segs.length < 3) return null;
+    const index = Number(segs[segs.length - 1]);
+    if (!Number.isInteger(index)) return null;
+    const listKey = segs[1];
+    const part = segs.length > 3 ? segs.slice(2, -1).join(":") : null;
+    if (!Array.isArray(props[listKey]) || !props[listKey][index]) return null;
+    return { listKey, index, part };
+  };
+  const parsedTarget = parseItemTarget(target);
+  const selected = parsedTarget || options.some(option => option.id === target) ? target : "component";
+  const parsed = parseItemTarget(selected);
+  const listKey = parsed?.listKey;
+  const index = parsed?.index ?? NaN;
+  const textPart = parsed?.part ?? null;
+  const item = parsed ? props[listKey][index] : null;
   const itemValue = typeof item === "string" ? { label: item } : item;
   const updateItem = patch => onChange(listKey, props[listKey].map((entry, i) => i === index ? { ...itemValue, ...patch } : entry));
+  // Store-linked slots (menu items, promotion offers): details live on the
+  // Products page — only the linked product (swap) and styling fields are
+  // editable here.
+  const lockItemFields = !!itemValue && isStoreLinkedList(component.type, listKey);
+  const swapItemProduct = (product) => {
+    const mapped = mapSlotItem(component.type === "promotion_list" ? "offer" : "menu", product);
+    if (!mapped) return;
+    updateItem({ ...mapped, background: itemValue.background });
+  };
   const value = itemValue ? itemValue.tapAction : selected.startsWith("event:") ? events[listKey] : props.tapAction ?? props.action;
   return <div style={{ marginTop: 12 }}>
     {mode === "general" && <>
     <label style={labelStyle}>Editing</label>
     <select aria-label="Selected pressable" value={selected} onChange={event => { setTarget(event.target.value); onSelectTarget?.(event.target.value); }} style={textInput}>
       {options.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+      {parsed && textPart && !options.some(option => option.id === selected) ? (
+        <option key={selected} value={selected}>Item text: {textPart}</option>
+      ) : null}
     </select></>}
-    {itemValue && (fields.find(field => field.key === listKey)?.fields || [{ key: "label", label: "Label", type: "text" }]).filter(field => (groupForField(field) === "styling") === (mode === "styling")).map(field => <FieldEditor key={field.key} field={field} value={itemValue[field.key]} onChange={value => updateItem({ [field.key]: value })} screens={screens} />)}
+    {itemValue && lockItemFields ? (
+      <ProductSwapPicker currentId={itemValue.productId} onSwap={swapItemProduct} />
+    ) : null}
+    {itemValue && lockItemFields && textPart ? (
+      <div style={{ marginBottom: 12 }}>
+        <label style={labelStyle}>Text: {textPart} color</label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <ColorInput value={itemValue.textStyles?.[textPart]?.color || "#000000"} onChange={(v) => updateItem({ textStyles: { ...(itemValue.textStyles || {}), [textPart]: { ...(itemValue.textStyles?.[textPart] || {}), color: v } } })} />
+          {itemValue.textStyles?.[textPart]?.color ? (
+            <button onClick={() => { const next = { ...(itemValue.textStyles || {}) }; if (next[textPart]) { delete next[textPart].color; if (Object.keys(next[textPart]).length === 0) delete next[textPart]; } updateItem({ textStyles: next }); }} style={{ fontSize: 11, border: "none", background: "none", color: theme.danger, cursor: "pointer", fontWeight: 600 }}>Reset</button>
+          ) : null}
+        </div>
+        <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 4 }}>Tip: click the name, price or description text on the canvas to style it. Empty resets to the brand default.</div>
+      </div>
+    ) : null}
+    {itemValue && (fields.find(field => field.key === listKey)?.fields || [{ key: "label", label: "Label", type: "text" }]).filter(field => lockItemFields ? groupForField(field) === "styling" : (groupForField(field) === "styling") === (mode === "styling")).map(field => <FieldEditor key={field.key} field={field} value={itemValue[field.key]} onChange={value => updateItem({ [field.key]: value })} screens={screens} />)}
     {mode === "general" && <>
     <label style={labelStyle}>On press / Attach page</label>
     <ActionEditor key={selected} value={value ?? ""} screens={screens} onChange={value => {

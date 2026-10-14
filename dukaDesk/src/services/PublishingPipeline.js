@@ -2,7 +2,7 @@ import { pendingPublication, verifyPublication, submitAppForReview, readHistory,
 import { compileDesignToPublishedApp } from "./compilePublishedApp";
 import { validateProject } from "./ValidationEngine";
 import { getReleases, getCurrentDeployment as getLegacyDeployment, saveReleases, saveDeployment, uploadMediaAsset, getSetupData } from "./api";
-import { getMerchant, isDemoId } from "./api";
+import { getMerchant, isDemoId, getProducts, hydrateDesignWithProducts } from "./api";
 
 function generateId() {
   return `rel_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -153,15 +153,19 @@ export async function publishProject(projectData) {
          hours: setupTmp.hours || [],
          selectedIntegrations: setupTmp.selectedIntegrations || [],
        });
-       // Convert generated template (version/navigation/screens) back to builder project shape
-       // generateShopTemplate already returns screens in builder-ish shape; build a minimal project
-       ensuredProject = {
-         ...projectData,
-         meta: { ...projectData?.meta, appName: fallback.branding?.appName || fallback.meta?.appName, category: fallback.category, primaryColor: fallback.theme?.primaryColor },
-         navigation: fallback.navigation,
-         screens: Object.fromEntries(fallback.screens.map(s => [s.screenId, { name: s.title, bodySections: [{ id: `sec_${s.screenId}`, name: s.title, backgroundColor: "#FFFFFF", components: s.layout.children.map((c, i) => ({ id: `c_${s.screenId}_${i}`, type: c.type, props: c.props })) }] }])),
-         splash: projectData?.splash || { backgroundColor: fallback.theme?.backgroundColor || "#FFFFFF", backgroundImage: "", logo: fallback.assets?.logo?.url || null },
-       };
+        // Convert generated template (version/navigation/screens) back to builder project shape
+        // generateShopTemplate already returns screens in builder-ish shape; build a minimal project
+        ensuredProject = {
+          ...projectData,
+          meta: { ...projectData?.meta, appName: fallback.branding?.appName || fallback.meta?.appName, category: fallback.category, primaryColor: fallback.theme?.primaryColor },
+          navigation: fallback.navigation,
+          screens: Object.fromEntries(fallback.screens.map(s => [s.screenId, { name: s.title, bodySections: [{ id: `sec_${s.screenId}`, name: s.title, backgroundColor: "#FFFFFF", components: s.layout.children.map((c, i) => ({ id: `c_${s.screenId}_${i}`, type: c.type, props: c.props })) }] }])),
+          splash: projectData?.splash || { backgroundColor: fallback.theme?.backgroundColor || "#FFFFFF", backgroundImage: "", logo: fallback.assets?.logo?.url || null },
+        };
+        // Scan-and-fix like template select: fill menu grids from the live catalog.
+        try {
+          ensuredProject = hydrateDesignWithProducts(ensuredProject, await getProducts());
+        } catch { /* placeholders stay as fallback */ }
        console.warn("[Publish] No screens found — generated default screens from template", Object.keys(ensuredProject.screens));
      } catch (e) {
        return {
@@ -229,7 +233,7 @@ export async function publishProject(projectData) {
 
   try {
     if (publishingId && !isDemoId(publishingId)) {
-      return { ...await submitAppForReview(manifest), validation };
+      return { ...(await submitAppForReview(manifest)), pendingReview: true, validation };
     }
 
     // Record a successful deployment only after the backend read-back matches.
@@ -237,7 +241,8 @@ export async function publishProject(projectData) {
     await saveReleases(releaseHistory);
     await saveDeployment(manifest);
   } catch (error) {
-    return { success: false, error: error?.message || 'Publishing failed', validation };
+    const status = error?.response?.status;
+    return { success: false, pending: true, error: status ? `Publishing failed (HTTP ${status})` : error?.message || 'Publishing failed', validation };
   }
 
   return { success: true, version, releaseId: release.id, validation, manifest };

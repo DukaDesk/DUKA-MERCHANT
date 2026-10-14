@@ -249,11 +249,27 @@ function AppSplash({ manifest }) {
   );
 }
 
-function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }) {
+function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange, cartItems, previewOrders, controlledScreenId }) {
   const [stack, setStack] = useState(() => [initialScreenId || manifest?.navigation?.initialScreen || Object.keys(screens)[0]]);
   const currentScreenId = stack[stack.length - 1];
 
-  const screenRefs = manifest?.screens || Object.keys(screens || {}).map(id => ({ id }));
+  // Preview cart/orders flow into the screens so cart and order screens
+  // reflect preview state instead of their JSON placeholders.
+  const liveScreens = useMemo(() => {
+    if (!screens || (!cartItems && !previewOrders)) return screens;
+    const out = {};
+    for (const [id, screen] of Object.entries(screens)) out[id] = injectPreviewState(screen, cartItems, previewOrders);
+    return out;
+  }, [screens, cartItems, previewOrders]);
+
+  // Lets the host drive navigation (e.g. preview checkout jumps to cart).
+  // Internal taps that already landed are left alone to avoid loops.
+  useEffect(() => {
+    if (!controlledScreenId || !liveScreens?.[controlledScreenId]) return;
+    setStack(prev => (prev[prev.length - 1] === controlledScreenId ? prev : [controlledScreenId]));
+  }, [controlledScreenId, liveScreens]);
+
+  const screenRefs = manifest?.screens || Object.keys(liveScreens || {}).map(id => ({ id }));
 
   const navigateTo = (target) => {
     const id = linkToScreen(target, screenRefs);
@@ -320,7 +336,7 @@ function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }
             </button>
           )}
           <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, flex: 1, textAlign: isRoot ? "center" : "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {screens[currentScreenId]?.title || pathScreenTitle(currentScreenId)}
+            {liveScreens[currentScreenId]?.title || pathScreenTitle(currentScreenId)}
           </span>
           <span style={{ width: 24 }} />
         </div>
@@ -330,7 +346,7 @@ function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange }
           <TemplateRenderer
             templateId={manifest?.templateId}
             screenId={currentScreenId}
-            screens={screens}
+            screens={liveScreens}
             onAction={(actionKey, payload) => {
               dispatchAction({ type: actionKey, payload });
             }}
@@ -347,7 +363,88 @@ function pathScreenTitle(id) {
   return id.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-export function TemplatePreview({ templateId, initialScreenId, manifest, screens, onScreenChange }) {
+/* ── Preview runtime helpers (exported for tests) ─────────────────────
+   The builder preview behaves like the mobile app with API calls stubbed:
+   - cart_summary nodes render the preview cart instead of JSON placeholders
+   - order_history nodes render preview (simulated) orders
+   - navigation resolves screen ids with dash/underscore/case tolerance */
+
+export function normalizeScreenId(value) {
+  return String(value || "").toLowerCase().replace(/[-_]/g, "");
+}
+
+export function resolvePreviewScreen(screens, candidates) {
+  const ids = Object.keys(screens || {});
+  for (const candidate of candidates || []) {
+    const want = normalizeScreenId(candidate);
+    const found = ids.find(id => normalizeScreenId(id) === want);
+    if (found) return found;
+  }
+  return null;
+}
+
+function screenNodeTypes(screen) {
+  const types = new Set();
+  const walk = (nodes) => {
+    for (const node of nodes || []) {
+      if (!node || typeof node !== "object" || Array.isArray(node)) continue;
+      if (node.type) types.add(node.type);
+      walk(node.children);
+      walk(node.components);
+      walk(node.layout?.children);
+    }
+  };
+  walk(screen?.layout?.children);
+  walk(screen?.children);
+  return types;
+}
+
+export function findScreenWithComponent(screens, type) {
+  for (const [id, screen] of Object.entries(screens || {})) {
+    if (screenNodeTypes(screen).has(type)) return id;
+  }
+  return null;
+}
+
+export function injectPreviewState(node, cartItems, previewOrders) {
+  if (!node || typeof node !== "object") return node;
+  if (!cartItems && !previewOrders) return node;
+  const copy = Array.isArray(node) ? [...node] : { ...node };
+  if (!Array.isArray(node) && node.type === "cart_summary" && cartItems) {
+    copy.props = { ...(node.props || {}), items: cartItems };
+  }
+  if (!Array.isArray(node) && node.type === "order_history" && previewOrders) {
+    copy.props = { ...(node.props || {}), orders: previewOrders };
+  }
+  for (const key of ["children", "components"]) {
+    if (Array.isArray(copy[key])) copy[key] = copy[key].map(child => injectPreviewState(child, cartItems, previewOrders));
+  }
+  if (copy.layout && typeof copy.layout === "object") {
+    copy.layout = { ...copy.layout };
+    if (Array.isArray(copy.layout.children)) copy.layout.children = copy.layout.children.map(child => injectPreviewState(child, cartItems, previewOrders));
+  }
+  return copy;
+}
+
+/* Build a simulated order from the preview cart (no API call). Returns
+   { order } on success or { error } when the cart is empty. */
+export function buildPreviewOrder(cart, existingCount = 0) {
+  const entries = Object.entries(cart || {}).filter(([, line]) => (line?.qty || 0) > 0);
+  if (!entries.length) return { error: "Your preview cart is empty — add items first" };
+  const lines = entries.map(([, line]) => `${line.qty}x ${line.name || "Item"}`);
+  const total = entries.reduce((sum, [, line]) => sum + (Number(line.price) || 0) * line.qty, 0);
+  return {
+    order: {
+      id: `Preview #${existingCount + 1}`,
+      status: "Processing",
+      sub: lines.join(", "),
+      total,
+      date: "Just now",
+    },
+  };
+}
+
+export function TemplatePreview({ templateId, initialScreenId, manifest, screens, onScreenChange, cartItems, previewOrders, controlledScreenId }) {
   const [state, setState] = useState({ manifest: null, screens: {} });
 
   useEffect(() => {
@@ -371,7 +468,10 @@ export function TemplatePreview({ templateId, initialScreenId, manifest, screens
       manifest={state.manifest}
       screens={state.screens}
       initialScreenId={initialScreenId}
-      onScreenChange={(id) => onScreenChange?.(id)}
+      onScreenChange={(id, stack) => onScreenChange?.(id, stack)}
+      cartItems={cartItems}
+      previewOrders={previewOrders}
+      controlledScreenId={controlledScreenId}
     />
   );
 }

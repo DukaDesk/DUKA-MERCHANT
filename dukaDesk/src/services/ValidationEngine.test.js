@@ -18,4 +18,60 @@ describe('freeform builder validation', () => {
     expect(result.valid).toBe(false);
     expect(result.errors[0].path).toContain('children[0].type');
   });
+  it('flags tap actions pointing at missing screens before publish', () => {
+    const draft = project([
+      { id: 'promo-banner', type: 'hero_banner', props: { title: 'Sale', tapAction: JSON.stringify({ type: 'navigate', payload: { screenId: 'ghost-page' } }) } },
+      { id: 'ok-btn', type: 'button', props: {}, actions: { tap: { type: 'switch_screen', payload: { screenId: 'book' } } } },
+    ]);
+    const result = validateProject(draft);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].path).toContain('components[0].props.tapAction');
+    expect(result.errors[0].message).toContain('promo-banner');
+    expect(result.errors[0].message).toContain('ghost-page');
+    expect(result.errors[0].fix).toContain('book');
+    expect(() => compileDesignToPublishedApp(draft, '1.0.0', '2026-09-29T00:00:00Z')).toThrow(/ghost-page.*book/);
+  });
+  it('accepts path-style destinations that name existing screens', () => {
+    const draft = project([
+      { id: 'banner', type: 'hero_banner', props: { title: 'Hi', tapAction: JSON.stringify({ type: 'push', payload: { push: '/book' } }) } },
+    ]);
+    expect(validateProject(draft).errors).toEqual([]);
+    const result = compileDesignToPublishedApp(draft, '1.0.0', '2026-09-29T00:00:00Z');
+    expect(result.screens.book.layout.children[0].layout.children[0].props.tapAction.payload.screenId).toBe('book');
+  });
+  it('tells the merchant when no destination page was chosen yet', () => {
+    const draft = project([
+      { id: 'promo-banner', type: 'hero_banner', props: { offers: [{ tapAction: JSON.stringify({ type: 'navigate', payload: { screenId: '' } }) }, {}, {}] } },
+    ]);
+    const result = validateProject(draft);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].message).toContain('promo-banner › item 1');
+    expect(result.errors[0].message).toContain('no destination page chosen yet');
+    expect(result.errors[0].fix).toContain('book');
+  });
+  it('flags malformed action JSON with a located error', () => {
+    const draft = project([{ id: 'broken', type: 'button', props: { tapAction: '{oops' } }]);
+    const result = validateProject(draft);
+    expect(result.valid).toBe(false);
+    expect(result.errors[0].path).toContain('components[0].props.tapAction');
+    expect(result.errors[0].message).toContain('broken');
+  });
+  it('warns (not errors) on hand-typed menu items without a store link', () => {
+    const draft = project([
+      { id: 'grid', type: 'menu_grid', props: { items: [{ name: 'Typed', price: '₦9' }, { productId: 'p1', name: 'Linked', price: 100 }] } },
+    ]);
+    const result = validateProject(draft);
+    expect(result.valid).toBe(true);
+    expect(result.warnings.some(w => w.message.includes('typed by hand'))).toBe(true);
+  });
+  it('warns on hand-typed promotions without a store link', () => {
+    const draft = project([
+      { id: 'promos', type: 'promotion_list', props: { offers: [{ title: 'Typed deal' }, { productId: 'p1', title: 'Linked' }] } },
+    ]);
+    const result = validateProject(draft);
+    expect(result.valid).toBe(true);
+    expect(result.warnings.some(w => w.path.includes('props.offers'))).toBe(true);
+  });
 });

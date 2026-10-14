@@ -5,12 +5,14 @@ import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
 import { getRevenueData, getOrderStats, getTopProducts, getAnalyticsSummary } from "../../services/api";
+import { useVertical } from "../../runtime/VerticalContext";
 import { Loading, Empty, ErrorState } from "../layout/States";
 
 const PIE_COLORS = [AMBER, NAVY, "#E74C3C"];
 
 export default function Analytics() {
   const isMobile = useIsMobile();
+  const { categoryLower } = useVertical();
   const [summary, setSummary] = useState({});
   const [rev, setRev] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -49,7 +51,7 @@ export default function Analytics() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 28, color: NAVY, margin: 0 }}>Analytics</h2>
-          <div style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>Your business performance metrics</div>
+          <div style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>Your {categoryLower} performance metrics</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <select value={dateRange} onChange={e => setDateRange(e.target.value)} style={{ border: "1.5px solid var(--border)", borderRadius: 10, padding: "8px 14px", fontSize: 14, color: NAVY, background: "#fff", cursor: "pointer", outline: "none" }}>

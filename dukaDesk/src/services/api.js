@@ -295,6 +295,17 @@ function buildMerchant(user, tenant = null) {
   const realTenant = nested || tenant;
   const tenantId = realTenant?.id || tenant?.tenantId || null;
   const tenantSlug = realTenant?.slug || tenant?.slug || null;
+  // Category flag: prefer explicit backend fields (tenant.category,
+  // tenant.businessCategory, user.category) so the frontend can remember
+  // the desk configuration. Falls back to local hydration via tenant config.
+  const backendCategory =
+    realTenant?.category ||
+    realTenant?.businessCategory ||
+    realTenant?.deskCategory ||
+    tenant?.category ||
+    user?.category ||
+    user?.businessCategory ||
+    "";
   return {
     id: user.id,
     name,
@@ -309,20 +320,31 @@ function buildMerchant(user, tenant = null) {
     tenantSlug,
     status: user.status,
     role: user.role || "tenant_owner",
+    ...(backendCategory ? { category: backendCategory } : {}),
   };
 }
 
 async function hydrateMerchantCategory(merchant) {
-  if (!merchant?.tenantId) return merchant;
-  let category = merchant.category;
+  if (!merchant) return merchant;
+  // 1) explicit category on the merchant/user payload (backend flag)
+  let category = merchant.category || merchant.businessCategory || merchant.deskCategory || "";
+  // 2) previous local merchant (preserves category across logins)
   if (!category) {
     const prev = getMerchant();
     if (prev?.id === merchant.id) category = prev?.category || "";
   }
+  // 3) local setup (chosen at signup / onboarding before backend syncs)
   if (!category) {
     try {
+      const setup = getSetupData();
+      category = setup?.category || "";
+    } catch { /* ignore */ }
+  }
+  // 4) tenant config app.category (current backend storage)
+  if (!category && merchant?.tenantId) {
+    try {
       const { data } = await readConfig(merchant.tenantId);
-      category = data?.app?.category || "";
+      category = data?.app?.category || data?.category || "";
     } catch { /* best-effort */ }
   }
   const next = category ? { ...merchant, category } : merchant;
@@ -369,6 +391,10 @@ export async function signup(body) {
     lastName,
     password: body.password,
     ...(body.businessName ? { businessName: body.businessName } : {}),
+    // Desk category preset at signup — backend should persist this as the
+    // tenant category flag (see DUKA-BACKEND DESK_CATEGORY_FLAG_TODO.md).
+    // Sent best-effort today; frontend also presets locally regardless.
+    ...(body.category ? { category: body.category, businessCategory: body.category } : {}),
   });
 
   const payload = res.data || res;
@@ -379,7 +405,20 @@ export async function signup(body) {
 
   const tenant = await fetchTenantSilently(user?.tenantId);
 
-  const merchant = await hydrateMerchantCategory(buildMerchant(user, tenant));
+  let merchant = await hydrateMerchantCategory(buildMerchant(user, tenant));
+  // Preset dashboard locally from the signup category so the first
+  // dashboard render already shows the right tools (e.g. Donations for
+  // Church, Orders for shops) even before the backend echoes the flag.
+  if (body.category) {
+    merchant = { ...merchant, category: body.category };
+    setMerchant(merchant);
+    try {
+      const saved = getSetupData();
+      if (!saved?.category || saved.category !== body.category) {
+        setSetupData({ ...(saved || {}), category: body.category });
+      }
+    } catch { /* ignore */ }
+  }
   return { token: accessToken, merchant };
 }
 
@@ -409,8 +448,11 @@ export async function logout() {
   setRefreshToken(null);
 }
 
-export async function googleSignIn(idToken) {
-  const res = await httpClient.post("/api/v1/auth/google", { idToken });
+export async function googleSignIn(idToken, extra = {}) {
+  const res = await httpClient.post("/api/v1/auth/google", {
+    idToken,
+    ...(extra?.category ? { category: extra.category, businessCategory: extra.category } : {}),
+  });
 
   const payload = res.data || res;
   const { user, accessToken, refreshToken } = payload || {};
@@ -425,7 +467,11 @@ export async function googleSignIn(idToken) {
 
   const tenant = await fetchTenantSilently(user?.tenantId);
 
-  const merchant = await hydrateMerchantCategory(buildMerchant(user, tenant));
+  let merchant = await hydrateMerchantCategory(buildMerchant(user, tenant));
+  if (extra?.category) {
+    merchant = { ...merchant, category: extra.category };
+    setMerchant(merchant);
+  }
   return { token: accessToken, merchant };
 }
 
@@ -486,11 +532,20 @@ export async function getMyApp() {
   if (!tenantId) return null;
   const { data } = await readConfig(tenantId);
   const app = data.app || {};
+  let submission = null;
+  if (!isDemoId(tenantId)) {
+    try {
+      // Silent: backends deployed before the review-flow endpoint return 404 here.
+      const response = await httpClient.get(`/api/v1/merchants/${encodeURIComponent(tenantId)}/publishing/submission`, { silent: true });
+      submission = response?.data ?? response;
+    } catch { /* older backend deployment */ }
+  }
   let published = app.lastPublished || data.deployed || {};
   let status = app.status;
   if (!isDemoId(tenantId)) {
     try { published = await readPublished(tenantId); status = 'live'; }
     catch { published = {}; status = 'unverified'; }
+    if (submission?.status === 'in_review' || submission?.status === 'rejected') status = submission.status;
   }
   const identity = published.identity || {};
   const branding = published.branding || {};
@@ -504,6 +559,8 @@ export async function getMyApp() {
   return {
     ...app,
     status,
+    submissionReason: submission?.release?.releaseNotes || null,
+    submissionVersion: submission?.release?.version || null,
     version: published.version,
     appName: publishedName || app.appName,
     slug: publishedSlug || app.slug,
@@ -512,13 +569,19 @@ export async function getMyApp() {
   };
 }
 
-export async function saveCategory(category) {
+export async function saveCategory(category, modules = null) {
   const merchant = getMerchant();
+  if (merchant) {
+    setMerchant({ ...merchant, category });
+  }
+  const saved = getSetupData();
+  const list = Array.isArray(modules) ? modules : saved?.modules;
+  setSetupData({ ...(saved || {}), category, ...(list ? { modules: list } : {}) });
   const tenantId = merchant?.tenantId;
   if (!tenantId) return { success: false };
   const { data } = await readConfig(tenantId);
   await writeConfig(tenantId, {
-    app: { ...(data.app || {}), category, updatedAt: new Date().toISOString() },
+    app: { ...(data.app || {}), category, ...(list ? { modules: list } : {}), updatedAt: new Date().toISOString() },
   });
   return { success: true };
 }
@@ -587,42 +650,238 @@ function tenantPath(tenantId) {
   return merchantPath(tenantId);
 }
 
+function unwrapBody(res) {
+  const body = res?.data ?? res;
+  if (body && typeof body === "object" && body.success === true && "data" in body) return body.data;
+  return body;
+}
+
+function mapBackendProduct(p) {  if (!p || typeof p !== "object") return null;
+  const images = Array.isArray(p.images)
+    ? p.images.map(img => (typeof img === "string" ? img : img?.url)).filter(Boolean)
+    : [];
+  return {
+    id: p.id,
+    name: p.name || "Untitled",
+    cat: p.category?.name || "",
+    categoryId: p.categoryId || p.category?.id || null,
+    price: Number(p.price) || 0,
+    compareAtPrice: p.compareAtPrice != null ? Number(p.compareAtPrice) : null,
+    stock: Number(p.stock ?? p.quantity ?? 0) || 0,
+    images,
+    // Legacy icon-key fallback for products created before image uploads.
+    img: images[0] || p.img || "soup",
+    badge: p.badge || "",
+    tags: Array.isArray(p.tags) ? p.tags : [],
+    description: p.description || "",
+    shortDescription: p.shortDescription || "",
+    weight: p.weight ?? null,
+    weightUnit: p.weightUnit || null,
+    length: p.length ?? null,
+    width: p.width ?? null,
+    height: p.height ?? null,
+    dimensionUnit: p.dimensionUnit || null,
+    sku: p.sku || "",
+    isActive: p.isActive !== false,
+  };
+}
+
+function mapPortalProduct(body) {
+  const toNumberOrNull = (v) => (v === "" || v == null ? null : Number(v));
+  const slug = (body.slug || String(body.name || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) || undefined;
+  return {
+    name: body.name,
+    slug,
+    description: body.description || undefined,
+    shortDescription: body.shortDescription || undefined,
+    weight: body.weight ?? undefined,
+    weightUnit: body.weightUnit || undefined,
+    length: body.length ?? undefined,
+    width: body.width ?? undefined,
+    height: body.height ?? undefined,
+    dimensionUnit: body.dimensionUnit || undefined,
+    price: Number(body.price) || 0,
+    compareAtPrice: toNumberOrNull(body.compareAtPrice),
+    currency: "NGN",
+    stock: Number(body.stock) || 0,
+    sku: body.sku || undefined,
+    categoryId: body.categoryId || undefined,
+    images: Array.isArray(body.images) ? body.images.filter(Boolean) : undefined,
+    badge: body.badge || null,
+    tags: Array.isArray(body.tags) ? body.tags : [],
+    isActive: body.isActive !== false,
+  };
+}
+
 export async function getProducts() {
-  // [DEMO] const merchant = getMerchant();
-  // [DEMO] const tenantId = merchant?.tenantId;
-  // [DEMO] const res = await httpClient.get(`${tenantPath(tenantId)}/products`);
-  // [DEMO] return unwrapList(res);
-  return demoStore().products || [];
+  try {
+    const merchant = getMerchant();
+    const tenantId = merchant?.merchantId || merchant?.tenantId;
+    if (!tenantId) {
+      console.warn("[getProducts] no tenant on file — showing placeholders until sign-in completes");
+      return [];
+    }
+    const res = await httpClient.get(`/api/v1/merchants/${encodeURIComponent(tenantId)}/products`, { params: { limit: 100 }, silent: true });
+    return unwrapList(res).map(mapBackendProduct).filter(Boolean);
+  } catch (e) {
+    // Silent request by design (no global toast) — but never silent in the
+    // console: a failed fetch is exactly how the builder ends up showing
+    // placeholder products instead of the merchant's catalog.
+    console.warn("[getProducts] backend fetch failed — showing placeholders:", e?.message);
+    return [];
+  }
 }
 
 export async function createProduct(body) {
-  // [DEMO] const merchant = getMerchant();
-  // [DEMO] const tenantId = merchant?.tenantId;
-  // [DEMO] const res = await httpClient.post(`${tenantPath(tenantId)}/products`, body);
-  // [DEMO] return res.data || res;
-  const store = demoStore();
-  const created = { ...body, id: `p_${Date.now()}` };
-  store.products = [created, ...(store.products || [])];
-  demoSave(store);
-  return created;
+  const res = await httpClient.post("/api/v1/app/commerce/products", mapPortalProduct(body));
+  const created = mapBackendProduct(unwrapBody(res));
+  if (!created?.id) throw new Error("Product creation returned no product");
+  return { ...body, ...created };
 }
 
 export async function updateProduct(id, body) {
-  // [DEMO] const res = await httpClient.put(`/api/v1/products/${id}`, body);
-  // [DEMO] return res.data || res;
-  const store = demoStore();
-  store.products = (store.products || []).map(p => (p.id === id ? { ...p, ...body, id } : p));
-  demoSave(store);
-  return { ...body, id };
+  const res = await httpClient.put(`/api/v1/app/commerce/products/${encodeURIComponent(id)}`, mapPortalProduct(body));
+  const updated = mapBackendProduct(unwrapBody(res));
+  return { ...body, ...(updated || {}), id };
 }
 
 export async function deleteProduct(id) {
-  // [DEMO] const res = await httpClient.delete(`/api/v1/products/${id}`);
-  // [DEMO] return res.data || res;
-  const store = demoStore();
-  store.products = (store.products || []).filter(p => p.id !== id);
-  demoSave(store);
+  await httpClient.delete(`/api/v1/app/commerce/products/${encodeURIComponent(id)}`);
   return { id };
+}
+
+export async function adjustProductStock(id, delta) {
+  const res = await httpClient.post(`/api/v1/app/commerce/products/${encodeURIComponent(id)}/adjust-stock`, { delta: Number(delta) || 0 });
+  const body = unwrapBody(res);
+  return {
+    stock: Number(body?.stock),
+    reservedStock: Number(body?.reservedStock ?? 0),
+  };
+}
+
+export async function getProductCategories() {
+  try {
+    const merchant = getMerchant();
+    const tenantId = merchant?.merchantId || merchant?.tenantId;
+    if (!tenantId) {
+      console.warn("[getProductCategories] no tenant on file — category filters stay empty until sign-in completes");
+      return [];
+    }
+    const res = await httpClient.get(`/api/v1/merchants/${encodeURIComponent(tenantId)}/categories`, { silent: true });
+    return unwrapList(res)
+      .map(c => ({ id: c?.id, name: c?.name || "", slug: c?.slug || "" }))
+      .filter(c => c.id && c.name);
+  } catch (e) {
+    console.warn("[getProductCategories] backend fetch failed:", e?.message);
+    return [];
+  }
+}
+
+export async function createProductCategory(body) {
+  const slug = body.slug || String(body.name || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const res = await httpClient.post("/api/v1/app/commerce/categories", {
+    name: body.name,
+    slug: slug || undefined,
+    description: body.description || undefined,
+    image: body.image || undefined,
+  });
+  const created = unwrapBody(res);
+  return { id: created?.id, name: created?.name || body.name, slug: created?.slug || "" };
+}
+
+/* ── Builder product slots ────────────────────────────────────────────
+   Menu grids must show the merchant's real catalog, never hand-typed
+   placeholders. These helpers map live products into builder menu items
+   and scan a design replacing placeholder grids on template select. */
+
+export function mapProductToMenuItem(p) {  if (!p || typeof p !== "object") return null;
+  const images = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
+  return {
+    productId: p.id,
+    id: p.id,
+    name: p.name || "Untitled",
+    price: Number(p.price) || 0,
+    compareAtPrice: p.compareAtPrice ?? null,
+    oldPrice: p.compareAtPrice != null ? String(p.compareAtPrice) : "",
+    desc: p.shortDescription || p.description || p.cat || "",
+    description: p.description || p.cat || "",
+    shortDescription: p.shortDescription || "",
+    image: images[0] || "",
+    badge: p.badge || "",
+    tags: Array.isArray(p.tags) ? [...p.tags] : [],
+    weight: p.weight ?? null,
+    weightUnit: p.weightUnit || null,
+    length: p.length ?? null,
+    width: p.width ?? null,
+    height: p.height ?? null,
+    dimensionUnit: p.dimensionUnit || null,
+    sku: p.sku || "",
+  };
+}
+
+export function mapProductToOffer(p) {
+  if (!p || typeof p !== "object") return null;
+  const images = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
+  return {
+    productId: p.id,
+    id: p.id,
+    title: p.name || "Untitled",
+    subtitle: p.shortDescription || p.description || p.cat || "",
+    description: p.description || "",
+    price: Number(p.price) || 0,
+    compareAtPrice: p.compareAtPrice ?? null,
+    image: images[0] || "",
+    badge: p.badge || "",
+    tags: Array.isArray(p.tags) ? [...p.tags] : [],
+  };
+}
+
+function hydrateComponentTree(node, products) {
+  if (!node || typeof node !== "object") return node;
+  const copy = Array.isArray(node) ? [...node] : { ...node };
+  if (!Array.isArray(node) && node.type === "menu_grid" && products.length > 0) {
+    copy.props = { ...(node.props || {}), items: products.map(mapProductToMenuItem).filter(Boolean) };
+  }
+  if (!Array.isArray(node) && node.type === "promotion_list" && products.length > 0) {
+    copy.props = { ...(node.props || {}), offers: products.map(mapProductToOffer).filter(Boolean) };
+  }
+  for (const key of ["children", "components"]) {
+    if (Array.isArray(copy[key])) copy[key] = copy[key].map(child => hydrateComponentTree(child, products));
+  }
+  if (copy.layout && typeof copy.layout === "object") {
+    copy.layout = { ...copy.layout };
+    if (Array.isArray(copy.layout.children)) copy.layout.children = copy.layout.children.map(child => hydrateComponentTree(child, products));
+  }
+  if (copy.props && typeof copy.props === "object" && copy.type !== "menu_grid") {
+    const props = { ...copy.props };
+    for (const key of ["cats", "categories", "items", "offers", "orders", "rows"]) {
+      if (Array.isArray(props[key])) props[key] = props[key].map(child => hydrateComponentTree(child, products));
+    }
+    copy.props = props;
+  }
+  return copy;
+}
+
+/** Replace every menu_grid's hand-typed items with the live catalog.
+ *  Returns the design unchanged when the catalog is empty. */
+export function hydrateDesignWithProducts(design, products) {
+  const list = Array.isArray(products) ? products.filter(Boolean) : [];
+  if (!design || typeof design !== "object" || list.length === 0) return design;
+  const copy = JSON.parse(JSON.stringify(design));
+  if (copy.screens && typeof copy.screens === "object") {
+    for (const key of Object.keys(copy.screens)) {
+      const screen = copy.screens[key];
+      if (Array.isArray(screen?.bodySections)) {
+        screen.bodySections = screen.bodySections.map(section => ({
+          ...section,
+          components: Array.isArray(section.components)
+            ? section.components.map(comp => hydrateComponentTree(comp, list))
+            : section.components,
+        }));
+      }
+    }
+  }
+  return copy;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -945,7 +1204,7 @@ export async function updateTenant(id, body) {
     return { ...store.tenant };
   }
   try {
-    const res = await httpClient.put(`/api/v1/merchants/${id}`, body);
+    const res = await httpClient.put("/api/v1/app/merchants", body);
     const data = res.data || res;
     const m = getMerchant();
     if (m && data) {
@@ -1011,9 +1270,18 @@ export async function updateTenantConfig(id, body) {
 }
 
 export async function publishTenant(id) {
-  if (isDemoId(id)) return { id, appStatus: "in_review", status: "in_review" };
-  const res = await httpClient.post("/api/v1/app/merchants/review/submit", {}, { silentSuccess: true });
-  return res.data || res;
+  // Merchant self-service publish resolves the tenant from JWT — no :id in path.
+  // (Legacy PUT/POST /api/v1/merchants/:id/publish was removed; that 404s.)
+  try {
+    const res = await httpClient.post(`/api/v1/app/merchants/publish`);
+    return res.data || res;
+  } catch (e) {
+    console.warn("[publishTenant] backend unavailable, demo fallback", e?.message);
+  }
+  const store = demoStore();
+  if (store.config?.app) store.config.app.status = "live";
+  demoSave(store);
+  return { id, published: true };
 }
 
 async function readConfig(tenantId) {
@@ -1106,6 +1374,22 @@ export async function saveDesignData(design) {
   const merchantId = merchant?.merchantId || merchant?.tenantId;
   if (!merchantId) return;
   await writeConfig(merchantId, { design });
+}
+
+export async function requestBuilderAgentCompletion({ prompt, systemPrompt }) {
+  const response = await httpClient.post("/api/v1/ai/complete", {
+    prompt,
+    systemPrompt,
+    provider: "openai",
+    temperature: 0.2,
+    maxTokens: 2400,
+  }, { silent: true });
+  const payload = response?.data ?? response;
+  const result = payload?.data ?? payload;
+  if (typeof result?.output !== "string" || !result.output.trim()) {
+    throw new Error("The AI service returned no proposal. Please try again.");
+  }
+  return result.output;
 }
 
 export async function getPublishedDefinition(merchantId) {

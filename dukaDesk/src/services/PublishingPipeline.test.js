@@ -194,8 +194,8 @@ describe('live publishing confirmation', () => {
     api.getMerchant.mockReturnValue({ merchantId: 'real-merchant' });
     api.getReleases.mockResolvedValue([]);
     validateProject.mockReturnValue({ valid: true, errors: [], warnings: [] });
-    httpClient.post.mockImplementation(async (_, body) => ({ data: { releaseId: 'backend-release', version: body.version, checksum: 'server-checksum' } }));
-    httpClient.get.mockImplementation(async url => url.endsWith('/publishing/releases') ? { data: [] } : { data: httpClient.post.mock.calls[0][1].manifest });
+    httpClient.post.mockImplementation(async (_, body) => ({ data: { releaseId: 'backend-release', version: body.version, checksum: 'server-checksum', status: 'pending_review' } }));
+    httpClient.get.mockImplementation(async url => url.endsWith('/publishing/submission') ? { data: { status: 'in_review', release: { id: 'backend-release', version: httpClient.post.mock.calls[0][1].version } } } : url.endsWith('/publishing/releases') ? { data: [] } : { data: httpClient.post.mock.calls[0][1].manifest });
   });
 
   it('preserves a large URL-only manifest without claiming compression', async () => {
@@ -203,7 +203,7 @@ describe('live publishing confirmation', () => {
       home: { name: 'Home', bodySections: [{ components: [{ type: 'text', props: { text: 'x'.repeat(850 * 1024) } }] }] },
     } };
     const result = await publishProject(project);
-    expect(result.success).toBe(true);
+    expect(result).toMatchObject({ success: true, status: 'in_review', pendingReview: true });
     expect(result.payloadStripped).toBeUndefined();
     expect(httpClient.post.mock.calls[0][1].manifest.theme.brand.logo).toBe(project.meta.logo);
     expect(api.saveDeployment).not.toHaveBeenCalled();
@@ -212,8 +212,13 @@ describe('live publishing confirmation', () => {
 
   it('does not record success when the backend rejects publishing', async () => {
     httpClient.post.mockRejectedValue(new Error('Backend unavailable'));
+    httpClient.get.mockImplementation(async url => {
+      if (url.endsWith('/publishing/releases')) return { data: [] };
+      throw new Error('Backend unavailable');
+    });
     const result = await publishProject(validProject);
     expect(result.success).toBe(false);
+    expect(result.pending).toBe(true);
     expect(result.error).toContain('Backend unavailable');
     expect(api.saveReleases).not.toHaveBeenCalled();
     expect(api.saveDeployment).not.toHaveBeenCalled();
@@ -228,14 +233,11 @@ describe('live publishing confirmation', () => {
     expect(api.saveReleases).not.toHaveBeenCalled();
   });
 
-  it.each([
-    { name: 'Owner', screens: [], navigation: [], theme: { logo: null } },
-    { version: '0.0.7', screens: { shop: {} } },
-  ])('rejects an empty or stale mobile definition', async definition => {
-    httpClient.get.mockImplementation(async url => ({ data: url.endsWith('/publishing/releases') ? [] : definition }));
+  it('does not require public delivery before admin approval', async () => {
+    httpClient.post.mockResolvedValue({ data: { releaseId: 'review-release', version: '0.0.1', status: 'pending_review' } });
     const result = await publishProject(validProject);
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('has not been confirmed live');
+    expect(result).toMatchObject({ success: true, status: 'in_review', pendingReview: true });
+    expect(httpClient.get.mock.calls.some(([url]) => url.endsWith('/definition') || url.includes('/bff/'))).toBe(false);
     expect(api.saveReleases).not.toHaveBeenCalled();
   });
 });

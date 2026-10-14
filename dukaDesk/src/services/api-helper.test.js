@@ -21,7 +21,7 @@ vi.mock("axios", () => {
   return { default: mock };
 });
 
-import { getMyApp, getIntegrationConfig, setIntegrationConfig, getDesignData, saveDesignData, getReleases, getCurrentDeployment, saveDeployment, signup, getDashboardModules, saveDashboardModules, ensureTenant, deployApp } from "./api";
+import { getMyApp, getIntegrationConfig, setIntegrationConfig, getDesignData, saveDesignData, getReleases, getCurrentDeployment, saveDeployment, signup, getDashboardModules, saveDashboardModules, ensureTenant, deployApp, updateTenant, requestBuilderAgentCompletion } from "./api";
 import httpClient from "./httpClient";
 
 const mockHttpClient = vi.mocked(httpClient);
@@ -37,6 +37,17 @@ describe("api helpers (tenant config-based)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+  });
+
+  describe("updateTenant", () => {
+    it("updates the authenticated merchant through the self-service endpoint", async () => {
+      setupMerchant();
+      mockHttpClient.put.mockResolvedValue({ data: { id: TENANT_ID, name: "Updated Shop" } });
+
+      await updateTenant(TENANT_ID, { name: "Updated Shop" });
+
+      expect(mockHttpClient.put).toHaveBeenCalledWith("/api/v1/app/merchants", { name: "Updated Shop" });
+    });
   });
 
   describe("getIntegrationConfig", () => {
@@ -68,6 +79,23 @@ describe("api helpers (tenant config-based)", () => {
       const result = await getIntegrationConfig("Paystack");
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe("requestBuilderAgentCompletion", () => {
+    it("uses the authenticated backend AI service without sending caller identity claims", async () => {
+      mockHttpClient.post.mockResolvedValue({ data: { output: '{"scope":"out_of_scope"}' } });
+
+      await expect(requestBuilderAgentCompletion({ prompt: "Create a home screen", systemPrompt: "Use the builder rules" }))
+        .resolves.toBe('{"scope":"out_of_scope"}');
+
+      expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/ai/complete", {
+        prompt: "Create a home screen",
+        systemPrompt: "Use the builder rules",
+        provider: "openai",
+        temperature: 0.2,
+        maxTokens: 2400,
+      }, { silent: true });
     });
   });
 
@@ -394,7 +422,7 @@ describe("ensureTenant / deployApp", () => {
     expect(merchant.tenantId).toBe("tenant_new");
   });
 
-  it("deployApp creates tenant, writes config and publishes", async () => {
+  it("deployApp creates tenant, writes draft config for admin review", async () => {
     setupMerchant({ ...DEFAULT_MERCHANT, tenantId: null });
     mockHttpClient.post.mockResolvedValue({
       data: { id: "tenant_new", slug: "tasty-bites" },
@@ -407,10 +435,12 @@ describe("ensureTenant / deployApp", () => {
     expect(result.app.slug).toBe("tasty-bites");
     expect(mockHttpClient.put).toHaveBeenCalledWith("/api/v1/app/merchants/config", expect.objectContaining({
       config: expect.objectContaining({
-        app: expect.objectContaining({ appName: "Tasty Bites", status: "live" }),
+        app: expect.objectContaining({ appName: "Tasty Bites", status: "draft" }),
       }),
     }));
-    expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/merchants/tenant_new/publish");
+    expect(result.status).toBe("draft");
+    expect(result.message).toMatch(/review/i);
+    expect(mockHttpClient.post.mock.calls.every(([url]) => url !== "/api/v1/app/merchants/publish")).toBe(true);
   });
 
   it("deployApp reuses existing tenant", async () => {
@@ -419,15 +449,24 @@ describe("ensureTenant / deployApp", () => {
     mockHttpClient.put.mockResolvedValue({ data: {} });
     mockHttpClient.post.mockResolvedValue({ data: {} });
 
-    await deployApp({ appName: "Tasty Bites" });
+    const result = await deployApp({ appName: "Tasty Bites" });
 
     expect(mockHttpClient.put).toHaveBeenCalledWith("/api/v1/app/merchants/config", expect.anything());
-    expect(mockHttpClient.post).toHaveBeenCalledWith(`/api/v1/merchants/${TENANT_ID}/publish`);
+    expect(result.status).toBe("draft");
+    expect(mockHttpClient.post.mock.calls.every(([url]) => url !== "/api/v1/app/merchants/publish")).toBe(true);
   });
 });
 
 describe('canonical app status', () => {
   beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); setupMerchant(); });
+  it('shows review status even while a previous approved version remains live', async () => {
+    mockHttpClient.get.mockImplementation(async url => ({ data: url.endsWith('/publishing/submission') ? { status: 'in_review', release: { version: '3.0.0' } } : url.endsWith('/definition') ? { manifestVersion: '1.0.0', status: 'published', version: '2.0.0', screens: { home: {} }, identity: { displayName: 'Live App', slug: 'live-app' } } : { config: { app: { appName: 'Live App' } } } }));
+    expect(await getMyApp()).toMatchObject({ status: 'in_review', version: '2.0.0', submissionVersion: '3.0.0' });
+  });
+  it('shows rejection feedback without hiding the previous live version', async () => {
+    mockHttpClient.get.mockImplementation(async url => ({ data: url.endsWith('/publishing/submission') ? { status: 'rejected', release: { version: '3.0.0', releaseNotes: 'Fix checkout links' } } : url.endsWith('/definition') ? { manifestVersion: '1.0.0', status: 'published', version: '2.0.0', screens: { home: {} }, identity: { displayName: 'Live App', slug: 'live-app' } } : { config: {} } }));
+    expect(await getMyApp()).toMatchObject({ status: 'rejected', version: '2.0.0', submissionVersion: '3.0.0', submissionReason: 'Fix checkout links' });
+  });
   it('uses canonical publication identity instead of stale editor config', async () => {
     mockHttpClient.get.mockImplementation(async url => ({ data: url.endsWith('/definition') ? { manifestVersion: '1.0.0', status: 'published', version: '2.0.0', screens: { home: {} }, identity: { displayName: 'New App', slug: 'new-app' } } : { config: { app: { appName: 'Old App', status: 'live' }, deployed: { identity: { displayName: 'Stale' } } } } }));
     expect(await getMyApp()).toMatchObject({ appName: 'New App', version: '2.0.0', status: 'live' });

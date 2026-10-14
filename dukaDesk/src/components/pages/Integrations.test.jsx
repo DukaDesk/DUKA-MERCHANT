@@ -40,6 +40,20 @@ vi.mock("../../config/wizard", () => ({
   getTemplateIntegrationNames: (...args) => mockGetTemplateIntegrationNames(...args),
 }));
 
+vi.mock("../../runtime/VerticalContext", () => ({
+  useVertical: () => ({
+    modules: [],
+    presetModules: [],
+    isEnabled: () => false,
+    toggleModule: () => {},
+    resetModules: () => {},
+    savingModules: false,
+    vertical: { modules: [], adminPages: [], deskLabel: "Business Desk" },
+    categoryName: "Business",
+    categoryLower: "business",
+  }),
+}));
+
 import Integrations from "./Integrations";
 
 const SAMPLE_INTEGRATIONS = [
@@ -67,14 +81,14 @@ describe("Integrations page", () => {
     mockGetIntegrations.mockReturnValue(new Promise(() => {}));
     mockGetMyApp.mockResolvedValue(null);
     render(<Integrations />);
-    expect(screen.getByText("Loading integrations...")).toBeTruthy();
+    expect(screen.getByText("Loading tools...")).toBeTruthy();
   });
 
   it("shows error state on API failure", async () => {
     mockGetIntegrations.mockRejectedValue(new Error("Network error"));
     mockGetMyApp.mockResolvedValue(null);
     render(<Integrations />);
-    expect(await screen.findByText("Failed to load integrations")).toBeTruthy();
+    expect(await screen.findByText("Failed to load tools")).toBeTruthy();
     expect(screen.getByText("Try Again")).toBeTruthy();
   });
 
@@ -82,7 +96,7 @@ describe("Integrations page", () => {
     mockGetIntegrations.mockResolvedValue([]);
     mockGetMyApp.mockResolvedValue(null);
     render(<Integrations />);
-    expect(await screen.findByText("No integrations available")).toBeTruthy();
+    expect(await screen.findByText("No tools available")).toBeTruthy();
   });
 
   it("renders integration cards and active list", async () => {

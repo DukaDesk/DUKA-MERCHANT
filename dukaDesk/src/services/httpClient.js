@@ -48,7 +48,10 @@ httpClient.interceptors.response.use(
   async error => {
     const originalRequest = error.config;
 
-    console.error(`[Network Error] ${error.response?.status || 'No response'} ${originalRequest?.method?.toUpperCase() || '?'} ${originalRequest?.url || '?'}`, error.response?.data || error.message);
+    // Silent requests (expected 404s like "no submission yet") stay out of the console.
+    if (!originalRequest?.silent) {
+      console.error(`[Network Error] ${error.response?.status || 'No response'} ${originalRequest?.method?.toUpperCase() || '?'} ${originalRequest?.url || '?'}`, error.response?.data || error.message);
+    }
 
     const isAuthUrl = originalRequest?.url?.includes('/auth/');
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthUrl) {

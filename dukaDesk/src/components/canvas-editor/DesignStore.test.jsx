@@ -46,3 +46,16 @@ it('inserts in the selected later column without moving content to the first col
   expect(section.components[0].children[2].props.label).toBe('Third');
   expect(section.components[0].children[0].children).toEqual([]);
 });
+
+it('defaults new tabs to a publishable screen and reorders arrangement', () => {
+  localStorage.clear();
+  const initial = getDefaultData();
+  const { result } = renderHook(() => useDesignStore(initial, { deferSave: true }));
+  act(() => { result.current.addTab({ label: 'Home' }); });
+  act(() => { result.current.addTab({ label: 'Orders', screenId: 'screen_1' }); });
+  expect(result.current.data.navigation.tabs.map(tab => tab.screenId)).toEqual(['screen_1', 'screen_1']);
+  act(() => { result.current.reorderTab(0, 'right'); });
+  expect(result.current.data.navigation.tabs.map(tab => tab.label)).toEqual(['Orders', 'Home']);
+  act(() => { result.current.reorderTab(0, 'left'); });
+  expect(result.current.data.navigation.tabs.map(tab => tab.label)).toEqual(['Orders', 'Home']);
+});

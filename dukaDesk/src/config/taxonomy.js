@@ -1,65 +1,136 @@
-export const BUSINESS_CATEGORIES = [
-  { key: "Restaurant", label: "Restaurant", icon: "🍽️", desc: "Full menus, ordering & delivery", kycType: "Restaurant" },
-  { key: "Ecommerce", label: "Ecommerce", icon: "🛍️", desc: "Products, cart & checkout", kycType: "Retail" },
-  { key: "Food Vendor", label: "Food Vendor", icon: "🥗", desc: "Bukas, home kitchens, caterers", kycType: "Restaurant" },
-  { key: "Grocery", label: "Grocery", icon: "🛒", desc: "Supermarkets & local stores", kycType: "Retail" },
-  { key: "Church", label: "Church", icon: "⛪", desc: "Events, giving & community", kycType: "Church" },
-  { key: "School", label: "School", icon: "🏫", desc: "Timetables, fees & announcements", kycType: "School" },
-  { key: "Booking", label: "Booking", icon: "📅", desc: "Appointments & scheduling", kycType: "Service" },
-  { key: "Events", label: "Events", icon: "🎪", desc: "Tickets, RSVPs & event media", kycType: "Service" },
-  { key: "Consulting", label: "Consulting", icon: "💼", desc: "Advisory services & invoices", kycType: "Service" },
-  { key: "Nonprofit", label: "Nonprofit", icon: "🤝", desc: "Donations, causes & campaigns", kycType: "Nonprofit" },
+/* Broad industry desk categories.
+   Signup / Profile / Onboarding dropdowns offer these 11.
+   Legacy keys (Ecommerce, Church, Booking, ...) from earlier releases
+   still resolve via CATEGORY_ALIASES so existing users keep their preset.
+*/
+
+export const DESK_CATEGORIES = [
+  { key: "Business", label: "Business", icon: "🏢", desc: "Shops, retail & general trade", kycType: "Retail" },
+  { key: "Corporate", label: "Corporate", icon: "🏙️", desc: "Companies, enterprises & B2B", kycType: "Corporate" },
+  { key: "Legal", label: "Legal", icon: "⚖️", desc: "Law firms & legal services", kycType: "Legal" },
+  { key: "Religion", label: "Religion", icon: "⛪", desc: "Churches, mosques & ministries", kycType: "Religion" },
+  { key: "Education", label: "Education", icon: "🏫", desc: "Schools, training & lessons", kycType: "Education" },
+  { key: "Healthcare", label: "Healthcare", icon: "🩺", desc: "Clinics, pharmacies & care", kycType: "Healthcare" },
+  { key: "Food & Hospitality", label: "Food & Hospitality", icon: "🍽️", desc: "Restaurants, food vendors & groceries", kycType: "Hospitality" },
+  { key: "Services", label: "Services", icon: "📅", desc: "Salons, repairs & appointments", kycType: "Service" },
+  { key: "Events", label: "Events", icon: "🎪", desc: "Tickets, RSVPs & event media", kycType: "Events" },
+  { key: "Nonprofit", label: "Nonprofit", icon: "🤝", desc: "NGOs, causes & campaigns", kycType: "Nonprofit" },
   { key: "Personal", label: "Personal", icon: "🌟", desc: "Portfolio, landing page & contact", kycType: "Personal" },
 ];
 
+/* Back-compat alias: BUSINESS_CATEGORIES keeps its name so existing
+   imports (Auth signup, Profile, Compliance) pick up the broad list. */
+export const BUSINESS_CATEGORIES = DESK_CATEGORIES;
+
+/* Commerce-only subset (product decision 2026-10-10): while the platform
+   faces business dashboards, only buying/selling categories are selectable
+   during signup/signin onboarding and profile edits. Existing users on other
+   categories keep their data; pickers grandfather the current value. */
+export const COMMERCE_CATEGORY_KEYS = ["Business", "Food & Hospitality", "Services", "Healthcare"];
+
+export const COMMERCE_CATEGORIES = DESK_CATEGORIES.filter(c => COMMERCE_CATEGORY_KEYS.includes(c.key));
+
+/* Legacy → canonical mapping for users registered before the broad
+   taxonomy (e.g. Church → Religion, Booking → Services). */
+export const CATEGORY_ALIASES = {
+  Ecommerce: "Business",
+  Retail: "Business",
+  Restaurant: "Food & Hospitality",
+  "Food Vendor": "Food & Hospitality",
+  Grocery: "Food & Hospitality",
+  Cafe: "Food & Hospitality",
+  Bar: "Food & Hospitality",
+  "Bar & Lounge": "Food & Hospitality",
+  Church: "Religion",
+  School: "Education",
+  Education2: "Education",
+  Tutoring: "Education",
+  Training: "Education",
+  Daycare: "Education",
+  Booking: "Services",
+  Consulting: "Corporate",
+  "Law Firm": "Legal",
+  Accounting: "Corporate",
+  "Accounting & Tax": "Corporate",
+  Finance: "Corporate",
+  "Finance & Advisory": "Corporate",
+  Beauty: "Services",
+  "Beauty & Salon": "Services",
+  Spa: "Services",
+  "Spa & Wellness": "Services",
+  Fitness: "Services",
+  "Fitness & Gym": "Services",
+  Barbershop: "Services",
+  Tailor: "Services",
+  "Tailor & Alterations": "Services",
+  Laundry: "Services",
+  Cleaning: "Services",
+  "Pet Care": "Services",
+  Photography: "Services",
+  Videography: "Services",
+  "Tech Repair": "Services",
+  "Real Estate": "Services",
+  Travel: "Services",
+  "Travel & Tours": "Services",
+  Logistics: "Services",
+  "Logistics & Delivery": "Services",
+  "Car Wash": "Services",
+  "Auto Repair": "Services",
+  Taxi: "Services",
+  "Transport & Taxi": "Services",
+  Construction: "Services",
+  Wedding: "Events",
+  "Wedding Planning": "Events",
+  Entertainment: "Events",
+  Creative: "Services",
+  "Creative Studio": "Services",
+  Pharmacy: "Healthcare",
+  Clinic: "Healthcare",
+  "Clinic & Healthcare": "Healthcare",
+  Dental: "Healthcare",
+  Optical: "Healthcare",
+  Farm: "Business",
+  "Farm & Produce": "Business",
+  Factory: "Corporate",
+  Manufacturing: "Corporate",
+  Wholesale: "Business",
+  "Wholesale & Supply": "Business",
+  Marketplace: "Business",
+  "Online Course": "Education",
+  "Online Courses": "Education",
+  Subscription: "Services",
+  Subscriptions: "Services",
+  Content: "Personal",
+  "Content Creator": "Personal",
+  Journalist: "Nonprofit",
+  "Media & News": "Nonprofit",
+  Newsletter: "Personal",
+};
+
+export function resolveCanonicalCategory(key) {
+  if (!key) return null;
+  if (DESK_CATEGORIES.some(c => c.key === key)) return key;
+  return CATEGORY_ALIASES[key] || null;
+}
+
 export const ONBOARDING_CATEGORIES = [
-  ...BUSINESS_CATEGORIES,
-  { key: "Cafe", label: "Cafe", icon: "☕", desc: "Coffee, pastries & quick bites", kycType: "Restaurant" },
-  { key: "Bar", label: "Bar & Lounge", icon: "🍸", desc: "Drinks, cocktails & nightlife", kycType: "Restaurant" },
-  { key: "Pharmacy", label: "Pharmacy", icon: "💊", desc: "Medicines, health & wellness products", kycType: "Retail" },
-  { key: "Beauty", label: "Beauty & Salon", icon: "💇‍♀️", desc: "Hair, nails & esthetics", kycType: "Service" },
-  { key: "Spa", label: "Spa & Wellness", icon: "🧖", desc: "Massage, facials & self-care", kycType: "Service" },
-  { key: "Fitness", label: "Fitness & Gym", icon: "🏋️", desc: "Workouts, classes & memberships", kycType: "Service" },
-  { key: "Clinic", label: "Clinic & Healthcare", icon: "🩺", desc: "Appointments, records & care", kycType: "Service" },
-  { key: "Dental", label: "Dental", icon: "🦷", desc: "Checkups, hygiene & treatments", kycType: "Service" },
-  { key: "Optical", label: "Optical", icon: "👓", desc: "Eye tests, glasses & lenses", kycType: "Service" },
-  { key: "Pet Care", label: "Pet Care", icon: "🐾", desc: "Grooming, boarding & vet visits", kycType: "Service" },
-  { key: "Laundry", label: "Laundry", icon: "🧺", desc: "Wash, fold & dry cleaning", kycType: "Service" },
-  { key: "Cleaning", label: "Cleaning", icon: "🧼", desc: "Home & office cleaning", kycType: "Service" },
-  { key: "Barbershop", label: "Barbershop", icon: "💈", desc: "Cuts, fades & styling", kycType: "Service" },
-  { key: "Tailor", label: "Tailor & Alterations", icon: "🧵", desc: "Custom fits & repairs", kycType: "Service" },
-  { key: "Photography", label: "Photography", icon: "📸", desc: "Shoots, prints & albums", kycType: "Service" },
-  { key: "Videography", label: "Videography", icon: "🎥", desc: "Film, edit & production", kycType: "Service" },
-  { key: "Tech Repair", label: "Tech Repair", icon: "🔧", desc: "Phones, laptops & gadgets", kycType: "Service" },
-  { key: "Real Estate", label: "Real Estate", icon: "🏠", desc: "Sales, rentals & property", kycType: "Service" },
-  { key: "Travel", label: "Travel & Tours", icon: "✈️", desc: "Trips, bookings & packages", kycType: "Service" },
-  { key: "Logistics", label: "Logistics & Delivery", icon: "📦", desc: "Courier, dispatch & moving", kycType: "Service" },
-  { key: "Car Wash", label: "Car Wash", icon: "🚗", desc: "Detailing & auto care", kycType: "Service" },
-  { key: "Auto Repair", label: "Auto Repair", icon: "🔩", desc: "Service & maintenance", kycType: "Service" },
-  { key: "Taxi", label: "Transport & Taxi", icon: "🚕", desc: "Bookings & fleet rides", kycType: "Service" },
-  { key: "Construction", label: "Construction", icon: "🏗️", desc: "Building & contracting", kycType: "Service" },
-  { key: "Law Firm", label: "Law Firm", icon: "⚖️", desc: "Legal services & retainers", kycType: "Consulting" },
-  { key: "Accounting", label: "Accounting & Tax", icon: "📊", desc: "Bookkeeping, payroll & taxes", kycType: "Consulting" },
-  { key: "Finance", label: "Finance & Advisory", icon: "💰", desc: "Investments & financial advice", kycType: "Consulting" },
-  { key: "Education", label: "Tutoring & Lessons", icon: "✏️", desc: "Classes & private tutoring", kycType: "School" },
-  { key: "Daycare", label: "Daycare & Nursery", icon: "🧸", desc: "Childcare & early years", kycType: "School" },
-  { key: "Training", label: "Training & Bootcamps", icon: "🎓", desc: "Courses, skills & certification", kycType: "School" },
-  { key: "Wedding", label: "Wedding Planning", icon: "💒", desc: "Plans, vendors & coordination", kycType: "Service" },
-  { key: "Entertainment", label: "Entertainment", icon: "🎤", desc: "DJs, acts & performers", kycType: "Service" },
-  { key: "Creative", label: "Creative Studio", icon: "🎨", desc: "Design, art & media", kycType: "Service" },
-  { key: "Content", label: "Content Creator", icon: "📱", desc: "Media, sponsorships & fans", kycType: "Personal" },
-  { key: "Journalist", label: "Media & News", icon: "📰", desc: "Publishing & subscriptions", kycType: "Nonprofit" },
-  { key: "Farm", label: "Farm & Produce", icon: "🌾", desc: "Fresh produce & supply", kycType: "Retail" },
-  { key: "Factory", label: "Manufacturing", icon: "🏭", desc: "Production & wholesale", kycType: "Service" },
-  { key: "Wholesale", label: "Wholesale & Supply", icon: "📦", desc: "Bulk orders & B2B", kycType: "Retail" },
-  { key: "Online Course", label: "Online Courses", icon: "💻", desc: "Digital products & lessons", kycType: "Service" },
-  { key: "Subscription", label: "Subscriptions", icon: "🔄", desc: "Memberships & recurring", kycType: "Service" },
-  { key: "Marketplace", label: "Marketplace", icon: "🏪", desc: "Multi-vendor storefronts", kycType: "Retail" },
-  { key: "Newsletter", label: "Newsletter", icon: "📬", desc: "Subscribers & broadcasts", kycType: "Personal" },
+  ...DESK_CATEGORIES,
+  { key: "Cafe", label: "Cafe", icon: "☕", desc: "Coffee, pastries & quick bites", kycType: "Hospitality", preset: "Food & Hospitality" },
+  { key: "Pharmacy", label: "Pharmacy", icon: "💊", desc: "Medicines, health & wellness products", kycType: "Healthcare", preset: "Healthcare" },
+  { key: "Beauty & Salon", label: "Beauty & Salon", icon: "💇‍♀️", desc: "Hair, nails & esthetics", kycType: "Service", preset: "Services" },
+  { key: "Clinic & Healthcare", label: "Clinic & Healthcare", icon: "🩺", desc: "Appointments, records & care", kycType: "Healthcare", preset: "Healthcare" },
+  { key: "Law Firm", label: "Law Firm", icon: "⚖️", desc: "Legal services & retainers", kycType: "Legal", preset: "Legal" },
+  { key: "Logistics & Delivery", label: "Logistics & Delivery", icon: "📦", desc: "Courier, dispatch & moving", kycType: "Service", preset: "Services" },
+  { key: "Real Estate", label: "Real Estate", icon: "🏠", desc: "Sales, rentals & property", kycType: "Service", preset: "Services" },
+  { key: "Training & Bootcamps", label: "Training & Bootcamps", icon: "🎓", desc: "Courses, skills & certification", kycType: "Education", preset: "Education" },
 ];
 
-export const CATEGORY_KEYS = BUSINESS_CATEGORIES.map(c => c.key);
+export const CATEGORY_KEYS = DESK_CATEGORIES.map(c => c.key);
+
+export const ONBOARDING_COMMERCE_CATEGORIES = ONBOARDING_CATEGORIES.filter(c =>
+  COMMERCE_CATEGORY_KEYS.includes(c.key) || COMMERCE_CATEGORY_KEYS.includes(c.preset)
+);
 
 export function getCategoryByKey(key) {
-  return BUSINESS_CATEGORIES.find(c => c.key === key) || null;
+  return DESK_CATEGORIES.find(c => c.key === key) || null;
 }

@@ -73,6 +73,13 @@ function CarouselPreview({ theme }) {
     </div>
   );
 }
+function VideoPreview({ theme }) {
+  return (
+    <div style={{ width: "100%", height: 42, borderRadius: 6, background: "#111827", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: 22, height: 22, borderRadius: "50%", background: theme.active, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10 }}>▶</div>
+    </div>
+  );
+}
 function ScreenPreview({ label, description, icon: IconCmp, accent, theme }) {
   return (
     <div style={{ width: "100%", display: "flex", gap: 8, alignItems: "flex-start", minHeight: 56 }}>
@@ -136,6 +143,19 @@ const SCREEN_BUILDERS = {
     { type: "text_block", props: { text: "Sales", fontSize: 24, fontWeight: "700" } },
     { type: "info_list", props: { items: [{ label: "Product A", value: "$15" }, { label: "Product B", value: "$25" }] } },
   ]),
+  product: () => ([
+    { type: "image_block", props: { alt: "Product photo" } },
+    { type: "text_block", props: { text: "Product name", fontSize: 22, fontWeight: "800" } },
+    { type: "text_block", props: { text: "Short hook — one line on why buyers want this", fontSize: 13, fontWeight: "600", color: "#374151" } },
+    { type: "text_block", props: { text: "₦2,500 · was ₦5,000 (−50%)", fontSize: 16, fontWeight: "700" } },
+    { type: "rating", props: { value: 5, color: "#F4A644", size: 18 } },
+    { type: "text_block", props: { text: "Full product description goes here — ingredients, sizing, care and delivery notes.", fontSize: 13, fontWeight: "400", color: "#6B7280" } },
+    { type: "text_block", props: { text: "500 g · 20 × 15 × 10 cm · SKU PRD-001", fontSize: 12, fontWeight: "500", color: "#6B7280" } },
+    { type: "divider", props: { color: "#E5E1E3", thickness: 1 } },
+    { type: "info_list", props: { items: [{ label: "Category", value: "Mains" }, { label: "Availability", value: "In stock" }, { label: "SKU", value: "PRD-001" }] } },
+    { type: "text_block", props: { text: "#bestseller #spicy", fontSize: 12, fontWeight: "500", color: "#6B7280" } },
+    { type: "button", props: { label: "Add to Cart", variant: "filled", background: "#1A1A2E", color: "#FFFFFF", action: "" } },
+  ]),
   home: () => ([
     { type: "text_block", props: { text: "Home", fontSize: 24, fontWeight: "700" } },
     { type: "image_block", props: { alt: "Banner" } },
@@ -144,7 +164,7 @@ const SCREEN_BUILDERS = {
   splash: () => ([
     { type: "image_block", props: { alt: "Logo" } },
     { type: "text_block", props: { text: "DukaDesk", fontSize: 28, fontWeight: "800", alignment: "center" } },
-    { type: "text_block", props: { text: "Your business, in your pocket", fontSize: 14, alignment: "center", color: "#6B7280" } },
+    { type: "text_block", props: { text: "Your desk, in your pocket", fontSize: 14, alignment: "center", color: "#6B7280" } },
   ]),
   dashboard: () => ([
     { type: "hero_banner", props: { title: "Good morning, Ada", subtitle: "Here's what's happening today", badge: "LIVE", color: "#1A1A2E", variant: "left", radius: 16, height: 140 } },
@@ -239,7 +259,7 @@ const SCREEN_BUILDERS = {
   ]),
 };
 
-const ICON_NAMES = ["Star", "Heart", "Bell", "Home", "User", "Settings", "Search", "Mail", "Phone", "Camera", "Check", "Info"];
+const ICON_NAMES = ["Star", "Heart", "Bell", "Home", "User", "Settings", "Search", "Mail", "Phone", "Camera", "Check", "Info", "ShoppingCart", "ShoppingBag", "MapPin", "Calendar", "Clock", "Wallet", "Gift", "Tag", "CreditCard", "Truck", "Store", "Music"];
 
 const GALLERY = {
   Layout: {
@@ -270,7 +290,6 @@ const GALLERY = {
     screenVariants: [
       { id: "dashboard", label: "Dashboard", description: "Quick summary of key data, recent activity and shortcuts.", icon: LayoutDashboard, tabIcon: "LayoutGrid", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.dashboard },
       { id: "login", label: "Login & Sign-Up", description: "Secure email + social login, OTP ready.", icon: LogIn, tabIcon: "Key", accent: "#0D9488", background: "#FFFFFF", build: SCREEN_BUILDERS.login },
-      { id: "profile", label: "Profile & Settings", description: "Personal details, password and app preferences.", icon: UserCog, tabIcon: "User", accent: "#7C3AED", background: "#FCF8FA", build: SCREEN_BUILDERS.profile },
       { id: "notifications", label: "Notifications", description: "Alerts, updates and messages.", icon: Bell, tabIcon: "Bell", accent: "#F4A026", background: "#FCF8FA", build: SCREEN_BUILDERS.notifications },
       { id: "support", label: "Help & Support", description: "FAQs, contact form and live chat.", icon: LifeBuoy, tabIcon: "HelpCircle", accent: "#0EA5E9", background: "#FFFFFF", build: SCREEN_BUILDERS.support },
       { id: "billing", label: "Billing & Plan", description: "Payment methods, invoices and pricing plans.", icon: CreditCard, tabIcon: "CreditCard", accent: "#7C3AED", background: "#FCF8FA", build: SCREEN_BUILDERS.billing },
@@ -280,6 +299,7 @@ const GALLERY = {
       { id: "calendar", label: "Calendar & Booking", description: "Bookings, meetings and deadlines.", icon: CalendarDays, tabIcon: "Calendar", accent: "#2ECC71", background: "#FFFFFF", build: SCREEN_BUILDERS.calendar },
       { id: "checkout", label: "Checkout", description: "Cart summary with totals and Pay action.", icon: Monitor, tabIcon: "ShoppingCart", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.checkout },
       { id: "sales", label: "Sales", description: "Simple product + price list starter.", icon: Monitor, tabIcon: "Tag", accent: "#6B7280", background: "#FCF8FA", build: SCREEN_BUILDERS.sales },
+      { id: "product", label: "Product", description: "Product detail page with photo, price, description and add-to-cart. No tab is created — hook one up from the Tabs editor if needed.", icon: Monitor, tabIcon: "", accent: "#F4A026", background: "#FCF8FA", build: SCREEN_BUILDERS.product },
       { id: "home", label: "Home", description: "Hero + image + CTA starter.", icon: Monitor, tabIcon: "Home", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.home },
       { id: "splash", label: "Splash", description: "App-entry logo screen (no nav tab).", icon: Monitor, tabIcon: "", accent: "#1A1A2E", background: "#1A1A2E", build: SCREEN_BUILDERS.splash },
     ],
@@ -337,7 +357,12 @@ const GALLERY = {
       { id: "circle", label: "Circle", type: "image_block", props: {}, Preview: (t) => <ImagePreview shape="circle" theme={t} /> },
     ],
   },
-  Video: { icon: Video, comingSoon: true },
+  Video: {
+    icon: Video,
+    variants: [
+      { id: "video", label: "Video", type: "video", props: {}, Preview: (t) => <VideoPreview theme={t} /> },
+    ],
+  },
 };
 
 export default function ElementGallery({ browseType, store, selectedSectionId, selectedComponentId, onClose, insertionTarget, onAdded }) {

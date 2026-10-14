@@ -6,31 +6,21 @@ import { submitPublication, verifyPublication, pendingPublication, rollbackPubli
 let manifest;
 beforeEach(() => {
   vi.resetAllMocks(); sessionStorage.clear(); manifest = structuredClone(fixture);
-  http.post.mockResolvedValue({ data: { releaseId: 'r1', version: manifest.version, checksum: 'abc' } });
-  http.get.mockImplementation(async url => ({ data: url.endsWith('/publishing/releases') ? [{ id: 'r1', version: manifest.version }] : url.includes('/publishing/releases/') ? { id: 'r1', version: manifest.version, checksum: 'abc', manifest } : manifest }));
+  http.post.mockResolvedValue({ data: { releaseId: 'r1', version: manifest.version, checksum: 'abc', status: 'pending_review' } });
+  http.get.mockImplementation(async url => ({ data: url.endsWith('/publishing/submission') ? { status: 'in_review', release: { id: 'r1', version: manifest.version } } : url.endsWith('/publishing/releases') ? [{ id: 'r1', version: manifest.version }] : url.includes('/publishing/releases/') ? { id: 'r1', version: manifest.version, checksum: 'abc', manifest } : manifest }));
 });
 describe('canonical publication delivery', () => {
-  it('confirms both public paths and returns the server release identity', async () => {
+  it('submits for admin review without claiming the app is live', async () => {
     const result = await submitPublication('tenant', manifest);
-    expect(result).toMatchObject({ success: true, releaseId: 'r1', receipt: { checksum: 'abc' } });
-    expect(http.get).toHaveBeenCalledWith('/api/v1/merchants/tenant/definition', { silent: true });
-    expect(http.get).toHaveBeenCalledWith('/api/v1/bff/mobile/tenant/tenant/manifest');
+    expect(result).toMatchObject({ success: true, status: 'in_review', pendingReview: true, releaseId: 'r1' });
+    expect(http.get).not.toHaveBeenCalled();
     expect(http.post.mock.calls[0][2].headers['Idempotency-Key']).toBeTruthy();
     expect(pendingPublication('tenant')).toBeNull();
   });
-  it('stale BFF stays pending and checking again does not resend the POST', async () => {
-    const live = http.get.getMockImplementation();
-    http.get.mockImplementation(url => url.includes('/bff/') ? Promise.resolve({ data: { ...manifest, version: 'old' } }) : live(url));
-    expect(await submitPublication('tenant', manifest)).toMatchObject({ success: false, pending: true });
-    expect(await submitPublication('tenant', { ...manifest, version: 'newer' })).toMatchObject({ pending: true });
-    expect(http.post).toHaveBeenCalledTimes(1);
-    http.get.mockImplementation(live);
-    expect(await verifyPublication('tenant')).toMatchObject({ success: true });
-  });
-  it('recovers an unknown POST outcome from the matching persisted release', async () => {
+  it('recovers an unknown POST outcome from review status without resending', async () => {
     http.post.mockRejectedValue(new Error('connection lost'));
-    expect(await submitPublication('tenant', manifest)).toMatchObject({ pending: true });
-    expect(await verifyPublication('tenant')).toMatchObject({ success: true, releaseId: 'r1' });
+    expect(await submitPublication('tenant', manifest)).toMatchObject({ success: true, status: 'in_review' });
+    expect(http.get).toHaveBeenCalledWith('/api/v1/merchants/tenant/publishing/submission', { silent: true });
     expect(http.post).toHaveBeenCalledTimes(1);
   });
   it('rejected publication clears the journal without changing images', async () => {
@@ -40,18 +30,20 @@ describe('canonical publication delivery', () => {
     expect(http.post.mock.calls[0][1].manifest).toEqual(manifest);
   });
   it('performs real backend rollback with the stored compiled manifest', async () => {
+    http.post.mockResolvedValue({ data: { releaseId: 'r1', version: manifest.version, checksum: 'abc' } });
+    http.get.mockImplementation(async url => ({ data: url.endsWith('/publishing/releases') ? [{ id: 'r1', version: manifest.version }] : url.includes('/publishing/releases/') ? { id: 'r1', version: manifest.version, checksum: 'abc', manifest } : url.endsWith('/publishing/submission') ? { status: 'live', release: { id: 'r1', version: manifest.version } } : manifest }));
     const result = await rollbackPublication('tenant', 'r1');
     expect(result.success).toBe(true);
     expect(http.post.mock.calls[0][0]).toBe('/api/v1/merchants/tenant/publishing/rollback/' + manifest.version);
   });
-  it('does not accept a receipt with a conflicting version', async () => {
-    http.post.mockResolvedValue({ data: { releaseId: 'r1', version: 'different', checksum: 'abc' } });
+  it('does not accept a submission receipt with a conflicting version', async () => {
+    http.post.mockResolvedValue({ data: { releaseId: 'r1', version: 'different', checksum: 'abc', status: 'pending_review' } });
     expect(await submitPublication('tenant', manifest)).toMatchObject({ pending: true });
   });
   it('a lost receipt cannot be reconstructed from an unrelated release', async () => {
     http.post.mockResolvedValue({});
     const live = http.get.getMockImplementation();
-    http.get.mockImplementation(url => url.includes('/publishing/releases/') ? Promise.resolve({ data: { id: 'r1', manifest: { ...manifest, screens: {} } } }) : live(url));
+    http.get.mockImplementation(url => url.endsWith('/publishing/submission') ? Promise.resolve({ data: { status: 'in_review', release: { id: 'r1', version: 'different' } } }) : live(url));
     expect(await submitPublication('tenant', manifest)).toMatchObject({ pending: true });
   });
 });

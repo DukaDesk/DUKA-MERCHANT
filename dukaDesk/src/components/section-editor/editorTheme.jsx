@@ -208,15 +208,15 @@ export const HEADER_VARIANTS = [
   },
 ];
 
-export function ColorInput({ value, onChange }) {
+export function ColorInput({ value, onChange, allowTransparent = false }) {
   const { theme, textInput } = useEditorTheme();
   const [focused, setFocused] = useState(false);
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <input type="color" value={value || "#000000"}
+      <input type="color" value={value && value !== "transparent" ? value : "#000000"}
         onChange={e => onChange(e.target.value)}
         style={{ width: 36, height: 36, borderRadius: theme.radius.sm, border: `1px solid ${theme.border}`, padding: 0, cursor: "pointer" }} />
-      <input value={value || ""}
+      <input value={value ?? ""}
         onChange={e => onChange(e.target.value)}
         style={{
           ...textInput,
@@ -226,6 +226,7 @@ export function ColorInput({ value, onChange }) {
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder="#000000" />
+      {allowTransparent && <button type="button" aria-label="Set transparent" onClick={() => onChange("transparent")} style={{ padding: "6px 8px", border: `1px solid ${theme.border}`, borderRadius: theme.radius.sm, background: theme.surface, color: theme.textSecondary, fontSize: 10, whiteSpace: "nowrap", cursor: "pointer" }}>Transparent</button>}
     </div>
   );
 }

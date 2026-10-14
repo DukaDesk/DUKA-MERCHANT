@@ -839,7 +839,11 @@ export function useDesignStore(initialData, options = {}) {
   const addTab = useCallback((tab) => {
     updateData(d => {
       if (!d.navigation.tabs) d.navigation.tabs = [];
-      d.navigation.tabs.push({ id: `tab_${Date.now()}`, label: tab.label || "New Tab", icon: tab.icon || "Home", screenId: tab.screenId || "" });
+      // Publishable defaults: a new tab points at the initial screen (or the
+      // first screen) so a fresh tab can never fail publish on a blank target.
+      const screenIds = Object.keys(d.screens || {});
+      const fallback = (d.navigation.initialScreen && d.screens?.[d.navigation.initialScreen]) ? d.navigation.initialScreen : (screenIds[0] || "");
+      d.navigation.tabs.push({ id: `tab_${Date.now()}`, label: tab.label || "New Tab", icon: tab.icon || "Home", screenId: tab.screenId || fallback });
     });
   }, [updateData]);
 

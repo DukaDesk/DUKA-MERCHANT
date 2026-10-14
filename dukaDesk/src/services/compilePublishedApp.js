@@ -27,7 +27,10 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
         try { parsed = JSON.parse(value); } catch { throw new Error("Invalid component action: " + copy.key); }
       }
       if (!parsed || typeof parsed.type !== "string" || !parsed.type) throw new Error("Invalid component action: " + copy.key);
-      if (["navigate", "push", "replace", "switch_screen"].includes(parsed.type) && Object.prototype.hasOwnProperty.call(parsed.payload || {}, "screenId") && !sourceScreens[parsed.payload.screenId]) throw new Error("Choose an existing destination page for: " + copy.key);
+      if (["navigate", "push", "replace", "switch_screen"].includes(parsed.type) && Object.prototype.hasOwnProperty.call(parsed.payload || {}, "screenId") && !sourceScreens[parsed.payload.screenId]) {
+        const dest = parsed.payload.screenId || "(no destination page chosen yet)";
+        throw new Error("Choose an existing destination page for: " + copy.key + " (\"" + dest + "\" is not a page — available: " + Object.keys(sourceScreens).join(", ") + ")");
+      }
       // Canonicalize path-style destinations ("/shop") to screenId when they
       // name an existing screen. The backend validator and mobile resolver
       // both accept push, but screenId is the canonical contract form.
@@ -174,6 +177,7 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
     },
     runtime: { version: "1.0.0", ...source.runtime },
     permissions: source.permissions || {},
+    dataRequest: meta.dataRequest || source.dataRequest,
     localization: { defaultLocale: "en", supportedLocales: ["en"], ...source.localization },
     assets: {
       ...source.assets,
@@ -198,7 +202,8 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
     content: source.content || {},
     splash: source.splash ? {
       ...source.splash,
-      durationMs: source.splash.durationMs ?? 500,
+      // Fixed product constant: splash always shows 2s, not merchant-configurable.
+      durationMs: 2000,
       screen: source.splash.screen ? { ...source.splash.screen, layout: source.splash.screen.layout ? { ...source.splash.screen.layout, children: (source.splash.screen.layout.children || []).map(compileNode) } : undefined } : { screenId: '__published_splash__', layout: {
         kind: 'column', flex: 1, justifyContent: 'center', alignItems: 'center', gap: 18, padding: 24,
         backgroundColor: source.splash.backgroundColor || primary,

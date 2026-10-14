@@ -1,6 +1,6 @@
 {
   "name": "dukadesk-merchant",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "DukaDesk Merchant Portal - E-commerce Management Dashboard",
   "private": true,
   "type": "module",

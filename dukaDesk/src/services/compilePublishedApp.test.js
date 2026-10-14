@@ -27,6 +27,16 @@ describe('published reconstruction contract', () => {
     const result = compileDesignToPublishedApp(project, '1', 'now');
     expect(result.screens.home.fixedBottom).toHaveLength(1);
   });
+  it('publishes bottom tabs in the arranged navigation order', () => {
+    const project = fixture('merchant-project.json');
+    project.navigation.tabs = [
+      { id: 't2', label: 'Orders', icon: 'Cart', screenId: 'details' },
+      { id: 't1', label: 'Home', icon: 'Home', screenId: 'home' },
+    ];
+    const result = compileDesignToPublishedApp(project, '1', 'now');
+    const bar = result.screens.home.fixedBottom.find(node => node.type === 'tab_bar');
+    expect(bar.props.tabs.map(tab => tab.screenId)).toEqual(['details', 'home']);
+  });
 });
 
 it('read-back verification detects dropped nested fields despite matching version and screen IDs', () => {
@@ -38,12 +48,12 @@ it('read-back verification detects dropped nested fields despite matching versio
   expect(containsPublishedSnapshot(actual, expected)).toBe(false);
 });
 
-it('preserves splash enablement, timing and explicitly authored content', () => {
+it('preserves splash enablement and explicitly authored content, with fixed 2s timing', () => {
   const project = fixture('merchant-project.json');
   project.splash = { enabled: false, durationMs: 1800, screen: { screenId: 'custom-splash', layout: { kind: 'column', children: [{ type: 'text_block', props: { text: 'Brand launch' } }] } } };
   const result = compileDesignToPublishedApp(project, '1', 'now');
   expect(result.splash.enabled).toBe(false);
-  expect(result.splash.durationMs).toBe(1800);
+  expect(result.splash.durationMs).toBe(2000);
   expect(result.splash.screen.screenId).toBe('custom-splash');
   expect(result.splash.screen.layout.children[0].props.text).toBe('Brand launch');
 });
@@ -71,4 +81,10 @@ it("canonicalizes path-style push destinations to screenId", () => {
   project.screens.home.bodySections = [{ id: "section", components: [{ id: "button", type: "button", props: { tapAction: { type: "navigate", payload: { push: "/details" } } } }] }];
   const node = compileDesignToPublishedApp(project, "1", "now").screens.home.layout.children[0].layout.children[0];
   expect(node.props.tapAction.payload.screenId).toBe("details");
+});
+
+it('preserves the merchant data request in the published definition', () => {
+ const project = fixture('merchant-project.json');
+ project.meta.dataRequest = { enabled: true, purpose: 'Delivery updates', fields: ['name','phone'], requiredFor: ['checkout'] };
+ expect(compileDesignToPublishedApp(project, '1', 'now').dataRequest).toEqual(project.meta.dataRequest);
 });

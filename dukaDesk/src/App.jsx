@@ -146,7 +146,9 @@ export default function App() {
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="messages" element={<Messages />} />
                 <Route path="integrations" element={<Integrations />} />
+                <Route path="more-tools" element={<Integrations />} />
                 <Route path="integrations/:name" element={<IntegrationDetails />} />
+                <Route path="more-tools/:name" element={<IntegrationDetails />} />
                 <Route path="attendance" element={<AttendancePage />} />
                 <Route path="giving" element={<GivingPage />} />
                 <Route path="fees" element={<FeesPage />} />
