@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, Plus, X, Upload, Trash2, Package, ImagePlus } from "lucide-react";
+import { Search, Plus, X, Upload, Trash2, Package, ImagePlus, LayoutGrid, List, Pencil } from "lucide-react";
 import { toast } from "react-toastify";
-import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
+import { useIsMobile } from "../../hooks/useMediaQuery";
 import { usePermission } from "../../hooks/usePermission";
 import { useAuth } from "../../contexts";
 import { formatMoney, currencySymbol, getMerchantCurrency } from "../../utils/currency";
@@ -15,6 +15,14 @@ const LOW_STOCK_AT = 5;
 export const DESCRIPTION_MAX = 800;
 export const SHORT_DESCRIPTION_MAX = 100;
 export const STATUS_OPTS = ["In Stock", "Low Stock", "Out of Stock"];
+
+// Sample CSV merchants can download to see the expected import format.
+// NOTE: keep commas out of field values — the importer splits on commas.
+export const SAMPLE_CSV = [
+  "name,price,compareAt,description,category,stock,badge,tags,imageUrl",
+  'Jollof Rice & Chicken,2500,3000,"Party-style smoky jollof with grilled chicken",Food,20,FLASH SALE,"spicy;bestseller",https://example.com/jollof.jpg',
+  'Ankara Fabric (6 yards),15000,,"Premium cotton ankara with vibrant prints",Fashion,50,,"cotton;new",',
+].join("\n");
 
 export function deriveStatus(stock) {
   const qty = Number(stock) || 0;
@@ -30,6 +38,48 @@ export function discountPercent(price, compareAt) {
   return Math.round(((was - current) / was) * 100);
 }
 
+// Serial-style SKU auto-generated when the merchant leaves the field blank:
+// 3 letters from the product name + timestamp/random suffix (e.g. JOL-3F8K2Q).
+export function generateSku(name) {
+  const prefix = (String(name || "").replace(/[^a-z0-9]/gi, "").slice(0, 3) || "PRD").toUpperCase().padEnd(3, "X");
+  const suffix = (Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^a-z0-9]/gi, "").slice(-6).toUpperCase().padEnd(6, "0");
+  return `${prefix}-${suffix}`;
+}
+
+// Parse CSV text into preview rows. Exported for tests; the modal's Confirm
+// step imports only rows marked valid (named with a price above 0).
+export function parseCsvText(text) {
+  const lines = text.split("\n").map(l => l.replace(/\r$/, "")).filter(l => l.trim() !== "");
+  if (lines.length < 2) return { rows: [], error: "CSV must have a header row and at least one product" };
+  const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^"|"$/g, ""));
+  const nameIdx = headers.indexOf("name");
+  const priceIdx = headers.indexOf("price");
+  if (nameIdx < 0 || priceIdx < 0) return { rows: [], error: "CSV must have 'name' and 'price' columns" };
+  const col = (row, key) => { const i = headers.indexOf(key); return i < 0 ? "" : (row[i] || "").trim().replace(/^"|"$/g, ""); };
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(",").map(c => c.trim());
+    const rawName = (cols[nameIdx] || "").replace(/^"|"$/g, "");
+    const price = Number(cols[priceIdx]) || 0;
+    const valid = Boolean(rawName) && price > 0;
+    rows.push({
+      name: rawName || `Row ${i + 1}`,
+      price,
+      sku: generateSku(rawName || "Untitled"),
+      compareAtPrice: col(cols, "compareat") || col(cols, "original price") ? Number(col(cols, "compareat") || col(cols, "original price")) : null,
+      description: col(cols, "description"),
+      cat: col(cols, "category"),
+      stock: Number(col(cols, "stock")) || 0,
+      badge: col(cols, "badge"),
+      tags: col(cols, "tags").split(";").map(t => t.trim()).filter(Boolean),
+      images: col(cols, "imageurl") || col(cols, "image") ? [col(cols, "imageurl") || col(cols, "image")] : [],
+      valid,
+      error: !rawName ? "Missing name" : price <= 0 ? "Price must be above 0" : "",
+    });
+  }
+  return { rows, error: "" };
+}
+
 const emptyForm = () => ({ name: "", description: "", shortDescription: "", weight: "", weightUnit: "kg", length: "", width: "", height: "", dimensionUnit: "cm", sku: "", cat: "", categoryId: "", price: "", compareAt: "", stock: "", badge: "", tags: "", images: [], newCat: "" });
 
 const WEIGHT_UNITS = ["kg", "g", "lb", "oz"];
@@ -37,7 +87,6 @@ const DIMENSION_UNITS = ["cm", "m", "in"];
 
 export default function Products() {
   const isMobile = useIsMobile();
-  const isTablet = useIsTablet();
   const { can } = usePermission();
   const { merchant } = useAuth() || {};
   const currency = getMerchantCurrency(merchant);
@@ -50,10 +99,20 @@ export default function Products() {
   const [panel, setPanel] = useState(null);
   const [form, setForm] = useState(emptyForm());
   const [selected, setSelected] = useState([]);
+  const [viewMode, setViewMode] = useState("grid");
+  const [selectMode, setSelectMode] = useState(false);
+  const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [showNewCat, setShowNewCat] = useState(false);
+  const [skuManual, setSkuManual] = useState(false);
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [csvName, setCsvName] = useState("");
+  const [csvRows, setCsvRows] = useState([]);
+  const [csvError, setCsvError] = useState("");
+  const [csvBusy, setCsvBusy] = useState(false);
 
   const loadAll = () => {
     setError(null);
@@ -80,7 +139,9 @@ export default function Products() {
   const deleteSelected = async () => {
     await Promise.all(selected.map(id => deleteProduct(id).catch(() => toast.error("Failed to delete some products"))));
     setProducts(p => p.filter(x => !selected.includes(x.id)));
+    if (detail && selected.includes(detail.id)) setDetail(null);
     setSelected([]);
+    if (selectMode) setSelectMode(false);
     toast.info(`${selected.length} product(s) deleted`);
   };
 
@@ -96,10 +157,13 @@ export default function Products() {
   };
 
   const saveProduct = async () => {
+    if (saving) return;
     if (!form.name || !form.price) { toast.error("Name and price are required"); return; }
     if (!form.description?.trim()) { toast.error("Description is required — buyers need to know what this is"); return; }
     if (form.description.trim().length > DESCRIPTION_MAX) { toast.error(`Description must be ${DESCRIPTION_MAX} characters or less`); return; }
     if ((form.shortDescription || "").length > SHORT_DESCRIPTION_MAX) { toast.error(`Short description must be ${SHORT_DESCRIPTION_MAX} characters or less`); return; }
+    if (uploading) { toast.info("Wait for the image upload to finish"); return; }
+    setSaving(true);
     try {
       const categoryId = await resolveCategoryId().catch(() => form.categoryId || null);
       const tags = String(form.tags || "").split(",").map(t => t.trim()).filter(Boolean);
@@ -114,7 +178,7 @@ export default function Products() {
         width: numOrNull(form.width),
         height: numOrNull(form.height),
         dimensionUnit: (form.length === "" && form.width === "" && form.height === "") ? null : form.dimensionUnit,
-        sku: form.sku?.trim() || undefined,
+        sku: form.sku?.trim() || generateSku(form.name),
         price: Number(form.price),
         compareAtPrice: form.compareAt === "" ? null : Number(form.compareAt),
         stock: Number(form.stock) || 0,
@@ -126,7 +190,9 @@ export default function Products() {
       };
       if (panel?.id) {
         const updated = await updateProduct(panel.id, body);
+        const merged = { ...panel, ...updated };
         setProducts(p => p.map(x => x.id === panel.id ? { ...x, ...updated } : x));
+        if (detail?.id === panel.id) setDetail(merged);
         toast.success("Product updated!");
       } else {
         const created = await createProduct(body);
@@ -136,7 +202,7 @@ export default function Products() {
     } catch (err) {
       const serverMessage = err?.response?.data?.message || err?.message;
       toast.error(serverMessage && serverMessage !== "Failed to save product" ? serverMessage : "Failed to save product");
-    }
+    } finally { setSaving(false); }
     setPanel(null);
   };
 
@@ -155,45 +221,60 @@ export default function Products() {
     finally { setUploading(false); }
   };
 
-  const fileRef = useRef(null);
   const imgRef = useRef(null);
-  const handleCSVImport = (e) => {
+  const csvFileRef = useRef(null);
+
+  const downloadSampleCsv = () => {
+    const blob = new Blob([SAMPLE_CSV], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "dukadesk-products-sample.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const handleCsvFile = (e) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const text = evt.target.result;
-      const lines = text.split("\n").filter(Boolean);
-      if (lines.length < 2) { toast.error("CSV must have a header row and at least one product"); return; }
-      const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
-      const nameIdx = headers.indexOf("name");
-      const priceIdx = headers.indexOf("price");
-      if (nameIdx < 0 || priceIdx < 0) { toast.error("CSV must have 'name' and 'price' columns"); return; }
-      const col = (row, key) => { const i = headers.indexOf(key); return i < 0 ? "" : (row[i] || "").trim().replace(/^"|"$/g, ""); };
-      let imported = 0;
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",").map(c => c.trim());
-        const p = {
-          name: cols[nameIdx] || "Untitled",
-          price: Number(cols[priceIdx]) || 0,
-          compareAtPrice: col(cols, "compareat") || col(cols, "original price") ? Number(col(cols, "compareat") || col(cols, "original price")) : null,
-          description: col(cols, "description"),
-          cat: col(cols, "category"),
-          stock: Number(col(cols, "stock")) || 0,
-          badge: col(cols, "badge"),
-          tags: col(cols, "tags").split(";").map(t => t.trim()).filter(Boolean),
-          images: col(cols, "imageurl") || col(cols, "image") ? [col(cols, "imageurl") || col(cols, "image")] : [],
-        };
-        try {
-          const created = await createProduct(p);
-          setProducts(pr => [created, ...pr]);
-          imported++;
-        } catch { /* skip row */ }
-      }
-      toast.success(`${imported} product(s) imported from CSV`);
+    reader.onload = (evt) => {
+      const { rows, error } = parseCsvText(String(evt.target.result || ""));
+      setCsvName(file.name);
+      setCsvRows(rows);
+      setCsvError(error);
     };
     reader.readAsText(file);
-    e.target.value = "";
+  };
+
+  const closeCsvModal = () => {
+    if (csvBusy) return;
+    setCsvOpen(false);
+    setCsvName("");
+    setCsvRows([]);
+    setCsvError("");
+  };
+
+  const confirmCsvImport = async () => {
+    const valid = csvRows.filter(r => r.valid);
+    if (!valid.length || csvBusy) return;
+    setCsvBusy(true);
+    let imported = 0;
+    for (const r of valid) {
+      const { valid: _v, error: _e, ...body } = r;
+      try {
+        const created = await createProduct(body);
+        setProducts(pr => [created, ...pr]);
+        imported++;
+      } catch { /* skip row */ }
+    }
+    const skipped = csvRows.length - valid.length;
+    toast.success(skipped ? `${imported} imported, ${skipped} skipped` : `${imported} product(s) imported from CSV`);
+    setCsvBusy(false);
+    closeCsvModal();
   };
 
   const openEdit = (p) => {
@@ -219,11 +300,13 @@ export default function Products() {
       newCat: "",
     });
     setShowNewCat(false);
+    setSkuManual(true);
     setPanel(p);
   };
   const openAdd = () => {
-    setForm(emptyForm());
+    setForm({ ...emptyForm(), sku: generateSku("") });
     setShowNewCat(false);
+    setSkuManual(false);
     setPanel("add");
   };
 
@@ -235,6 +318,92 @@ export default function Products() {
     out: products.filter(p => statusOf(p) === "Out of Stock").length,
   };
 
+  // In list view (desktop) the details live in the right-hand pane, so the
+  // same card renders inline there and inside the modal everywhere else.
+  const renderDetailCard = (p, dismissible) => {
+    const status = statusOf(p);
+    const ss = statusBadge[status] || statusBadge["In Stock"];
+    const img = (p.images && p.images[0]) || null;
+    const pct = discountPercent(p.price, p.compareAtPrice);
+    const dims = [p.length, p.width, p.height].filter(v => v !== "" && v != null).join(" × ");
+    return (
+      <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 3px rgba(15,15,26,0.06)", border: "1px solid #E8E8F0", animation: "fadeIn 0.25s ease" }}>
+        <div style={{ height: 220, background: "#F9FAFB", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {img ? (
+            <img src={img} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          ) : (
+            <Package size={64} strokeWidth={1.5} color="#6B7280" />
+          )}
+          <span style={{ position: "absolute", top: 12, left: 12, background: ss.bg, color: ss.color, fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 8 }}>{status}</span>
+          {dismissible && (
+            <button onClick={() => setDetail(null)} style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.5)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><X size={16} /></button>
+          )}
+        </div>
+        <div style={{ padding: 20 }}>
+          {p.badge ? (
+            <span style={{ display: "inline-block", background: "#E74C3C", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 8, textTransform: "uppercase", marginBottom: 8 }}>{p.badge}</span>
+          ) : null}
+          <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 20, color: NAVY, margin: "0 0 4px" }}>{p.name}</h3>
+          <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 12 }}>{p.cat}{p.sku ? ` · SKU ${p.sku}` : ""}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 22, color: AMBER }}>{formatMoney(p.price, currency)}</span>
+            {p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price) ? (
+              <>
+                <span style={{ fontSize: 14, color: "#9CA3AF", textDecoration: "line-through" }}>{formatMoney(p.compareAtPrice, currency)}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: "#E74C3C", padding: "2px 10px", borderRadius: 8 }}>-{pct}%</span>
+              </>
+            ) : null}
+          </div>
+          <div style={{ fontSize: 13, color: status === "Out of Stock" ? "#E74C3C" : "#6B7280", marginBottom: 16 }}><Package size={13} style={{ verticalAlign: "-2px", marginRight: 6 }} />{p.stock} in stock</div>
+          {p.shortDescription ? (
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#374151", marginBottom: 6 }}>{p.shortDescription}</div>
+          ) : null}
+          {p.description ? (
+            <div style={{ fontSize: 14, color: "#4B5563", lineHeight: 1.6, marginBottom: 16 }}>{p.description}</div>
+          ) : null}
+          {(p.weight || dims || (p.tags || []).length > 0) && (
+            <div style={{ background: "#F9FAFB", borderRadius: 10, padding: "12px 14px", marginBottom: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+              {p.weight ? <div style={{ fontSize: 13, color: "#4B5563" }}>Weight: <strong style={{ color: NAVY }}>{p.weight} {p.weightUnit || ""}</strong></div> : null}
+              {dims ? <div style={{ fontSize: 13, color: "#4B5563" }}>Dimensions: <strong style={{ color: NAVY }}>{dims} {p.dimensionUnit || ""}</strong></div> : null}
+              {(p.tags || []).length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                  {(p.tags || []).map(t => (
+                    <span key={t} style={{ fontSize: 11, color: "#6B7280", background: "#fff", border: "1px solid #E8E8F0", padding: "2px 10px", borderRadius: 8 }}>#{t}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {(p.images || []).length > 1 && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              {(p.images || []).slice(1, 5).map((url, idx) => (
+                <div key={idx} style={{ width: 56, height: 56, borderRadius: 8, overflow: "hidden", border: "1px solid #E8E8F0" }}>
+                  <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 10 }}>
+            {can("product:update") && (
+              <button onClick={() => { const current = detail?.id === p.id ? detail : p; setDetail(null); openEdit(current); }} style={{ flex: 1, background: AMBER, color: NAVY, border: "none", borderRadius: 10, height: 46, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Pencil size={15} /> Edit
+              </button>
+            )}
+            {can("product:delete") && (
+              <button onClick={async () => { try { await deleteProduct(p.id); setProducts(pr => pr.filter(x => x.id !== p.id)); setSelected(s => s.filter(x => x !== p.id)); if (detail?.id === p.id) setDetail(null); toast.info("Product deleted"); } catch { toast.error("Failed to delete"); } }} style={{ flex: 1, background: "#FEF2F2", color: "#E74C3C", border: "1px solid #FECACA", borderRadius: 10, height: 46, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Trash2 size={15} /> Delete
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // List view (desktop) keeps a live selection: explicit click wins, otherwise
+  // the first visible row fills the right-hand pane so it never sits empty.
+  const listActive = (detail && filtered.find(x => x.id === detail.id)) || filtered[0] || null;
+
   return (
     <div style={{ position: "relative", animation: "fadeIn 0.35s ease" }}>
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", gap: 12, marginBottom: 20 }}>
@@ -242,10 +411,22 @@ export default function Products() {
           <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 28, color: NAVY, margin: 0 }}>Products</h2>
           <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>{products.length} total · {counts.low} low stock · {counts.out} out of stock</div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", background: "#F3F4F6", borderRadius: 10, padding: 3, gap: 2 }} role="tablist" aria-label="View mode">
+            <button onClick={() => setViewMode("grid")} title="Grid view" aria-pressed={viewMode === "grid"} style={{ border: "none", background: viewMode === "grid" ? "#fff" : "transparent", color: viewMode === "grid" ? NAVY : "#9CA3AF", borderRadius: 8, padding: "7px 10px", cursor: "pointer", display: "flex", alignItems: "center", boxShadow: viewMode === "grid" ? "0 1px 3px rgba(15,15,26,0.12)" : "none" }}>
+              <LayoutGrid size={16} />
+            </button>
+            <button onClick={() => setViewMode("list")} title="List view" aria-pressed={viewMode === "list"} style={{ border: "none", background: viewMode === "list" ? "#fff" : "transparent", color: viewMode === "list" ? NAVY : "#9CA3AF", borderRadius: 8, padding: "7px 10px", cursor: "pointer", display: "flex", alignItems: "center", boxShadow: viewMode === "list" ? "0 1px 3px rgba(15,15,26,0.12)" : "none" }}>
+              <List size={16} />
+            </button>
+          </div>
+          {can("product:delete") && products.length > 0 && (
+            <button onClick={() => { setSelectMode(s => !s); if (selectMode) setSelected([]); }} style={{ border: selectMode ? `1.5px solid ${AMBER}` : "1.5px solid var(--border)", background: selectMode ? "#FFF8ED" : "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY, fontWeight: selectMode ? 700 : 500 }}>
+              {selectMode ? "Done" : "Select"}
+            </button>
+          )}
           {can("product:create") && <>
-            <input type="file" ref={fileRef} accept=".csv" onChange={handleCSVImport} style={{ display: "none" }} />
-            <button onClick={() => fileRef.current?.click()} style={{ border: "1.5px solid var(--border)", background: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
+            <button onClick={() => setCsvOpen(true)} style={{ border: "1.5px solid var(--border)", background: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 14, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
               <Upload size={16} /> {isMobile ? "" : "Import CSV"}
             </button>
             <button onClick={openAdd} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
@@ -295,69 +476,180 @@ export default function Products() {
           sub={products.length === 0 ? "Click 'Add Product' to get started" : "Try a different filter or search term"}
           action={products.length === 0 ? <button onClick={openAdd} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Add Product</button> : null}
         />
+      ) : viewMode === "list" ? (
+        isMobile ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {filtered.map((p) => {
+              const status = statusOf(p);
+              const ss = statusBadge[status] || statusBadge["In Stock"];
+              const isSel = selected.includes(p.id);
+              const img = (p.images && p.images[0]) || null;
+              return (
+                <div key={p.id} onClick={() => { if (selectMode) toggleSelect(p.id); else setDetail(p); }} style={{ background: "#fff", borderRadius: 10, border: isSel ? `2px solid ${AMBER}` : "1px solid #E8E8F0", boxShadow: "0 1px 3px rgba(15,15,26,0.06)", padding: "10px 12px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                  {selectMode && (
+                    <input type="checkbox" checked={isSel} onChange={() => toggleSelect(p.id)} onClick={e => e.stopPropagation()} style={{ width: 16, height: 16, cursor: "pointer", accentColor: AMBER, flexShrink: 0 }} />
+                  )}
+                  <div style={{ width: 48, height: 48, borderRadius: 8, background: "#F9FAFB", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {img ? (
+                      <img src={img} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <Package size={22} strokeWidth={1.5} color="#6B7280" />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, marginLeft: 88 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: NAVY, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                    <div style={{ fontSize: 12, color: "#9CA3AF", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.cat}</div>
+                  </div>
+                  <span style={{ background: ss.bg, color: ss.color, fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 8, flexShrink: 0 }}>{status}</span>
+                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: NAVY, flexShrink: 0 }}>{formatMoney(p.price, currency)}</span>
+                  <span style={{ fontSize: 12, color: status === "Out of Stock" ? "#E74C3C" : "#6B7280", flexShrink: 0, minWidth: 72, textAlign: "right" }}>{p.stock} in stock</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 24, alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div style={{ flex: "1 1 560px", maxWidth: 640, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+              {filtered.map((p) => {
+                const status = statusOf(p);
+                const ss = statusBadge[status] || statusBadge["In Stock"];
+                const isSel = selected.includes(p.id);
+                const isActive = listActive?.id === p.id;
+                const img = (p.images && p.images[0]) || null;
+                return (
+                  <div key={p.id} onClick={() => { if (selectMode) toggleSelect(p.id); else setDetail(p); }} style={{ background: isActive && !selectMode ? "#FFF8ED" : "#fff", borderRadius: 10, border: isSel || (isActive && !selectMode) ? `2px solid ${AMBER}` : "1px solid #E8E8F0", boxShadow: "0 1px 3px rgba(15,15,26,0.06)", padding: "10px 12px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                    {selectMode && (
+                      <input type="checkbox" checked={isSel} onChange={() => toggleSelect(p.id)} onClick={e => e.stopPropagation()} style={{ width: 16, height: 16, cursor: "pointer", accentColor: AMBER, flexShrink: 0 }} />
+                    )}
+                    <div style={{ width: 48, height: 48, borderRadius: 8, background: "#F9FAFB", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {img ? (
+                        <img src={img} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <Package size={22} strokeWidth={1.5} color="#6B7280" />
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, marginLeft: 88 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: NAVY, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                      <div style={{ fontSize: 12, color: "#9CA3AF", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.cat}</div>
+                    </div>
+                    <span style={{ background: ss.bg, color: ss.color, fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 8, flexShrink: 0 }}>{status}</span>
+                    <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: NAVY, flexShrink: 0 }}>{formatMoney(p.price, currency)}</span>
+                  <span style={{ fontSize: 12, color: status === "Out of Stock" ? "#E74C3C" : "#6B7280", flexShrink: 0, minWidth: 72, textAlign: "right" }}>{p.stock} in stock</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ flex: "0 1 460px", width: 460, maxWidth: "100%", minWidth: 0, position: "sticky", top: 12 }}>
+              {listActive ? renderDetailCard(listActive, false) : null}
+            </div>
+          </div>
+        )
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : isTablet ? "repeat(2,1fr)" : "repeat(3,1fr)", gap: isMobile ? 12 : 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
           {filtered.map((p, i) => {
             const status = statusOf(p);
             const ss = statusBadge[status] || statusBadge["In Stock"];
             const isSel = selected.includes(p.id);
             const img = (p.images && p.images[0]) || null;
-            const pct = discountPercent(p.price, p.compareAtPrice);
             return (
-              <div key={p.id} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(15,15,26,0.06)", border: isSel ? `2px solid ${AMBER}` : "1px solid #E8E8F0", transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)", animation: `fadeIn 0.3s ease ${i * 0.05}s both` }}>
-                <div style={{ height: 160, background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", borderBottom: "1px solid #F3F4F6", overflow: "hidden" }}>
+              <div key={p.id} onClick={() => { if (selectMode) toggleSelect(p.id); else setDetail(p); }} style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(15,15,26,0.06)", border: isSel ? `2px solid ${AMBER}` : "1px solid #E8E8F0", transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)", animation: `fadeIn 0.3s ease ${i * 0.05}s both`, aspectRatio: "1 / 1", display: "flex", flexDirection: "column", cursor: "pointer" }}>
+                <div style={{ height: "58%", minHeight: 0, background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", borderBottom: "1px solid #F3F4F6", overflow: "hidden", flexShrink: 0 }}>
                   {img ? (
                     <img src={img} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
-                    <Package size={56} strokeWidth={1.5} color="#6B7280" />
+                    <Package size={32} strokeWidth={1.5} color="#6B7280" />
                   )}
-                  <span style={{ position: "absolute", top: 10, left: 10, background: ss.bg, color: ss.color, fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 8 }}>{status}</span>
+                  <span style={{ position: "absolute", top: 6, left: 6, background: ss.bg, color: ss.color, fontSize: 9, fontWeight: 600, padding: "2px 6px", borderRadius: 6 }}>{status}</span>
                   {p.badge ? (
-                    <span style={{ position: "absolute", top: 10, right: 44, background: "#E74C3C", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 8, textTransform: "uppercase" }}>{p.badge}</span>
+                    <span style={{ position: "absolute", top: 6, right: 6, background: "#E74C3C", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 6, textTransform: "uppercase", maxWidth: "60%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.badge}</span>
                   ) : null}
-                  <input type="checkbox" checked={isSel} onChange={() => toggleSelect(p.id)} style={{ position: "absolute", top: 10, right: 10, width: 18, height: 18, cursor: "pointer", accentColor: AMBER }} />
-                </div>
-                <div style={{ padding: 16 }}>
-                  <div style={{ fontWeight: 600, fontSize: 15, color: NAVY, marginBottom: 4 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 8 }}>{p.cat}</div>
-                  {p.shortDescription ? (
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 }}>{p.shortDescription}</div>
-                  ) : null}
-                  {p.description ? (
-                    <div style={{ fontSize: 13, color: "#4B5563", marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.description}</div>
-                  ) : null}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>{formatMoney(p.price, currency)}</span>
-                    {p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price) ? (
-                      <>
-                        <span style={{ fontSize: 13, color: "#9CA3AF", textDecoration: "line-through" }}>{formatMoney(p.compareAtPrice, currency)}</span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: "#E74C3C", padding: "2px 8px", borderRadius: 8 }}>-{pct}%</span>
-                      </>
-                    ) : null}
-                  </div>
-                  {(p.tags || []).length > 0 && (
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                      {(p.tags || []).map(t => (
-                        <span key={t} style={{ fontSize: 11, color: "#6B7280", background: "#F3F4F6", padding: "2px 8px", borderRadius: 8 }}>#{t}</span>
-                      ))}
-                    </div>
+                  {selectMode && (
+                    <input type="checkbox" checked={isSel} onChange={() => toggleSelect(p.id)} onClick={e => e.stopPropagation()} style={{ position: "absolute", bottom: 6, right: 6, width: 16, height: 16, cursor: "pointer", accentColor: AMBER }} />
                   )}
-                  <div style={{ fontSize: 12, color: status === "Out of Stock" ? "#E74C3C" : "#6B7280" }}><Package size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} />{p.stock} in stock</div>
                 </div>
-                <div style={{ padding: "10px 16px", borderTop: "1px solid #F3F4F6", display: "flex", gap: 12 }}>
-                  {can("product:update") && <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "4px 0" }}>Edit</button>}
-                  {can("product:delete") && <button onClick={async () => { try { await deleteProduct(p.id); setProducts(pr => pr.filter(x => x.id !== p.id)); toast.info("Product deleted"); } catch { toast.error("Failed to delete"); } }} style={{ background: "none", border: "none", color: "#E74C3C", fontSize: 13, cursor: "pointer", padding: "4px 0" }}>Delete</button>}
+                <div style={{ padding: "6px 8px", flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                  <div style={{ fontWeight: 600, fontSize: 12, color: NAVY, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6, marginTop: 2 }}>
+                    <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 13, color: AMBER, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{formatMoney(p.price, currency)}</span>
+                    <span style={{ fontSize: 10, color: status === "Out of Stock" ? "#E74C3C" : "#6B7280", flexShrink: 0 }}>{p.stock} left</span>
+                  </div>
                 </div>
               </div>
             );
           })}
-          <div onClick={openAdd} style={{ border: "2px dashed #E8E8F0", borderRadius: 12, minHeight: 240, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", background: "#FAFAFA", transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)" }}>
-            <div style={{ width: 48, height: 48, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Plus size={24} color={AMBER} />
+          <div onClick={openAdd} style={{ border: "2px dashed #E8E8F0", borderRadius: 10, aspectRatio: "1 / 1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", background: "#FAFAFA", transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)" }}>
+            <div style={{ width: 36, height: 36, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Plus size={18} color={AMBER} />
             </div>
-            <span style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>Add New Product</span>
+            <span style={{ fontWeight: 600, fontSize: 12, color: NAVY }}>Add Product</span>
           </div>
         </div>
+      )}
+
+      {detail && !panel && (viewMode !== "list" || isMobile) && (
+        <>
+          <div onClick={() => setDetail(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 90 }} />
+          <div style={{ position: "fixed", inset: 0, zIndex: 91, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, pointerEvents: "none" }}>
+            <div style={{ pointerEvents: "auto", width: 480, maxWidth: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.25)", borderRadius: 16 }}>
+              {renderDetailCard(detail, true)}
+            </div>
+          </div>
+        </>
+      )}
+
+      {csvOpen && (
+        <>
+          <div onClick={closeCsvModal} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 100 }} />
+          <div style={{ position: "fixed", inset: 0, zIndex: 101, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, pointerEvents: "none" }}>
+            <div style={{ pointerEvents: "auto", background: "#fff", borderRadius: 16, width: 560, maxWidth: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.25)", animation: "fadeIn 0.25s ease", padding: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: NAVY, margin: 0 }}>Import products from CSV</h3>
+                <button onClick={closeCsvModal} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}><X size={20} /></button>
+              </div>
+              <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 16px", lineHeight: 1.5 }}>Columns: <strong>name, price</strong> (required), compareAt, description, category, stock, badge, tags (separated with ;), imageUrl. Avoid commas inside values.</p>
+              <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+                <button onClick={downloadSampleCsv} style={{ border: "1.5px solid var(--border)", background: "#fff", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: NAVY, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Upload size={15} /> Download sample CSV
+                </button>
+                <input type="file" ref={csvFileRef} accept=".csv" onChange={handleCsvFile} style={{ display: "none" }} />
+                <button onClick={() => csvFileRef.current?.click()} style={{ background: NAVY, color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  {csvName ? "Choose a different file" : "Choose CSV file"}
+                </button>
+              </div>
+              {csvName && (
+                <div style={{ fontSize: 13, color: NAVY, fontWeight: 600, marginBottom: 8 }}>{csvName} · {csvRows.filter(r => r.valid).length} of {csvRows.length} rows ready</div>
+              )}
+              {csvError && (
+                <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#DC2626", marginBottom: 12 }}>{csvError}</div>
+              )}
+              {csvRows.length > 0 && (
+                <div style={{ border: "1px solid #E8E8F0", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 110px", gap: 8, padding: "8px 12px", background: "#F9FAFB", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase" }}>
+                    <span>Product</span><span style={{ textAlign: "right" }}>Price</span><span style={{ textAlign: "right" }}>Status</span>
+                  </div>
+                  <div style={{ maxHeight: 220, overflowY: "auto" }}>
+                    {csvRows.slice(0, 8).map((r, idx) => (
+                      <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 90px 110px", gap: 8, padding: "8px 12px", fontSize: 13, color: r.valid ? NAVY : "#9CA3AF", borderTop: "1px solid #F3F4F6", alignItems: "center" }}>
+                        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</span>
+                        <span style={{ textAlign: "right" }}>{formatMoney(r.price, currency)}</span>
+                        <span style={{ textAlign: "right", color: r.valid ? "#16A34A" : "#DC2626", fontSize: 12 }}>{r.valid ? "Ready" : r.error}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {csvRows.length > 8 && (
+                    <div style={{ padding: "8px 12px", fontSize: 12, color: "#9CA3AF", borderTop: "1px solid #F3F4F6" }}>…and {csvRows.length - 8} more</div>
+                  )}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={confirmCsvImport} disabled={csvBusy || !csvRows.some(r => r.valid)} style={{ flex: 1, background: csvBusy || !csvRows.some(r => r.valid) ? "#D1D5DB" : AMBER, color: NAVY, border: "none", borderRadius: 10, height: 46, fontSize: 14, fontWeight: 700, cursor: csvBusy || !csvRows.some(r => r.valid) ? "not-allowed" : "pointer" }}>
+                  {csvBusy ? "Importing..." : `Import ${csvRows.filter(r => r.valid).length} product(s)`}
+                </button>
+                <button onClick={closeCsvModal} disabled={csvBusy} style={{ background: "none", border: "1.5px solid var(--border)", borderRadius: 10, height: 46, padding: "0 20px", fontSize: 14, cursor: "pointer", color: "#6B7280" }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {panel && (
@@ -371,7 +663,7 @@ export default function Products() {
             <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
               <div style={{ marginBottom: 16 }}>
                 <label style={labelStyle}>Product Name *</label>
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Jollof Rice & Chicken" style={inputStyle} />
+                <input value={form.name} onChange={e => { const value = e.target.value; setForm(f => ({ ...f, name: value, ...(!skuManual ? { sku: generateSku(value) } : {}) })); }} placeholder="Jollof Rice & Chicken" style={inputStyle} />
               </div>
               <div style={{ marginBottom: 16 }}>
                 <label style={labelStyle}>Description * ({(form.description || "").length}/{DESCRIPTION_MAX})</label>
@@ -393,8 +685,8 @@ export default function Products() {
                   </select>
                 </div>
                 <div style={{ marginBottom: 16, flex: 1 }}>
-                  <label style={labelStyle}>SKU</label>
-                  <input value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} placeholder="Optional" style={inputStyle} />
+                  <label style={labelStyle}>SKU (serial)</label>
+                  <input value={form.sku} onChange={e => { setForm(f => ({ ...f, sku: e.target.value })); setSkuManual(true); }} placeholder="PRD-000000" style={inputStyle} />
                 </div>
               </div>
               <div style={{ marginBottom: 16 }}>
@@ -473,7 +765,7 @@ export default function Products() {
               </div>
             </div>
             <div style={{ padding: 24, borderTop: "1px solid var(--border)", display: "flex", gap: 10 }}>
-              <button onClick={saveProduct} style={{ flex: 1, background: AMBER, color: NAVY, border: "none", borderRadius: 10, height: 48, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>Save Product</button>
+              <button onClick={saveProduct} disabled={saving} style={{ flex: 1, background: saving ? "#D1D5DB" : AMBER, color: NAVY, border: "none", borderRadius: 10, height: 48, fontSize: 15, fontWeight: 700, cursor: saving ? "wait" : "pointer", fontFamily: "'Sora',sans-serif", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save Product"}</button>
               <button onClick={() => setPanel(null)} style={{ background: "none", border: "1.5px solid var(--border)", borderRadius: 10, height: 48, padding: "0 20px", fontSize: 15, cursor: "pointer", color: "#6B7280" }}>Cancel</button>
             </div>
           </div>

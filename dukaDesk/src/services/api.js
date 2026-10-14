@@ -714,10 +714,17 @@ export async function getProducts() {
   try {
     const merchant = getMerchant();
     const tenantId = merchant?.merchantId || merchant?.tenantId;
-    if (!tenantId) return [];
+    if (!tenantId) {
+      console.warn("[getProducts] no tenant on file — showing placeholders until sign-in completes");
+      return [];
+    }
     const res = await httpClient.get(`/api/v1/merchants/${encodeURIComponent(tenantId)}/products`, { params: { limit: 100 }, silent: true });
     return unwrapList(res).map(mapBackendProduct).filter(Boolean);
-  } catch {
+  } catch (e) {
+    // Silent request by design (no global toast) — but never silent in the
+    // console: a failed fetch is exactly how the builder ends up showing
+    // placeholder products instead of the merchant's catalog.
+    console.warn("[getProducts] backend fetch failed — showing placeholders:", e?.message);
     return [];
   }
 }
@@ -753,12 +760,16 @@ export async function getProductCategories() {
   try {
     const merchant = getMerchant();
     const tenantId = merchant?.merchantId || merchant?.tenantId;
-    if (!tenantId) return [];
+    if (!tenantId) {
+      console.warn("[getProductCategories] no tenant on file — category filters stay empty until sign-in completes");
+      return [];
+    }
     const res = await httpClient.get(`/api/v1/merchants/${encodeURIComponent(tenantId)}/categories`, { silent: true });
     return unwrapList(res)
       .map(c => ({ id: c?.id, name: c?.name || "", slug: c?.slug || "" }))
       .filter(c => c.id && c.name);
-  } catch {
+  } catch (e) {
+    console.warn("[getProductCategories] backend fetch failed:", e?.message);
     return [];
   }
 }
@@ -1256,8 +1267,10 @@ export async function updateTenantConfig(id, body) {
 }
 
 export async function publishTenant(id) {
+  // Merchant self-service publish resolves the tenant from JWT — no :id in path.
+  // (Legacy PUT/POST /api/v1/merchants/:id/publish was removed; that 404s.)
   try {
-    const res = await httpClient.post(`/api/v1/merchants/${id}/publish`);
+    const res = await httpClient.post(`/api/v1/app/merchants/publish`);
     return res.data || res;
   } catch (e) {
     console.warn("[publishTenant] backend unavailable, demo fallback", e?.message);

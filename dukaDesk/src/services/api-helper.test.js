@@ -438,7 +438,7 @@ describe("ensureTenant / deployApp", () => {
         app: expect.objectContaining({ appName: "Tasty Bites", status: "live" }),
       }),
     }));
-    expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/merchants/tenant_new/publish");
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/app/merchants/publish");
   });
 
   it("deployApp reuses existing tenant", async () => {
@@ -450,7 +450,7 @@ describe("ensureTenant / deployApp", () => {
     await deployApp({ appName: "Tasty Bites" });
 
     expect(mockHttpClient.put).toHaveBeenCalledWith("/api/v1/app/merchants/config", expect.anything());
-    expect(mockHttpClient.post).toHaveBeenCalledWith(`/api/v1/merchants/${TENANT_ID}/publish`);
+    expect(mockHttpClient.post).toHaveBeenCalledWith(`/api/v1/app/merchants/publish`);
   });
 });
 
