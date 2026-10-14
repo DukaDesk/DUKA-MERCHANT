@@ -1,4 +1,4 @@
-import { pendingPublication, verifyPublication, submitPublication, readHistory, readPublished, rollbackPublication } from './publishedDelivery';
+import { pendingPublication, verifyPublication, submitAppForReview, readHistory, readPublished, rollbackPublication } from './publishedDelivery';
 import { compileDesignToPublishedApp } from "./compilePublishedApp";
 import { validateProject } from "./ValidationEngine";
 import { getReleases, getCurrentDeployment as getLegacyDeployment, saveReleases, saveDeployment, uploadMediaAsset, getSetupData } from "./api";
@@ -232,9 +232,8 @@ export async function publishProject(projectData) {
 
 
   try {
-    const merchantId = merchant?.merchantId || merchant?.tenantId;
-    if (merchantId && !isDemoId(merchantId)) {
-      return { ...await submitPublication(merchantId, manifest), validation };
+    if (publishingId && !isDemoId(publishingId)) {
+      return { ...await submitAppForReview(manifest), validation };
     }
 
     // Record a successful deployment only after the backend read-back matches.

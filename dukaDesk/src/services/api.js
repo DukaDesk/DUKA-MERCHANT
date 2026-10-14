@@ -501,13 +501,16 @@ export async function deployApp(appData) {
       phone: appData.phone || "",
       address: appData.address || "",
       hours: appData.hours || [],
-      status: "live",
+      status: "draft",
       updatedAt: new Date().toISOString(),
     },
   });
 
-  await publishTenant(tenantId);
-  return { app: { appName, slug, storeUrl }, message: "App deployed successfully!" };
+  return {
+    app: { appName, slug, storeUrl },
+    status: "draft",
+    message: "Setup saved. Finish your app design in the builder, then submit it for admin review.",
+  };
 }
 
 export async function updateApp(appData) {

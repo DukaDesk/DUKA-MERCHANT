@@ -10,6 +10,20 @@ export function pendingPublication(id) {
 }
 const remember = (id, operation) => sessionStorage.setItem(key(id), JSON.stringify(operation));
 const pending = (operation, error) => ({ success: false, pending: true, status: 'verification-pending', version: operation.manifest.version, receipt: operation.receipt, error: 'Publication has not been confirmed live. ' + error + ' Check publication status before publishing again.' });
+export async function submitAppForReview(manifest) {
+  const response = unwrap(await httpClient.post(
+    '/api/v1/app/merchants/review/submit',
+    manifest ? { manifest } : {},
+    { silentSuccess: true },
+  ));
+  return {
+    ...(response && typeof response === 'object' ? response : {}),
+    success: true,
+    submitted: true,
+    status: 'in_review',
+    message: 'App submitted for admin review. It will be published after approval.',
+  };
+}
 export async function readPublished(id) {
   // Probe: NO_PUBLISHED_RELEASE before first publish is an expected outcome,
   // not an error — stay silent so no toast is emitted for it.

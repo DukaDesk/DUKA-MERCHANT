@@ -286,14 +286,21 @@ export default function SectionEditor({ store, onBack }) {
       screens: Object.keys(design?.screens || {}),
       tabs: (design?.navigation?.tabs || []).map(t => ({ label: t.label, icon: t.icon, screenId: t.screenId })),
     });
-    // Kickstart generation: ensure design is saved before publish so preview/mobile sees latest
-    // Add small delay to show spinner for UX feedback (generation feels too fast otherwise)
+    // The admin review queue reads the saved backend draft, so fail closed if save fails.
     const genStart = Date.now();
     try {
-      await store.saveToServer();
-    } catch { /* best-effort */ }
-    toast.info("Generating app manifest…");
-    // Ensure spinner shows for at least 800ms for perceived performance
+      const saved = await store.saveToServer();
+      if (saved === false) {
+        setIsPublishing(false);
+        toast.error("Your latest app design could not be saved. Try again before submitting it for review.");
+        return;
+      }
+    } catch (error) {
+      setIsPublishing(false);
+      toast.error(error?.message || "Save your app before submitting it for review.");
+      return;
+    }
+    toast.info("Saving your app for admin review…");
     const minSpinnerMs = 800;
     const elapsed = Date.now() - genStart;
     if (elapsed < minSpinnerMs) await new Promise(r => setTimeout(r, minSpinnerMs - elapsed));
@@ -670,7 +677,7 @@ export default function SectionEditor({ store, onBack }) {
 
           <button
             onClick={handlePublish}
-            title="Publish this app for users to open in DukaDesk"
+            title="Submit this app for admin review"
             disabled={isPublishing}
             style={{
               ...primaryBtn,
@@ -684,12 +691,12 @@ export default function SectionEditor({ store, onBack }) {
             {isPublishing ? (
               <>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 0.8s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                Publishing…
+                Submitting…
               </>
             ) : (
               <>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-                {publicationPending ? 'Check publication' : 'Publish'}
+                {publicationPending ? 'Check publication' : 'Submit for review'}
               </>
             )}
           </button>

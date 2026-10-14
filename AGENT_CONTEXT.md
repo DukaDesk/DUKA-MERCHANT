@@ -3,8 +3,15 @@
 **Repository:** DukaDesk Merchant Portal (business-dashboard implementation)
 **Knowledge Base:** canonical `KNOWLEDGE-BASE` checkout at `D:/work/DD/KNOWLEDGE-BASE`
   (previously vendored under `knowledge-base/` — removed 2026-09-28; read docs there, not here)
-**Last Updated:** 2026-09-28
+**Last Updated:** 2026-10-11
 **Status:** Active
+
+## Recent Changes (2026-10-11)
+
+### App Publishing Approval Gate
+- Merchant setup saves a draft; it does not mark the app live or expose a public link.
+- Canvas publishing saves the design and submits it to the backend admin review queue.
+- Merchant release activation and rollback are blocked by the backend; an administrator approves the saved draft in the Admin Portal before it goes live.
 
 ## Overview
 
