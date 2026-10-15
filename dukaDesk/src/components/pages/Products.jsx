@@ -199,11 +199,18 @@ export default function Products() {
         setProducts(p => [created, ...p]);
         toast.success("Product added!");
       }
+      setPanel(null);
     } catch (err) {
-      const serverMessage = err?.response?.data?.message || err?.message;
-      toast.error(serverMessage && serverMessage !== "Failed to save product" ? serverMessage : "Failed to save product");
+      // Stay in the form so the merchant can fix the highlighted problem
+      // (e.g. a duplicate SKU) instead of losing their edits.
+      const raw = err?.response?.data?.message || err?.message || "";
+      const leaked = /invalid `.*prisma.*invocation|unique constraint failed|prisma\./i.test(raw);
+      toast.error(
+        leaked
+          ? "Could not save — a product with this name or SKU may already exist. Change one and try again."
+          : raw && raw !== "Failed to save product" ? raw : "Failed to save product",
+      );
     } finally { setSaving(false); }
-    setPanel(null);
   };
 
   const handleImageUpload = async (e) => {
