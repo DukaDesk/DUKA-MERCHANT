@@ -309,13 +309,13 @@ export default function SectionEditor({ store, onBack }) {
       result = await publishProject(design);
     } catch (e) {
       setIsPublishing(false);
-      toast.error("Publish failed: " + (e?.message || "unknown error"));
+      toast.error("Submission failed: " + (e?.message || "unknown error"));
       return;
     }
     setPublicationPending(!!result.pending);
     if (result.success) {
-      toast.success(result.status === "in_review" ? `App v${result.version} submitted for admin review` : `Published v${result.version} — mobile manifest updated!`);
-      if (result.verifiedPrevious) toast.info("The previous publication is confirmed. Publish again to send any newer edits.");
+      toast.success(result.status === "in_review" ? `App v${result.version} submitted for admin review` : `App v${result.version} is live on mobile!`);
+      if (result.verifiedPrevious) toast.info("The previous publication is confirmed. Submit again to send any newer edits.");
       else setTimeout(() => onBack?.(), 1200);
     } else if (result.pending) {
       toast.info(result.error);
@@ -326,7 +326,7 @@ export default function SectionEditor({ store, onBack }) {
       if (result.error?.includes("413") || result.error?.toLowerCase().includes("too large")) {
         toast.error(result.error);
       } else if (result.error) toast.error(result.error);
-      else if (!hasIssues) toast.error("Publish failed — please try again.");
+      else if (!hasIssues) toast.error("Submission failed — please try again.");
     }
     setIsPublishing(false);
   }, [store, onBack, isPublishing]);
@@ -969,7 +969,7 @@ export default function SectionEditor({ store, onBack }) {
           </p>
           {releases.length === 0 ? (
             <div style={{ textAlign: "center", padding: 24, color: "#9CA3AF", fontSize: 13 }}>
-              No releases yet. Publish your app to create the first release.
+              No releases yet. Submit your app for review to create the first release.
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>

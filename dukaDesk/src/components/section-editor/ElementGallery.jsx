@@ -286,7 +286,7 @@ const GALLERY = {
   },
   Screens: {
     icon: Monitor,
-    hint: "Tap a screen to create it, link it to nav and load it — ready for Publish.",
+    hint: "Tap a screen to create it, link it to nav and load it — ready for review.",
     screenVariants: [
       { id: "dashboard", label: "Dashboard", description: "Quick summary of key data, recent activity and shortcuts.", icon: LayoutDashboard, tabIcon: "LayoutGrid", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.dashboard },
       { id: "login", label: "Login & Sign-Up", description: "Secure email + social login, OTP ready.", icon: LogIn, tabIcon: "Key", accent: "#0D9488", background: "#FFFFFF", build: SCREEN_BUILDERS.login },
@@ -422,11 +422,11 @@ export default function ElementGallery({ browseType, store, selectedSectionId, s
         store.addTab({ label: variant.label, icon: variant.tabIcon || "Home", screenId: sid });
       }
     }
-    // Load it immediately so selection = loaded + ready for Publish.
+    // Load it immediately so selection = loaded + ready for review.
     if (store.setCurrentScreenId) store.setCurrentScreenId(sid);
     onAdded?.(null, null);
     onClose?.();
-    toast.success(`${variant.label} loaded — ready for Publish`);
+    toast.success(`${variant.label} loaded — ready for review`);
   };
 
   return (

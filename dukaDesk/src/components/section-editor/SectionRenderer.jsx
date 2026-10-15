@@ -203,13 +203,17 @@ export default function SectionRenderer({ store, selectedSectionId, selectedComp
         : (isImageBg
           ? `url(${bgImage}) center/${fit} no-repeat`
           : `linear-gradient(135deg, ${p.color || "#1A1A2E"}, #15152A)`);
+      // Longhands only: shorthand `background` + `backgroundSize` together
+      // trips React's conflicting-property warning.
+      const backgroundStyle = isImageBg && !splitImage
+        ? { backgroundImage: `url(${bgImage})`, backgroundPosition: "center", backgroundSize: fit, backgroundRepeat: "no-repeat", backgroundColor: "#1A1A2E" }
+        : { backgroundImage: background, backgroundSize: "cover" };
       rendered = (
         <div style={{
-          background, color: "#fff", borderRadius: radius, minHeight: height,
+          ...backgroundStyle, color: "#fff", borderRadius: radius, minHeight: height,
           padding: splitImage ? 0 : 32, display: "flex", flexDirection: "column",
           justifyContent: "center", alignItems: flex.alignItems || "center",
           textAlign: flex.textAlign, position: "relative", overflow: "hidden",
-          backgroundSize: "cover",
         }}>
           {splitImage && (
             <img src={bgImage} alt="" style={{

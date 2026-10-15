@@ -320,7 +320,7 @@ export default function Dashboard() {
                 <Store size={20} color={isLive ? "#2ECC71" : AMBER} />
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: isLive ? "#065F46" : "#92400E" }}>{deployedApp?.appName || setup?.appName || "Your App"} {isLive ? "is live" : "not yet deployed"}</div>
-                  <div style={{ fontSize: 12, color: isLive ? "#065F46" : "#92400E" }}>{isLive ? "Published" : "Publish your app to go live"}</div>
+                  <div style={{ fontSize: 12, color: isLive ? "#065F46" : "#92400E" }}>{isLive ? "Approved and live" : "Submit your app for review to go live"}</div>
                 </div>
               </div>
             {statusItems.map((r, i) => (
