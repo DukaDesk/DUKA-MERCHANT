@@ -18,7 +18,8 @@ import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
 import BuilderAgentPanel from "./BuilderAgentPanel";
 
-import { parsePreviewAction, resolvePreviewChrome, runPreviewAction, runPreviewEvent, runPreviewItemPress } from "./previewActions";
+import { findPreviewScreenId, parsePreviewAction, resolvePreviewChrome, runPreviewAction, runPreviewEvent, runPreviewItemPress } from "./previewActions";
+import { addCartItem, cartItemCount, cartItems, findScreenWithComponent, isProductItem, normalizeProduct, removeCartItem } from "./previewCart";
 
 const PREVIEW_SIZES = {
   mobile: { width: 390, height: 740, label: "Mobile", icon: "M12 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2s2-.9 2-2V4c0-1.1-.9-2-2-2z" },
@@ -70,6 +71,9 @@ export default function SectionEditor({ store, onBack }) {
   const [previewSize, setPreviewSize] = useState("mobile");
   const [previewScreenId, setPreviewScreenId] = useState(null);
   const [previewStack, setPreviewStack] = useState([]);
+  const [previewCart, setPreviewCart] = useState({});
+  const [previewProduct, setPreviewProduct] = useState(null);
+  const [previewQty, setPreviewQty] = useState(1);
   const [hoveredIcon, setHoveredIcon] = useState(null);
   const [validationErrors, setValidationErrors] = useState(null);
   const [showReleases, setShowReleases] = useState(false);
@@ -151,7 +155,10 @@ export default function SectionEditor({ store, onBack }) {
   useEffect(() => {
     if (previewMode) {
       const handler = (e) => {
-        if (e.key === "Escape") { setPreviewMode(false); setPreviewSplashVisible(false); setPreviewScreenId(null); }
+        if (e.key === "Escape") {
+          if (previewProduct) { setPreviewProduct(null); return; }
+          setPreviewMode(false); setPreviewSplashVisible(false); setPreviewScreenId(null);
+        }
       };
       window.addEventListener("keydown", handler);
       return () => window.removeEventListener("keydown", handler);
@@ -174,7 +181,7 @@ export default function SectionEditor({ store, onBack }) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [previewMode, selectedSectionId, selectedComponentId, store]);
+  }, [previewMode, previewProduct, selectedSectionId, selectedComponentId, store]);
 
   useEffect(() => {
     if (!previewMode || !previewSplashVisible) return undefined;
@@ -266,11 +273,15 @@ export default function SectionEditor({ store, onBack }) {
       setPreviewSplashVisible(false);
       setPreviewScreenId(null);
       setPreviewStack([]);
+      setPreviewProduct(null);
     } else {
       setPreviewMode(true);
       setPreviewSplashVisible(true);
       setPreviewStack([homeScreenId]);
       setPreviewScreenId(homeScreenId);
+      setPreviewCart({});
+      setPreviewProduct(null);
+      setPreviewQty(1);
     }
   }, [data, previewMode]);
 
@@ -293,13 +304,35 @@ export default function SectionEditor({ store, onBack }) {
   }, [data, previewStack]);
 
   const handlePreviewBack = useCallback(() => {
+    if (previewProduct) { setPreviewProduct(null); return; }
     setPreviewStack(prev => {
       if (prev.length <= 1) return prev;
       const next = prev.slice(0, -1);
       setPreviewScreenId(next[next.length - 1]);
       return next;
     });
+  }, [previewProduct]);
+
+  const previewCartItems = useMemo(() => cartItems(previewCart), [previewCart]);
+  const previewCartCount = useMemo(() => cartItemCount(previewCart), [previewCart]);
+  const previewCartScreen = useMemo(() => findScreenWithComponent(data, "cart_summary") || findPreviewScreenId(data, "cart"), [data]);
+
+  const addPreviewToCart = useCallback((item, qty = 1) => {
+    setPreviewCart(prev => addCartItem(prev, item, qty));
   }, []);
+
+  const removePreviewFromCart = useCallback((id) => {
+    setPreviewCart(prev => removeCartItem(prev, id));
+  }, []);
+
+  const openPreviewProduct = useCallback((item) => {
+    const product = normalizeProduct(item);
+    if (!product) return;
+    setPreviewProduct(product);
+    setPreviewQty(1);
+  }, []);
+
+  const closePreviewProduct = useCallback(() => setPreviewProduct(null), []);
 
   const previewActionContext = useCallback(() => ({
     data,
@@ -326,13 +359,29 @@ export default function SectionEditor({ store, onBack }) {
   /* Template components expose named events (addItem, viewDetails, checkout…).
      Resolve the merchant-configured action first, then fall back to the same
      behavior the mobile runtime gives that event. */
-  const handlePreviewEvent = useCallback((comp, eventKey, payload) => {
+  const handlePreviewEvent = useCallback((comp, eventKey, payload = {}) => {
+    if (eventKey === "viewDetails" || eventKey === "view_item" || eventKey === "selectItem" || eventKey === "openItem") {
+      if (payload?.item) { openPreviewProduct(payload.item); return; }
+    }
+    if (eventKey === "addItem" || eventKey === "add_to_cart") {
+      if (payload?.item) { addPreviewToCart(payload.item); return; }
+      if (payload?.id != null || payload?.itemId != null) { addPreviewToCart({ id: payload.id ?? payload.itemId }); return; }
+    }
+    if (eventKey === "removeItem" || eventKey === "remove_from_cart") {
+      const id = payload?.id ?? payload?.item?.id ?? payload?.itemId;
+      if (id != null) { removePreviewFromCart(id); return; }
+    }
     runPreviewEvent(comp, eventKey, payload, previewActionContext());
-  }, [previewActionContext]);
+  }, [addPreviewToCart, openPreviewProduct, previewActionContext, removePreviewFromCart]);
 
   const handlePreviewItemPress = useCallback((comp, item) => {
+    const hasExplicitAction = Boolean(item?.tapAction ?? item?.action);
+    if (!hasExplicitAction && !item?.screenId && !item?.screen && isProductItem(item)) {
+      openPreviewProduct(item);
+      return;
+    }
     runPreviewItemPress(comp, item, previewActionContext());
-  }, [previewActionContext]);
+  }, [openPreviewProduct, previewActionContext]);
 
   const dispatchPreviewAction = executePreviewAction;
 
@@ -350,6 +399,8 @@ export default function SectionEditor({ store, onBack }) {
     };
     const elev = ELEVATIONS[comp.props?.elevation] || "none";
     const op = comp.props?.opacity != null ? Number(comp.props.opacity) / 100 : 1;
+    const renderProps = { ...comp.props };
+    if (comp.type === "cart_summary") renderProps.items = previewCartItems;
     return <div key={comp.id} style={{
       padding: "4px 16px",
       marginTop: m.top || 0, marginRight: m.right || 0,
@@ -363,12 +414,12 @@ export default function SectionEditor({ store, onBack }) {
       onMouseEnter={action ? e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; } : undefined}
       onMouseLeave={action ? e => { e.currentTarget.style.background = "transparent"; } : undefined}
     >{CompType.render({
-      ...comp.props,
+      ...renderProps,
       onItemPress: (item) => handlePreviewItemPress(comp, item),
       onAction: (eventKey, payload) => handlePreviewEvent(comp, eventKey, payload),
       dispatchAction: dispatchPreviewAction,
     })}</div>;
-  }, [dispatchPreviewAction, handlePreviewAction, handlePreviewEvent, handlePreviewItemPress]);
+  }, [dispatchPreviewAction, handlePreviewAction, handlePreviewEvent, handlePreviewItemPress, previewCartItems]);
 
   const handlePublish = useCallback(async () => {
     if (isPublishing) return;
@@ -532,7 +583,7 @@ export default function SectionEditor({ store, onBack }) {
     return (
       <div style={{ height: "100vh", background: "#0F0F1A", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Inter',sans-serif" }}>
         <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 6, alignItems: "center" }}>
-          <button onClick={() => { setPreviewMode(false); setPreviewSplashVisible(false); setPreviewScreenId(null); }}
+          <button onClick={() => { setPreviewMode(false); setPreviewSplashVisible(false); setPreviewScreenId(null); setPreviewProduct(null); }}
             style={{ ...iconBtn, background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", padding: "8px 14px", borderRadius: theme.radius.md, gap: 6, fontSize: 12 }}
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}>
@@ -590,6 +641,52 @@ export default function SectionEditor({ store, onBack }) {
               {data.meta?.tagline && <div style={{ marginTop: 8, opacity: 0.78, fontSize: 13 }}>{data.meta.tagline}</div>}
             </div>
           )}
+          {previewProduct && (() => {
+            const img = previewProduct.image;
+            const hasImage = typeof img === "string" && /^(https?:|data:image|\/)/.test(img);
+            return (
+              <div style={{ position: "absolute", inset: 0, zIndex: 25, background: "#fff", display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid #EFECEF", flexShrink: 0 }}>
+                  <button onClick={closePreviewProduct} aria-label="Back to app" style={{ background: "none", border: "none", cursor: "pointer", color: NAVY, fontSize: 18, lineHeight: 1, padding: 4 }}>←</button>
+                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, color: NAVY }}>Product details</span>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 24px" }}>
+                  <div style={{ width: "100%", height: 220, borderRadius: 16, background: "#F5F2F4", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: 16 }}>
+                    {hasImage
+                      ? <img src={img} alt={previewProduct.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      : <span style={{ fontSize: 64 }}>{previewProduct.emoji || "🛍️"}</span>}
+                  </div>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 19, color: NAVY, lineHeight: 1.25 }}>{previewProduct.name}</div>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: "#B45309", marginTop: 6 }}>₦{previewProduct.price.toLocaleString()}</div>
+                  {previewProduct.description && <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.5, marginTop: 10 }}>{previewProduct.description}</div>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 20 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>Quantity</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 2, border: "1px solid #E5E1E3", borderRadius: 20, padding: "2px 4px" }}>
+                      <button onClick={() => setPreviewQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity" style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "none", cursor: "pointer", fontSize: 16, fontWeight: 700, color: NAVY }}>−</button>
+                      <span style={{ minWidth: 22, textAlign: "center", fontWeight: 700, color: NAVY }}>{previewQty}</span>
+                      <button onClick={() => setPreviewQty(q => q + 1)} aria-label="Increase quantity" style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: NAVY, color: "#fff", cursor: "pointer", fontSize: 15, fontWeight: 700 }}>+</button>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, padding: "12px 14px", borderTop: "1px solid #EFECEF", flexShrink: 0 }}>
+                  <button
+                    onClick={() => { addPreviewToCart(previewProduct, previewQty); toast.success(`${previewQty > 1 ? `${previewQty} × ` : ""}${previewProduct.name} added to cart`); }}
+                    style={{ flex: 1, padding: "13px", background: NAVY, color: "#fff", border: "none", borderRadius: 12, fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+                  >
+                    Add to cart · ₦{(previewProduct.price * previewQty).toLocaleString()}
+                  </button>
+                  {previewCartScreen && (
+                    <button
+                      onClick={() => { closePreviewProduct(); handlePreviewNavigate(previewCartScreen, "push"); }}
+                      style={{ padding: "13px 16px", background: "#F4A026", color: NAVY, border: "none", borderRadius: 12, fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+                    >
+                      Cart{previewCartCount ? ` (${previewCartCount})` : ""}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
           {(() => {
             const header = resolvePreviewChrome(screen, data, "header");
             const footer = resolvePreviewChrome(screen, data, "footer");
