@@ -18,26 +18,12 @@ import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
 import BuilderAgentPanel from "./BuilderAgentPanel";
 
+import { parsePreviewAction, resolvePreviewChrome, runPreviewAction, runPreviewEvent, runPreviewItemPress } from "./previewActions";
+
 const PREVIEW_SIZES = {
   mobile: { width: 390, height: 740, label: "Mobile", icon: "M12 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2s2-.9 2-2V4c0-1.1-.9-2-2-2z" },
   tablet: { width: 768, height: 1024, label: "Tablet", icon: "M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" },
 };
-
-function resolveActionTarget(action) {
-  if (!action || typeof action !== "object") return null;
-  return action.payload?.push || action.payload?.screen || action.payload?.screenId || action.payload?.target || null;
-}
-
-function parsePreviewAction(comp) {
-  const p = comp?.props || {};
-  const actions = { ...comp?.actions, ...p.actions };
-  const raw = p.tapAction || p.action || actions.selectItem || actions.filter || actions.default || actions.tap;
-  if (!raw) return null;
-  if (typeof raw === "string") {
-    try { return JSON.parse(raw); } catch { return null; }
-  }
-  return typeof raw === "object" ? raw : null;
-}
 
 function resolvePreviewTarget(target, data) {
   const str = String(target || "").replace(/^\/+/, "").replace(/\.[a-z]+$/i, "");
@@ -315,26 +301,74 @@ export default function SectionEditor({ store, onBack }) {
     });
   }, []);
 
+  const previewActionContext = useCallback(() => ({
+    data,
+    currentScreenId: previewScreenId,
+    navigate: handlePreviewNavigate,
+    back: handlePreviewBack,
+    notify: (message, level) => {
+      if (level === "success") toast.success(message);
+      else if (level === "error") toast.error(message);
+      else toast.info(message);
+    },
+    openUrl: (url) => window.open(url, "_blank", "noopener,noreferrer"),
+    setLocation: (url) => { window.location.href = url; },
+  }), [data, handlePreviewBack, handlePreviewNavigate, previewScreenId]);
+
+  const executePreviewAction = useCallback((rawAction) => (
+    runPreviewAction(rawAction, previewActionContext())
+  ), [previewActionContext]);
+
   const handlePreviewAction = useCallback((comp) => {
+    runPreviewAction(parsePreviewAction(comp), previewActionContext());
+  }, [previewActionContext]);
+
+  /* Template components expose named events (addItem, viewDetails, checkout…).
+     Resolve the merchant-configured action first, then fall back to the same
+     behavior the mobile runtime gives that event. */
+  const handlePreviewEvent = useCallback((comp, eventKey, payload) => {
+    runPreviewEvent(comp, eventKey, payload, previewActionContext());
+  }, [previewActionContext]);
+
+  const handlePreviewItemPress = useCallback((comp, item) => {
+    runPreviewItemPress(comp, item, previewActionContext());
+  }, [previewActionContext]);
+
+  const dispatchPreviewAction = executePreviewAction;
+
+  const renderPreviewComponent = useCallback((comp) => {
+    const CompType = getComponentType(comp.type);
+    if (!CompType) return null;
+    const m = comp.props?.margin || {};
+    const p = comp.props?.padding || {};
     const action = parsePreviewAction(comp);
-    if (!action) return;
-    const { type, payload = {} } = action;
-    if (type === "pop") { handlePreviewBack(); return; }
-    if (type === "add_to_cart") { toast.success("Item added to cart"); return; }
-    if (type === "remove_from_cart") { toast.info("Item removed from cart"); return; }
-    if (type === "checkout") { toast.info("Checkout opened"); return; }
-    if (type === "refresh" || type === "data_refresh") { toast.info("Content refreshed"); return; }
-    if (type === "call_phone" && payload.phone) { window.location.href = `tel:${payload.phone}`; return; }
-    if (type === "email" && payload.to) { window.location.href = `mailto:${payload.to}`; return; }
-    if (type === "open_url" && payload.url) { window.open(payload.url, "_blank", "noopener,noreferrer"); return; }
-    const target = resolveActionTarget(action);
-    if (typeof target !== "string" || !target) return;
-    if (type === "navigate" || type === "push") {
-      handlePreviewNavigate(target, "push");
-    } else if (type === "replace" || type === "switch_screen") {
-      handlePreviewNavigate(target, "replace");
-    }
-  }, [handlePreviewNavigate, handlePreviewBack]);
+    const ELEVATIONS = {
+      none: "none",
+      soft: "0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)",
+      medium: "0 4px 10px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06)",
+      raised: "0 10px 24px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.1)",
+    };
+    const elev = ELEVATIONS[comp.props?.elevation] || "none";
+    const op = comp.props?.opacity != null ? Number(comp.props.opacity) / 100 : 1;
+    return <div key={comp.id} style={{
+      padding: "4px 16px",
+      marginTop: m.top || 0, marginRight: m.right || 0,
+      marginBottom: m.bottom || 0, marginLeft: m.left || 0,
+      paddingTop: p.top || 0, paddingRight: p.right || 0,
+      paddingBottom: p.bottom || 0, paddingLeft: p.left || 0,
+      boxShadow: elev, opacity: op, boxSizing: "border-box",
+      cursor: action ? "pointer" : "default",
+      transition: "all 0.15s ease",
+    }} onClick={action ? () => handlePreviewAction(comp) : undefined}
+      onMouseEnter={action ? e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; } : undefined}
+      onMouseLeave={action ? e => { e.currentTarget.style.background = "transparent"; } : undefined}
+    >{CompType.render({
+      ...comp.props,
+      onItemPress: (item) => handlePreviewItemPress(comp, item),
+      onAction: (eventKey, payload) => handlePreviewEvent(comp, eventKey, payload),
+      dispatchAction: dispatchPreviewAction,
+    })}</div>;
+  }, [dispatchPreviewAction, handlePreviewAction, handlePreviewEvent, handlePreviewItemPress]);
 
   const handlePublish = useCallback(async () => {
     if (isPublishing) return;
@@ -556,43 +590,25 @@ export default function SectionEditor({ store, onBack }) {
               {data.meta?.tagline && <div style={{ marginTop: 8, opacity: 0.78, fontSize: 13 }}>{data.meta.tagline}</div>}
             </div>
           )}
-          <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-            {(screen?.bodySections || []).map(sec => {
+          {(() => {
+            const header = resolvePreviewChrome(screen, data, "header");
+            const footer = resolvePreviewChrome(screen, data, "footer");
+            const renderSection = (sec) => {
               const resolved = store.resolveSection(sec);
               return (
                 <div key={resolved.id} style={{ background: resolved.backgroundColor || screen?.backgroundColor, padding: "4px 0" }}>
-                  {(resolved.components || []).map(comp => {
-                    const CompType = getComponentType(comp.type);
-                    if (!CompType) return null;
-                    const m = comp.props?.margin || {};
-                    const p = comp.props?.padding || {};
-                    const action = parsePreviewAction(comp);
-                    const ELEVATIONS = {
-                      none: "none",
-                      soft: "0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)",
-                      medium: "0 4px 10px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06)",
-                      raised: "0 10px 24px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.1)",
-                    };
-                    const elev = ELEVATIONS[comp.props?.elevation] || "none";
-                    const op = comp.props?.opacity != null ? Number(comp.props.opacity) / 100 : 1;
-                    return <div key={comp.id} style={{
-                      padding: "4px 16px",
-                      marginTop: m.top || 0, marginRight: m.right || 0,
-                      marginBottom: m.bottom || 0, marginLeft: m.left || 0,
-                      paddingTop: p.top || 0, paddingRight: p.right || 0,
-                      paddingBottom: p.bottom || 0, paddingLeft: p.left || 0,
-                      boxShadow: elev, opacity: op, boxSizing: "border-box",
-                      cursor: action ? "pointer" : "default",
-                      transition: "all 0.15s ease",
-                    }} onClick={action ? () => handlePreviewAction(comp) : undefined}
-                      onMouseEnter={action ? e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; } : undefined}
-                      onMouseLeave={action ? e => { e.currentTarget.style.background = "transparent"; } : undefined}
-                    >{CompType.render({ ...comp.props, onItemPress: (item) => { const target = item?.tapAction ? { props: { tapAction: item.tapAction } } : comp; handlePreviewAction(target); } })}</div>;
-                  })}
+                  {(resolved.components || []).map(renderPreviewComponent)}
                 </div>
               );
-            })}
-          </div>
+            };
+            return <>
+              {header && renderSection(header)}
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                {(screen?.bodySections || []).map(renderSection)}
+              </div>
+              {footer && renderSection(footer)}
+            </>;
+          })()}
           <PreviewTabBar navigation={data.navigation} activeScreen={previewCurrentScreen} onNavigate={handlePreviewNavigate} />
         </div>
       </div>

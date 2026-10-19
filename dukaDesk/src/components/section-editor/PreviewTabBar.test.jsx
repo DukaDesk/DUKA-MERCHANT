@@ -16,7 +16,7 @@ it("renders equal-width icon tabs and navigates to their published screens", () 
   expect(home.querySelector("svg.lucide-house, svg.lucide-home")).not.toBeNull();
   expect(orders.querySelector("svg.lucide-clipboard-list")).not.toBeNull();
   expect(home.style.flex).toBe(orders.style.flex);
-  expect(orders.style.minWidth).toBe("0");
+  expect(orders.style.minWidth).toMatch(/^0(px)?$/);
   expect(home.style.color).toBe("rgb(255, 0, 0)");
   expect(screen.getByRole("navigation").style.minHeight).toBe("64px");
   fireEvent.click(orders);
