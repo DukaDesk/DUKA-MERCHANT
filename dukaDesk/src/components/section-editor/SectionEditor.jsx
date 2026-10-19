@@ -1,5 +1,5 @@
 import PreviewTabBar from "./PreviewTabBar";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Sparkles } from "lucide-react";
 import { getComponentType } from "../canvas-editor/componentTypes";
 import SectionRenderer from "./SectionRenderer";
@@ -10,8 +10,10 @@ import ScreenSwitcher from "./ScreenSwitcher";
 import { toast } from "react-toastify";
 import { NAVY } from "../../theme";
 import { useEditorTheme } from "./editorTheme.jsx";
-import { hasPendingPublication, publishProject, buildManifestPreview, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
-import { getPublishedDefinition } from "../../services/api";
+import { publishProject, buildManifestPreview, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
+import { getPublishedDefinition, getMerchant } from "../../services/api";
+import { getSubmissionStatus } from "../../services/publishedDelivery";
+import { designFingerprint, readSubmissionState, writeSubmissionState, clearSubmissionState } from "../../services/submissionState";
 import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
 import BuilderAgentPanel from "./BuilderAgentPanel";
@@ -94,11 +96,71 @@ export default function SectionEditor({ store, onBack }) {
   const [browseType, setBrowseType] = useState(null);
   const [layoutTarget, setLayoutTarget] = useState(null);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [publicationPending, setPublicationPending] = useState(hasPendingPublication);
+  const [submittedForReview, setSubmittedForReview] = useState(false);
 
   const data = store.data;
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  const submittedFingerprintRef = useRef(null);
+  const tenantId = useMemo(() => {
+    const merchant = getMerchant();
+    return merchant?.merchantId || merchant?.tenantId || null;
+  }, []);
 
   const previewCurrentScreen = previewScreenId || store.currentScreenId;
+
+  useEffect(() => {
+    if (!store.hydrated) return undefined;
+    let cancelled = false;
+    const fingerprint = designFingerprint(dataRef.current);
+    const stored = tenantId ? readSubmissionState(tenantId) : null;
+    if (stored?.fingerprint && fingerprint && stored.fingerprint === fingerprint) {
+      submittedFingerprintRef.current = fingerprint;
+      setSubmittedForReview(true);
+    }
+    (async () => {
+      if (!tenantId) return;
+      try {
+        const submission = await getSubmissionStatus(tenantId);
+        if (cancelled) return;
+        if (submission?.status === "in_review") {
+          const current = designFingerprint(dataRef.current);
+          if (stored?.fingerprint) {
+            submittedFingerprintRef.current = stored.fingerprint;
+            setSubmittedForReview(stored.fingerprint === current);
+          } else if (current) {
+            submittedFingerprintRef.current = current;
+            writeSubmissionState(tenantId, { fingerprint: current, version: submission.release?.version || null, submittedAt: Date.now() });
+            setSubmittedForReview(true);
+          }
+        } else {
+          clearSubmissionState(tenantId);
+          submittedFingerprintRef.current = null;
+          setSubmittedForReview(false);
+        }
+      } catch {
+        // Backend unavailable: keep the optimistic local journal state.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tenantId, store.hydrated]);
+
+  useEffect(() => {
+    if (!submittedForReview) return;
+    const current = designFingerprint(data);
+    if (submittedFingerprintRef.current && current !== submittedFingerprintRef.current) {
+      setSubmittedForReview(false);
+    }
+  }, [data, submittedForReview]);
+
+  const markSubmitted = useCallback((version) => {
+    const fingerprint = designFingerprint(store.getDesignJSON());
+    submittedFingerprintRef.current = fingerprint;
+    if (tenantId) {
+      writeSubmissionState(tenantId, { fingerprint, version: version || null, submittedAt: Date.now() });
+    }
+    setSubmittedForReview(true);
+  }, [store, tenantId]);
 
   useEffect(() => {
     if (previewMode) {
@@ -309,13 +371,13 @@ export default function SectionEditor({ store, onBack }) {
       result = await publishProject(design);
     } catch (e) {
       setIsPublishing(false);
-      toast.error("Publish failed: " + (e?.message || "unknown error"));
+      toast.error("Submission failed: " + (e?.message || "unknown error"));
       return;
     }
-    setPublicationPending(!!result.pending);
     if (result.success) {
-      toast.success(result.status === "in_review" ? `App v${result.version} submitted for admin review` : `Published v${result.version} — mobile manifest updated!`);
-      if (result.verifiedPrevious) toast.info("The previous publication is confirmed. Publish again to send any newer edits.");
+      markSubmitted(result.version);
+      toast.success(result.status === "in_review" ? `App v${result.version} submitted for admin review` : `App v${result.version} — mobile manifest updated!`);
+      if (result.verifiedPrevious) toast.info("The previous submission is confirmed. Submit again to send any newer edits.");
       else setTimeout(() => onBack?.(), 1200);
     } else if (result.pending) {
       toast.info(result.error);
@@ -326,10 +388,10 @@ export default function SectionEditor({ store, onBack }) {
       if (result.error?.includes("413") || result.error?.toLowerCase().includes("too large")) {
         toast.error(result.error);
       } else if (result.error) toast.error(result.error);
-      else if (!hasIssues) toast.error("Publish failed — please try again.");
+      else if (!hasIssues) toast.error("Submission failed — please try again.");
     }
     setIsPublishing(false);
-  }, [store, onBack, isPublishing]);
+  }, [store, onBack, isPublishing, markSubmitted]);
 
   const handleShowReleases = useCallback(async () => {
     try {
@@ -342,12 +404,13 @@ export default function SectionEditor({ store, onBack }) {
   const handleRollback = useCallback(async (releaseId) => {
     const result = await rollbackToRelease(releaseId);
     if (result.success) {
+      markSubmitted(result.version);
       const history = await getReleaseHistory();
       setReleases(history);
       toast.success(result.status === "in_review" ? `Rollback v${result.version} submitted for admin review` : result.verifiedPrevious ? "Previous publication verified; no new rollback was sent" : "Rollback confirmed live");
     } else if (result.pending) { toast.info(result.error); }
     else { toast.error(result.error || "Rollback failed"); }
-  }, []);
+  }, [markSubmitted]);
 
   const handleLoadTemplate = useCallback(async (templateId) => {
     if (!templateId) return;
@@ -677,26 +740,33 @@ export default function SectionEditor({ store, onBack }) {
 
           <button
             onClick={handlePublish}
-            title="Submit this app for admin review"
-            disabled={isPublishing}
+            title={submittedForReview ? "Your app is awaiting admin review" : "Submit this app for admin review"}
+            disabled={isPublishing || submittedForReview}
+            aria-live="polite"
             style={{
               ...primaryBtn,
-              opacity: isPublishing ? 0.7 : 1,
-              cursor: isPublishing ? "wait" : "pointer",
+              background: submittedForReview ? "#16A34A" : primaryBtn.background,
+              opacity: isPublishing || submittedForReview ? 0.8 : 1,
+              cursor: isPublishing ? "wait" : submittedForReview ? "default" : "pointer",
               display: "inline-flex", alignItems: "center", gap: 6,
             }}
-            onMouseEnter={e => { if (!isPublishing) { e.currentTarget.style.background = "#E89113"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(244,160,38,0.35)"; } }}
-            onMouseLeave={e => { if (!isPublishing) { e.currentTarget.style.background = theme.active; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.12)"; } }}
+            onMouseEnter={e => { if (!isPublishing && !submittedForReview) { e.currentTarget.style.background = "#E89113"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(244,160,38,0.35)"; } }}
+            onMouseLeave={e => { if (!isPublishing && !submittedForReview) { e.currentTarget.style.background = theme.active; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.12)"; } }}
           >
             {isPublishing ? (
               <>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 0.8s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                 Submitting…
               </>
+            ) : submittedForReview ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Submitted
+              </>
             ) : (
               <>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-                {publicationPending ? 'Check publication' : 'Submit for review'}
+                Submit for review
               </>
             )}
           </button>

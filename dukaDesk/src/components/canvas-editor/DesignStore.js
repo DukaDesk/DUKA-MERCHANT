@@ -1022,6 +1022,7 @@ export function useDesignStore(initialData, options = {}) {
     loadTemplate, getDesignJSON,
 
     // Persistence
+    hydrated,
     lastSaved, serverLastSaved, savingToServer, saveToServer, clearDesign,
     syncStatus, localDegraded, retrySync,
 
