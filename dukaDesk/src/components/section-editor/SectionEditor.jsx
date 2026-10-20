@@ -1,5 +1,5 @@
 import PreviewTabBar from "./PreviewTabBar";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Sparkles } from "lucide-react";
 import { getComponentType } from "../canvas-editor/componentTypes";
 import SectionRenderer from "./SectionRenderer";
@@ -10,32 +10,21 @@ import ScreenSwitcher from "./ScreenSwitcher";
 import { toast } from "react-toastify";
 import { NAVY } from "../../theme";
 import { useEditorTheme } from "./editorTheme.jsx";
-import { hasPendingPublication, publishProject, buildManifestPreview, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
-import { getPublishedDefinition } from "../../services/api";
+import { publishProject, buildManifestPreview, getReleaseHistory, rollbackToRelease, getCurrentDeployment } from "../../services/PublishingPipeline";
+import { getPublishedDefinition, getMerchant } from "../../services/api";
+import { getSubmissionStatus } from "../../services/publishedDelivery";
+import { designFingerprint, readSubmissionState, writeSubmissionState, clearSubmissionState } from "../../services/submissionState";
 import TemplateGallery from "../app-builder/TemplateGallery";
 import { loadTemplateForCanvas } from "../../services/staticTemplates";
 import BuilderAgentPanel from "./BuilderAgentPanel";
+
+import { findPreviewScreenId, parsePreviewAction, resolvePreviewChrome, runPreviewAction, runPreviewEvent, runPreviewItemPress } from "./previewActions";
+import { addCartItem, cartItemCount, cartItems, findScreenWithComponent, isProductItem, normalizeProduct, removeCartItem } from "./previewCart";
 
 const PREVIEW_SIZES = {
   mobile: { width: 390, height: 740, label: "Mobile", icon: "M12 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2s2-.9 2-2V4c0-1.1-.9-2-2-2z" },
   tablet: { width: 768, height: 1024, label: "Tablet", icon: "M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" },
 };
-
-function resolveActionTarget(action) {
-  if (!action || typeof action !== "object") return null;
-  return action.payload?.push || action.payload?.screen || action.payload?.screenId || action.payload?.target || null;
-}
-
-function parsePreviewAction(comp) {
-  const p = comp?.props || {};
-  const actions = { ...comp?.actions, ...p.actions };
-  const raw = p.tapAction || p.action || actions.selectItem || actions.filter || actions.default || actions.tap;
-  if (!raw) return null;
-  if (typeof raw === "string") {
-    try { return JSON.parse(raw); } catch { return null; }
-  }
-  return typeof raw === "object" ? raw : null;
-}
 
 function resolvePreviewTarget(target, data) {
   const str = String(target || "").replace(/^\/+/, "").replace(/\.[a-z]+$/i, "");
@@ -82,6 +71,9 @@ export default function SectionEditor({ store, onBack }) {
   const [previewSize, setPreviewSize] = useState("mobile");
   const [previewScreenId, setPreviewScreenId] = useState(null);
   const [previewStack, setPreviewStack] = useState([]);
+  const [previewCart, setPreviewCart] = useState({});
+  const [previewProduct, setPreviewProduct] = useState(null);
+  const [previewQty, setPreviewQty] = useState(1);
   const [hoveredIcon, setHoveredIcon] = useState(null);
   const [validationErrors, setValidationErrors] = useState(null);
   const [showReleases, setShowReleases] = useState(false);
@@ -94,16 +86,79 @@ export default function SectionEditor({ store, onBack }) {
   const [browseType, setBrowseType] = useState(null);
   const [layoutTarget, setLayoutTarget] = useState(null);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [publicationPending, setPublicationPending] = useState(hasPendingPublication);
+  const [submittedForReview, setSubmittedForReview] = useState(false);
 
   const data = store.data;
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  const submittedFingerprintRef = useRef(null);
+  const tenantId = useMemo(() => {
+    const merchant = getMerchant();
+    return merchant?.merchantId || merchant?.tenantId || null;
+  }, []);
 
   const previewCurrentScreen = previewScreenId || store.currentScreenId;
 
   useEffect(() => {
+    if (!store.hydrated) return undefined;
+    let cancelled = false;
+    const fingerprint = designFingerprint(dataRef.current);
+    const stored = tenantId ? readSubmissionState(tenantId) : null;
+    if (stored?.fingerprint && fingerprint && stored.fingerprint === fingerprint) {
+      submittedFingerprintRef.current = fingerprint;
+      setSubmittedForReview(true);
+    }
+    (async () => {
+      if (!tenantId) return;
+      try {
+        const submission = await getSubmissionStatus(tenantId);
+        if (cancelled) return;
+        if (submission?.status === "in_review") {
+          const current = designFingerprint(dataRef.current);
+          if (stored?.fingerprint) {
+            submittedFingerprintRef.current = stored.fingerprint;
+            setSubmittedForReview(stored.fingerprint === current);
+          } else if (current) {
+            submittedFingerprintRef.current = current;
+            writeSubmissionState(tenantId, { fingerprint: current, version: submission.release?.version || null, submittedAt: Date.now() });
+            setSubmittedForReview(true);
+          }
+        } else {
+          clearSubmissionState(tenantId);
+          submittedFingerprintRef.current = null;
+          setSubmittedForReview(false);
+        }
+      } catch {
+        // Backend unavailable: keep the optimistic local journal state.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tenantId, store.hydrated]);
+
+  useEffect(() => {
+    if (!submittedForReview) return;
+    const current = designFingerprint(data);
+    if (submittedFingerprintRef.current && current !== submittedFingerprintRef.current) {
+      setSubmittedForReview(false);
+    }
+  }, [data, submittedForReview]);
+
+  const markSubmitted = useCallback((version) => {
+    const fingerprint = designFingerprint(store.getDesignJSON());
+    submittedFingerprintRef.current = fingerprint;
+    if (tenantId) {
+      writeSubmissionState(tenantId, { fingerprint, version: version || null, submittedAt: Date.now() });
+    }
+    setSubmittedForReview(true);
+  }, [store, tenantId]);
+
+  useEffect(() => {
     if (previewMode) {
       const handler = (e) => {
-        if (e.key === "Escape") { setPreviewMode(false); setPreviewSplashVisible(false); setPreviewScreenId(null); }
+        if (e.key === "Escape") {
+          if (previewProduct) { setPreviewProduct(null); return; }
+          setPreviewMode(false); setPreviewSplashVisible(false); setPreviewScreenId(null);
+        }
       };
       window.addEventListener("keydown", handler);
       return () => window.removeEventListener("keydown", handler);
@@ -126,7 +181,7 @@ export default function SectionEditor({ store, onBack }) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [previewMode, selectedSectionId, selectedComponentId, store]);
+  }, [previewMode, previewProduct, selectedSectionId, selectedComponentId, store]);
 
   useEffect(() => {
     if (!previewMode || !previewSplashVisible) return undefined;
@@ -218,11 +273,15 @@ export default function SectionEditor({ store, onBack }) {
       setPreviewSplashVisible(false);
       setPreviewScreenId(null);
       setPreviewStack([]);
+      setPreviewProduct(null);
     } else {
       setPreviewMode(true);
       setPreviewSplashVisible(true);
       setPreviewStack([homeScreenId]);
       setPreviewScreenId(homeScreenId);
+      setPreviewCart({});
+      setPreviewProduct(null);
+      setPreviewQty(1);
     }
   }, [data, previewMode]);
 
@@ -245,34 +304,122 @@ export default function SectionEditor({ store, onBack }) {
   }, [data, previewStack]);
 
   const handlePreviewBack = useCallback(() => {
+    if (previewProduct) { setPreviewProduct(null); return; }
     setPreviewStack(prev => {
       if (prev.length <= 1) return prev;
       const next = prev.slice(0, -1);
       setPreviewScreenId(next[next.length - 1]);
       return next;
     });
+  }, [previewProduct]);
+
+  const previewCartItems = useMemo(() => cartItems(previewCart), [previewCart]);
+  const previewCartCount = useMemo(() => cartItemCount(previewCart), [previewCart]);
+  const previewCartScreen = useMemo(() => findScreenWithComponent(data, "cart_summary") || findPreviewScreenId(data, "cart"), [data]);
+
+  const addPreviewToCart = useCallback((item, qty = 1) => {
+    setPreviewCart(prev => addCartItem(prev, item, qty));
   }, []);
 
+  const removePreviewFromCart = useCallback((id) => {
+    setPreviewCart(prev => removeCartItem(prev, id));
+  }, []);
+
+  const openPreviewProduct = useCallback((item) => {
+    const product = normalizeProduct(item);
+    if (!product) return;
+    setPreviewProduct(product);
+    setPreviewQty(1);
+  }, []);
+
+  const closePreviewProduct = useCallback(() => setPreviewProduct(null), []);
+
+  const previewActionContext = useCallback(() => ({
+    data,
+    currentScreenId: previewScreenId,
+    navigate: handlePreviewNavigate,
+    back: handlePreviewBack,
+    notify: (message, level) => {
+      if (level === "success") toast.success(message);
+      else if (level === "error") toast.error(message);
+      else toast.info(message);
+    },
+    openUrl: (url) => window.open(url, "_blank", "noopener,noreferrer"),
+    setLocation: (url) => { window.location.href = url; },
+  }), [data, handlePreviewBack, handlePreviewNavigate, previewScreenId]);
+
+  const executePreviewAction = useCallback((rawAction) => (
+    runPreviewAction(rawAction, previewActionContext())
+  ), [previewActionContext]);
+
   const handlePreviewAction = useCallback((comp) => {
-    const action = parsePreviewAction(comp);
-    if (!action) return;
-    const { type, payload = {} } = action;
-    if (type === "pop") { handlePreviewBack(); return; }
-    if (type === "add_to_cart") { toast.success("Item added to cart"); return; }
-    if (type === "remove_from_cart") { toast.info("Item removed from cart"); return; }
-    if (type === "checkout") { toast.info("Checkout opened"); return; }
-    if (type === "refresh" || type === "data_refresh") { toast.info("Content refreshed"); return; }
-    if (type === "call_phone" && payload.phone) { window.location.href = `tel:${payload.phone}`; return; }
-    if (type === "email" && payload.to) { window.location.href = `mailto:${payload.to}`; return; }
-    if (type === "open_url" && payload.url) { window.open(payload.url, "_blank", "noopener,noreferrer"); return; }
-    const target = resolveActionTarget(action);
-    if (typeof target !== "string" || !target) return;
-    if (type === "navigate" || type === "push") {
-      handlePreviewNavigate(target, "push");
-    } else if (type === "replace" || type === "switch_screen") {
-      handlePreviewNavigate(target, "replace");
+    runPreviewAction(parsePreviewAction(comp), previewActionContext());
+  }, [previewActionContext]);
+
+  /* Template components expose named events (addItem, viewDetails, checkout…).
+     Resolve the merchant-configured action first, then fall back to the same
+     behavior the mobile runtime gives that event. */
+  const handlePreviewEvent = useCallback((comp, eventKey, payload = {}) => {
+    if (eventKey === "viewDetails" || eventKey === "view_item" || eventKey === "selectItem" || eventKey === "openItem") {
+      if (payload?.item) { openPreviewProduct(payload.item); return; }
     }
-  }, [handlePreviewNavigate, handlePreviewBack]);
+    if (eventKey === "addItem" || eventKey === "add_to_cart") {
+      if (payload?.item) { addPreviewToCart(payload.item); return; }
+      if (payload?.id != null || payload?.itemId != null) { addPreviewToCart({ id: payload.id ?? payload.itemId }); return; }
+    }
+    if (eventKey === "removeItem" || eventKey === "remove_from_cart") {
+      const id = payload?.id ?? payload?.item?.id ?? payload?.itemId;
+      if (id != null) { removePreviewFromCart(id); return; }
+    }
+    runPreviewEvent(comp, eventKey, payload, previewActionContext());
+  }, [addPreviewToCart, openPreviewProduct, previewActionContext, removePreviewFromCart]);
+
+  const handlePreviewItemPress = useCallback((comp, item) => {
+    const hasExplicitAction = Boolean(item?.tapAction ?? item?.action);
+    if (!hasExplicitAction && !item?.screenId && !item?.screen && isProductItem(item)) {
+      openPreviewProduct(item);
+      return;
+    }
+    runPreviewItemPress(comp, item, previewActionContext());
+  }, [openPreviewProduct, previewActionContext]);
+
+  const dispatchPreviewAction = executePreviewAction;
+
+  const renderPreviewComponent = useCallback((comp) => {
+    const CompType = getComponentType(comp.type);
+    if (!CompType) return null;
+    const m = comp.props?.margin || {};
+    const p = comp.props?.padding || {};
+    const action = parsePreviewAction(comp);
+    const ELEVATIONS = {
+      none: "none",
+      soft: "0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)",
+      medium: "0 4px 10px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06)",
+      raised: "0 10px 24px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.1)",
+    };
+    const elev = ELEVATIONS[comp.props?.elevation] || "none";
+    const op = comp.props?.opacity != null ? Number(comp.props.opacity) / 100 : 1;
+    const renderProps = { ...comp.props };
+    if (comp.type === "cart_summary") renderProps.items = previewCartItems;
+    return <div key={comp.id} style={{
+      padding: "4px 16px",
+      marginTop: m.top || 0, marginRight: m.right || 0,
+      marginBottom: m.bottom || 0, marginLeft: m.left || 0,
+      paddingTop: p.top || 0, paddingRight: p.right || 0,
+      paddingBottom: p.bottom || 0, paddingLeft: p.left || 0,
+      boxShadow: elev, opacity: op, boxSizing: "border-box",
+      cursor: action ? "pointer" : "default",
+      transition: "all 0.15s ease",
+    }} onClick={action ? () => handlePreviewAction(comp) : undefined}
+      onMouseEnter={action ? e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; } : undefined}
+      onMouseLeave={action ? e => { e.currentTarget.style.background = "transparent"; } : undefined}
+    >{CompType.render({
+      ...renderProps,
+      onItemPress: (item) => handlePreviewItemPress(comp, item),
+      onAction: (eventKey, payload) => handlePreviewEvent(comp, eventKey, payload),
+      dispatchAction: dispatchPreviewAction,
+    })}</div>;
+  }, [dispatchPreviewAction, handlePreviewAction, handlePreviewEvent, handlePreviewItemPress, previewCartItems]);
 
   const handlePublish = useCallback(async () => {
     if (isPublishing) return;
@@ -309,13 +456,13 @@ export default function SectionEditor({ store, onBack }) {
       result = await publishProject(design);
     } catch (e) {
       setIsPublishing(false);
-      toast.error("Publish failed: " + (e?.message || "unknown error"));
+      toast.error("Submission failed: " + (e?.message || "unknown error"));
       return;
     }
-    setPublicationPending(!!result.pending);
     if (result.success) {
-      toast.success(result.status === "in_review" ? `App v${result.version} submitted for admin review` : `Published v${result.version} — mobile manifest updated!`);
-      if (result.verifiedPrevious) toast.info("The previous publication is confirmed. Publish again to send any newer edits.");
+      markSubmitted(result.version);
+      toast.success(result.status === "in_review" ? `App v${result.version} submitted for admin review` : `App v${result.version} — mobile manifest updated!`);
+      if (result.verifiedPrevious) toast.info("The previous submission is confirmed. Submit again to send any newer edits.");
       else setTimeout(() => onBack?.(), 1200);
     } else if (result.pending) {
       toast.info(result.error);
@@ -326,10 +473,10 @@ export default function SectionEditor({ store, onBack }) {
       if (result.error?.includes("413") || result.error?.toLowerCase().includes("too large")) {
         toast.error(result.error);
       } else if (result.error) toast.error(result.error);
-      else if (!hasIssues) toast.error("Publish failed — please try again.");
+      else if (!hasIssues) toast.error("Submission failed — please try again.");
     }
     setIsPublishing(false);
-  }, [store, onBack, isPublishing]);
+  }, [store, onBack, isPublishing, markSubmitted]);
 
   const handleShowReleases = useCallback(async () => {
     try {
@@ -342,12 +489,13 @@ export default function SectionEditor({ store, onBack }) {
   const handleRollback = useCallback(async (releaseId) => {
     const result = await rollbackToRelease(releaseId);
     if (result.success) {
+      markSubmitted(result.version);
       const history = await getReleaseHistory();
       setReleases(history);
       toast.success(result.status === "in_review" ? `Rollback v${result.version} submitted for admin review` : result.verifiedPrevious ? "Previous publication verified; no new rollback was sent" : "Rollback confirmed live");
     } else if (result.pending) { toast.info(result.error); }
     else { toast.error(result.error || "Rollback failed"); }
-  }, []);
+  }, [markSubmitted]);
 
   const handleLoadTemplate = useCallback(async (templateId) => {
     if (!templateId) return;
@@ -435,7 +583,7 @@ export default function SectionEditor({ store, onBack }) {
     return (
       <div style={{ height: "100vh", background: "#0F0F1A", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Inter',sans-serif" }}>
         <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 6, alignItems: "center" }}>
-          <button onClick={() => { setPreviewMode(false); setPreviewSplashVisible(false); setPreviewScreenId(null); }}
+          <button onClick={() => { setPreviewMode(false); setPreviewSplashVisible(false); setPreviewScreenId(null); setPreviewProduct(null); }}
             style={{ ...iconBtn, background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", padding: "8px 14px", borderRadius: theme.radius.md, gap: 6, fontSize: 12 }}
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}>
@@ -493,43 +641,71 @@ export default function SectionEditor({ store, onBack }) {
               {data.meta?.tagline && <div style={{ marginTop: 8, opacity: 0.78, fontSize: 13 }}>{data.meta.tagline}</div>}
             </div>
           )}
-          <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-            {(screen?.bodySections || []).map(sec => {
+          {previewProduct && (() => {
+            const img = previewProduct.image;
+            const hasImage = typeof img === "string" && /^(https?:|data:image|\/)/.test(img);
+            return (
+              <div style={{ position: "absolute", inset: 0, zIndex: 25, background: "#fff", display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid #EFECEF", flexShrink: 0 }}>
+                  <button onClick={closePreviewProduct} aria-label="Back to app" style={{ background: "none", border: "none", cursor: "pointer", color: NAVY, fontSize: 18, lineHeight: 1, padding: 4 }}>←</button>
+                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, color: NAVY }}>Product details</span>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 24px" }}>
+                  <div style={{ width: "100%", height: 220, borderRadius: 16, background: "#F5F2F4", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: 16 }}>
+                    {hasImage
+                      ? <img src={img} alt={previewProduct.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      : <span style={{ fontSize: 64 }}>{previewProduct.emoji || "🛍️"}</span>}
+                  </div>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 19, color: NAVY, lineHeight: 1.25 }}>{previewProduct.name}</div>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: "#B45309", marginTop: 6 }}>₦{previewProduct.price.toLocaleString()}</div>
+                  {previewProduct.description && <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.5, marginTop: 10 }}>{previewProduct.description}</div>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 20 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>Quantity</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 2, border: "1px solid #E5E1E3", borderRadius: 20, padding: "2px 4px" }}>
+                      <button onClick={() => setPreviewQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity" style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "none", cursor: "pointer", fontSize: 16, fontWeight: 700, color: NAVY }}>−</button>
+                      <span style={{ minWidth: 22, textAlign: "center", fontWeight: 700, color: NAVY }}>{previewQty}</span>
+                      <button onClick={() => setPreviewQty(q => q + 1)} aria-label="Increase quantity" style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: NAVY, color: "#fff", cursor: "pointer", fontSize: 15, fontWeight: 700 }}>+</button>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, padding: "12px 14px", borderTop: "1px solid #EFECEF", flexShrink: 0 }}>
+                  <button
+                    onClick={() => { addPreviewToCart(previewProduct, previewQty); toast.success(`${previewQty > 1 ? `${previewQty} × ` : ""}${previewProduct.name} added to cart`); }}
+                    style={{ flex: 1, padding: "13px", background: NAVY, color: "#fff", border: "none", borderRadius: 12, fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+                  >
+                    Add to cart · ₦{(previewProduct.price * previewQty).toLocaleString()}
+                  </button>
+                  {previewCartScreen && (
+                    <button
+                      onClick={() => { closePreviewProduct(); handlePreviewNavigate(previewCartScreen, "push"); }}
+                      style={{ padding: "13px 16px", background: "#F4A026", color: NAVY, border: "none", borderRadius: 12, fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+                    >
+                      Cart{previewCartCount ? ` (${previewCartCount})` : ""}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+          {(() => {
+            const header = resolvePreviewChrome(screen, data, "header");
+            const footer = resolvePreviewChrome(screen, data, "footer");
+            const renderSection = (sec) => {
               const resolved = store.resolveSection(sec);
               return (
                 <div key={resolved.id} style={{ background: resolved.backgroundColor || screen?.backgroundColor, padding: "4px 0" }}>
-                  {(resolved.components || []).map(comp => {
-                    const CompType = getComponentType(comp.type);
-                    if (!CompType) return null;
-                    const m = comp.props?.margin || {};
-                    const p = comp.props?.padding || {};
-                    const action = parsePreviewAction(comp);
-                    const ELEVATIONS = {
-                      none: "none",
-                      soft: "0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)",
-                      medium: "0 4px 10px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06)",
-                      raised: "0 10px 24px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.1)",
-                    };
-                    const elev = ELEVATIONS[comp.props?.elevation] || "none";
-                    const op = comp.props?.opacity != null ? Number(comp.props.opacity) / 100 : 1;
-                    return <div key={comp.id} style={{
-                      padding: "4px 16px",
-                      marginTop: m.top || 0, marginRight: m.right || 0,
-                      marginBottom: m.bottom || 0, marginLeft: m.left || 0,
-                      paddingTop: p.top || 0, paddingRight: p.right || 0,
-                      paddingBottom: p.bottom || 0, paddingLeft: p.left || 0,
-                      boxShadow: elev, opacity: op, boxSizing: "border-box",
-                      cursor: action ? "pointer" : "default",
-                      transition: "all 0.15s ease",
-                    }} onClick={action ? () => handlePreviewAction(comp) : undefined}
-                      onMouseEnter={action ? e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; } : undefined}
-                      onMouseLeave={action ? e => { e.currentTarget.style.background = "transparent"; } : undefined}
-                    >{CompType.render({ ...comp.props, onItemPress: (item) => { const target = item?.tapAction ? { props: { tapAction: item.tapAction } } : comp; handlePreviewAction(target); } })}</div>;
-                  })}
+                  {(resolved.components || []).map(renderPreviewComponent)}
                 </div>
               );
-            })}
-          </div>
+            };
+            return <>
+              {header && renderSection(header)}
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                {(screen?.bodySections || []).map(renderSection)}
+              </div>
+              {footer && renderSection(footer)}
+            </>;
+          })()}
           <PreviewTabBar navigation={data.navigation} activeScreen={previewCurrentScreen} onNavigate={handlePreviewNavigate} />
         </div>
       </div>
@@ -677,26 +853,33 @@ export default function SectionEditor({ store, onBack }) {
 
           <button
             onClick={handlePublish}
-            title="Submit this app for admin review"
-            disabled={isPublishing}
+            title={submittedForReview ? "Your app is awaiting admin review" : "Submit this app for admin review"}
+            disabled={isPublishing || submittedForReview}
+            aria-live="polite"
             style={{
               ...primaryBtn,
-              opacity: isPublishing ? 0.7 : 1,
-              cursor: isPublishing ? "wait" : "pointer",
+              background: submittedForReview ? "#16A34A" : primaryBtn.background,
+              opacity: isPublishing || submittedForReview ? 0.8 : 1,
+              cursor: isPublishing ? "wait" : submittedForReview ? "default" : "pointer",
               display: "inline-flex", alignItems: "center", gap: 6,
             }}
-            onMouseEnter={e => { if (!isPublishing) { e.currentTarget.style.background = "#E89113"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(244,160,38,0.35)"; } }}
-            onMouseLeave={e => { if (!isPublishing) { e.currentTarget.style.background = theme.active; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.12)"; } }}
+            onMouseEnter={e => { if (!isPublishing && !submittedForReview) { e.currentTarget.style.background = "#E89113"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(244,160,38,0.35)"; } }}
+            onMouseLeave={e => { if (!isPublishing && !submittedForReview) { e.currentTarget.style.background = theme.active; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.12)"; } }}
           >
             {isPublishing ? (
               <>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 0.8s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                 Submitting…
               </>
+            ) : submittedForReview ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Submitted
+              </>
             ) : (
               <>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-                {publicationPending ? 'Check publication' : 'Submit for review'}
+                Submit for review
               </>
             )}
           </button>

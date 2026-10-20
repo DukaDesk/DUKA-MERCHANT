@@ -242,7 +242,7 @@ export async function publishProject(projectData) {
     await saveDeployment(manifest);
   } catch (error) {
     const status = error?.response?.status;
-    return { success: false, pending: true, error: status ? `Publishing failed (HTTP ${status})` : error?.message || 'Publishing failed', validation };
+    return { success: false, pending: true, error: status ? `Submission failed (HTTP ${status})` : error?.message || 'Submission failed', validation };
   }
 
   return { success: true, version, releaseId: release.id, validation, manifest };
@@ -292,8 +292,3 @@ export async function rollbackToRelease(releaseId) {
   }
 }
 
-export function hasPendingPublication() {
-  const merchant = getMerchant() || {};
-  const id = merchant.merchantId || merchant.tenantId;
-  try { return !!id && !isDemoId(id) && !!pendingPublication(id); } catch { return false; }
-}

@@ -9,7 +9,7 @@ export function pendingPublication(id) {
   return JSON.parse(stored);
 }
 const remember = (id, operation) => sessionStorage.setItem(key(id), JSON.stringify(operation));
-const pending = (operation, error) => ({ success: false, pending: true, status: 'verification-pending', version: operation.manifest.version, receipt: operation.receipt, error: 'Publication has not been confirmed live. ' + error + ' Check publication status before publishing again.' });
+const pending = (operation, error) => ({ success: false, pending: true, status: 'verification-pending', version: operation.manifest.version, receipt: operation.receipt, error: 'Submission has not been confirmed. ' + error + ' Submit again to check the previous submission.' });
 export async function submitAppForReview(manifest) {
   const response = unwrap(await httpClient.post(
     '/api/v1/app/merchants/review/submit',
@@ -21,6 +21,8 @@ export async function submitAppForReview(manifest) {
     success: true,
     submitted: true,
     status: 'in_review',
+    version: response?.version || manifest?.version,
+    releaseId: response?.releaseId || response?.release?.id,
     message: 'App submitted for admin review. It will be published after approval.',
   };
 }
@@ -36,12 +38,15 @@ export async function readHistory(id) {
   if (!Array.isArray(history)) throw new Error('Invalid backend release history');
   return history.map(release => ({ ...release, timestamp: release.publishedAt, environment: release.channel }));
 }
+export async function getSubmissionStatus(id) {
+  // Silent: backends deployed before the review-flow endpoint return 404 here.
+  return unwrap(await httpClient.get(path(id) + '/publishing/submission', { silent: true }));
+}
 export async function verifyPublication(id) {
   const operation = pendingPublication(id);
   if (!operation) return { success: false, error: 'No publication is awaiting verification' };
   try {
-    // Silent: backends deployed before the review-flow endpoint return 404 here.
-    const response = unwrap(await httpClient.get(path(id) + '/publishing/submission', { silent: true }));
+    const response = await getSubmissionStatus(id);
     const release = response?.release;
     if (release?.version !== operation.manifest.version) {
       if (operation.kind === 'rollback' && release?.rollbackFrom === operation.manifest.version) {
@@ -74,15 +79,29 @@ export async function verifyPublication(id) {
   } catch (error) { return pending(operation, error.message); }
 }
 export async function submitPublication(id, manifest, rollbackVersion) {
-  if (pendingPublication(id)) return { ...await verifyPublication(id), verifiedPrevious: true };
+  if (pendingPublication(id)) {
+    const verified = await verifyPublication(id);
+    if (verified.success || verified.status === 'rejected') {
+      return { ...verified, verifiedPrevious: true };
+    }
+    // The previous request was never confirmed by the backend (for example the
+    // connection dropped before it landed). Submit the current snapshot again;
+    // tenant/version/checksum uniqueness keeps that retry idempotent.
+  }
   const operation = { manifest, idempotencyKey: crypto.randomUUID(), kind: rollbackVersion ? 'rollback' : 'publish' };
   // Persist before sending. A failed journal write must not send an untrackable mutation.
   remember(id, operation);
   try {
-    const suffix = rollbackVersion ? '/publishing/rollback/' + encodeURIComponent(rollbackVersion) : '/publishing/publish';
-    const response = unwrap(await httpClient.post(path(id) + suffix, rollbackVersion ? {} : { version: manifest.version, manifest }, { headers: { 'Idempotency-Key': operation.idempotencyKey }, silentSuccess: true }));
+    const endpoint = rollbackVersion
+      ? path(id) + '/publishing/rollback/' + encodeURIComponent(rollbackVersion)
+      : '/api/v1/app/merchants/review/submit';
+    const response = unwrap(await httpClient.post(
+      endpoint,
+      rollbackVersion ? {} : { manifest },
+      { headers: { 'Idempotency-Key': operation.idempotencyKey }, silentSuccess: true },
+    ));
     operation.receipt = { ...response, releaseId: response?.releaseId ?? response?.id };
-    if (response?.status === 'pending_review' || response?.pendingReview) {
+    if (response?.status === 'pending_review' || response?.status === 'in_review' || response?.pendingReview) {
       if (response.version && response.version !== manifest.version) {
         if (rollbackVersion) operation.manifest = { ...manifest, version: response.version };
         else {

@@ -1270,18 +1270,13 @@ export async function updateTenantConfig(id, body) {
 }
 
 export async function publishTenant(id) {
-  // Merchant self-service publish resolves the tenant from JWT — no :id in path.
-  // (Legacy PUT/POST /api/v1/merchants/:id/publish was removed; that 404s.)
-  try {
-    const res = await httpClient.post(`/api/v1/app/merchants/publish`);
-    return res.data || res;
-  } catch (e) {
-    console.warn("[publishTenant] backend unavailable, demo fallback", e?.message);
+  // Merchant submissions always stage for admin review; activation is admin-only.
+  // The tenant is resolved from JWT, so no :id is sent in the path.
+  if (isDemoId(id)) {
+    return { id, status: "in_review", message: "Demo app submitted for admin review" };
   }
-  const store = demoStore();
-  if (store.config?.app) store.config.app.status = "live";
-  demoSave(store);
-  return { id, published: true };
+  const res = await httpClient.post(`/api/v1/app/merchants/review/submit`, {});
+  return res.data || res;
 }
 
 async function readConfig(tenantId) {
