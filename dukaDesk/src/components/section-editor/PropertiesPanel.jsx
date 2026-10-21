@@ -1661,11 +1661,31 @@ export function PressProperties({ component, fields = [], focusKey, screens, onC
   const [target, setTarget] = useState(focusKey || "component");
   useEffect(() => { setTarget(focusKey || "component"); }, [focusKey]);
   const props = component.props || {};
-  const events = { ...Object.fromEntries((({ cart_summary: ["removeItem", "addItem", "checkout"], order_detail: ["back"], empty_state: ["refresh"], report_action: ["submit"] })[component.type] || []).map(key => [key, null])), ...component.actions, ...props.actions };
+  // Component-type event keys from the mobile predefined defaults (screen
+  // templates ship layout; these events carry adjustable default actions).
+  const EVENT_KEYS_BY_TYPE = {
+    cart_summary: ["removeItem", "addItem", "checkout"],
+    cart_content: ["removeItem", "addItem", "checkout"],
+    order_detail: ["back"],
+    empty_state: ["refresh"],
+    report_action: ["submit"],
+    address_form: ["submit"],
+    menu_grid: ["addItem", "viewDetails"],
+    menu_item: ["addItem", "viewDetails"],
+    product_card: ["addItem", "viewDetails"],
+    laundry_booking: ["confirm"],
+    booking_summary: ["confirm"],
+    category_pills: ["selectCategory"],
+    calendar_strip: ["selectDate"],
+    slot_grid: ["selectSlot"],
+    order_history: ["selectOrder"],
+    info_list: ["call", "email"],
+  };
+  const events = { ...Object.fromEntries((EVENT_KEYS_BY_TYPE[component.type] || []).map(key => [key, null])), ...component.actions, ...props.actions };
   const options = [{ id: "component", label: "Component press" }];
   Object.keys(events).forEach(key => options.push({ id: "event:" + key, label: key }));
-  if (["category_pills", "menu_grid", "promotion_list", "info_list", "order_history"].includes(component.type)) {
-    ["cats", "categories", "items", "offers", "orders", "rows"].forEach(key => {
+  if (["category_pills", "menu_grid", "promotion_list", "info_list", "order_history", "cart_summary"].includes(component.type)) {
+    ["cats", "categories", "items", "offers", "orders", "rows", "services"].forEach(key => {
       if (Array.isArray(props[key])) props[key].forEach((item, index) => options.push({ id: "item:" + key + ":" + index, label: typeof item === "string" ? item : item.label || item.name || item.title || "Item " + (index + 1) }));
     });
   }

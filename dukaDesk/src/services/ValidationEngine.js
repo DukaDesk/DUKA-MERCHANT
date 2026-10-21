@@ -208,7 +208,7 @@ function validateComponentActions(comp, compPath, screenIds, errors) {
   } else if (tapAction && !tapAction.__invalid) {
     checkNavAction(tapAction, `${compPath}.props.tapAction`, label, screenIds, errors);
   }
-  for (const key of ["cats", "categories", "items", "offers", "orders", "rows"]) {
+  for (const key of ["cats", "categories", "items", "offers", "orders", "rows", "services"]) {
     const list = comp.props?.[key];
     if (!Array.isArray(list)) continue;
     list.forEach((item, i) => {
