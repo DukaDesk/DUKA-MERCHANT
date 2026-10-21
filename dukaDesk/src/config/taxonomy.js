@@ -22,11 +22,12 @@ export const DESK_CATEGORIES = [
    imports (Auth signup, Profile, Compliance) pick up the broad list. */
 export const BUSINESS_CATEGORIES = DESK_CATEGORIES;
 
-/* Commerce-only subset (product decision 2026-10-10): while the platform
-   faces business dashboards, only buying/selling categories are selectable
-   during signup/signin onboarding and profile edits. Existing users on other
-   categories keep their data; pickers grandfather the current value. */
-export const COMMERCE_CATEGORY_KEYS = ["Business", "Food & Hospitality", "Services", "Healthcare"];
+/* Commerce-only subset (product decision 2026-10-10, tightened 2026-10-21): while the
+   platform faces business dashboards, only buying/selling categories are selectable
+   during signup/signin onboarding and profile edits. Healthcare (clinic/pharmacy)
+   joins Religion/Education/Legal and the rest on the not-selectable list; existing
+   users on those categories keep their data; pickers grandfather the current value. */
+export const COMMERCE_CATEGORY_KEYS = ["Business", "Food & Hospitality", "Services"];
 
 export const COMMERCE_CATEGORIES = DESK_CATEGORIES.filter(c => COMMERCE_CATEGORY_KEYS.includes(c.key));
 
