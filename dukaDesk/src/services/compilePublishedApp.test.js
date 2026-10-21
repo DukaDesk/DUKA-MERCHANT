@@ -83,6 +83,15 @@ it("canonicalizes path-style push destinations to screenId", () => {
   expect(node.props.tapAction.payload.screenId).toBe("details");
 });
 
+it("parses per-service tap actions on laundry_booking components", () => {
+  const project = fixture("merchant-project.json");
+  project.screens.home.bodySections = [{ id: "section", components: [{ id: "booking", type: "laundry_booking", actions: { confirm: { type: "book_service" } }, props: { services: [{ name: "Wash & Fold", price: 2500, tapAction: JSON.stringify({ type: "view_item", payload: { id: "svc1" } }) }] } }] }];
+  const node = compileDesignToPublishedApp(project, "1", "now").screens.home.layout.children[0].layout.children[0];
+  expect(node.actions.confirm.type).toBe("book_service");
+  expect(node.props.services[0].tapAction.type).toBe("view_item");
+  expect(node.props.services[0].tapAction.payload.id).toBe("svc1");
+});
+
 it('preserves the merchant data request in the published definition', () => {
  const project = fixture('merchant-project.json');
  project.meta.dataRequest = { enabled: true, purpose: 'Delivery updates', fields: ['name','phone'], requiredFor: ['checkout'] };

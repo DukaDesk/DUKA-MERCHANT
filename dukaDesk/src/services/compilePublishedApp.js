@@ -44,7 +44,7 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
     for (const key of Object.keys(merged)) merged[key] = parse(merged[key]);
     copy.actions = Object.keys(merged).length ? merged : (action ? { default: action } : undefined);
     if (copy.props.tapAction) copy.props.tapAction = parse(copy.props.tapAction);
-    for (const key of ["cats", "categories", "items", "offers", "orders", "rows"]) {
+    for (const key of ["cats", "categories", "items", "offers", "orders", "rows", "services"]) {
       if (Array.isArray(copy.props[key])) copy.props[key] = copy.props[key].map(item => item?.tapAction ? { ...item, tapAction: parse(item.tapAction) } : item);
     }
     if (node.children) copy.children = node.children.map(compileNode);
