@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, X, Trash2, Pencil, EyeOff, Film, Heart, Share2, ShoppingBag, Sparkles, ArrowLeft, Upload, Loader2 } from "lucide-react";
+import { Plus, X, Trash2, Pencil, EyeOff, Film, Heart, Share2, ShoppingBag, Sparkles, ArrowLeft, Upload, Loader2, Timer } from "lucide-react";
 import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { getMerchantCurrency, formatMoney } from "../../utils/currency";
 import { NAVY, AMBER, cardStyle, inputStyle, labelStyle, btnPrimary, btnSecondary, statCard, pageHeading, pageSubtitle, transition } from "../../theme";
-import { getProducts, getFeedPosts, createFeedPost, updateFeedPost, deleteFeedPost, uploadMediaAsset } from "../../services/api";
+import { getProducts, getFeedPosts, getFeedQuota, createFeedPost, updateFeedPost, deleteFeedPost, uploadMediaAsset } from "../../services/api";
 import { Loading, Empty, ErrorState } from "../layout/States";
 
 // Mirrors the API media cap (see DUKA-BACKEND media.service.ts).
@@ -13,6 +13,7 @@ const MEDIA_MAX_BYTES = 50 * 1024 * 1024;
 const MEDIA_MAX_ITEMS = 10;
 export const CTA_MAX = 40;
 export const CAPTION_MAX = 500;
+export const VIDEO_MAX_SECONDS = 90;
 const DEFAULT_CTA = "Buy Now";
 
 const EMPTY_FORM = { caption: "", ctaLabel: DEFAULT_CTA, productId: "", media: [], status: "published" };
@@ -24,6 +25,39 @@ export function validateDraftMedia(media) {
   if (media.length > MEDIA_MAX_ITEMS) return `Up to ${MEDIA_MAX_ITEMS} photos/videos per post`;
   if (media.filter(m => m.type === "video").length > 1) return "Only one video per post";
   return "";
+}
+
+// "22h left" countdown for ephemeral promo posts (they live 24h server-side).
+export function formatPromoTimeLeft(expiresAt, now = new Date()) {
+  if (!expiresAt) return "no expiry";
+  const ms = new Date(expiresAt).getTime() - now.getTime();
+  if (!Number.isFinite(ms)) return "no expiry";
+  if (ms <= 0) return "expiring";
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins}m left`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h left`;
+  return "24h left";
+}
+
+// Reads a video's real duration from its metadata (client-side gate before
+// upload; the post must be short-form promo content).
+export function readVideoDurationSeconds(file) {
+  return new Promise((resolve) => {
+    if (typeof document === "undefined") { resolve(NaN); return; }
+    const url = URL.createObjectURL(file);
+    const el = document.createElement("video");
+    el.preload = "metadata";
+    el.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(typeof el.duration === "number" && Number.isFinite(el.duration) ? el.duration : NaN);
+    };
+    el.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(NaN);
+    };
+    el.src = url;
+  });
 }
 
 function firstFrame(media) {
@@ -46,6 +80,7 @@ export default function Promotions() {
   const [params] = useSearchParams();
   const [posts, setPosts] = useState([]);
   const [products, setProducts] = useState([]);
+  const [quota, setQuota] = useState(null);
   const [state, setState] = useState("loading");
   const [currency, setCurrency] = useState("NGN");
   const [showCreate, setShowCreate] = useState(false);
@@ -65,9 +100,14 @@ export default function Promotions() {
   const load = async () => {
     setState("loading");
     try {
-      const results = await Promise.all([getFeedPosts().catch(() => []), getProducts()]);
+      const results = await Promise.all([
+        getFeedPosts().catch(() => []),
+        getProducts().catch(error => { throw error; }),
+        getFeedQuota().catch(() => null),
+      ]);
       setPosts(results[0]);
       setProducts(results[1]);
+      setQuota(results[2]);
       setState("ready");
     } catch {
       setState("error");
@@ -110,6 +150,13 @@ export default function Promotions() {
         toast.error("Only one video per post");
         continue;
       }
+      if (type === "video") {
+        const seconds = await readVideoDurationSeconds(file);
+        if (Number.isFinite(seconds) && Math.round(seconds) > VIDEO_MAX_SECONDS) {
+          toast.error(`${file.name} is longer than ${VIDEO_MAX_SECONDS} seconds`);
+          continue;
+        }
+      }
       const index = mediaRef.current.length;
       syncMedia([...mediaRef.current, { url: "", type, name: file.name }]);
       setUploadingCount(c => c + 1);
@@ -150,6 +197,7 @@ export default function Promotions() {
       setShowCreate(false);
       setEditing(null);
       setForm(EMPTY_FORM);
+      getFeedQuota().then(q => setQuota(q)).catch(() => {});
       await load();
     } catch (error) {
       const message = error?.response?.data?.message || error?.message || "";
@@ -206,7 +254,10 @@ export default function Promotions() {
             <ArrowLeft size={16} /> Back to Dashboard
           </button>
           <h2 style={pageHeading}>Promotions</h2>
-          <p style={pageSubtitle}>Sparkle your products in the Feed — shoppers see posts from your live app</p>
+          <p style={pageSubtitle}>
+            Sparkle your products in the Feed — posts run for 24 hours, then clear automatically.
+            {quota?.limit != null && ` You've used ${Math.min(quota.used, quota.limit)} of ${quota.limit} today${quota.tier && quota.tier !== "free" ? ` (${quota.tier})` : ""}.`}
+          </p>
         </div>
         <button onClick={openCreate} style={btnPrimary}>
           <Sparkles size={16} /> New Promo Post
@@ -261,6 +312,9 @@ export default function Promotions() {
                   )}
                   {retired && (
                     <span style={{ position: "absolute", top: 10, right: 10, background: "#F3F4F6", color: "#6B7280", borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: 700 }}>Hidden</span>
+                  )}
+                  {!retired && post.expiresAt && (
+                    <span style={{ position: "absolute", top: 10, right: 10, background: "rgba(0,0,0,0.6)", color: "#fff", borderRadius: 8, padding: "3px 8px", fontSize: 11, fontWeight: 600 }}><Timer size={11} style={{ verticalAlign: "-2px", marginRight: 3 }} />{formatPromoTimeLeft(post.expiresAt)}</span>
                   )}
                 </div>
                 <div style={{ padding: 16 }}>
@@ -329,7 +383,7 @@ export default function Promotions() {
             <div style={{ marginBottom: 6 }}>
               <label style={labelStyle}>Photos / Video</label>
               <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 8 }}>
-                Up to {MEDIA_MAX_ITEMS} photos or 1 video (50MB max). Likes stay anonymous to you.
+                Up to {MEDIA_MAX_ITEMS} photos or 1 video (50MB, up to {VIDEO_MAX_SECONDS}s). Likes stay anonymous to you.
               </div>
               {form.media.length > 0 && (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>

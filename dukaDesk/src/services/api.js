@@ -1664,6 +1664,7 @@ function mapBackendFeedPost(item) {
     patronageCount: Number(item.patronageCount) || 0,
     createdAt: item.createdAt || null,
     updatedAt: item.updatedAt || null,
+    expiresAt: item.expiresAt || null,
   };
 }
 
@@ -1676,6 +1677,17 @@ function unwrapFeedList(value) {
 export async function getFeedPosts() {
   const res = await httpClient.get("/api/v1/app/feed/posts", { params: { limit: 50 }, silent: true });
   return unwrapFeedList(res).map(mapBackendFeedPost).filter(Boolean);
+}
+
+export async function getFeedQuota() {
+  const res = await httpClient.get("/api/v1/app/feed/quota", { silent: true });
+  const body = unwrapBody(res);
+  return {
+    tier: body?.tier ?? "free",
+    limit: Number.isFinite(Number(body?.limit)) ? Number(body.limit) : null,
+    used: Number(body?.used) || 0,
+    remaining: body?.remaining == null ? null : Math.max(0, Number(body.remaining) || 0),
+  };
 }
 
 export async function createFeedPost(body) {
@@ -1693,4 +1705,56 @@ export async function updateFeedPost(id, body) {
 export async function deleteFeedPost(id) {
   await httpClient.delete(`/api/v1/app/feed/posts/${encodeURIComponent(id)}`);
   return { id };
+}
+
+/* ───── Platform comms (broadcasts + direct from DukaDesk) ───── */
+function mapBackendAnnouncement(item) {
+  if (!item?.id) return null;
+  return {
+    id: item.id,
+    kind: item.kind === "direct" ? "direct" : "broadcast",
+    audience: item.audience || null,
+    title: item.title || "",
+    body: item.body || "",
+    media: Array.isArray(item.media)
+      ? item.media.map(m => ({
+          url: typeof m === "string" ? m : m?.url || "",
+          type: m?.type === "video" ? "video" : "image",
+          posterUrl: m?.posterUrl || null,
+        })).filter(m => m.url)
+      : [],
+    unread: Boolean(item.unread),
+    readAt: item.readAt || null,
+    createdAt: item.createdAt || null,
+    replies: Array.isArray(item.replies)
+      ? item.replies.map(r => ({
+          id: r.id,
+          author: r.author || "merchant",
+          body: r.body || "",
+          createdAt: r.createdAt || null,
+        }))
+      : [],
+  };
+}
+
+export async function listPlatformUpdates() {
+  const res = await httpClient.get("/api/v1/app/comms/messages", { params: { limit: 30 }, silent: true });
+  const body = res?.data ?? res;
+  return (body?.items || body?.data || []).map(mapBackendAnnouncement).filter(Boolean);
+}
+
+export async function getPlatformUpdateThread(id) {
+  const res = await httpClient.get(`/api/v1/app/comms/messages/${encodeURIComponent(id)}`, { silent: true });
+  return mapBackendAnnouncement(unwrapBody(res));
+}
+
+export async function replyToPlatformUpdate(id, body) {
+  const res = await httpClient.post(`/api/v1/app/comms/messages/${encodeURIComponent(id)}/replies`, { body });
+  const reply = unwrapBody(res);
+  return reply?.id ? { id: reply.id, author: reply.author || "merchant", body: reply.body || body, createdAt: reply.createdAt || null } : { id: "" };
+}
+
+export async function markPlatformUpdateRead(id) {
+  const res = await httpClient.post(`/api/v1/app/comms/messages/${encodeURIComponent(id)}/read`, {}, { silent: true });
+  return unwrapBody(res);
 }
