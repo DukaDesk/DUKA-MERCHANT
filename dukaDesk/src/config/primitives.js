@@ -17,6 +17,7 @@ export const PRIMITIVES = [
   { id: "analytics", label: "Analytics", icon: "BarChart3", group: "Insights", desc: "Revenue, traffic & conversion overview", flags: ["analytics"], widgets: ["kpi_revenue", "revenue_trend"] },
   { id: "messages", label: "Messages", icon: "MessageSquare", group: "Communication", desc: "Chat with customers in real-time", flags: ["notifications"], widgets: ["messages_unread"] },
   { id: "marketing", label: "Marketing", icon: "Megaphone", group: "Communication", desc: "Campaigns, broadcasts & offers", flags: ["analytics", "notifications"], widgets: ["marketing_campaigns"] },
+  { id: "promotions", label: "Promotions", icon: "Sparkles", group: "Communication", desc: "Sparkle products in the customer Feed — promos, posts & buttons", flags: [], widgets: ["marketing_promos"], page: "promotions" },
   { id: "integrations", label: "More Tools", icon: "Link2", group: "More Tools", desc: "Install & manage connected features", flags: ["integrations"], widgets: ["integrations_active"] },
   { id: "billing", label: "Billing", icon: "CreditCard", group: "Account", desc: "Plans, payments & invoices", flags: [], widgets: ["billing_plan"] },
   { id: "team", label: "Team", icon: "Users", group: "Account", desc: "Invite members & set permissions", flags: [], widgets: ["team_members"] },
