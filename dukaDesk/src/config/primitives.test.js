@@ -5,7 +5,7 @@ import { getVertical } from "./verticals";
 describe("primitives registry", () => {
   it("exposes every module id referenced by verticals", () => {
     const primitiveIds = new Set(PRIMITIVES.map(p => p.id));
-    ["analytics", "messages", "marketing", "integrations", "billing", "team", "settings",
+    ["analytics", "messages", "marketing", "promotions", "integrations", "billing", "team", "settings",
       "products", "orders", "customers", "inventory", "giving", "attendance", "fees", "appointments",
       "reservations", "memberships", "tickets", "classes"]
       .forEach(id => expect(primitiveIds.has(id), `${id} missing`).toBe(true));

@@ -67,10 +67,24 @@ export function VerticalProvider({ children }) {
           setEnabledIds(app.modules);
         }
       })
-      .catch(() => {})
-      .finally(() => { if (active) setLoading(false); });
+        .catch(() => {})
+        .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
+
+  // Launch default: Promotions ships with every desk. Backfill the saved
+  // toolset once (flag-guarded so an explicit "remove" afterwards sticks).
+  useEffect(() => {
+    const BACKFILL_FLAG = "dd_promotions_preset_done";
+    if (!Array.isArray(enabledIds) || enabledIds.includes("promotions")) return;
+    try {
+      if (window.localStorage.getItem(BACKFILL_FLAG)) return;
+      window.localStorage.setItem(BACKFILL_FLAG, "1");
+    } catch { /* storage unavailable — no backfill */ return; }
+    const next = [...enabledIds, "promotions"];
+    setEnabledIds(next);
+    saveDashboardModules(next).catch(() => {});
+  }, [enabledIds]);
 
   const setCategory = useCallback(async (value, opts = {}) => {
     // Always store the canonical broad industry (legacy aliases migrate here).

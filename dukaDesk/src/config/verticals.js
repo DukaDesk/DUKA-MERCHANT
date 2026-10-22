@@ -22,6 +22,7 @@ const sharedModules = [
   { id: "analytics", label: "Analytics", icon: "BarChart3" },
   { id: "messages", label: "Messages", icon: "MessageSquare" },
   { id: "marketing", label: "Marketing", icon: "Megaphone" },
+  { id: "promotions", label: "Promotions", icon: "Sparkles" },
   { id: "integrations", label: "More Tools", icon: "Link2" },
   { id: "billing", label: "Billing", icon: "CreditCard" },
   { id: "team", label: "Team", icon: "Users" },

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, Plus, X, Upload, Trash2, Package, ImagePlus, LayoutGrid, List, Pencil } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, Plus, X, Upload, Trash2, Package, ImagePlus, LayoutGrid, List, Pencil, Sparkles } from "lucide-react";
 import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { usePermission } from "../../hooks/usePermission";
@@ -87,6 +88,7 @@ const DIMENSION_UNITS = ["cm", "m", "in"];
 
 export default function Products() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { can } = usePermission();
   const { merchant } = useAuth() || {};
   const currency = getMerchantCurrency(merchant);
@@ -384,6 +386,9 @@ export default function Products() {
             </div>
           )}
           <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => navigate(`/dashboard/promotions?product=${p.id}`)} style={{ flex: 1, background: "#F0FDF4", color: "#065F46", border: "1px solid #BBF7D0", borderRadius: 10, height: 46, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <Sparkles size={15} /> Promote
+            </button>
             {can("product:update") && (
               <button onClick={() => { const current = detail?.id === p.id ? detail : p; setDetail(null); openEdit(current); }} style={{ flex: 1, background: AMBER, color: NAVY, border: "none", borderRadius: 10, height: 46, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <Pencil size={15} /> Edit

@@ -1611,3 +1611,86 @@ const ensureMerchant = ensureTenant;
 
 // Alias for merchants migration
 const fetchMerchantSilently = fetchTenantSilently;
+
+/* ───── Promo Feed (merchant self-service) ─────
+   Feed posts are media (≤1 video, ≤10 items) + caption + the product the
+   CTA always opens in the merchant app. Engagement counts are read-only. */
+
+function feedMediaRef(item) {
+  const url = typeof item === "string" ? item : item?.url;
+  if (!url) return null;
+  const file = typeof item === "object" ? item : null;
+  const type = (file?.type === "video" ? "video" : "image");
+  const ref = { url, type };
+  if (file?.mediaId) ref.mediaId = file.mediaId;
+  if (file?.posterUrl) ref.posterUrl = file.posterUrl;
+  return ref;
+}
+
+function serializeFeedPost(body) {
+  const media = (body.media || []).map(feedMediaRef).filter(Boolean);
+  if (media.length === 0) throw new Error("A promo post needs at least one photo or video");
+  return {
+    caption: body.caption?.trim() || undefined,
+    productId: body.productId || undefined,
+    ctaLabel: body.ctaLabel?.trim() || undefined,
+    media,
+    status: body.status || undefined,
+  };
+}
+
+function mapBackendFeedPost(item) {
+  if (!item?.id) return null;
+  const product = item.product || null;
+  const productImages = Array.isArray(product?.images)
+    ? product.images.map(img => (typeof img === "string" ? img : img?.url)).filter(Boolean)
+    : [];
+  return {
+    id: item.id,
+    caption: item.caption || "",
+    ctaLabel: item.ctaLabel || "Buy Now",
+    status: item.status || "published",
+    productId: item.productId || product?.id || null,
+    product: product ? { id: product.id, name: product.name, images: productImages } : null,
+    media: Array.isArray(item.media)
+      ? item.media.map(m => ({
+          url: typeof m === "string" ? m : m?.url || "",
+          type: (typeof m === "object" ? m?.type : "image") === "video" ? "video" : "image",
+          posterUrl: (typeof m === "object" ? m?.posterUrl : null) || null,
+        })).filter(m => m.url)
+      : [],
+    likeCount: Number(item.likeCount) || 0,
+    shareCount: Number(item.shareCount) || 0,
+    patronageCount: Number(item.patronageCount) || 0,
+    createdAt: item.createdAt || null,
+    updatedAt: item.updatedAt || null,
+  };
+}
+
+function unwrapFeedList(value) {
+  const body = value?.data ?? value;
+  if (Array.isArray(body)) return body;
+  return body?.items || body?.data || [];
+}
+
+export async function getFeedPosts() {
+  const res = await httpClient.get("/api/v1/app/feed/posts", { params: { limit: 50 }, silent: true });
+  return unwrapFeedList(res).map(mapBackendFeedPost).filter(Boolean);
+}
+
+export async function createFeedPost(body) {
+  const res = await httpClient.post("/api/v1/app/feed/posts", serializeFeedPost(body));
+  const created = mapBackendFeedPost(unwrapBody(res));
+  if (!created?.id) throw new Error("Promo post was not created");
+  return created;
+}
+
+export async function updateFeedPost(id, body) {
+  const res = await httpClient.patch(`/api/v1/app/feed/posts/${encodeURIComponent(id)}`, serializeFeedPost(body));
+  return mapBackendFeedPost(unwrapBody(res)) || { id };
+}
+
+export async function deleteFeedPost(id) {
+  await httpClient.delete(`/api/v1/app/feed/posts/${encodeURIComponent(id)}`);
+  return { id };
+}
