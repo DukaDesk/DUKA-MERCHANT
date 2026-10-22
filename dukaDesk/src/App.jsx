@@ -28,6 +28,7 @@ const Settings = lazy(() => import("./components/pages/Settings"));
 const Customers = lazy(() => import("./components/pages/Customers"));
 const Inventory = lazy(() => import("./components/pages/Inventory"));
 const Marketing = lazy(() => import("./components/pages/Marketing"));
+const Promotions = lazy(() => import("./components/pages/Promotions"));
 const Notifications = lazy(() => import("./components/pages/Notifications"));
 const CompliancePage = lazy(() => import("./components/pages/Compliance"));
 const DeskDesignPage = lazy(() => import("./components/pages/DeskDesign"));
@@ -162,6 +163,7 @@ export default function App() {
                 <Route path="customers" element={<Customers />} />
                 <Route path="inventory" element={<Inventory />} />
                 <Route path="marketing" element={<Marketing />} />
+                <Route path="promotions" element={<Promotions />} />
                 <Route path="team" element={<Team />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="notifications" element={<Notifications />} />

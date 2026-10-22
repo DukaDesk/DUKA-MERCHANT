@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, ShoppingCart, BarChart3, MessageSquare, Link2, CreditCard, Settings as SettingsIcon, Users, LogOut, Sparkles, PenTool, Contact, ClipboardList, Megaphone, ShieldCheck, Palette, UtensilsCrossed, HeartHandshake, HandCoins, CalendarCheck, CalendarDays, Wallet, CalendarClock, Receipt, Ticket, Briefcase, Inbox, BadgeCheck, Dumbbell } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
@@ -11,14 +11,14 @@ import { PRIMITIVES } from "../../config/primitives";
 import dukaLogo from "../../assets/image/Dukalogo.png";
 
 const roleAccess = {
-  super_admin: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team", "settings", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
-  platform_operator: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
+  super_admin: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "promotions", "integrations", "billing", "team", "settings", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
+  platform_operator: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "promotions", "integrations", "billing", "team", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
   support_agent: ["dashboard", "compliance", "desk-design", "orders", "customers", "messages", "analytics", "attendance", "appointments", "giving", "reservations", "tickets"],
-  tenant_owner: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "team", "settings", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
-  business_manager: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "integrations", "billing", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
+  tenant_owner: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "promotions", "integrations", "billing", "team", "settings", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
+  business_manager: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "analytics", "messages", "marketing", "promotions", "integrations", "billing", "attendance", "fees", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
   store_manager: ["dashboard", "compliance", "desk-design", "products", "orders", "customers", "inventory", "messages", "integrations", "attendance", "appointments", "giving", "reservations", "memberships", "tickets", "classes"],
   sales_staff: ["dashboard", "compliance", "desk-design", "orders", "customers", "messages", "appointments"],
-  content_manager: ["dashboard", "compliance", "desk-design", "products", "messages", "marketing"],
+  content_manager: ["dashboard", "compliance", "desk-design", "products", "messages", "marketing", "promotions"],
   customer: ["dashboard", "compliance", "desk-design"],
   member: ["dashboard", "compliance", "desk-design"],
 };
