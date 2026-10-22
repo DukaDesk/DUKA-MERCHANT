@@ -66,23 +66,23 @@ describe("PublishingPipeline", () => {
       expect(api.saveDeployment).toHaveBeenCalledOnce();
     });
 
-    it("starts at 0.0.1 when no prior releases", async () => {
+    it("starts at 1.0.0 when no prior releases", async () => {
       api.getReleases.mockResolvedValue([]);
 
       const result = await publishProject({ ...validProject, tenantId: "tenant_demo_001" });
 
       expect(result.success).toBe(true);
-      expect(result.version).toBe("0.0.1");
+      expect(result.version).toBe("1.0.0");
     });
 
-    it("increments only from published releases", async () => {
+    it("increments from the latest version even when its release is rolled back", async () => {
       api.getReleases.mockResolvedValue([
         { id: "rel_1", version: "2.0.0", status: "rolled_back", timestamp: "2024-01-01T00:00:00.000Z", project: {}, validationResult: { errors: 0, warnings: 0 }, environment: "production" },
       ]);
 
       const result = await publishProject({ ...validProject, tenantId: "tenant_demo_001" });
 
-      expect(result.version).toBe("0.0.1");
+      expect(result.version).toBe("2.0.1");
     });
 
     it("saves the full project in the release", async () => {
@@ -135,12 +135,10 @@ describe("PublishingPipeline", () => {
       expect(result).toEqual(releases);
     });
 
-    it("returns empty array on error", async () => {
+    it("surfaces release history errors instead of silently resetting the app version", async () => {
       api.getReleases.mockRejectedValue(new Error("network"));
 
-      const result = await getReleaseHistory();
-
-      expect(result).toEqual([]);
+      await expect(getReleaseHistory()).rejects.toThrow("network");
     });
   });
 
@@ -165,8 +163,9 @@ describe("PublishingPipeline", () => {
 
       expect(result.success).toBe(true);
       const saved = api.saveReleases.mock.calls[0][0];
-      expect(saved.find(r => r.id === "rel_1").status).toBe("published");
+      expect(saved.find(r => r.id === "rel_1").status).toBe("rolled_back");
       expect(saved.find(r => r.id === "rel_2").status).toBe("rolled_back");
+      expect(saved.at(-1)).toMatchObject({ version: "1.0.2", status: "published", rollbackFrom: "rel_1" });
     });
 
     it("deploys the rolled-back release", async () => {
@@ -181,7 +180,7 @@ describe("PublishingPipeline", () => {
       expect(result.success).toBe(true);
       expect(api.saveDeployment).toHaveBeenCalledOnce();
       const deployed = api.saveDeployment.mock.calls[0][0];
-      expect(deployed.version).toBe("1.0.0");
+      expect(deployed.version).toBe("1.0.1");
       expect(deployed.rollbackFrom).toBe("rel_1");
     });
   });
