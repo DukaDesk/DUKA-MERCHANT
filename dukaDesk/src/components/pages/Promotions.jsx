@@ -17,7 +17,7 @@ export const CAPTION_MAX = 500;
 export const VIDEO_MAX_SECONDS = 90;
 const DEFAULT_CTA = "Buy Now";
 
-const EMPTY_FORM = { caption: "", ctaLabel: DEFAULT_CTA, productId: "", media: [], status: "published" };
+const EMPTY_FORM = { caption: "", ctaLabel: DEFAULT_CTA, productId: "", ctaButton: true, ctaTarget: "product", media: [], status: "published" };
 
 // Media count rules shared by the composer and validators:
 // up to MEDIA_MAX_ITEMS items total, at most one video among them.
@@ -121,9 +121,9 @@ export default function Promotions() {
 
   // "Promote this product" deep link from the product detail card.
   useEffect(() => {
-    const productId = params.get("product");
-    if (!productId) return;
-    setForm(f => ({ ...f, productId }));
+  const productId = params.get("product");
+  if (!productId) return;
+  setForm(f => ({ ...f, productId, ctaButton: true, ctaTarget: "product" }));
     setShowCreate(true);
   }, [params]);
 
@@ -143,7 +143,7 @@ export default function Promotions() {
   const handleFiles = async (files) => {
     if (!files || !files.length) return;
     // Media uploads and product selection are mutually exclusive.
-    if (form.productId) setForm(f => ({ ...f, productId: "" }));
+    if (form.productId) setForm(f => ({ ...f, productId: "", ctaTarget: f.ctaTarget === "product" ? "store" : f.ctaTarget }));
     const room = MEDIA_MAX_ITEMS - mediaRef.current.length;
     if (room <= 0) { toast.error(`Up to ${MEDIA_MAX_ITEMS} photos/videos per post`); return; }
     uploadStarted.current = true;
@@ -192,7 +192,7 @@ export default function Promotions() {
   // Uploads one WhatsApp-trimmed section of an oversized video.
   const handleTrimSection = async (blob) => {
     if (!trimFile) return false;
-    if (form.productId) setForm(f => ({ ...f, productId: "" }));
+    if (form.productId) setForm(f => ({ ...f, productId: "", ctaTarget: f.ctaTarget === "product" ? "store" : f.ctaTarget }));
     if (mediaRef.current.filter(m => m.type === "video").length >= 1) {
       toast.error("Only one video per post");
       return false;
@@ -232,11 +232,18 @@ export default function Promotions() {
     }
     setSaving(true);
     try {
+      const payload = {
+        caption: form.caption,
+        status: "published",
+        media,
+        productId: form.ctaButton && form.ctaTarget === "product" ? form.productId : "",
+        ctaLabel: form.ctaButton ? (form.ctaLabel.trim() || DEFAULT_CTA) : "",
+      };
       if (editing) {
-        await updateFeedPost(editing.id, { ...form, media });
+        await updateFeedPost(editing.id, payload);
         toast.success("Promo post updated!");
       } else {
-        await createFeedPost({ ...form, media });
+        await createFeedPost(payload);
         toast.success("Your promo is live in the Feed!");
       }
       setShowCreate(false);
@@ -279,6 +286,8 @@ export default function Promotions() {
       caption: post.caption || "",
       ctaLabel: post.ctaLabel || DEFAULT_CTA,
       productId: post.productId || "",
+      ctaButton: Boolean((post.ctaLabel || "").trim()),
+      ctaTarget: post.productId ? "product" : "store",
       media: post.media.map(m => ({ url: m.url, type: m.type, posterUrl: m.posterUrl || undefined })),
       status: post.status,
     });
@@ -372,7 +381,9 @@ export default function Promotions() {
                     ) : (
                       <span style={{ fontSize: 12, color: "#9CA3AF", padding: "3px 0" }}>Brand post</span>
                     )}
-                    <span style={{ fontSize: 12, color: NAVY, background: "#FFF8ED", padding: "3px 10px", borderRadius: 8, fontWeight: 600 }}>{post.ctaLabel}</span>
+                    {post.ctaLabel?.trim() && (
+                      <span style={{ fontSize: 12, color: NAVY, background: "#FFF8ED", padding: "3px 10px", borderRadius: 8, fontWeight: 600 }}>{post.ctaLabel}</span>
+                    )}
                     {product ? <span style={{ fontSize: 12, color: "#6B7280" }}>{formatMoney(product.price, currency)}</span> : null}
                   </div>
                   <div style={{ display: "flex", gap: 14, marginBottom: 14, fontSize: 12, color: "#6B7280" }}>
@@ -407,19 +418,68 @@ export default function Promotions() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Promote a product (optional)</label>
-              <select
-                style={inputStyle}
-                value={form.productId}
-                onChange={(e) => {
-                  uploadStarted.current = false;
-                  setForm(f => ({ ...f, productId: e.target.value }));
-                  syncMedia([]);
-                }}
-              >
-                <option value="">Select product</option>
-                {products.map(p => <option key={p.id} value={p.id}>{p.name} — {formatMoney(p.price, currency)}</option>)}
-              </select>
+              <label style={labelStyle}>Button</label>
+              <div style={{ display: "flex", gap: 6, marginBottom: form.ctaButton ? 10 : 0 }}>
+                {[
+                  { key: "show", label: "Show button" },
+                  { key: "hide", label: "Hide button" },
+                ].map(opt => {
+                  const active = form.ctaButton === (opt.key === "show");
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, ctaButton: opt.key === "show" }))}
+                      style={{ flex: 1, padding: "8px 10px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? `1.5px solid ${AMBER}` : "1px solid #E5E7EB", background: active ? "#FFF8ED" : "#fff", color: NAVY }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {form.ctaButton && (
+                <>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                    {[
+                      { key: "product", label: "Open product" },
+                      { key: "store", label: "Open store" },
+                    ].map(opt => {
+                      const active = form.ctaTarget === opt.key;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, ctaTarget: opt.key, productId: opt.key === "product" ? f.productId : "" }))}
+                          style={{ flex: 1, padding: "8px 10px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: active ? `1.5px solid ${AMBER}` : "1px solid #E5E7EB", background: active ? "#FFF8ED" : "#fff", color: NAVY }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {form.ctaTarget === "product" && (
+                    <select
+                      style={{ ...inputStyle, marginBottom: 10 }}
+                      value={form.productId}
+                      onChange={(e) => {
+                        uploadStarted.current = false;
+                        setForm(f => ({ ...f, productId: e.target.value }));
+                        syncMedia([]);
+                      }}
+                    >
+                      <option value="">Select product</option>
+                      {products.map(p => <option key={p.id} value={p.id}>{p.name} — {formatMoney(p.price, currency)}</option>)}
+                    </select>
+                  )}
+                  <input
+                    style={inputStyle}
+                    maxLength={CTA_MAX}
+                    value={form.ctaLabel}
+                    onChange={e => setForm(f => ({ ...f, ctaLabel: e.target.value }))}
+                    placeholder={DEFAULT_CTA}
+                  />
+                </>
+              )}
             </div>
 
             <div style={{ marginBottom: 6 }}>
@@ -465,17 +525,6 @@ export default function Promotions() {
                 placeholder="Get yours while stock lasts — preorder today!"
               />
               <div style={{ fontSize: 11, color: "#9CA3AF", textAlign: "right", marginTop: 2 }}>{(form.caption || "").length}/{CAPTION_MAX}</div>
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <label style={labelStyle}>Button label</label>
-              <input
-                style={inputStyle}
-                maxLength={CTA_MAX}
-                value={form.ctaLabel}
-                onChange={e => setForm(f => ({ ...f, ctaLabel: e.target.value }))}
-                placeholder={DEFAULT_CTA}
-              />
             </div>
 
             <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
