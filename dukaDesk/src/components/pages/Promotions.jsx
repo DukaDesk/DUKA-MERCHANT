@@ -142,6 +142,8 @@ export default function Promotions() {
 
   const handleFiles = async (files) => {
     if (!files || !files.length) return;
+    // Media uploads and product selection are mutually exclusive.
+    if (form.productId) setForm(f => ({ ...f, productId: "" }));
     const room = MEDIA_MAX_ITEMS - mediaRef.current.length;
     if (room <= 0) { toast.error(`Up to ${MEDIA_MAX_ITEMS} photos/videos per post`); return; }
     uploadStarted.current = true;
@@ -190,6 +192,7 @@ export default function Promotions() {
   // Uploads one WhatsApp-trimmed section of an oversized video.
   const handleTrimSection = async (blob) => {
     if (!trimFile) return false;
+    if (form.productId) setForm(f => ({ ...f, productId: "" }));
     if (mediaRef.current.filter(m => m.type === "video").length >= 1) {
       toast.error("Only one video per post");
       return false;
@@ -409,24 +412,18 @@ export default function Promotions() {
                 style={inputStyle}
                 value={form.productId}
                 onChange={(e) => {
-                  const next = e.target.value;
-                  uploadStarted.current = true;
-                  setForm(f => ({ ...f, productId: next, media: f.media.every(m => !m.mediaId) ? [] : f.media }));
+                  uploadStarted.current = false;
+                  setForm(f => ({ ...f, productId: e.target.value }));
+                  syncMedia([]);
                 }}
               >
-                <option value="">No — brand post only</option>
+                <option value="">Select product</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.name} — {formatMoney(p.price, currency)}</option>)}
               </select>
-              <div style={{ fontSize: 12, color: "#6B7280", marginTop: 6 }}>
-                The button on your post always opens this product in your app.
-              </div>
             </div>
 
             <div style={{ marginBottom: 6 }}>
               <label style={labelStyle}>Photos / Video</label>
-              <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 8 }}>
-                Up to {MEDIA_MAX_ITEMS} photos or 1 video (50MB, up to {VIDEO_MAX_SECONDS}s). Likes stay anonymous to you.
-              </div>
               {form.media.length > 0 && (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                   {form.media.map((m, i) => (
@@ -447,7 +444,7 @@ export default function Promotions() {
                   ))}
                 </div>
               )}
-              {form.media.length < MEDIA_MAX_ITEMS && (
+              {!form.productId && form.media.length < MEDIA_MAX_ITEMS && (
                 <button onClick={() => fileRef.current?.click()} style={{ ...btnSecondary, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                   <Upload size={15} /> {form.media.length > 0 ? "Add another photo / video" : "Add photos or a video"}
                 </button>
