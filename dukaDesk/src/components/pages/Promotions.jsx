@@ -7,6 +7,7 @@ import { getMerchantCurrency, formatMoney } from "../../utils/currency";
 import { NAVY, AMBER, cardStyle, inputStyle, labelStyle, btnPrimary, btnSecondary, statCard, pageHeading, pageSubtitle, transition } from "../../theme";
 import { getProducts, getFeedPosts, getFeedQuota, createFeedPost, updateFeedPost, deleteFeedPost, uploadMediaAsset } from "../../services/api";
 import { Loading, Empty, ErrorState } from "../layout/States";
+import VideoTrimModal from "./VideoTrimModal";
 
 // Mirrors the API media cap (see DUKA-BACKEND media.service.ts).
 const MEDIA_MAX_BYTES = 50 * 1024 * 1024;
@@ -88,6 +89,8 @@ export default function Promotions() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [uploadingCount, setUploadingCount] = useState(0);
+  // Oversized video waiting to be WhatsApp-trimmed into uploadable sections.
+  const [trimFile, setTrimFile] = useState(null);
   const fileRef = useRef(null);
   // Keeps multi-file uploads order-stable across async awaits.
   const mediaRef = useRef([]);
@@ -144,8 +147,18 @@ export default function Promotions() {
     uploadStarted.current = true;
     const accepted = Array.from(files).slice(0, room);
     for (const file of accepted) {
-      if (file.size > MEDIA_MAX_BYTES) { toast.error(`${file.name} is over the 50MB limit`); continue; }
       const type = file.type.startsWith("video") ? "video" : "image";
+      if (file.size > MEDIA_MAX_BYTES) {
+        // WhatsApp behaviour: too-large videos open the section trimmer
+        // instead of failing.
+        if (type === "video" && mediaRef.current.filter(m => m.type === "video").length >= 1) {
+          toast.error("Only one video per post");
+          continue;
+        }
+        if (type === "video") { setTrimFile(file); continue; }
+        toast.error(`${file.name} is over the 50MB limit`);
+        continue;
+      }
       if (type === "video" && mediaRef.current.filter(m => m.type === "video").length >= 1) {
         toast.error("Only one video per post");
         continue;
@@ -171,6 +184,35 @@ export default function Promotions() {
       } finally {
         setUploadingCount(c => c - 1);
       }
+    }
+  };
+
+  // Uploads one WhatsApp-trimmed section of an oversized video.
+  const handleTrimSection = async (blob) => {
+    if (!trimFile) return false;
+    if (mediaRef.current.filter(m => m.type === "video").length >= 1) {
+      toast.error("Only one video per post");
+      return false;
+    }
+    const base = trimFile.name.replace(/\.[^.]+$/, "");
+    const name = `${base}-section.webm`;
+    const sectionFile = new File([blob], name, { type: blob.type || "video/webm" });
+    const type = "video";
+    const index = mediaRef.current.length;
+    syncMedia([...mediaRef.current, { url: "", type, name }]);
+    setUploadingCount(c => c + 1);
+    try {
+      const asset = await uploadMediaAsset(sectionFile, { purpose: "feed", alt: "Promo post media" });
+      const url = asset?.url;
+      if (!url) throw new Error("Upload returned no URL");
+      syncMedia(mediaRef.current.map((m, i) => (i === index ? { url, type, mediaId: asset.id } : m)));
+      return true;
+    } catch (error) {
+      toast.error(`Section upload failed — ${error?.message || "try again"}`);
+      syncMedia(mediaRef.current.filter((_, i) => i !== index));
+      return false;
+    } finally {
+      setUploadingCount(c => c - 1);
     }
   };
 
@@ -448,6 +490,14 @@ export default function Promotions() {
           </div>
         </div>
       )}
+
+      <VideoTrimModal
+        file={trimFile}
+        maxSeconds={VIDEO_MAX_SECONDS}
+        onClose={() => setTrimFile(null)}
+        onSection={handleTrimSection}
+        showToast={(message, kind) => (kind === "error" ? toast.error(message) : toast.info(message))}
+      />
     </div>
   );
 }
