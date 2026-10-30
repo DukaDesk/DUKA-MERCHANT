@@ -637,6 +637,148 @@ export async function getActivity() {
   return [];
 }
 
+/* ───── Customizable dashboards (backend source of truth) ─────
+   Endpoints: /api/v1/analytics/dashboards (read) + /api/v1/app/analytics/dashboards* (write).
+   The widget set is derived from the merchant's enabled modules so the
+   dashboard reflects what is actually installed (FEAT-0008). */
+
+/* Widget specs contributed by each enabled module. `base` is always present
+   (analytics is a core tool that cannot be uninstalled). Keyed by primitive id
+   from src/config/primitives.js. */
+export const DASHBOARD_WIDGET_SPECS = {
+  base: [
+    { metric: "revenue", type: "metric", title: "Total Revenue" },
+    { metric: "revenue_trend", type: "chart", title: "Revenue Trend" },
+  ],
+  orders: [
+    { metric: "order_count", type: "metric", title: "Orders" },
+    { metric: "recent_orders", type: "list", title: "Recent Orders" },
+  ],
+  customers: [{ metric: "user_count", type: "metric", title: "Customers" }],
+  products: [
+    { metric: "product_count", type: "metric", title: "Products" },
+    { metric: "top_products", type: "table", title: "Top Products" },
+  ],
+  appointments: [{ metric: "booking_count", type: "metric", title: "Bookings" }],
+};
+
+export function desiredDashboardWidgets(moduleIds) {
+  const specs = [...(DASHBOARD_WIDGET_SPECS.base || [])];
+  const seen = new Set(specs.map((s) => s.metric));
+  for (const id of Array.isArray(moduleIds) ? moduleIds : []) {
+    for (const spec of DASHBOARD_WIDGET_SPECS[id] || []) {
+      if (!seen.has(spec.metric)) {
+        seen.add(spec.metric);
+        specs.push(spec);
+      }
+    }
+  }
+  return specs;
+}
+
+function dashboardTenantId() {
+  const merchant = getMerchant();
+  const tenantId = merchant?.merchantId || merchant?.tenantId;
+  return tenantId && !isDemoId(tenantId) ? tenantId : null;
+}
+
+let defaultDashboardCache = null;
+let defaultDashboardPending = null;
+
+/* Test seam — module-level cache would otherwise leak between assertions. */
+export function resetDashboardCache() {
+  defaultDashboardCache = null;
+  defaultDashboardPending = null;
+}
+
+export async function listDashboards() {
+  if (!dashboardTenantId()) return [];
+  const res = await httpClient.get("/api/v1/analytics/dashboards", { silent: true });
+  const list = unwrapList(res);
+  return Array.isArray(list) ? list : [];
+}
+
+export async function createDashboard(body) {
+  const res = await httpClient.post("/api/v1/app/analytics/dashboards", body);
+  return unwrapBody(res);
+}
+
+export async function updateDashboardPreferences(id, patch) {
+  const res = await httpClient.post(`/api/v1/app/analytics/dashboards/${encodeURIComponent(id)}`, patch);
+  return unwrapBody(res);
+}
+
+export async function getDashboardWidgetData(dashboardId) {
+  const res = await httpClient.get(`/api/v1/app/analytics/dashboards/${encodeURIComponent(dashboardId)}/data`, { silent: true });
+  return unwrapBody(res);
+}
+
+export async function addDashboardWidget(dashboardId, widget) {
+  const res = await httpClient.post(`/api/v1/app/analytics/dashboards/${encodeURIComponent(dashboardId)}/widgets`, widget);
+  return unwrapBody(res);
+}
+
+export async function removeDashboardWidget(dashboardId, widgetId) {
+  const res = await httpClient.delete(`/api/v1/app/analytics/dashboards/${encodeURIComponent(dashboardId)}/widgets/${encodeURIComponent(widgetId)}`);
+  return unwrapBody(res);
+}
+
+export async function getWidgetTypes() {
+  const res = await httpClient.get("/api/v1/app/analytics/widget-types", { silent: true });
+  return unwrapBody(res);
+}
+
+export async function getOrCreateDefaultDashboard() {
+  if (!dashboardTenantId()) return null;
+  if (defaultDashboardCache) return defaultDashboardCache;
+  if (defaultDashboardPending) return defaultDashboardPending;
+  defaultDashboardPending = (async () => {
+    try {
+      const dashboards = await listDashboards();
+      const existing = dashboards.find((d) => d.isDefault) || dashboards[0] || null;
+      const dashboard = existing || (await createDashboard({
+        name: "Overview",
+        slug: "overview",
+        description: "Default merchant dashboard",
+      }));
+      defaultDashboardCache = dashboard;
+      return dashboard;
+    } finally {
+      defaultDashboardPending = null;
+    }
+  })();
+  return defaultDashboardPending;
+}
+
+/* Reconcile the dashboard's widgets with the merchant's enabled modules:
+   create missing widget specs, delete widgets whose module is off. Existing
+   widgets are matched by metric so user position/size edits survive. */
+export async function syncDashboardWidgets(dashboardId, moduleIds) {
+  if (!dashboardTenantId() || !dashboardId) return null;
+  const res = await httpClient.get(`/api/v1/analytics/dashboards/${encodeURIComponent(dashboardId)}`, { silent: true });
+  const dashboard = unwrapBody(res);
+  const existing = Array.isArray(dashboard?.widgets) ? dashboard.widgets : [];
+  const desired = desiredDashboardWidgets(moduleIds);
+  const desiredMetrics = new Set(desired.map((s) => s.metric));
+  const existingByMetric = new Map(existing.map((w) => [w.metric || "revenue", w]));
+
+  const created = [];
+  for (const [index, spec] of desired.entries()) {
+    if (existingByMetric.has(spec.metric)) continue;
+    await addDashboardWidget(dashboardId, { ...spec, position: index });
+    created.push(spec.metric);
+  }
+
+  const removed = [];
+  for (const widget of existing) {
+    const metric = widget.metric || "revenue";
+    if (desiredMetrics.has(metric)) continue;
+    await removeDashboardWidget(dashboardId, widget.id);
+    removed.push(metric);
+  }
+  return { created, removed };
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    PRODUCTS
    ═══════════════════════════════════════════════════════════════════ */
