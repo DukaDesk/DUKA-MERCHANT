@@ -4,6 +4,7 @@ import { resolveCanonicalCategory } from "../config/taxonomy";
 import { verticalPresetModules, getPrimitive } from "../config/primitives";
 import { getMerchant, getSetupData, setSetupData, getMyApp, saveCategory, getDashboardModules, saveDashboardModules } from "../services/api";
 import { getCategoryName, getCategoryLower } from "../utils/categoryText";
+import { EventBus } from "./EventBus";
 
 const VerticalContext = createContext(null);
 
@@ -65,6 +66,7 @@ export function VerticalProvider({ children }) {
         }
         if (Array.isArray(app?.modules) && app.modules.length) {
           setEnabledIds(app.modules);
+          EventBus.emit("modules:changed", app.modules);
         }
       })
         .catch(() => {})
@@ -104,6 +106,7 @@ export function VerticalProvider({ children }) {
     setSetupData({ ...(saved || {}), category: canonical, modules: modulesToSave });
     setEnabledIds(modulesToSave);
     setCategoryState(canonical);
+    EventBus.emit("modules:changed", modulesToSave);
     if (merchant?.tenantId) {
       try { await saveCategory(canonical, modulesToSave); } catch { /* backend best-effort */ }
     } else {
@@ -131,6 +134,8 @@ export function VerticalProvider({ children }) {
       const list = [...next];
       setEnabledIds(list);
       try { await saveDashboardModules(list); } catch { /* backend best-effort */ }
+      // Let the dashboard resync its backend widgets without a reload (TASK-0026).
+      EventBus.emit("modules:changed", list);
     } finally {
       setSavingModules(false);
     }
@@ -139,6 +144,7 @@ export function VerticalProvider({ children }) {
   const resetModules = useCallback(async () => {
     setEnabledIds(presetIds);
     try { await saveDashboardModules(presetIds); } catch { /* best-effort */ }
+    EventBus.emit("modules:changed", presetIds);
   }, [presetIds]);
 
   return (

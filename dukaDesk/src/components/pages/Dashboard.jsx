@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from "recharts";
 import { Plus, Package, BarChart3, MessageSquare, Store, TrendingUp, Users, DollarSign, Star, ArrowRight, ShieldCheck, Sparkles, HandCoins, Wallet, CalendarClock, HeartHandshake, Receipt, Megaphone, Ticket, Briefcase, Inbox, CalendarCheck, Smartphone, QrCode, Check, ArrowUp, Bell } from "lucide-react";
@@ -7,7 +7,7 @@ import { useAuth } from "../../contexts";
 import { toast } from "react-toastify";
 import { useIsMobile, useIsTablet } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, cardStyle } from "../../theme";
-import { getMyApp, getDashboardStats, getRevenue, getActivity, getSetupData, getComplianceStatus, getCurrentPlan, getMerchant } from "../../services/api";
+import { getMyApp, getDashboardStats, getSetupData, getComplianceStatus, getCurrentPlan, getMerchant, getOrCreateDefaultDashboard, syncDashboardWidgets, getDashboardWidgetData } from "../../services/api";
 import { PRIMITIVE_BY_ID } from "../../config/primitives";
 import { Loading, Empty, ErrorState } from "../layout/States";
 import { useDispatchAction } from "../../runtime/RuntimeContext";
@@ -25,10 +25,12 @@ export default function Dashboard() {
   const { modules: enabledIds } = useVertical();
   const enabledModulesSet = new Set(enabledIds);
   const moduleGate = (id) => !id || PRIMITIVE_BY_ID[id] === undefined || enabledModulesSet.has(id);
+  const modulesRef = useRef(enabledIds);
+  modulesRef.current = enabledIds;
   const [qrCopied, setQrCopied] = useState(false);
   const [stats, setStats] = useState(null);
-  const [revenueData, setRevenueData] = useState([]);
-  const [activity, setActivity] = useState([]);
+  const [widgets, setWidgets] = useState([]);
+  const [widgetsError, setWidgetsError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deployedApp, setDeployedApp] = useState(null);
@@ -68,15 +70,44 @@ export default function Dashboard() {
     } catch { toast.error("Failed to generate QR code"); }
   };
 
+  /* Backend-backed widgets (TASK-0026): resolve the merchant's default
+     dashboard, reconcile its widgets with the enabled module set, then load
+     live widget data. Never throws — failures land in `widgetsError` so the
+     KPI/summary data still renders. */
+  const loadWidgets = async (moduleIds) => {
+    try {
+      setWidgetsError(null);
+      const dashboard = await getOrCreateDefaultDashboard();
+      if (!dashboard) {
+        setWidgets([]);
+        return;
+      }
+      try {
+        await syncDashboardWidgets(dashboard.id, moduleIds ?? modulesRef.current);
+      } catch (e) {
+        // Best-effort reconcile — a sync failure must not hide widget data.
+        console.warn("[Dashboard] widget sync failed:", e?.message);
+      }
+      const data = await getDashboardWidgetData(dashboard.id);
+      setWidgets(Array.isArray(data?.widgets) ? data.widgets : []);
+    } catch (e) {
+      console.warn("[Dashboard] widget load failed:", e?.message);
+      setWidgetsError(e?.message || "Failed to load dashboard widgets");
+    }
+  };
+
   const loadDashboard = () => {
     setError(null);
     setLoading(true);
-    Promise.all([getDashboardStats(), getRevenue(), getActivity()])
-      .then(([s, r, a]) => { setStats(s); setRevenueData(r); setActivity(a); })
+    Promise.all([getDashboardStats(), loadWidgets()])
+      .then(([s]) => setStats(s))
       .catch(() => setError("Failed to load dashboard data"))
       .finally(() => setLoading(false));
   };
   useEffect(loadDashboard, []);
+
+  // Integrations page / desk-type changes resync widgets without a full reload.
+  useEffect(() => EventBus.on("modules:changed", (list) => loadWidgets(list)), []);
 
   const setup = getSetupData();
   const statusItems = [
@@ -124,6 +155,25 @@ export default function Dashboard() {
     return value;
   }
 
+  /* Derived widget views — each section reads its backend widget and falls
+     back to the empty state when the widget's module is off or data is empty. */
+  const metricWidgets = widgets.filter((w) => w.type === "metric" && !w.error);
+  const revenueTrend = (widgets.find((w) => w.metric === "revenue_trend" && !w.error)?.data || [])
+    .map((d) => ({ week: d.period, revenue: d.value }));
+  const recentOrders = widgets.find((w) => w.metric === "recent_orders" && !w.error)?.data || [];
+  const topProductsWidget = widgets.find((w) => w.metric === "top_products" && !w.error);
+  const activityItems = recentOrders.map((o) => ({
+    icon: <Receipt size={18} color="#0D9488" />,
+    color: "#0D9488",
+    title: "New order",
+    sub: `${formatMoney(Number(o.total) || 0, o.currency || currency)}${o.status ? ` · ${o.status}` : ""}`,
+    time: o.createdAt ? new Date(o.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "",
+  }));
+
+  const formatMetricValue = (w) => (w.metric === "revenue"
+    ? formatMoney(Number(w.value) || 0, w.currency || currency)
+    : Number(w.value ?? 0).toLocaleString());
+
   return (
     <div style={{ animation: "fadeIn 0.35s ease" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -170,6 +220,18 @@ export default function Dashboard() {
         </div>
       )}
 
+      {widgetsError && (
+        <div style={{ ...cardStyle, marginBottom: 20, background: "#FEF2F2", border: "1px solid #FECACA", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: "#B91C1C" }}>Dashboard widgets unavailable</div>
+            <div style={{ fontSize: 13, color: "#991B1B" }}>{widgetsError}</div>
+          </div>
+          <button onClick={() => loadDashboard()} style={{ background: "#B91C1C", color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            Retry
+          </button>
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 12 : 18, marginBottom: isMobile ? 20 : 28 }}>
         {kpiData.map((k, i) => (
           <div key={i} style={{ ...cardStyle, position: "relative", overflow: "hidden", cursor: k.page ? "pointer" : "default", animation: `fadeIn 0.35s ease ${i * 0.08}s both` }} onClick={() => k.page && handleNavigate(k.page)}>
@@ -183,6 +245,17 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {metricWidgets.length > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 20, display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {metricWidgets.map((w) => (
+            <div key={w.widgetId} style={{ flex: "1 1 130px", background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
+              <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>{w.title}</div>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: NAVY }}>{formatMetricValue(w)}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ ...cardStyle, marginBottom: 20, display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 12 }}>
         <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "10px 12px" }}>
@@ -242,8 +315,8 @@ export default function Dashboard() {
                 View All <ArrowRight size={14} />
               </button>
             </div>
-            {activity.length === 0 ? <Empty icon={<Bell size={32} color="#9CA3AF" />} message="No recent activity" sub="Customer actions will appear here" /> : activity.map((a, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < activity.length - 1 ? "1px solid #F3F4F6" : "none", animation: `fadeIn 0.3s ease ${i * 0.06}s both` }}>
+            {activityItems.length === 0 ? <Empty icon={<Bell size={32} color="#9CA3AF" />} message="No recent activity" sub="Customer actions will appear here" /> : activityItems.map((a, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < activityItems.length - 1 ? "1px solid #F3F4F6" : "none", animation: `fadeIn 0.3s ease ${i * 0.06}s both` }}>
                 <div style={{ width: 40, height: 40, background: a.color + "18", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{a.icon}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{a.title}</div>
@@ -262,9 +335,9 @@ export default function Dashboard() {
               </div>
 
             </div>
-            {revenueData.length === 0 ? <Empty icon={<TrendingUp size={32} color="#9CA3AF" />} message="No revenue data yet" sub="Revenue will appear once you start receiving orders" /> : (
+            {revenueTrend.length === 0 ? <Empty icon={<TrendingUp size={32} color="#9CA3AF" />} message="No revenue data yet" sub="Revenue will appear once you start receiving orders" /> : (
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={revenueData}>
+              <AreaChart data={revenueTrend}>
                 <defs><linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={AMBER} stopOpacity={0.25}/><stop offset="100%" stopColor={AMBER} stopOpacity={0}/></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                 <XAxis dataKey="week" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
@@ -275,6 +348,32 @@ export default function Dashboard() {
             </ResponsiveContainer>
             )}
           </div>
+
+          {topProductsWidget && (
+            <div style={{ ...cardStyle }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <div>
+                  <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY }}>Top Products</span>
+                  <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>Best performers in your catalog</div>
+                </div>
+                <button onClick={() => handleNavigate("products")} style={{ background: "none", border: "none", color: AMBER, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                  View All <ArrowRight size={14} />
+                </button>
+              </div>
+              {topProductsWidget.data?.length ? topProductsWidget.data.map((p, i) => (
+                <div key={p.id || i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < topProductsWidget.data.length - 1 ? "1px solid #F3F4F6" : "none", animation: `fadeIn 0.3s ease ${i * 0.06}s both` }}>
+                  <div style={{ width: 34, height: 34, background: `${AMBER}15`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Package size={16} color={AMBER} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{p.name || "Untitled product"}</div>
+                    <div style={{ fontSize: 12, color: "#6B7280" }}>{p.type || "Product"}</div>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: NAVY, whiteSpace: "nowrap" }}>{formatMoney(Number(p.price) || 0, currency)}</div>
+                </div>
+              )) : <Empty icon={<Package size={32} color="#9CA3AF" />} message="No products yet" sub="Add products to see your top performers here" />}
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
