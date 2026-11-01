@@ -1,0 +1,17 @@
+{
+  "screenId": "checkout",
+  "archetype": "checkout",
+  "title": "Checkout",
+  "layout": {
+    "kind": "scroll",
+    "gap": 16,
+    "padding": 16,
+    "children": [
+      {
+        "type": "checkout_form",
+        "key": "checkout-form",
+        "props": {}
+      }
+    ]
+  }
+}

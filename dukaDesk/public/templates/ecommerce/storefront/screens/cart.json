@@ -1,5 +1,6 @@
 {
   "screenId": "cart",
+  "archetype": "cart",
   "title": "Cart",
   "layout": {
     "kind": "scroll",
@@ -17,16 +18,11 @@
         "actions": { "tap": { "type": "filter", "payload": { "source": "promo" } } }
       },
       {
-        "type": "cart_summary",
+        "type": "cart_content",
         "key": "cart-summary",
-        "props": {
-          "items": [
-            { "id": 101, "name": "Slim Fit Shirt", "price": 12500, "qty": 1, "img": "https://picsum.photos/seed/shirt/200/200" },
-            { "id": 104, "name": "Classic Sneakers", "price": 24000, "qty": 1, "img": "https://picsum.photos/seed/sneakers/200/200" }
-          ]
-        },
+        "props": {},
         "actions": {
-          "checkout": { "type": "navigate", "payload": { "push": "/orders" } },
+          "checkout": { "type": "go_checkout" },
           "removeItem": { "type": "remove_from_cart" },
           "addItem": { "type": "add_to_cart" }
         }

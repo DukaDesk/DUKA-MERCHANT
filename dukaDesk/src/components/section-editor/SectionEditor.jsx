@@ -71,6 +71,7 @@ export default function SectionEditor({ store, onBack }) {
   const [previewSize, setPreviewSize] = useState("mobile");
   const [previewScreenId, setPreviewScreenId] = useState(null);
   const [previewStack, setPreviewStack] = useState([]);
+  const [previewOrderId, setPreviewOrderId] = useState(null);
   const [previewCart, setPreviewCart] = useState({});
   const [previewProduct, setPreviewProduct] = useState(null);
   const [previewQty, setPreviewQty] = useState(1);
@@ -273,12 +274,14 @@ export default function SectionEditor({ store, onBack }) {
       setPreviewSplashVisible(false);
       setPreviewScreenId(null);
       setPreviewStack([]);
+      setPreviewOrderId(null);
       setPreviewProduct(null);
     } else {
       setPreviewMode(true);
       setPreviewSplashVisible(true);
       setPreviewStack([homeScreenId]);
       setPreviewScreenId(homeScreenId);
+      setPreviewOrderId(null);
       setPreviewCart({});
       setPreviewProduct(null);
       setPreviewQty(1);
@@ -346,7 +349,16 @@ export default function SectionEditor({ store, onBack }) {
     },
     openUrl: (url) => window.open(url, "_blank", "noopener,noreferrer"),
     setLocation: (url) => { window.location.href = url; },
-  }), [data, handlePreviewBack, handlePreviewNavigate, previewScreenId]);
+    addToCart: (item, quantity) => addPreviewToCart(item, quantity),
+    removeFromCart: id => removePreviewFromCart(id),
+    selectOrder: id => setPreviewOrderId(id == null ? null : String(id)),
+    placeOrder: () => {
+      setPreviewCart({});
+      toast.success("Preview order submitted");
+      const target = findPreviewScreenId(data, "orders") || findPreviewScreenId(data, "order");
+      if (target) handlePreviewNavigate(target, "replace");
+    },
+  }), [addPreviewToCart, data, handlePreviewBack, handlePreviewNavigate, previewScreenId, removePreviewFromCart]);
 
   const executePreviewAction = useCallback((rawAction) => (
     runPreviewAction(rawAction, previewActionContext())
@@ -401,6 +413,7 @@ export default function SectionEditor({ store, onBack }) {
     const op = comp.props?.opacity != null ? Number(comp.props.opacity) / 100 : 1;
     const renderProps = { ...comp.props };
     if (comp.type === "cart_summary") renderProps.items = previewCartItems;
+    if (comp.type === "order_detail" && previewOrderId) renderProps.orderId = previewOrderId;
     return <div key={comp.id} style={{
       padding: "4px 16px",
       marginTop: m.top || 0, marginRight: m.right || 0,
@@ -419,7 +432,7 @@ export default function SectionEditor({ store, onBack }) {
       onAction: (eventKey, payload) => handlePreviewEvent(comp, eventKey, payload),
       dispatchAction: dispatchPreviewAction,
     })}</div>;
-  }, [dispatchPreviewAction, handlePreviewAction, handlePreviewEvent, handlePreviewItemPress, previewCartItems]);
+  }, [dispatchPreviewAction, handlePreviewAction, handlePreviewEvent, handlePreviewItemPress, previewCartItems, previewOrderId]);
 
   const handlePublish = useCallback(async () => {
     if (isPublishing) return;

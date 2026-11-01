@@ -84,6 +84,30 @@ describe("runPreviewAction", () => {
     expect(ctx.notify).toHaveBeenCalledWith("Submitted successfully", "success");
   });
 
+  it("mutates preview cart, opens checkout, and selects/submits orders", () => {
+    const ctx = context({
+      data: { ...data, screens: { ...data.screens, checkout: { name: "Checkout" }, orders: { name: "Orders" }, order_detail: { name: "Order Detail" } } },
+      addToCart: vi.fn(),
+      removeFromCart: vi.fn(),
+      selectOrder: vi.fn(),
+      placeOrder: vi.fn(),
+    });
+    const item = { id: "product-1", name: "Tea", price: 250 };
+
+    runPreviewAction({ type: "add_to_cart", payload: { item, quantity: 2 } }, ctx);
+    runPreviewAction({ type: "remove_from_cart", payload: { productId: "product-1" } }, ctx);
+    runPreviewAction({ type: "go_checkout" }, ctx);
+    runPreviewAction({ type: "select_order", payload: { orderId: "order-1" } }, ctx);
+    runPreviewAction({ type: "place_order", payload: { customerName: "Ada" } }, ctx);
+
+    expect(ctx.addToCart).toHaveBeenCalledWith(item, 2);
+    expect(ctx.removeFromCart).toHaveBeenCalledWith("product-1");
+    expect(ctx.navigate).toHaveBeenCalledWith("checkout", "push");
+    expect(ctx.selectOrder).toHaveBeenCalledWith("order-1");
+    expect(ctx.navigate).toHaveBeenCalledWith("order_detail", "push");
+    expect(ctx.placeOrder).toHaveBeenCalledWith({ customerName: "Ada" });
+  });
+
   it("returns false for unknown or incomplete actions", () => {
     const ctx = context();
     expect(runPreviewAction(null, ctx)).toBe(false);

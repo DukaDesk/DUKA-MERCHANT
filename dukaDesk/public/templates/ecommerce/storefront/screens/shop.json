@@ -1,5 +1,6 @@
 {
   "screenId": "shop",
+  "archetype": "catalog",
   "title": "Shop",
   "layout": {
     "kind": "scroll",
@@ -57,7 +58,7 @@
         },
         "actions": {
           "addItem": { "type": "add_to_cart" },
-          "viewDetails": { "type": "navigate", "payload": { "push": "/cart" } }
+          "viewDetails": { "type": "view_item" }
         }
       },
       {

@@ -41,6 +41,7 @@ function generateMenuScreen(config) {
   
   return {
     screenId: "menu",
+    archetype: "catalog",
     title: "Menu",
     layout: {
       kind: "scroll",
@@ -72,7 +73,7 @@ function generateMenuScreen(config) {
             items: preview.items,
             dataBinding,
           },
-          actions: { addItem: { type: "add_to_cart" }, viewDetails: { type: "navigate", payload: { push: "/item-detail" } } },
+          actions: { addItem: { type: "add_to_cart" }, viewDetails: { type: "view_item" } },
         },
       ],
     },
@@ -84,6 +85,7 @@ function generateShopScreen(config) {
   const dataBinding = getDataBinding(config.category);
   return {
     screenId: "shop",
+    archetype: "catalog",
     title: "Shop",
     layout: {
       kind: "scroll",
@@ -109,7 +111,7 @@ function generateShopScreen(config) {
            type: "menu_grid",
            key: "products-grid",
            props: { columns: 2, items: preview.items, dataBinding },
-          actions: { addItem: { type: "add_to_cart" }, viewDetails: { type: "navigate", payload: { push: "/product-detail" } } },
+          actions: { addItem: { type: "add_to_cart" }, viewDetails: { type: "view_item" } },
         },
       ],
     },
@@ -186,13 +188,14 @@ function generateInfoScreen(config) {
 function generateOrdersScreen() {
   return {
     screenId: "orders",
+    archetype: "orders",
     title: "My Orders",
     children: [
       {
         type: "order_history",
         key: "order-list",
         props: { showStatus: true, variant: "default" },
-        actions: { selectOrder: { type: "navigate", payload: { push: "/order-detail" } } },
+        actions: { selectOrder: { type: "select_order" } },
       },
     ],
   };
@@ -201,21 +204,50 @@ function generateOrdersScreen() {
 function generateCartScreen() {
   return {
     screenId: "cart",
+    archetype: "cart",
     title: "Cart",
     children: [
       {
-        type: "cart_summary",
+        type: "cart_content",
         key: "cart-summary",
         props: {},
-        actions: { checkout: { type: "checkout" }, removeItem: { type: "remove_from_cart" } },
+        actions: { checkout: { type: "go_checkout" }, removeItem: { type: "remove_from_cart" }, addItem: { type: "add_to_cart" } },
       },
     ],
+  };
+}
+
+function generateProductDetailScreen() {
+  return {
+    screenId: "product",
+    archetype: "product_detail",
+    title: "Product",
+    children: [{ type: "product_detail", key: "product-detail", props: {} }],
+  };
+}
+
+function generateCheckoutScreen() {
+  return {
+    screenId: "checkout",
+    archetype: "checkout",
+    title: "Checkout",
+    children: [{ type: "checkout_form", key: "checkout-form", props: {} }],
+  };
+}
+
+function generateOrderDetailScreen() {
+  return {
+    screenId: "order-detail",
+    archetype: "order_detail",
+    title: "Order Details",
+    children: [{ type: "order_detail", key: "order-detail", props: {} }],
   };
 }
 
 function generateProfileScreen() {
   return {
     screenId: "profile",
+    archetype: "profile",
     title: "Profile",
     children: [
       {
@@ -290,6 +322,11 @@ function generateScreens(config) {
   if (screenTypes.includes("info")) screens.push(generateInfoScreen(config));
   if (screenTypes.includes("orders")) screens.push(generateOrdersScreen(config));
   if (screenTypes.includes("cart")) screens.push(generateCartScreen(config));
+  if (screenTypes.includes("shop") || screenTypes.includes("menu") || screenTypes.includes("cart")) {
+    screens.push(generateProductDetailScreen());
+    screens.push(generateCheckoutScreen());
+  }
+  if (screenTypes.includes("orders")) screens.push(generateOrderDetailScreen());
 
   if (screenTypes.includes("reservations")) screens.push(generateBookingScreen(config));
   if (screenTypes.includes("pickup")) screens.push(generateOrdersScreen(config));
