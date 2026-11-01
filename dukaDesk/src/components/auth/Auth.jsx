@@ -48,7 +48,8 @@ function LeftPanel({ page, isMobile }) {
     login: { headline: "Welcome back.", sub: "Your apps, orders, and customers are waiting.", stats: ["2,000+ Merchants", "10,000+ Consumers", "500+ Apps Live"] },
     signup: { headline: "Launch your mobile app in days.", sub: "No developers. No agencies. Just build, scan, and go live.", props: [{ Icon: Smartphone, text: "Your desk gets a real mobile app" }, { Icon: TabletSmartphone, text: "Customers scan your QR code to access it" }, { Icon: BarChart3, text: "Manage everything from this dashboard" }] },
     forgot: { headline: "We've got you.", sub: "Password resets are quick and secure." },
-    "reset-password": { headline: "Almost there.", sub: "Enter the OTP and your new password." },
+    "reset-password": { headline: "Almost there.", sub: "Choose a new password for your account." },
+    "reset-password-confirm": { headline: "Almost there.", sub: "Choose a new password for your account." },
   };
   const c = copy[page] || copy.login;
   return (
