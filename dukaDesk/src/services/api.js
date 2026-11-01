@@ -434,7 +434,6 @@ export async function confirmPasswordReset(body) {
   const res = await httpClient.post("/api/v1/auth/reset-password", {
     token: body.token,
     password: body.password,
-    otp: body.otp,
   });
   const payload = res.data || res;
   return payload;

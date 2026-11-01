@@ -19,7 +19,7 @@ export default function Auth({ onAuth }) {
   const page = location.pathname.replace("/", "") || "login";
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
-  const resetToken = params.get("token") || location.pathname.split("/").filter(Boolean).slice(1).find(s => s.length > 10) || "";
+  const resetToken = params.get("token") || "";
 
   const afterAuth = (merchant) => {
     onAuth(merchant);
@@ -48,7 +48,8 @@ function LeftPanel({ page, isMobile }) {
     login: { headline: "Welcome back.", sub: "Your apps, orders, and customers are waiting.", stats: ["2,000+ Merchants", "10,000+ Consumers", "500+ Apps Live"] },
     signup: { headline: "Launch your mobile app in days.", sub: "No developers. No agencies. Just build, scan, and go live.", props: [{ Icon: Smartphone, text: "Your desk gets a real mobile app" }, { Icon: TabletSmartphone, text: "Customers scan your QR code to access it" }, { Icon: BarChart3, text: "Manage everything from this dashboard" }] },
     forgot: { headline: "We've got you.", sub: "Password resets are quick and secure." },
-    "reset-password": { headline: "Almost there.", sub: "Enter the OTP and your new password." },
+    "reset-password": { headline: "Almost there.", sub: "Choose a new password for your account." },
+    "reset-password-confirm": { headline: "Almost there.", sub: "Choose a new password for your account." },
   };
   const c = copy[page] || copy.login;
   return (
@@ -176,7 +177,7 @@ function LoginForm({ onAuth, setPage }) {
         label="Continue with Google"
       />
       <p style={{ textAlign: "center", marginTop: 24, fontSize: 14, color: "#6B7280" }}>
-        Don't have an account?{" "}
+        Don&apos;t have an account?{" "}
         <button onClick={() => setPage("/signup")} style={{ background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}>Sign up <ArrowRight size={14} /></button>
       </p>
     </>
@@ -462,7 +463,7 @@ function ForgotForm({ setPage }) {
       <div style={{ textAlign: "center", marginBottom: 28 }}>
         <div style={{ width: 72, height: 72, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}><Lock size={32} color={NAVY} /></div>
         <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 6 }}>Reset your password</h2>
-        <p style={{ color: "#6B7280", fontSize: 15 }}>Enter your email and we'll send a reset link.</p>
+        <p style={{ color: "#6B7280", fontSize: 15 }}>Enter your email and we&apos;ll send a reset link.</p>
       </div>
       <ErrorModal message={error} onClose={() => setError("")} />
       <form onSubmit={handleSubmit}>
@@ -479,22 +480,12 @@ function ForgotForm({ setPage }) {
 ForgotForm.propTypes = { setPage: PropTypes.func.isRequired };
 
 function ResetPasswordForm({ token, setPage }) {
-  const [step, setStep] = useState(token ? "password" : "otp");
-  const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [otpCooldown, setOtpCooldown] = useState(0);
-  const [otpError, setOtpError] = useState(false);
-
-  useEffect(() => {
-    if (otpCooldown <= 0) return;
-    const t = setTimeout(() => setOtpCooldown(c => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [otpCooldown]);
 
   if (!token) {
     return (
@@ -510,41 +501,17 @@ function ResetPasswordForm({ token, setPage }) {
     );
   }
 
-  const handleResendOtp = async () => {
-    if (otpCooldown > 0 || loading) return;
-    setLoading(true);
-    try {
-      await forgotPassword({ email: "" });
-      setOtpCooldown(30);
-    } catch {
-      // OTP re-sent silently
-    } finally { setLoading(false); }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (step === "otp") {
-      if (!otp.trim()) { setError("Please enter the OTP from your email"); return; }
-      setStep("password");
-      setError("");
-      setOtpError(false);
-      return;
-    }
     if (!password || password.length < 8) { setError("Password must be at least 8 characters"); return; }
     if (password !== confirm) { setError("Passwords do not match"); return; }
-    setLoading(true); setError(""); setOtpError(false);
+    setLoading(true); setError("");
     try {
-      await confirmPasswordReset({ token, otp, password });
+      await confirmPasswordReset({ token, password });
       setSuccess(true);
       toast.success("Password reset successful!");
     } catch (err) {
-      const msg = err.message || "";
-      if (/otp|code|invalid|expired/i.test(msg) && !/password/i.test(msg)) {
-        setOtpError(true);
-        setError("The OTP you entered is invalid or has expired. Go back to re-enter it.");
-      } else {
-        setError(msg || "Reset failed. The link may have expired.");
-      }
+      setError(err.message || "Reset failed. The link may have expired.");
     } finally { setLoading(false); }
   };
 
@@ -560,49 +527,19 @@ function ResetPasswordForm({ token, setPage }) {
   return (
     <div style={{ animation: "fadeIn 0.4s ease" }}>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <div style={{ width: 72, height: 72, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>{step === "otp" ? <KeyRound size={32} color={NAVY} /> : <Lock size={32} color={NAVY} />}</div>
-        <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 6 }}>
-          {step === "otp" ? "Enter reset code" : otpError ? "Invalid OTP" : "Choose new password"}
-        </h2>
-        <p style={{ color: "#6B7280", fontSize: 15 }}>
-          {step === "otp" ? "Enter the 6-digit code sent to your email" : otpError ? "The code you entered was invalid. Go back to try again." : "Must be at least 8 characters"}
-        </p>
+        <div style={{ width: 72, height: 72, background: "#FFF8ED", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}><Lock size={32} color={NAVY} /></div>
+        <h2 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 26, color: NAVY, marginBottom: 6 }}>Choose new password</h2>
+        <p style={{ color: "#6B7280", fontSize: 15 }}>Must be at least 8 characters. The link expires in 15 minutes.</p>
       </div>
       <ErrorModal message={error} onClose={() => setError("")} />
       <form onSubmit={handleSubmit}>
-        {step === "otp" ? (
-          <div style={{ marginBottom: 20 }}>
-            <label htmlFor="otp" style={labelStyle}>OTP Code</label>
-            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-              <KeyRound size={18} style={{ position: "absolute", left: 14, color: "#9CA3AF", zIndex: 1 }} />
-              <input id="otp" name="otp"
-                value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="000000"
-                style={{ ...inputStyle, paddingLeft: 42, textAlign: "center", fontSize: 20, letterSpacing: 8, fontFamily: "'JetBrains Mono', monospace" }}
-                maxLength={6} autoFocus
-              />
-            </div>
-            <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 8 }}>Check your inbox for the 6-digit code</p>
-            <button type="button" onClick={handleResendOtp} disabled={otpCooldown > 0} style={{ background: "none", border: "none", color: otpCooldown > 0 ? "#9CA3AF" : AMBER, fontWeight: 600, cursor: otpCooldown > 0 ? "not-allowed" : "pointer", fontSize: 13, marginTop: 4 }}>
-              {otpCooldown > 0 ? `Resend code in ${otpCooldown}s` : "Resend code"}
-            </button>
-          </div>
-        ) : (
-          <>
-            {otpError && (
-              <button type="button" onClick={() => { setStep("otp"); setOtpError(false); setError(""); }} style={{ background: "none", border: "1px dashed #E8E8F0", borderRadius: 8, padding: "8px 14px", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 13, marginBottom: 12, width: "100%" }}>
-                ← Wrong OTP? Go back to re-enter the code
-              </button>
-            )}
-            <Field label="New password" type={showPw ? "text" : "password"} value={password} onChange={e => { setPassword(e.target.value); setError(""); }} placeholder="Min. 8 characters" icon={<Lock size={18} />} suffix={
-              <button type="button" onClick={() => setShowPw(!showPw)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}>
-                {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            } />
-            <Field label="Confirm password" type={showPw ? "text" : "password"} value={confirm} onChange={e => { setConfirm(e.target.value); setError(""); }} placeholder="Repeat password" icon={<Lock size={18} />} />
-          </>
-        )}
-        <PrimaryBtn loading={loading}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{loading ? "Processing..." : step === "otp" ? <>Continue <ArrowRight size={14} /></> : "Reset password"}</span></PrimaryBtn>
+        <Field label="New password" type={showPw ? "text" : "password"} value={password} onChange={e => { setPassword(e.target.value); setError(""); }} placeholder="Min. 8 characters" icon={<Lock size={18} />} suffix={
+          <button type="button" onClick={() => setShowPw(!showPw)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", display: "flex" }}>
+            {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        } />
+        <Field label="Confirm password" type={showPw ? "text" : "password"} value={confirm} onChange={e => { setConfirm(e.target.value); setError(""); }} placeholder="Repeat password" icon={<Lock size={18} />} />
+        <PrimaryBtn loading={loading}>Reset password</PrimaryBtn>
       </form>
       <button onClick={() => setPage("/login")} style={{ display: "block", margin: "16px auto 0", background: "none", border: "none", color: AMBER, fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
         <ArrowLeft size={14} style={{ verticalAlign: "middle", marginRight: 4 }} /> Back to login
