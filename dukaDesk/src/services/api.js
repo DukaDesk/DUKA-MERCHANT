@@ -1043,7 +1043,7 @@ export function hydrateDesignWithProducts(design, products) {
 
 export async function getOrders() {
   if (isDemoId(getMerchant()?.tenantId)) return [];
-  const response = await httpClient.get("/api/v1/app/commerce/merchant-orders");
+  const response = await httpClient.get("/api/v1/app/commerce/orders");
   return unwrapList(response?.data ?? response).map(normalizeMerchantOrder);
 }
 
