@@ -3,7 +3,7 @@ const types = {};
 import {
   OrderHistory, InfoList, ReportAction, NotificationList, PrimaryButton,
   CalendarStrip, SlotGrid, BookingSummary, CartSummary, AddressForm,
-  LaundryBooking,
+  LaundryBooking, ProductDetailPreview,
   SectionHeader as TemplateSectionHeader,
 } from "../../template/TemplateComponents";
 import { EmptyState as RegistryEmptyState, DynamicCard as RegistryDynamicCard } from "../../../runtime/ComponentRegistry";
@@ -15,7 +15,7 @@ import {
   LayoutGrid, Rows3, Palette, Zap, Hash, ArrowLeftRight, ArrowDownUp,
   Sparkles, Compass, FileText, BarChart3, ClipboardList, Scissors,
   ToggleLeft, CheckSquare, Pencil, Boxes, GalleryHorizontal, CreditCard, PanelTop, List, AlignLeft,
-  Tag,
+  Tag, CalendarDays, Handshake, Pill, WashingMachine, UtensilsCrossed,
   Square, Utensils, Drumstick, CupSoda, GlassWater, Bike, Sun, Coffee, Pizza, Cake, Apple, Store, Package, Truck, Receipt, Ticket, Bookmark, Award, Crown, Shield, Lock, Key, Mail, MessageCircle, Headphones, Music, Play, Globe, Building2, Briefcase, GraduationCap, BookOpen, Dumbbell, Stethoscope, Flower2, Leaf, PawPrint, Car, Plane, Train, Hotel, Bed, Map, Navigation, Users, UserPlus, LogOut, HelpCircle, Wrench, Laptop, Smartphone,
 } from "lucide-react";
 
@@ -61,7 +61,7 @@ export const ICON_LIBRARY = {
   Home, Star, Heart, ShoppingBag, ShoppingCart, MapPin, Bell, User,
   Clock, Wallet, Settings, Phone, Camera, Gift, Info, Check, X, Plus, Minus,
   Trash2, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, ArrowRight,
-  ArrowLeft, ArrowUp, ArrowDown, Search, Menu, Calendar, LayoutGrid, FileText, BarChart3, ClipboardList, Scissors, Tag, Compass, CreditCard, Utensils, Drumstick, CupSoda, GlassWater, Bike, Sun, Coffee, Pizza, Cake, Apple, Store, Package, Truck, Receipt, Ticket, Bookmark, Award, Crown, Shield, Lock, Key, Mail, MessageCircle, Headphones, Music, Play, Globe, Building2, Briefcase, GraduationCap, BookOpen, Dumbbell, Stethoscope, Flower2, Leaf, PawPrint, Car, Plane, Train, Hotel, Bed, Map, Navigation, Users, UserPlus, LogOut, HelpCircle, Wrench, Laptop, Smartphone,
+  ArrowLeft, ArrowUp, ArrowDown, Search, Menu, Calendar, CalendarDays, LayoutGrid, FileText, BarChart3, ClipboardList, Scissors, Tag, Compass, CreditCard, Utensils, UtensilsCrossed, Drumstick, CupSoda, GlassWater, Bike, Sun, Coffee, Pizza, Cake, Apple, Store, Package, Truck, Receipt, Ticket, Bookmark, Award, Crown, Shield, Lock, Key, Mail, MessageCircle, Headphones, Music, Play, Globe, Building2, Briefcase, GraduationCap, BookOpen, Dumbbell, Stethoscope, Flower2, Leaf, PawPrint, Car, Plane, Train, Hotel, Bed, Map, Navigation, Users, UserPlus, LogOut, HelpCircle, Wrench, Laptop, Smartphone, Handshake, Pill, WashingMachine,
 };
 
 export function IconGlyph({ name, size = 24 }) {
@@ -71,6 +71,22 @@ export function IconGlyph({ name, size = 24 }) {
 
 export function getLucideIcon(name) {
   return ICON_LIBRARY[name] || Circle;
+}
+
+function normalizeGridButtonStyle(value) {
+  const style = String(value || "filled").toLowerCase();
+  return style === "outline" || style === "ghost" ? style : "filled";
+}
+
+function normalizeGridButtonPosition(value) {
+  const position = String(value || "below price").toLowerCase();
+  if (position.includes("beside") || position.includes("right")) return "beside";
+  if (position.includes("image") || position.includes("overlay")) return "overlay";
+  return "below";
+}
+
+function showGridFavorite(value) {
+  return value == null || value === "" ? true : !(value === false || value === "false" || value === 0 || value === "0");
 }
 
 export const FONT_FAMILIES = ["Inter","Sora","Poppins","Roboto","Montserrat","Open Sans","Playfair Display","Georgia","Courier New","System UI"];
@@ -774,6 +790,9 @@ registerComponentType("menu_grid", {
     cardShadow: "soft",
     textColor: "#1C1B1D",
     priceColor: "#F4A026",
+    addButtonStyle: "Filled",
+    addButtonPosition: "Below price",
+    showFavorite: "true",
     items: [
       { name: "Jollof Rice", price: "₦2,500", oldPrice: "", badge: "", desc: "Rich, smoky jollof rice", image: "", emoji: "Utensils", background: { type: "color", value: "#FCF8FA" } },
       { name: "Grilled Chicken", price: "₦3,000", oldPrice: "", badge: "Popular", desc: "Char-grilled, spicy", image: "", emoji: "Drumstick", background: { type: "color", value: "#FCF8FA" } },
@@ -799,6 +818,9 @@ registerComponentType("menu_grid", {
     { key: "imageBackground", label: "Empty Image Color", type: "color" },
     { key: "textColor", label: "Text Color", type: "color" },
     { key: "priceColor", label: "Price Color", type: "color" },
+    { key: "addButtonStyle", label: "Add Button Style", type: "select", options: ["Filled", "Outline", "Ghost"], group: "general" },
+    { key: "addButtonPosition", label: "Add Button Position", type: "select", options: ["Below price", "Beside price", "On image"], group: "general" },
+    { key: "showFavorite", label: "Show Favorite Heart", type: "select", options: ["true", "false"], group: "general" },
     {
       key: "items",
       label: "Menu Items",
@@ -830,6 +852,14 @@ registerComponentType("menu_grid", {
       raised: "0px 8px 24px rgba(0,0,0,0.18)",
     };
     const shadow = SHADOWS[props.cardShadow] || SHADOWS.soft;
+    const addButtonMode = normalizeGridButtonStyle(props.addButtonStyle);
+    const addButtonPlacement = normalizeGridButtonPosition(props.addButtonPosition);
+    const showFavorite = showGridFavorite(props.showFavorite);
+    const addButtonTheme = addButtonMode === "filled"
+      ? { background: "#F4A026", color: "#1A1A2E", border: "1px solid #F4A026" }
+      : addButtonMode === "outline"
+        ? { background: "transparent", color: "#B45309", border: "1.5px solid #F4A026" }
+        : { background: "transparent", color: "#B45309", border: "1px solid transparent" };
     const items = Array.isArray(props.items) && props.items.length
       ? props.items
       : [
@@ -852,6 +882,29 @@ registerComponentType("menu_grid", {
         {items.map((it, i) => {
           const cardBg = resolveBackground(it.background, "#FCF8FA");
           const cardImg = isImageFill(it.background);
+          const addButton = (compact) => (
+            <button
+              type="button"
+              aria-label={`Add ${it.name || "item"} to cart`}
+              onClick={(e) => {
+                if (!props.onAction) return;
+                e.stopPropagation();
+                props.onAction("addItem", { item: it, index: i });
+              }}
+              style={{
+                ...addButtonTheme,
+                borderRadius: 7, fontSize: compact ? 10 : 10.5, fontWeight: 700,
+                fontFamily: "'Inter',sans-serif", cursor: props.onAction ? "pointer" : "default",
+                padding: compact ? "5px 9px" : "7px 8px",
+                ...(compact ? {} : { width: "100%", marginTop: 8 }),
+                ...(addButtonPlacement === "overlay"
+                  ? { position: "absolute", right: 6, bottom: 6, zIndex: 2, padding: "6px 10px", boxShadow: "0 2px 8px rgba(0,0,0,0.18)" }
+                  : {}),
+              }}
+            >
+              {compact ? "Add" : "Add to cart"}
+            </button>
+          );
           return (
             <div key={i} onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items"); } : undefined} style={{
               ...props.itemSelectionStyle?.("items", i),
@@ -874,38 +927,66 @@ registerComponentType("menu_grid", {
                   boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
                 }}>{it.badge}</div>
               )}
-              {it.image ? (
-                <img src={it.image} alt="" style={{
-                  width: imageWidth > 0 ? imageWidth : "100%", height: imageHeight, objectFit: imageFit,
-                  borderRadius: imageRadius, marginBottom: 6, marginLeft: imageWidth > 0 ? "auto" : 0,
-                  marginRight: imageWidth > 0 ? "auto" : 0,
-                  background: props.imageBackground || "#F1EDEF", display: "block",
-                }} />
-              ) : (
-                <div style={{
-                  fontSize: props.iconSize || 26, marginBottom: 4, lineHeight: 1,
-                  background: props.imageBackground || "#FFF",
-                  width: imageWidth > 0 ? imageWidth : "100%",
-                  height: Math.max(40, imageHeight - 10), borderRadius: imageRadius,
-                  marginLeft: imageWidth > 0 ? "auto" : 0,
-                  marginRight: imageWidth > 0 ? "auto" : 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}><IconGlyph name={it.emoji || "Utensils"} size={props.iconSize || 26} /></div>
+              {showFavorite && (
+                <button
+                  type="button"
+                  aria-label={it.favorite ? `Remove ${it.name || "item"} from favorites` : `Save ${it.name || "item"} to favorites`}
+                  onClick={(e) => {
+                    if (!props.onAction) return;
+                    e.stopPropagation();
+                    props.onAction("toggleFavorite", { item: it, index: i });
+                  }}
+                  style={{
+                    position: "absolute", top: 6, right: 6, zIndex: 3,
+                    width: 26, height: 26, padding: 0, borderRadius: "50%",
+                    border: "none", background: "rgba(255,255,255,0.94)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: props.onAction ? "pointer" : "default",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.16)",
+                  }}
+                >
+                  <Heart size={14} color="#E11D48" fill={it.favorite ? "#E11D48" : "none"} />
+                </button>
               )}
+              <div style={{ position: "relative", marginBottom: 6 }}>
+                {it.image ? (
+                  <img src={it.image} alt="" style={{
+                    width: imageWidth > 0 ? imageWidth : "100%", height: imageHeight, objectFit: imageFit,
+                    borderRadius: imageRadius, marginBottom: 0, marginLeft: imageWidth > 0 ? "auto" : 0,
+                    marginRight: imageWidth > 0 ? "auto" : 0,
+                    background: props.imageBackground || "#F1EDEF", display: "block",
+                  }} />
+                ) : (
+                  <div style={{
+                    fontSize: props.iconSize || 26, marginBottom: 0, lineHeight: 1,
+                    background: props.imageBackground || "#FFF",
+                    width: imageWidth > 0 ? imageWidth : "100%",
+                    height: Math.max(40, imageHeight - 10), borderRadius: imageRadius,
+                    marginLeft: imageWidth > 0 ? "auto" : 0,
+                    marginRight: imageWidth > 0 ? "auto" : 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}><IconGlyph name={it.emoji || "Utensils"} size={props.iconSize || 26} /></div>
+                )}
+                {addButtonPlacement === "overlay" && addButton(true)}
+              </div>
               <div
                 onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items:name"); } : undefined}
                 style={{ fontSize: 12, fontWeight: 600, color: it.textStyles?.name?.color || it.textColor || props.textColor || "#1C1B1D", lineHeight: 1.25, cursor: props.onItemPress ? "text" : undefined, ...(props.itemSelectionStyle?.("items:name", i) || {}) }}>{it.name || "Item"}</div>
               {it.desc && <div
                 onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items:desc"); } : undefined}
                 style={{ fontSize: 10.5, color: it.textStyles?.desc?.color || "#6B7280", lineHeight: 1.3, marginTop: 2, cursor: props.onItemPress ? "text" : undefined, ...(props.itemSelectionStyle?.("items:desc", i) || {}) }}>{it.desc}</div>}
-              <div style={{ marginTop: 3 }}>
-                {it.oldPrice && (
-                  <span style={{ fontSize: 10.5, color: "#9CA3AF", fontWeight: 600, textDecoration: "line-through", marginRight: 5 }}>{it.oldPrice}</span>
-                )}
-                {it.price && <span
-                  onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items:price"); } : undefined}
-                  style={{ fontSize: 11.5, color: it.textStyles?.price?.color || it.priceColor || props.priceColor || "#F4A026", fontWeight: 700, cursor: props.onItemPress ? "text" : undefined, ...(props.itemSelectionStyle?.("items:price", i) || {}) }}>{it.price}</span>}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginTop: 3 }}>
+                <div style={{ minWidth: 0 }}>
+                  {it.oldPrice && (
+                    <span style={{ fontSize: 10.5, color: "#9CA3AF", fontWeight: 600, textDecoration: "line-through", marginRight: 5 }}>{it.oldPrice}</span>
+                  )}
+                  {it.price && <span
+                    onClick={props.onItemPress ? e => { e.stopPropagation(); props.onItemPress(it, i, "items:price"); } : undefined}
+                    style={{ fontSize: 11.5, color: it.textStyles?.price?.color || it.priceColor || props.priceColor || "#F4A026", fontWeight: 700, cursor: props.onItemPress ? "text" : undefined, ...(props.itemSelectionStyle?.("items:price", i) || {}) }}>{it.price}</span>}
+                </div>
+                {addButtonPlacement === "beside" && addButton(true)}
               </div>
+              {addButtonPlacement === "below" && addButton(false)}
             </div>
           );
         })}
@@ -1022,7 +1103,8 @@ templateType("slot_grid", "Slot Grid", Clock, 160, SlotGrid, "booking");
 templateType("booking_summary", "Booking Summary", ClipboardList, 160, BookingSummary, "booking");
 templateType("laundry_booking", "Laundry Booking", ShoppingBag, 520, LaundryBooking, "booking");
 templateType("cart_summary", "Cart Summary", ShoppingCart, 160, CartSummary, "commerce");
-templateType("address_form", "Address Form", MapPin, 200, AddressForm, "inputs");
+templateType("product_detail", "Product Detail", ShoppingBag, 560, ProductDetailPreview, "commerce");
+templateType("address_form", "Secure Checkout Entry", Lock, 160, AddressForm, "commerce");
 registerComponentType("promotion_list", {
   type: "promotion_list",
   label: "Promotion List",
@@ -1045,11 +1127,7 @@ registerComponentType("promotion_list", {
     accentColor: "#F4A623",
     titleColor: "#1A1A2E",
     subtitleColor: "#6B7280",
-    offers: [
-      { title: "50% Off Lunch", subtitle: "Rich, smoky jollof rice every Friday", badge: "50% OFF", emoji: "Utensils", image: "", background: { type: "color", value: "#FFF3E0" } },
-      { title: "Buy 1 Get 1", subtitle: "On all char-grilled chicken", badge: "BOGO", emoji: "Drumstick", image: "", background: { type: "color", value: "#FFE8E8" } },
-      { title: "Free Delivery", subtitle: "On orders above ₦5,000", badge: "FREE", emoji: "Bike", image: "", background: { type: "color", value: "#E6F4EC" } },
-    ],
+    offers: [],
   },
   subElements: [
     { key: "heading", label: "Heading", icon: Type, kind: "text" },

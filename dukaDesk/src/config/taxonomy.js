@@ -5,17 +5,17 @@
 */
 
 export const DESK_CATEGORIES = [
-  { key: "Business", label: "Business", icon: "🏢", desc: "Shops, retail & general trade", kycType: "Retail" },
-  { key: "Corporate", label: "Corporate", icon: "🏙️", desc: "Companies, enterprises & B2B", kycType: "Corporate" },
+  { key: "Business", label: "Business", icon: "Store", desc: "Shops, retail & general trade", kycType: "Retail" },
+  { key: "Corporate", label: "Corporate", icon: "Building2", desc: "Companies, enterprises & B2B", kycType: "Corporate" },
   { key: "Legal", label: "Legal", icon: "⚖️", desc: "Law firms & legal services", kycType: "Legal" },
   { key: "Religion", label: "Religion", icon: "⛪", desc: "Churches, mosques & ministries", kycType: "Religion" },
-  { key: "Education", label: "Education", icon: "🏫", desc: "Schools, training & lessons", kycType: "Education" },
-  { key: "Healthcare", label: "Healthcare", icon: "🩺", desc: "Clinics, pharmacies & care", kycType: "Healthcare" },
-  { key: "Food & Hospitality", label: "Food & Hospitality", icon: "🍽️", desc: "Restaurants, food vendors & groceries", kycType: "Hospitality" },
-  { key: "Services", label: "Services", icon: "📅", desc: "Salons, repairs & appointments", kycType: "Service" },
-  { key: "Events", label: "Events", icon: "🎪", desc: "Tickets, RSVPs & event media", kycType: "Events" },
-  { key: "Nonprofit", label: "Nonprofit", icon: "🤝", desc: "NGOs, causes & campaigns", kycType: "Nonprofit" },
-  { key: "Personal", label: "Personal", icon: "🌟", desc: "Portfolio, landing page & contact", kycType: "Personal" },
+  { key: "Education", label: "Education", icon: "GraduationCap", desc: "Schools, training & lessons", kycType: "Education" },
+  { key: "Healthcare", label: "Healthcare", icon: "Stethoscope", desc: "Clinics, pharmacies & care", kycType: "Healthcare" },
+  { key: "Food & Hospitality", label: "Food & Hospitality", icon: "Utensils", desc: "Restaurants, food vendors & groceries", kycType: "Hospitality" },
+  { key: "Services", label: "Services", icon: "CalendarDays", desc: "Salons, repairs & appointments", kycType: "Service" },
+  { key: "Events", label: "Events", icon: "Ticket", desc: "Tickets, RSVPs & event media", kycType: "Events" },
+  { key: "Nonprofit", label: "Nonprofit", icon: "Handshake", desc: "NGOs, causes & campaigns", kycType: "Nonprofit" },
+  { key: "Personal", label: "Personal", icon: "Sparkles", desc: "Portfolio, landing page & contact", kycType: "Personal" },
 ];
 
 /* Back-compat alias: BUSINESS_CATEGORIES keeps its name so existing
@@ -117,13 +117,13 @@ export function resolveCanonicalCategory(key) {
 export const ONBOARDING_CATEGORIES = [
   ...DESK_CATEGORIES,
   { key: "Cafe", label: "Cafe", icon: "☕", desc: "Coffee, pastries & quick bites", kycType: "Hospitality", preset: "Food & Hospitality" },
-  { key: "Pharmacy", label: "Pharmacy", icon: "💊", desc: "Medicines, health & wellness products", kycType: "Healthcare", preset: "Healthcare" },
-  { key: "Beauty & Salon", label: "Beauty & Salon", icon: "💇‍♀️", desc: "Hair, nails & esthetics", kycType: "Service", preset: "Services" },
-  { key: "Clinic & Healthcare", label: "Clinic & Healthcare", icon: "🩺", desc: "Appointments, records & care", kycType: "Healthcare", preset: "Healthcare" },
+  { key: "Pharmacy", label: "Pharmacy", icon: "Pill", desc: "Medicines, health & wellness products", kycType: "Healthcare", preset: "Healthcare" },
+  { key: "Beauty & Salon", label: "Beauty & Salon", icon: "Scissors", desc: "Hair, nails & esthetics", kycType: "Service", preset: "Services" },
+  { key: "Clinic & Healthcare", label: "Clinic & Healthcare", icon: "Stethoscope", desc: "Appointments, records & care", kycType: "Healthcare", preset: "Healthcare" },
   { key: "Law Firm", label: "Law Firm", icon: "⚖️", desc: "Legal services & retainers", kycType: "Legal", preset: "Legal" },
-  { key: "Logistics & Delivery", label: "Logistics & Delivery", icon: "📦", desc: "Courier, dispatch & moving", kycType: "Service", preset: "Services" },
-  { key: "Real Estate", label: "Real Estate", icon: "🏠", desc: "Sales, rentals & property", kycType: "Service", preset: "Services" },
-  { key: "Training & Bootcamps", label: "Training & Bootcamps", icon: "🎓", desc: "Courses, skills & certification", kycType: "Education", preset: "Education" },
+  { key: "Logistics & Delivery", label: "Logistics & Delivery", icon: "Package", desc: "Courier, dispatch & moving", kycType: "Service", preset: "Services" },
+  { key: "Real Estate", label: "Real Estate", icon: "Home", desc: "Sales, rentals & property", kycType: "Service", preset: "Services" },
+  { key: "Training & Bootcamps", label: "Training & Bootcamps", icon: "GraduationCap", desc: "Courses, skills & certification", kycType: "Education", preset: "Education" },
 ];
 
 export const CATEGORY_KEYS = DESK_CATEGORIES.map(c => c.key);

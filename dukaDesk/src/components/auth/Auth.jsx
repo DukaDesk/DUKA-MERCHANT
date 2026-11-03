@@ -360,7 +360,7 @@ function SignupForm({ onAuth, setPage }) {
               <option key={deskCategory} value={deskCategory} disabled>{deskCategory} (current)</option>
             )}
             {ONBOARDING_COMMERCE_CATEGORIES.map(c => (
-              <option key={c.key} value={c.key}>{c.icon} {c.label} — {c.desc}</option>
+              <option key={c.key} value={c.key}>{c.label} — {c.desc}</option>
             ))}
           </select>
           {errors.deskCategory && <p style={{ color: "#E74C3C", fontSize: 12, marginTop: 4 }}>{errors.deskCategory}</p>}

@@ -6,11 +6,23 @@ import { usePermission } from "../../hooks/usePermission";
 import { useAuth } from "../../contexts";
 import { formatMoney, currencySymbol, getMerchantCurrency } from "../../utils/currency";
 import { NAVY, AMBER, cardStyle, statusBadge, glidePanel } from "../../theme";
-import { getOrders, updateOrderStatus } from "../../services/api";
+import { getOrders, updateOrderStatus, confirmBankTransfer } from "../../services/api";
 import { Loading, Empty, ErrorState } from "../layout/States";
 
-const nextStatus = { Pending: "Processing", Processing: "Completed" };
-const tabs = ["All", "Pending", "Processing", "Completed", "Cancelled"];
+const nextStatus = { Paid: "processing", Processing: "shipped", Shipped: "delivered", Delivered: "completed" };
+const nextStatusLabel = { Paid: "Start processing", Processing: "Mark shipped", Shipped: "Mark delivered", Delivered: "Complete order" };
+const tabs = ["All", "Pending", "Paid", "Processing", "Shipped", "Delivered", "Completed", "Cancelled"];
+
+function applyOrderUpdate(order, updated, paymentVerified = false) {
+  return {
+    ...order,
+    status: updated.status || order.status,
+    ...(paymentVerified ? {
+      paymentStatus: "paid",
+      payment: `${String(order.paymentMethod || "bank_transfer").replaceAll("_", " ")} · paid`,
+    } : {}),
+  };
+}
 
 export default function Orders() {
   const isMobile = useIsMobile();
@@ -34,23 +46,33 @@ export default function Orders() {
 
   const filtered = orders.filter(o => {
     if (tab !== "All" && o.status !== tab) return false;
-    if (search && !o.id.toLowerCase().includes(search.toLowerCase()) && !o.customer.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !String(o.id).toLowerCase().includes(search.toLowerCase()) && !String(o.customer).toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
   const updateStatus = async (id, status) => {
     try {
-      await updateOrderStatus(id, status);
-      setOrders(o => o.map(x => x.id === id ? { ...x, status } : x));
-      toast.success(`Order ${id} updated to ${status}`);
-      if (detail?.id === id) setDetail(d => ({ ...d, status }));
+      const updated = await updateOrderStatus(id, status);
+      setOrders(current => current.map(order => order.id === id ? applyOrderUpdate(order, updated) : order));
+      toast.success(`Order ${id} updated to ${updated.status}`);
+      if (detail?.id === id) setDetail(current => current ? applyOrderUpdate(current, updated) : current);
     } catch { toast.error("Failed to update order"); }
+  };
+
+  const verifyTransfer = async (id) => {
+    try {
+      const updated = await confirmBankTransfer(id);
+      setOrders(current => current.map(order => order.id === id ? applyOrderUpdate(order, updated, true) : order));
+      if (detail?.id === id) setDetail(current => current ? applyOrderUpdate(current, updated, true) : current);
+      toast.success("Bank transfer confirmed; order is now paid.");
+    } catch { toast.error("Could not confirm transfer. Refresh the order and try again."); }
   };
 
   const printInvoice = (order) => {
     const win = window.open("", "_blank");
     const total = order.total || 0;
-    const subtotal = total - 500;
+    const subtotal = Number(order.subtotal) || 0;
+    const delivery = Number(order.deliveryTotal) || 0;
     win.document.write(`
       <html><head><title>Invoice #${order.id}</title>
       <style>
@@ -80,7 +102,7 @@ export default function Orders() {
         <hr class="divider" />
         <div class="row"><span class="label">Items</span><span>${order.items}</span></div>
         <div class="row"><span class="label">Subtotal</span><span>${sym}${subtotal.toLocaleString()}</span></div>
-        <div class="row"><span class="label">Delivery</span><span>${sym}500</span></div>
+        <div class="row"><span class="label">Delivery</span><span>${formatMoney(delivery, currency)}</span></div>
         <div class="row total"><span>Total</span><span>${sym}${total.toLocaleString()}</span></div>
         <div class="footer">
           <p>DukaDesk — https://dukadesk.app</p>
@@ -97,7 +119,8 @@ export default function Orders() {
 
   const orderStats = [
     { label: "Today", value: `${orders.length} orders`, sub: `${formatMoney(orders.reduce((a,o) => a+o.total,0), currency)}`, color: NAVY },
-    { label: "Pending", value: orders.filter(o=>o.status==="Pending").length, sub: "Needs action", color: AMBER },
+    { label: "Pending payment", value: orders.filter(o=>o.status==="Pending").length, sub: "Payment or transfer review", color: AMBER },
+    { label: "Paid", value: orders.filter(o=>o.status==="Paid").length, sub: "Ready for fulfillment", color: "#2ECC71" },
     { label: "Processing", value: orders.filter(o=>o.status==="Processing").length, sub: "In progress", color: "#3B82F6" },
     { label: "Completed", value: orders.filter(o=>o.status==="Completed").length, sub: "This month", color: "#2ECC71" },
   ];
@@ -203,7 +226,7 @@ export default function Orders() {
                   <div style={{ width: 44, height: 44, background: AMBER, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: NAVY, fontSize: 16 }}>{(detail.customer || "?")[0]}</div>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 15, color: NAVY }}>{detail.customer}</div>
-                    <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}><MapPin size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} />{detail.address}</div>
+                    <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}><MapPin size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} />{detail.deliveryAddress || detail.address || "No delivery address provided"}</div>
                   </div>
                 </div>
               </div>
@@ -214,21 +237,23 @@ export default function Orders() {
               <div style={{ background: "#FFF8ED", borderRadius: 12, padding: 16, marginBottom: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <span style={{ color: "#6B7280", fontSize: 13 }}>Subtotal</span>
-                  <span style={{ fontSize: 13 }}>{formatMoney(detail.total - 500, currency)}</span>
+                  <span style={{ fontSize: 13 }}>{formatMoney(Number(detail.subtotal) || 0, currency)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #E8E8F0" }}>
                   <span style={{ color: "#6B7280", fontSize: 13 }}>Delivery</span>
-                  <span style={{ fontSize: 13 }}>{formatMoney(500, currency)}</span>
+                  <span style={{ fontSize: 13 }}>{formatMoney(Number(detail.deliveryTotal) || 0, currency)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontWeight: 700, color: NAVY }}>Total</span>
                   <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: AMBER }}>{formatMoney(detail.total, currency)}</span>
                 </div>
               </div>
-              <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Paid via {detail.payment} · {detail.date}</div>
+              <div style={{ fontSize: 13, color: detail.paymentStatus === "paid" ? "#065F46" : "#92400E", marginBottom: 20 }}>
+                {String(detail.paymentMethod || "bank_transfer").replaceAll("_", " ")} · {detail.paymentStatus === "paid" ? "Paid" : "Pending verification"} · {detail.date}
+              </div>
               <div style={{ fontWeight: 600, fontSize: 14, color: NAVY, marginBottom: 12 }}>Order Timeline</div>
               {["Order placed", "Accepted", "Preparing", "Ready", "Delivered"].map((step, i) => {
-                const doneSteps = { Pending: 0, Processing: 1, Completed: 4, Cancelled: 0 };
+                const doneSteps = { Pending: 0, Paid: 1, Processing: 2, Shipped: 3, Delivered: 4, Completed: 4, Cancelled: 0 };
                 const done = i <= (doneSteps[detail.status] || 0);
                 const isLast = i === 4;
                 return (
@@ -242,12 +267,13 @@ export default function Orders() {
             </div>
             <div style={{ padding: 24, borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", gap: 10 }}>
-                {can("order:update") && nextStatus[detail.status] && <button onClick={() => updateStatus(detail.id, nextStatus[detail.status])} style={{ flex: 1, background: "#2ECC71", color: "#fff", border: "none", borderRadius: 10, height: 48, fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>Accept Order <ArrowRight size={16} /></button>}
+                {can("order:update") && nextStatus[detail.status] && <button onClick={() => updateStatus(detail.id, nextStatus[detail.status])} style={{ flex: 1, background: "#2ECC71", color: "#fff", border: "none", borderRadius: 10, height: 48, fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>{nextStatusLabel[detail.status]} <ArrowRight size={16} /></button>}
                 <button onClick={() => printInvoice(detail)} style={{ background: "none", border: "1.5px solid var(--border)", borderRadius: 10, height: 48, padding: "0 16px", fontSize: 14, cursor: "pointer", color: "#6B7280", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                   <Printer size={16} /> Print
                 </button>
               </div>
-              {can("order:update") && detail.status === "Pending" && <button onClick={() => { updateStatus(detail.id, "Cancelled"); setDetail(null); }} style={{ background: "none", border: "1.5px solid #E74C3C", borderRadius: 10, height: 44, fontSize: 14, cursor: "pointer", color: "#E74C3C" }}>Reject Order</button>}
+              {can("order:update") && detail.status === "Pending" && detail.paymentMethod === "bank_transfer" && detail.paymentStatus === "pending" && <button onClick={() => verifyTransfer(detail.id)} style={{ background: AMBER, border: "none", borderRadius: 10, height: 44, fontSize: 14, fontWeight: 700, cursor: "pointer", color: NAVY }}>Confirm transfer received</button>}
+              {can("order:update") && detail.status === "Pending" && <button onClick={() => { updateStatus(detail.id, "cancelled"); setDetail(null); }} style={{ background: "none", border: "1.5px solid #E74C3C", borderRadius: 10, height: 44, fontSize: 14, cursor: "pointer", color: "#E74C3C" }}>Cancel order</button>}
             </div>
           </div>
         </>

@@ -47,6 +47,9 @@
         "key": "products-grid",
         "props": {
           "columns": 2,
+          "addButtonStyle": "Filled",
+          "addButtonPosition": "Below price",
+          "showFavorite": "true",
           "items": [
             { "id": "p1", "name": "Slim Fit Shirt", "desc": "Navy · L / XL", "price": 12500, "img": "https://picsum.photos/seed/shirt/400/300", "cat": "Clothing" },
             { "id": "p2", "name": "Convertible Backpack", "desc": "Water resistant · 25L", "price": 18500, "img": "https://picsum.photos/seed/backpack/400/300", "cat": "Accessories" },

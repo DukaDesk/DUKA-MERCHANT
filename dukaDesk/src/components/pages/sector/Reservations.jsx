@@ -56,7 +56,7 @@ export default function Reservations() {
       <div style={{ ...cardStyle }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Upcoming Reservations</div>
         {upcoming.length === 0 ? (
-          <Empty icon="🪑" message="No reservations yet" sub="Table and time-slot bookings will appear here." />
+          <Empty icon="Armchair" message="No reservations yet" sub="Table and time-slot bookings will appear here." />
         ) : (
           upcoming.slice(0, 12).map((o, i) => {
             const done = o.status === "Completed";

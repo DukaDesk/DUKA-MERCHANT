@@ -2,13 +2,13 @@
   "version": "1.0",
   "categories": [
     {
-      "icon": "🧺",
+      "icon": "WashingMachine",
       "name": "Laundry",
       "desc": "Wash, fold & dry cleaning",
       "templates": ["fresh-laundry"]
     },
     {
-      "icon": "🛍️",
+      "icon": "ShoppingBag",
       "name": "Ecommerce",
       "desc": "Products, cart & checkout",
       "templates": ["storefront"]

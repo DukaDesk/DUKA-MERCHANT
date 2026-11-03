@@ -3,15 +3,17 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, Eye, Code, Layers, Download, Undo, Redo, ChevronLeft, ChevronRight, MousePointer, GripVertical, Trash2, Edit3, Copy, Plus, X, Smartphone, Check, Palette } from "lucide-react";
 import { AMBER, NAVY, btnSecondary } from "../../theme";
-import { TemplateScreenList, TemplatePreview } from "./TemplateRenderer";
+import { TemplateScreenList, TemplatePreview, buildPreviewOrder, findScreenWithComponent, resolvePreviewScreen } from "./TemplateRenderer";
 import { loadTemplateManifest, loadAllTemplateScreens } from "../../services/TemplateLoader";
 import { updateApp } from "../../services/api";
 import { ComponentPalette } from "./ComponentPalette";
+import { addCartItem, cartItems as toCartItems, removeCartItem } from "../section-editor/previewCart";
+import { toast } from "react-toastify";
 
 const DEFAULT_SCREEN_NODES = {
   hero_banner: { type: "hero_banner", key: "hero", props: { title: "Welcome", subtitle: "Discover our menu" }, actions: {} },
   category_pills: { type: "category_pills", key: "categories", props: { categories: ["Popular", "Mains", "Drinks"] }, actions: { selectCategory: { type: "filter", payload: { source: "category" } } } },
-  menu_grid: { type: "menu_grid", key: "items", props: { columns: 2 }, actions: { addItem: { type: "add_to_cart" }, viewDetails: { type: "navigate", payload: { push: "/item-detail" } } } },
+  menu_grid: { type: "menu_grid", key: "items", props: { columns: 2, addButtonStyle: "Filled", addButtonPosition: "Below price", showFavorite: "true" }, actions: { addItem: { type: "add_to_cart" }, viewDetails: { type: "navigate", payload: { push: "/item-detail" } } } },
   order_history: { type: "order_history", key: "orders", props: { showStatus: true }, actions: { selectOrder: { type: "navigate", payload: { push: "/order-detail" } } } },
   info_list: { type: "info_list", key: "contact", props: { items: [] }, actions: { call: { type: "call_phone", payload: { phone: "" } }, email: { type: "email", payload: { to: "" } } } },
   report_action: { type: "report_action", key: "report", props: { title: "Report an Issue" }, actions: { submit: { type: "submit_form", payload: {} } } },
@@ -100,6 +102,8 @@ export default function TemplateEditor({ templateId }) {
   const [showCode, setShowCode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [previewMode, setPreviewMode] = useState(false);
+  const [previewCart, setPreviewCart] = useState({});
+  const [previewOrders, setPreviewOrders] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [screenSettings, setScreenSettings] = useState({});
@@ -246,6 +250,42 @@ export default function TemplateEditor({ templateId }) {
     return out;
   }, [screenNodes, screenSettings]);
 
+  const previewCartLines = useMemo(() => toCartItems(previewCart), [previewCart]);
+
+  const handlePreviewAction = (eventOrScreenId, payload = {}) => {
+    if (eventOrScreenId === "addItem" || eventOrScreenId === "add_to_cart") {
+      if (!payload?.item) return;
+      setPreviewCart(prev => addCartItem(prev, payload.item, payload.quantity));
+      toast.success(`${payload.item.name || payload.item.title || "Item"} added to cart`);
+      return;
+    }
+    if (eventOrScreenId === "removeItem" || eventOrScreenId === "remove_from_cart") {
+      const id = payload?.id ?? payload?.item?.id ?? payload?.itemId ?? payload?.productId;
+      if (id != null) setPreviewCart(prev => removeCartItem(prev, id));
+      return;
+    }
+    if (eventOrScreenId === "checkout" || eventOrScreenId === "go_checkout") {
+      const target = findScreenWithComponent(buildLiveScreens, "cart_summary")
+        || resolvePreviewScreen(buildLiveScreens, ["cart"]);
+      if (target) handleScreenChange(target);
+      return;
+    }
+    if (eventOrScreenId === "place_order") {
+      const { order, error } = buildPreviewOrder(previewCart, previewOrders.length);
+      if (error) {
+        toast.info(error);
+        return;
+      }
+      setPreviewOrders(prev => [order, ...prev]);
+      setPreviewCart({});
+      const target = findScreenWithComponent(buildLiveScreens, "order_history")
+        || resolvePreviewScreen(buildLiveScreens, ["orders"]);
+      if (target) handleScreenChange(target);
+      return;
+    }
+    handleScreenChange(eventOrScreenId);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -375,7 +415,9 @@ export default function TemplateEditor({ templateId }) {
                   manifest={{ ...(manifest || {}), templateId }}
                   screens={buildLiveScreens}
                   initialScreenId={currentScreenId}
-                  onScreenChange={handleScreenChange}
+                  cartItems={previewCartLines}
+                  previewOrders={previewOrders}
+                  onScreenChange={handlePreviewAction}
                 />
               ) : (
                 <div style={{ flex: 1, overflow: "auto", padding: 16, background: screenSettings[currentScreenId]?.background || "#F3F4F6", borderRadius: 12 }}>
@@ -494,6 +536,9 @@ function PropertyEditor({ node, screens = [], onUpdate, onClose }) {
     menu_grid: [
       { key: "columns", label: "Columns", type: "number", min: 1, max: 4, step: 1 },
       { key: "variant", label: "Variant", type: "select", options: ["default", "bold", "minimal", "dark"] },
+      { key: "addButtonStyle", label: "Add Button Style", type: "select", options: ["Filled", "Outline", "Ghost"] },
+      { key: "addButtonPosition", label: "Add Button Position", type: "select", options: ["Below price", "Beside price", "On image"] },
+      { key: "showFavorite", label: "Favorite Heart", type: "select", options: ["true", "false"] },
     ],
     order_history: [
       { key: "showStatus", label: "Show Status", type: "boolean" },

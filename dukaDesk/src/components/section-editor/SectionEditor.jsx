@@ -1,7 +1,7 @@
 import PreviewTabBar from "./PreviewTabBar";
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { Sparkles } from "lucide-react";
-import { getComponentType } from "../canvas-editor/componentTypes";
+import { ChevronLeft, Minus, Plus, ShoppingBag, Sparkles } from "lucide-react";
+import { getComponentType, getLucideIcon } from "../canvas-editor/componentTypes";
 import SectionRenderer from "./SectionRenderer";
 import SectionPanel from "./SectionPanel";
 import PropertiesPanel from "./PropertiesPanel";
@@ -40,6 +40,10 @@ function resolvePreviewTarget(target, data) {
   return fuzzy || target;
 }
 
+function previewFavoriteKey(item) {
+  return String(item?.id ?? item?.productId ?? item?.name ?? item?.title ?? "");
+}
+
 function resolveHomeScreenId(data) {
   const screens = data?.screens || {};
   const screenIds = Object.keys(screens);
@@ -73,6 +77,7 @@ export default function SectionEditor({ store, onBack }) {
   const [previewStack, setPreviewStack] = useState([]);
   const [previewOrderId, setPreviewOrderId] = useState(null);
   const [previewCart, setPreviewCart] = useState({});
+  const [previewFavorites, setPreviewFavorites] = useState({});
   const [previewProduct, setPreviewProduct] = useState(null);
   const [previewQty, setPreviewQty] = useState(1);
   const [hoveredIcon, setHoveredIcon] = useState(null);
@@ -328,6 +333,12 @@ export default function SectionEditor({ store, onBack }) {
     setPreviewCart(prev => removeCartItem(prev, id));
   }, []);
 
+  const togglePreviewFavorite = useCallback((item) => {
+    const key = previewFavoriteKey(item);
+    if (!key) return;
+    setPreviewFavorites(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
   const openPreviewProduct = useCallback((item) => {
     const product = normalizeProduct(item);
     if (!product) return;
@@ -376,15 +387,32 @@ export default function SectionEditor({ store, onBack }) {
       if (payload?.item) { openPreviewProduct(payload.item); return; }
     }
     if (eventKey === "addItem" || eventKey === "add_to_cart") {
-      if (payload?.item) { addPreviewToCart(payload.item); return; }
-      if (payload?.id != null || payload?.itemId != null) { addPreviewToCart({ id: payload.id ?? payload.itemId }); return; }
+      const quantity = Number(payload?.quantity) > 0 ? Number(payload.quantity) : 1;
+      if (payload?.item) {
+        addPreviewToCart(payload.item, quantity);
+        toast.success(`${payload.item.name || "Item"} added to cart`);
+        return;
+      }
+      if (payload?.id != null || payload?.itemId != null) {
+        addPreviewToCart({ id: payload.id ?? payload.itemId }, quantity);
+        toast.success("Item added to cart");
+        return;
+      }
     }
     if (eventKey === "removeItem" || eventKey === "remove_from_cart") {
       const id = payload?.id ?? payload?.item?.id ?? payload?.itemId;
-      if (id != null) { removePreviewFromCart(id); return; }
+      if (id != null) { removePreviewFromCart(id); toast.info("Item removed from cart"); return; }
+    }
+    if (eventKey === "toggleFavorite" || eventKey === "favoriteItem") {
+      const item = payload?.item;
+      if (item) {
+        togglePreviewFavorite(item);
+        toast.success(previewFavorites[previewFavoriteKey(item)] ? "Removed from favorites" : "Saved to favorites");
+        return;
+      }
     }
     runPreviewEvent(comp, eventKey, payload, previewActionContext());
-  }, [addPreviewToCart, openPreviewProduct, previewActionContext, removePreviewFromCart]);
+  }, [addPreviewToCart, openPreviewProduct, previewActionContext, previewFavorites, removePreviewFromCart, togglePreviewFavorite]);
 
   const handlePreviewItemPress = useCallback((comp, item) => {
     const hasExplicitAction = Boolean(item?.tapAction ?? item?.action);
@@ -413,6 +441,12 @@ export default function SectionEditor({ store, onBack }) {
     const op = comp.props?.opacity != null ? Number(comp.props.opacity) / 100 : 1;
     const renderProps = { ...comp.props };
     if (comp.type === "cart_summary") renderProps.items = previewCartItems;
+    if (comp.type === "menu_grid" && Array.isArray(renderProps.items)) {
+      renderProps.items = renderProps.items.map(item => ({
+        ...item,
+        favorite: Boolean(previewFavorites[previewFavoriteKey(item)]),
+      }));
+    }
     if (comp.type === "order_detail" && previewOrderId) renderProps.orderId = previewOrderId;
     return <div key={comp.id} style={{
       padding: "4px 16px",
@@ -432,7 +466,7 @@ export default function SectionEditor({ store, onBack }) {
       onAction: (eventKey, payload) => handlePreviewEvent(comp, eventKey, payload),
       dispatchAction: dispatchPreviewAction,
     })}</div>;
-  }, [dispatchPreviewAction, handlePreviewAction, handlePreviewEvent, handlePreviewItemPress, previewCartItems, previewOrderId]);
+  }, [dispatchPreviewAction, handlePreviewAction, handlePreviewEvent, handlePreviewItemPress, previewCartItems, previewFavorites, previewOrderId]);
 
   const handlePublish = useCallback(async () => {
     if (isPublishing) return;
@@ -660,14 +694,14 @@ export default function SectionEditor({ store, onBack }) {
             return (
               <div style={{ position: "absolute", inset: 0, zIndex: 25, background: "#fff", display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid #EFECEF", flexShrink: 0 }}>
-                  <button onClick={closePreviewProduct} aria-label="Back to app" style={{ background: "none", border: "none", cursor: "pointer", color: NAVY, fontSize: 18, lineHeight: 1, padding: 4 }}>←</button>
+                  <button onClick={closePreviewProduct} aria-label="Back to app" style={{ background: "none", border: "none", cursor: "pointer", color: NAVY, padding: 4 }}><ChevronLeft size={20} /></button>
                   <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, color: NAVY }}>Product details</span>
                 </div>
                 <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 24px" }}>
                   <div style={{ width: "100%", height: 220, borderRadius: 16, background: "#F5F2F4", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: 16 }}>
                     {hasImage
                       ? <img src={img} alt={previewProduct.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                      : <span style={{ fontSize: 64 }}>{previewProduct.emoji || "🛍️"}</span>}
+                      : (() => { const Icon = getLucideIcon(previewProduct.emoji || "ShoppingBag") || ShoppingBag; return <Icon size={64} color="#9CA3AF" />; })()}
                   </div>
                   <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 19, color: NAVY, lineHeight: 1.25 }}>{previewProduct.name}</div>
                   <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 18, color: "#B45309", marginTop: 6 }}>₦{previewProduct.price.toLocaleString()}</div>
@@ -675,9 +709,9 @@ export default function SectionEditor({ store, onBack }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 20 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>Quantity</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 2, border: "1px solid #E5E1E3", borderRadius: 20, padding: "2px 4px" }}>
-                      <button onClick={() => setPreviewQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity" style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "none", cursor: "pointer", fontSize: 16, fontWeight: 700, color: NAVY }}>−</button>
+                      <button onClick={() => setPreviewQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity" style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "none", cursor: "pointer", color: NAVY }}><Minus size={14} /></button>
                       <span style={{ minWidth: 22, textAlign: "center", fontWeight: 700, color: NAVY }}>{previewQty}</span>
-                      <button onClick={() => setPreviewQty(q => q + 1)} aria-label="Increase quantity" style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: NAVY, color: "#fff", cursor: "pointer", fontSize: 15, fontWeight: 700 }}>+</button>
+                      <button onClick={() => setPreviewQty(q => q + 1)} aria-label="Increase quantity" style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: NAVY, color: "#fff", cursor: "pointer" }}><Plus size={14} /></button>
                     </div>
                   </div>
                 </div>

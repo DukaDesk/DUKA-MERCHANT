@@ -54,7 +54,7 @@ export default function Giving() {
       <div style={{ ...cardStyle }}>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, marginBottom: 16 }}>Recent Donations</div>
         {orders.length === 0 ? (
-          <Empty icon="🪙" message="No donations yet" sub="Donations will appear here as members give via your app." />
+          <Empty icon="Coins" message="No donations yet" sub="Donations will appear here as members give via your app." />
         ) : (
           orders.slice(0, 8).map((o, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < Math.min(orders.length, 8) - 1 ? "1px solid #F3F4F6" : "none" }}>

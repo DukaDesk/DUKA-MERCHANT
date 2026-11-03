@@ -1,5 +1,5 @@
 import { isValidElement } from "react";
-import { TriangleAlert, Inbox, Package, BarChart3, TrendingUp, Search, FileText, Trophy, Calendar, ClipboardList, CreditCard, Ticket } from "lucide-react";
+import { TriangleAlert, Inbox, Package, BarChart3, TrendingUp, Search, FileText, Trophy, Calendar, ClipboardList, CreditCard, Ticket, Puzzle, Coins, Armchair } from "lucide-react";
 import { NAVY, AMBER, font } from "../../theme";
 
 export function Loading({ message = "Loading..." }) {
@@ -38,7 +38,7 @@ export function CardSkeleton() {
 }
 
 export function Empty({ icon = "Inbox", message = "Nothing here yet", sub, action }) {
-  const iconMap = { Inbox, Package, BarChart3, TrendingUp, Search, FileText, Trophy, Calendar, ClipboardList, CreditCard, Ticket };
+  const iconMap = { Inbox, Package, BarChart3, TrendingUp, Search, FileText, Trophy, Calendar, ClipboardList, CreditCard, Ticket, Puzzle, Coins, Armchair };
   const iconElement = isValidElement(icon) ? icon : null;
   const Icon = typeof icon === "string" ? (iconMap[icon] || Inbox) : (typeof icon === "function" || (icon && typeof icon === "object" && !iconElement) ? icon : Inbox);
   return (

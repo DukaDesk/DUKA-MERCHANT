@@ -29,6 +29,49 @@ it("clicking a rendered pill selects its list position without selecting its par
   expect(parent).not.toHaveBeenCalled();
 });
 
+it("renders an add to cart button on the product grid and dispatches addItem", () => {
+  const addItem = vi.fn(), parent = vi.fn();
+  const item = { name: "Jollof Rice", price: "₦2,500" };
+  render(<div onClick={parent}>{getComponentType("menu_grid").render({ items: [item], onAction: addItem })}</div>);
+  fireEvent.click(screen.getByRole("button", { name: "Add Jollof Rice to cart" }));
+  expect(addItem).toHaveBeenCalledWith("addItem", { item, index: 0 });
+  expect(parent).not.toHaveBeenCalled();
+});
+
+it("applies the global grid button style and position to every card", () => {
+  const item = { name: "Jollof Rice", price: "₦2,500" };
+  render(getComponentType("menu_grid").render({
+    items: [item],
+    addButtonStyle: "Outline",
+    addButtonPosition: "Beside price",
+    onAction: vi.fn(),
+  }));
+  const button = screen.getByRole("button", { name: "Add Jollof Rice to cart" });
+  expect(button.textContent).toBe("Add");
+  expect(button.style.border).toContain("1.5px solid");
+});
+
+it("shows a favorite heart that toggles independently of the add button", () => {
+  const onAction = vi.fn();
+  const item = { name: "Jollof Rice", price: "₦2,500" };
+  render(getComponentType("menu_grid").render({
+    items: [{ ...item, favorite: true }],
+    showFavorite: "true",
+    onAction,
+  }));
+  fireEvent.click(screen.getByRole("button", { name: "Remove Jollof Rice from favorites" }));
+  expect(onAction).toHaveBeenCalledWith("toggleFavorite", { item: { ...item, favorite: true }, index: 0 });
+});
+
+it("hides the favorite heart when showFavorite is false", () => {
+  render(getComponentType("menu_grid").render({
+    items: [{ name: "Jollof Rice", price: "₦2,500" }],
+    showFavorite: "false",
+    onAction: vi.fn(),
+  }));
+  expect(screen.queryByRole("button", { name: /favorites/ })).toBeNull();
+});
+
 const FIELDS = [{ key: "items", label: "Menu Items", type: "list", fields: [
   { key: "name", label: "Name", type: "text" },
   { key: "background", label: "Card Background", type: "bg" },

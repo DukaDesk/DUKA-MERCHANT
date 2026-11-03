@@ -70,6 +70,9 @@ function generateMenuScreen(config) {
           props: {
             columns: 2,
              variant: normalizeTemplateName(config.template).includes("Modern") ? "bold" : "default",
+            addButtonStyle: "Filled",
+            addButtonPosition: "Below price",
+            showFavorite: "true",
             items: preview.items,
             dataBinding,
           },
@@ -96,7 +99,7 @@ function generateShopScreen(config) {
           type: "promotion_list",
           key: "promo-banner",
            props: {
-             offers: preview.items.map(item => ({ title: item.name, subtitle: item.desc, image: item.image || "", emoji: item.emoji })),
+            offers: preview.items.map(item => ({ title: item.name, subtitle: item.desc, image: item.image || "", icon: item.icon || item.emoji || "ShoppingBag" })),
              dataBinding,
            },
           actions: { tap: { type: "navigate", payload: { push: "/products?filter=new-arrivals" } } },
@@ -110,7 +113,14 @@ function generateShopScreen(config) {
          {
            type: "menu_grid",
            key: "products-grid",
-           props: { columns: 2, items: preview.items, dataBinding },
+           props: {
+             columns: 2,
+             addButtonStyle: "Filled",
+             addButtonPosition: "Below price",
+             showFavorite: "true",
+             items: preview.items,
+             dataBinding,
+           },
           actions: { addItem: { type: "add_to_cart" }, viewDetails: { type: "view_item" } },
         },
       ],
@@ -167,10 +177,10 @@ function generateInfoScreen(config) {
         props: {
           variant: "default",
           items: [
-            { icon: "📞", label: "Call Us", value: config.phone || "+234 800 000 0000", action: "call" },
-            { icon: "📍", label: "Address", value: config.address || "12 Admiralty Way, Lagos" },
-            { icon: "🕐", label: "Hours", value: config.hours?.length ? config.hours[0] : "Mon-Sun: 8AM - 10PM" },
-            { icon: "📧", label: "Email", value: "hello@" + (config.appName || "").toLowerCase().replace(/\s+/g, "") + ".com", action: "email" },
+            { icon: "Phone", label: "Call Us", value: config.phone || "+234 800 000 0000", action: "call" },
+            { icon: "MapPin", label: "Address", value: config.address || "12 Admiralty Way, Lagos" },
+            { icon: "Clock", label: "Hours", value: config.hours?.length ? config.hours[0] : "Mon-Sun: 8AM - 10PM" },
+            { icon: "Mail", label: "Email", value: "hello@" + (config.appName || "").toLowerCase().replace(/\s+/g, "") + ".com", action: "email" },
           ],
         },
         actions: { call: { type: "call_phone", payload: { phone: config.phone } }, email: { type: "email", payload: { to: "hello@example.com" } } },
@@ -255,10 +265,9 @@ function generateProfileScreen() {
         key: "account-info",
         props: {
           items: [
-            { icon: "👤", label: "My Account", value: "Manage settings", action: "tap" },
-            { icon: "📍", label: "Shipping Addresses", value: "2 addresses" },
-            { icon: "💳", label: "Payment Methods", value: "Card, Bank Transfer" },
-            { icon: "⭐", label: "Wishlist", value: "5 items" },
+            { icon: "User", label: "My Account", value: "Manage settings", action: "tap" },
+            { icon: "MapPin", label: "Shipping Addresses", value: "2 addresses" },
+            { icon: "CreditCard", label: "Payment Methods", value: "Card, Bank Transfer" },
           ],
         },
         actions: { tap: { type: "navigate", payload: { push: "/settings" } } },

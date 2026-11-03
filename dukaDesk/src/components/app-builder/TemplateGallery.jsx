@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { NAVY, AMBER } from "../../theme";
 import { getTemplateCatalog } from "../../services/staticTemplates";
 import { isCommerceTemplateCategory } from "../../config/verticalCatalog";
+import { getLucideIcon } from "../canvas-editor/componentTypes";
 
 function getInitials(name) {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
@@ -71,6 +72,7 @@ export default function TemplateGallery({ value, onChange, isMobile, loading = f
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 20 }}>
         {filtered.map((t, i) => {
           const selected = value === t.id;
+          const PreviewIcon = getLucideIcon(t.preview);
           return (
             <div key={t.id} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
               onClick={() => { if (!loading) onChange(t.id, t.category); }}
@@ -83,7 +85,9 @@ export default function TemplateGallery({ value, onChange, isMobile, loading = f
               }}>
               {selected && <div style={{ position: "absolute", top: 8, left: 8, background: AMBER, color: NAVY, fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 8, zIndex: 2 }}>Selected</div>}
               <div style={{ height: isMobile ? 100 : 140, background: `linear-gradient(135deg, ${t.primaryColor}, ${t.secondaryColor})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {t.preview ? (
+                {PreviewIcon ? (
+                  <PreviewIcon size={isMobile ? 32 : 40} color="#FFFFFF" />
+                ) : t.preview ? (
                   <span style={{ fontSize: isMobile ? 32 : 40 }}>{t.preview}</span>
                 ) : (
                   <span style={{ fontSize: isMobile ? 28 : 36, fontWeight: 800, color: "#fff", fontFamily: "'Sora',sans-serif", textShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>{getInitials(t.name)}</span>

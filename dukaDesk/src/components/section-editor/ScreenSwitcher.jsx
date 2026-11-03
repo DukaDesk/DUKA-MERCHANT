@@ -1,9 +1,18 @@
 import { confirmDialog } from "../common/dialogs";
 import { useEffect, useState } from "react";
 import { useEditorTheme } from "./editorTheme.jsx";
-import { getLucideIcon } from "../canvas-editor/componentTypes";
-import { Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { getComponentType, getLucideIcon } from "../canvas-editor/componentTypes";
+import { Copy, Pencil, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import ContextMenu from "./ContextMenu";
+
+const COMMERCE_SCREEN_STARTERS = [
+  { id: "catalog", label: "Catalog", archetype: "catalog", components: [{ type: "category_pills", props: {} }, { type: "menu_grid", props: {} }] },
+  { id: "product-detail", label: "Product Detail", archetype: "product_detail", components: [{ type: "product_detail", props: {} }] },
+  { id: "cart", label: "Cart", archetype: "cart", components: [{ type: "cart_content", props: {} }] },
+  { id: "checkout", label: "Checkout & Payment", archetype: "checkout", components: [{ type: "checkout_form", props: {} }] },
+  { id: "orders", label: "Orders", archetype: "orders", components: [{ type: "order_history", props: {} }] },
+  { id: "order-detail", label: "Order Detail / Confirmation", archetype: "order_detail", components: [{ type: "order_detail", props: {} }] },
+];
 
 export default function ScreenSwitcher({ store }) {
   const { theme, iconBtn, iconBtnDanger } = useEditorTheme();
@@ -15,6 +24,7 @@ export default function ScreenSwitcher({ store }) {
   const [editingScreenId, setEditingScreenId] = useState(null);
   const [screenNameInput, setScreenNameInput] = useState("");
   const [ctxMenu, setCtxMenu] = useState(null);
+  const [showCommerceStarters, setShowCommerceStarters] = useState(false);
 
   useEffect(() => {
     const handleShortcut = event => {
@@ -32,6 +42,20 @@ export default function ScreenSwitcher({ store }) {
   const handleScreenRename = (sid) => {
     if (screenNameInput.trim()) store.renameScreen(sid, screenNameInput.trim());
     setEditingScreenId(null);
+  };
+
+  const addCommerceStarter = (starter) => {
+    const sid = store.addScreen(null, starter.label);
+    store.setScreenArchetype?.(sid, starter.archetype);
+    store.addBodySection?.(sid, {
+      name: `${starter.label} — Main`,
+      components: starter.components.map(component => ({
+        type: component.type,
+        props: { ...(getComponentType(component.type)?.defaultProps || {}), ...component.props },
+      })),
+    });
+    store.setCurrentScreenId(sid);
+    setShowCommerceStarters(false);
   };
 
   return (
@@ -141,6 +165,18 @@ export default function ScreenSwitcher({ store }) {
         onMouseEnter={e => { e.currentTarget.style.borderColor = theme.active; e.currentTarget.style.color = theme.active; e.currentTarget.style.background = theme.hoverAmber; }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textSecondary; e.currentTarget.style.background = "transparent"; }}
       ><Plus size={16} /></button>
+
+      <button
+        type="button"
+        aria-label="Add commerce screen"
+        title="Add a default commerce screen"
+        onClick={() => setShowCommerceStarters(value => !value)}
+        style={{ height: 30, padding: "0 9px", borderRadius: theme.radius.md, border: `1px solid ${theme.border}`, background: showCommerceStarters ? theme.hoverAmber : "transparent", color: theme.textSecondary, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600 }}
+      ><ShoppingBag size={14} /> Commerce</button>
+
+      {showCommerceStarters && <div role="menu" aria-label="Default commerce screens" style={{ position: "absolute", bottom: "100%", left: 76, width: 250, padding: 8, background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: theme.radius.lg, boxShadow: theme.shadowLg, zIndex: 30, marginBottom: 8 }}>
+        {COMMERCE_SCREEN_STARTERS.map(starter => <button key={starter.id} type="button" role="menuitem" onClick={() => addCommerceStarter(starter)} style={{ width: "100%", textAlign: "left", padding: "9px 10px", border: 0, borderRadius: theme.radius.md, background: "transparent", color: theme.text, cursor: "pointer", fontSize: 12 }} onMouseEnter={event => { event.currentTarget.style.background = theme.hover; }} onMouseLeave={event => { event.currentTarget.style.background = "transparent"; }}>{starter.label}</button>)}
+      </div>}
 
       <div style={{ flex: 1 }} />
 

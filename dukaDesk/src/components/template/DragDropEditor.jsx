@@ -243,7 +243,7 @@ export function ComponentPalette({ onAddComponent }) {
       { type: "notification_list", label: "Notifications", desc: "Notification feed with actions" },
       { type: "report_action", label: "Report Form", desc: "Feedback/report submission" },
       { type: "primary_button", label: "Primary Button", desc: "Call-to-action button" },
-      { type: "address_form", label: "Address Form", desc: "Delivery address input" },
+      { type: "address_form", label: "Secure Checkout Entry", desc: "DukaDesk-managed consent checkout" },
     ]},
   ];
 

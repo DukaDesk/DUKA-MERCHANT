@@ -2,6 +2,7 @@ import { showAlert } from "../common/dialogs";
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
+import { getLucideIcon } from "../canvas-editor/componentTypes";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../../theme";
 import {
@@ -470,6 +471,7 @@ function SetupIntegrations({ data, setData, isMobile }) {
               {cat.items.map((item, ii) => {
                 const added = data.selectedIntegrations.includes(item.name);
                 const bc = INTEGRATION_BADGE_COLORS[item.badge] || INTEGRATION_BADGE_COLORS.Free;
+                const IntegrationIcon = getLucideIcon(item.icon) || Check;
                 return (
                   <div key={ii} style={{
                     background: added ? "#FFF8ED" : "#fff",
@@ -477,7 +479,7 @@ function SetupIntegrations({ data, setData, isMobile }) {
                     borderRadius: 10, padding: 16, cursor: "pointer", transition: "all 0.15s",
                   }} onClick={() => toggle(item.name)}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                      <span style={{ fontSize: 24 }}>{item.icon}</span>
+                      <IntegrationIcon size={24} aria-hidden="true" />
                       <span style={{ background: bc.bg, color: bc.color, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10 }}>{item.badge}</span>
                     </div>
                     <div style={{ fontWeight: 600, fontSize: 14, color: NAVY, marginBottom: 4 }}>{item.name}</div>

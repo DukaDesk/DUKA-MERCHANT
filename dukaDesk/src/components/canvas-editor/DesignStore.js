@@ -385,6 +385,10 @@ export function useDesignStore(initialData, options = {}) {
     updateData(d => { if (d.screens[id]) d.screens[id].name = name; });
   }, [updateData]);
 
+  const setScreenArchetype = useCallback((id, archetype) => {
+    updateData(d => { if (d.screens[id]) d.screens[id].archetype = archetype; });
+  }, [updateData]);
+
   /* ── Sections ── */
   const addBodySection = useCallback((screenId, section) => {
     const sid = screenId || currentScreenId;
@@ -983,7 +987,7 @@ export function useDesignStore(initialData, options = {}) {
     selectedIds, setSelectedIds,
 
     // Screens
-    addScreen, removeScreen, renameScreen,
+    addScreen, removeScreen, renameScreen, setScreenArchetype,
     setScreenBackgroundColor, setScreenLayout,
 
     // Sections
