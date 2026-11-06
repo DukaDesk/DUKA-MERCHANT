@@ -88,6 +88,11 @@ const layoutRenderers = {
       style: {
         marginBottom: node.gap || 16,
         padding: node.padding || 0,
+        background: node.backgroundColor || undefined,
+        border: node.border || undefined,
+        borderRadius: node.borderRadius,
+        boxSizing: "border-box",
+        ...(node.style || {}),
       },
     }, [
       node.title ? createElement("h3", {

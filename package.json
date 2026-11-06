@@ -1,0 +1,21 @@
+{
+  "name": "@dukadesk/merchant-app-preview-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./dukaDesk/src/runtime/SharedAppPreview.jsx"
+  },
+  "files": [
+    "dukaDesk/src/runtime/**",
+    "dukaDesk/src/theme.js",
+    "dukaDesk/src/theme/**",
+    "dukaDesk/src/components/template/TemplateComponents.jsx",
+    "dukaDesk/src/components/section-editor/PreviewTabBar.jsx",
+    "dukaDesk/src/components/canvas-editor/componentTypes/**"
+  ],
+  "peerDependencies": {
+    "lucide-react": ">=0.383.0 <2.0.0",
+    "react": "^18.2.0"
+  }
+}
