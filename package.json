@@ -8,6 +8,7 @@
   },
   "files": [
     "dukaDesk/src/runtime/**",
+    "dukaDesk/src/theme.js",
     "dukaDesk/src/theme/**",
     "dukaDesk/src/components/template/TemplateComponents.jsx",
     "dukaDesk/src/components/section-editor/PreviewTabBar.jsx",
