@@ -1,4 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import SharedAppPreview from "../../runtime/SharedAppPreview";
 import {
   normalizeScreenId,
   resolvePreviewScreen,
@@ -57,5 +59,72 @@ describe("preview order simulation", () => {
 
   it("refuses an empty cart", () => {
     expect(buildPreviewOrder({}, 0).error).toMatch(/empty/i);
+  });
+});
+
+describe("shared manifest preview runtime", () => {
+  it("renders submitted screens, allows internal navigation, and blocks review actions", () => {
+    const onScreenChange = vi.fn();
+    const manifest = {
+      navigation: {
+        initialScreen: "home",
+        tabs: [{ id: "home", label: "Home", screenId: "home" }],
+      },
+    };
+    const screens = {
+      home: {
+        title: "Submitted home",
+        layout: {
+          kind: "column",
+          children: [{
+            type: "layout",
+            key: "home-section",
+            layout: {
+              kind: "section",
+              children: [{
+                type: "primary_button",
+                key: "open-details",
+                props: { label: "Open details" },
+                actions: { default: { type: "navigate", payload: { screenId: "details" } } },
+              }],
+            },
+          }],
+        },
+      },
+      details: {
+        title: "Submitted details",
+        layout: {
+          kind: "column",
+          children: [{
+            type: "layout",
+            key: "details-section",
+            layout: {
+              kind: "section",
+              children: [{
+                type: "primary_button",
+                key: "approve",
+                props: { label: "Approve app" },
+                actions: { default: { type: "approve" } },
+              }],
+            },
+          }],
+        },
+      },
+    };
+
+    render(
+      <SharedAppPreview
+        manifest={manifest}
+        screens={screens}
+        onScreenChange={onScreenChange}
+        readOnly
+      />,
+    );
+
+    expect(screen.getByText("Submitted home")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Open details" }));
+    expect(screen.getByText("Submitted details")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Approve app" }));
+    expect(onScreenChange).not.toHaveBeenCalled();
   });
 });

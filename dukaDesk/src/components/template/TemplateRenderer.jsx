@@ -1,9 +1,8 @@
-import PreviewTabBar from "../section-editor/PreviewTabBar";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { LayoutRenderer, ScreenRenderer } from "../../runtime/layouts";
-import { RuntimeContext } from "../../runtime/RuntimeContext";
-import { TemplateComponents } from "./TemplateComponents";
+import { ScreenRenderer } from "../../runtime/layouts";
+import "./TemplateComponents";
 import { loadAllTemplateScreens } from "../../services/TemplateLoader";
+import SharedAppPreview from "../../runtime/SharedAppPreview";
 function getScreenPreviewData() {
   return {};
 }
@@ -171,198 +170,6 @@ return node;
   return <ScreenRenderer screenDef={enhancedScreenDef} extraProps={mergedProps} />;
 }
 
-const linkToScreen = (target, screenRefs) => {
-  if (!target) return null;
-  const expected = String(target).replace(/^\//, "").replace(/-/g, "").replace(/_/g, "");
-  const found = screenRefs.find(s => {
-    const rawId = String(s?.id ?? s?.screenId);
-    const id = rawId.replace(/-/g, "").replace(/_/g, "");
-    return id === expected || rawId === String(target) || id === expected.toLowerCase() || rawId.toLowerCase() === String(target).toLowerCase();
-  });
-  return found ? (found.id ?? found.screenId) : null;
-};
-
-/* App-like shell that mirrors manifest tabs at the bottom and pushes detail screens
-   via an in-preview navigation stack with a back button. */
-function AppSplash({ manifest }) {
-  const [leaving, setLeaving] = useState(false);
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setLeaving(true), 3000);
-    const t2 = setTimeout(() => setDone(true), 3000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
-
-  if (done) return null;
-
-  const splash = manifest?.splash || {};
-  const brandColor = manifest?.theme?.primaryColor || "#1B4332";
-  const bgColor = splash.backgroundColor || manifest?.theme?.bgColor || manifest?.theme?.backgroundColor || "#1A1A2E";
-  const bgImage = splash.backgroundImage || "";
-  const logo = splash.logo || manifest?.meta?.logo || manifest?.assets?.logo || manifest?.assets?.icon;
-  const name = manifest?.meta?.appName || manifest?.branding?.appName || manifest?.name || "My App";
-  const tagline = manifest?.branding?.tagline || "Tap to explore";
-  const isImage = typeof logo === "string" && /^(https?:|data:)/.test(logo);
-  const background = bgImage ? `url(${bgImage}) center/cover no-repeat` : bgColor;
-
-  return (
-    <div style={{
-      position: "absolute",
-      inset: 0,
-      zIndex: 50,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 16,
-      background: background,
-      transition: "opacity 0.3s ease",
-      opacity: leaving ? 0 : 1,
-      fontFamily: "'Sora', sans-serif",
-      textAlign: "center",
-      padding: 24,
-    }}>
-      <div style={{
-        width: 84,
-        height: 84,
-        borderRadius: 22,
-        background: `linear-gradient(135deg, ${brandColor}, ${brandColor}CC)`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 40,
-        boxShadow: `0 12px 32px ${brandColor}40`,
-        overflow: "hidden",
-      }}>
-        {isImage ? (
-          <img src={logo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <span>{logo || name.charAt(0).toUpperCase()}</span>
-        )}
-      </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: brandColor, lineHeight: 1.2 }}>
-        {name}
-      </div>
-      {tagline && <div style={{ fontSize: 13, color: "#6B7280", marginTop: -8 }}>{tagline}</div>}
-    </div>
-  );
-}
-
-function TemplateAppShell({ manifest, screens, initialScreenId, onScreenChange, cartItems, previewOrders, controlledScreenId }) {
-  const [stack, setStack] = useState(() => [initialScreenId || manifest?.navigation?.initialScreen || Object.keys(screens)[0]]);
-  const currentScreenId = stack[stack.length - 1];
-
-  // Preview cart/orders flow into the screens so cart and order screens
-  // reflect preview state instead of their JSON placeholders.
-  const liveScreens = useMemo(() => {
-    if (!screens || (!cartItems && !previewOrders)) return screens;
-    const out = {};
-    for (const [id, screen] of Object.entries(screens)) out[id] = injectPreviewState(screen, cartItems, previewOrders);
-    return out;
-  }, [screens, cartItems, previewOrders]);
-
-  // Lets the host drive navigation (e.g. preview checkout jumps to cart).
-  // Internal taps that already landed are left alone to avoid loops.
-  useEffect(() => {
-    if (!controlledScreenId || !liveScreens?.[controlledScreenId]) return;
-    setStack(prev => (prev[prev.length - 1] === controlledScreenId ? prev : [controlledScreenId]));
-  }, [controlledScreenId, liveScreens]);
-
-  const screenRefs = manifest?.screens || Object.keys(liveScreens || {}).map(id => ({ id }));
-
-  const navigateTo = (target) => {
-    const id = linkToScreen(target, screenRefs);
-    if (!id) return;
-    setStack(prev => {
-      const next = [...prev, id];
-      onScreenChange?.(id, next);
-      return next;
-    });
-  };
-
-  const switchTab = (screenId) => {
-    if (!screenId || screenId === currentScreenId) return;
-    setStack([screenId]);
-  };
-
-  const goBack = () => {
-    setStack(prev => {
-      if (prev.length <= 1) return prev;
-      const next = prev.slice(0, -1);
-      onScreenChange?.(next[next.length - 1], next);
-      return next;
-    });
-  };
-
-  const dispatchAction = (actionDef) => {
-    if (!actionDef) return;
-    const { type, payload = {} } = actionDef;
-    if (type === "navigate" || type === "push" || type === "replace") {
-      navigateTo(payload.push || payload.screen || payload.screenId);
-    } else if (type === "pop") {
-      goBack();
-    } else if (type === "switch_screen") {
-      switchTab(payload.screenId);
-    } else if (type === "logout") {
-      window.__logout?.();
-    } else {
-      onScreenChange?.(type, payload);
-    }
-  };
-
-  const isRoot = stack.length === 1;
-
-  return (
-    <RuntimeContext.Provider value={{ dispatchAction }}>
-      <div style={{ position: "relative", display: "flex", flexDirection: "column", height: "100%" }}>
-        <AppSplash manifest={manifest} />
-        {/* App header */}
-        <div style={{
-          background: manifest?.theme?.primaryColor || "#1B4332",
-          padding: "10px 14px",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          flexShrink: 0,
-          color: "#fff",
-        }}>
-          {!isRoot && (
-            <button
-              onClick={goBack}
-              style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, padding: 0, fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}
-            >
-              <span style={{ fontSize: 18 }}>←</span> Back
-            </button>
-          )}
-          <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15, flex: 1, textAlign: isRoot ? "center" : "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {liveScreens[currentScreenId]?.title || pathScreenTitle(currentScreenId)}
-          </span>
-          <span style={{ width: 24 }} />
-        </div>
-
-        {/* Screen body */}
-        <div style={{ flex: 1, minHeight: 0, overflow: "auto", background: manifest?.theme?.bgColor || manifest?.theme?.backgroundColor || "#F9FAFB" }}>
-          <TemplateRenderer
-            templateId={manifest?.templateId}
-            screenId={currentScreenId}
-            screens={liveScreens}
-            onAction={(actionKey, payload) => {
-              dispatchAction({ type: actionKey, payload });
-            }}
-          />
-        </div>
-
-        <PreviewTabBar navigation={manifest?.navigation} activeScreen={currentScreenId} onNavigate={switchTab} />
-      </div>
-    </RuntimeContext.Provider>
-  );
-}
-
-function pathScreenTitle(id) {
-  return id.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-}
-
 /* ── Preview runtime helpers (exported for tests) ─────────────────────
    The builder preview behaves like the mobile app with API calls stubbed:
    - cart_summary nodes render the preview cart instead of JSON placeholders
@@ -464,7 +271,7 @@ export function TemplatePreview({ templateId, initialScreenId, manifest, screens
   }
 
   return (
-    <TemplateAppShell
+    <SharedAppPreview
       manifest={state.manifest}
       screens={state.screens}
       initialScreenId={initialScreenId}
@@ -472,6 +279,7 @@ export function TemplatePreview({ templateId, initialScreenId, manifest, screens
       cartItems={cartItems}
       previewOrders={previewOrders}
       controlledScreenId={controlledScreenId}
+      readOnly={false}
     />
   );
 }
