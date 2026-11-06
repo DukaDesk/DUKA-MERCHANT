@@ -56,25 +56,27 @@ describe("api helpers (tenant config-based)", () => {
       expect(result).toBeNull();
     });
 
-    it("fetches config from tenant config", async () => {
+    it("fetches sanitized Paystack settings from payment accounts", async () => {
       setupMerchant();
-      mockHttpClient.get.mockResolvedValue({
-        data: {
-          config: {
-            integrationConfigs: { Paystack: { apiKey: "sk_test_123" } },
-          },
-        },
-      });
+      mockHttpClient.get.mockResolvedValue({ data: [{
+        provider: { slug: "paystack" }, enabled: true, isDefault: false,
+        environment: "sandbox", publicKey: "pk_test_123", secretConfigured: true,
+        webhookConfigured: true, metadata: { currency: "NGN", paymentMethods: { cards: true } },
+      }] });
 
       const result = await getIntegrationConfig("Paystack");
 
-      expect(result).toEqual({ apiKey: "sk_test_123" });
-      expect(mockHttpClient.get).toHaveBeenCalledWith("/api/v1/app/merchants/config");
+      expect(result).toMatchObject({
+        enabled: true, isDefault: false, environment: "sandbox", testMode: true,
+        publicKey: "pk_test_123", secretConfigured: true, webhookConfigured: true,
+        secretKey: "", currency: "NGN", cards: true,
+      });
+      expect(mockHttpClient.get).toHaveBeenCalledWith("/api/v1/app/payments/accounts");
     });
 
-    it("returns null when integration not configured", async () => {
+    it("returns null when payment account is not configured", async () => {
       setupMerchant();
-      mockHttpClient.get.mockResolvedValue({ data: { config: {} } });
+      mockHttpClient.get.mockResolvedValue({ data: [] });
 
       const result = await getIntegrationConfig("Paystack");
 
@@ -100,26 +102,31 @@ describe("api helpers (tenant config-based)", () => {
   });
 
   describe("setIntegrationConfig", () => {
-    it("merges new config into existing integrationConfigs", async () => {
+    it("saves Paystack credentials through the encrypted payment account endpoint", async () => {
       setupMerchant();
-      mockHttpClient.get.mockResolvedValue({
-        data: {
-          config: {
-            integrationConfigs: { ExistingInt: { key: "val" } },
-          },
-        },
+      mockHttpClient.post.mockResolvedValue({ data: {} });
+
+      await setIntegrationConfig("Paystack", {
+        publicKey: "pk_test_456", secretKey: "sk_test_456", webhookSecret: "whsec_test",
+        testMode: true, currency: "NGN", cards: true, bankTransfer: true, isDefault: true,
       });
+
+      expect(mockHttpClient.post).toHaveBeenCalledWith("/api/v1/app/payments/accounts", expect.objectContaining({
+        provider: "paystack", environment: "sandbox", publicKey: "pk_test_456",
+        secretKey: "sk_test_456", webhookSecret: "whsec_test", isDefault: true,
+        metadata: { currency: "NGN", paymentMethods: { cards: true, bankTransfer: true, ussd: false, qr: false, mobileMoneyGh: false, mobileMoneyUg: false, mpesa: false } },
+      }));
+    });
+
+    it("keeps non-payment integrations in generic tenant config", async () => {
+      setupMerchant();
+      mockHttpClient.get.mockResolvedValue({ data: { config: { integrationConfigs: { ExistingInt: { key: "val" } } } } });
       mockHttpClient.put.mockResolvedValue({ data: {} });
 
-      await setIntegrationConfig("Paystack", { apiKey: "sk_test_456" });
+      await setIntegrationConfig("Mailchimp", { apiKey: "mailchimp-key" });
 
       expect(mockHttpClient.put).toHaveBeenCalledWith("/api/v1/app/merchants/config", expect.objectContaining({
-        config: expect.objectContaining({
-          integrationConfigs: expect.objectContaining({
-            ExistingInt: { key: "val" },
-            Paystack: { apiKey: "sk_test_456" },
-          }),
-        }),
+        config: expect.objectContaining({ integrationConfigs: expect.objectContaining({ Mailchimp: { apiKey: "mailchimp-key" } }) }),
       }));
     });
   });

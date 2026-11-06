@@ -2,7 +2,7 @@ import { resolveInsertionTarget } from "./insertionTarget";
 import { useEditorTheme } from "./editorTheme.jsx";
 import { getComponentType, ROW_TEMPLATES, ICON_LIBRARY } from "../canvas-editor/componentTypes";
 import { toast } from "react-toastify";
-import { Layout, ClipboardList, PanelTop, ChevronDown, Type, AlignLeft, Square, List, Star, Minus, Image as ImageIcon, Video, X, Monitor, LayoutDashboard, LogIn, UserCog, Bell, LifeBuoy, CreditCard, BarChart3, Package, Receipt, CalendarDays, CheckCircle2 } from "lucide-react";
+import { Layout, ClipboardList, PanelTop, ChevronDown, Type, AlignLeft, Square, List, Star, Minus, Image as ImageIcon, Video, X, Monitor, LayoutDashboard, LogIn, Bell, LifeBuoy, CreditCard, BarChart3, Package, Receipt, CalendarDays, CheckCircle2, ShoppingCart } from "lucide-react";
 
 /* ── mini visual previews ── */
 function RowPreview({ weights, theme }) {
@@ -128,34 +128,25 @@ function TabsPreview({ position, theme }) {
  * Each entry is props-aware (every prop maps to a registered
  * component propField, editable in PropertiesPanel) and style-aware
  * (explicit colors / radius / typography, elegant light theme).
- * Selecting a variant creates real sections + a nav tab and focuses
- * the new screen so it is loaded and ready for Publish. */
+ * Selecting a variant creates real sections and focuses the new screen
+ * so it is loaded and ready for Publish. Navigation tabs are added
+ * separately so creating a screen never changes the app's tab bar. */
 
 const SCREEN_BUILDERS = {
   checkout: () => ([
-    { type: "text_block", props: { text: "Checkout", fontSize: 24, fontWeight: "700" } },
-    { type: "info_list", props: { items: [{ label: "Item 1", value: "$10" }, { label: "Item 2", value: "$20" }] } },
-    { type: "divider", props: {} },
-    { type: "text_block", props: { text: "Total: $30", fontSize: 16, fontWeight: "700" } },
-    { type: "button", props: { label: "Pay Now", variant: "filled", action: "" } },
+    { type: "checkout_form", key: "checkout-form", props: {} },
+  ]),
+  cart: () => ([
+    { type: "cart_content", props: {} },
+  ]),
+  orderDetail: () => ([
+    { type: "order_detail", props: {} },
   ]),
   sales: () => ([
     { type: "text_block", props: { text: "Sales", fontSize: 24, fontWeight: "700" } },
     { type: "info_list", props: { items: [{ label: "Product A", value: "$15" }, { label: "Product B", value: "$25" }] } },
   ]),
-  product: () => ([
-    { type: "image_block", props: { alt: "Product photo" } },
-    { type: "text_block", props: { text: "Product name", fontSize: 22, fontWeight: "800" } },
-    { type: "text_block", props: { text: "Short hook — one line on why buyers want this", fontSize: 13, fontWeight: "600", color: "#374151" } },
-    { type: "text_block", props: { text: "₦2,500 · was ₦5,000 (−50%)", fontSize: 16, fontWeight: "700" } },
-    { type: "rating", props: { value: 5, color: "#F4A644", size: 18 } },
-    { type: "text_block", props: { text: "Full product description goes here — ingredients, sizing, care and delivery notes.", fontSize: 13, fontWeight: "400", color: "#6B7280" } },
-    { type: "text_block", props: { text: "500 g · 20 × 15 × 10 cm · SKU PRD-001", fontSize: 12, fontWeight: "500", color: "#6B7280" } },
-    { type: "divider", props: { color: "#E5E1E3", thickness: 1 } },
-    { type: "info_list", props: { items: [{ label: "Category", value: "Mains" }, { label: "Availability", value: "In stock" }, { label: "SKU", value: "PRD-001" }] } },
-    { type: "text_block", props: { text: "#bestseller #spicy", fontSize: 12, fontWeight: "500", color: "#6B7280" } },
-    { type: "button", props: { label: "Add to Cart", variant: "filled", background: "#1A1A2E", color: "#FFFFFF", action: "" } },
-  ]),
+  product: () => ([{ type: "product_detail", key: "product-detail-preview", props: {} }]),
   home: () => ([
     { type: "text_block", props: { text: "Home", fontSize: 24, fontWeight: "700" } },
     { type: "image_block", props: { alt: "Banner" } },
@@ -176,27 +167,13 @@ const SCREEN_BUILDERS = {
     { type: "button", props: { label: "View reports", variant: "filled", background: "#1A1A2E", color: "#FFFFFF" } },
   ]),
   login: () => ([
-    { type: "text_block", props: { text: "Welcome back", fontSize: 24, fontWeight: "800", alignment: "center", color: "#1A1A2E" } },
-    { type: "text_block", props: { text: "Sign in securely with email or social login", fontSize: 13, fontWeight: "400", alignment: "center", color: "#6B7280" } },
-    { type: "text_input", props: { label: "Email address", placeholder: "you@example.com", value: "", hint: "We’ll send an OTP to verify you" } },
-    { type: "text_input", props: { label: "Password", placeholder: "••••••••", value: "", hint: "" } },
-    { type: "checkbox_row", props: { label: "Remember me", checked: "true" } },
-    { type: "button", props: { label: "Sign In", variant: "filled", background: "#1A1A2E", color: "#FFFFFF" } },
-    { type: "button", props: { label: "Create Account", variant: "outline", background: "#1A1A2E", color: "#1A1A2E" } },
-    { type: "divider", props: { color: "#E5E1E3", thickness: 1 } },
-    { type: "text_block", props: { text: "Secured with OTP • Google • Apple", fontSize: 11, fontWeight: "500", alignment: "center", color: "#9CA3AF" } },
+    { type: "text_block", props: { text: "Account access is managed by DukaDesk", fontSize: 22, fontWeight: "800", alignment: "center", color: "#1A1A2E" } },
+    { type: "text_block", props: { text: "Sign-in, account creation and personal details stay in DukaDesk. Merchant templates do not collect passwords or create customer accounts.", fontSize: 13, fontWeight: "400", alignment: "center", color: "#6B7280" } },
   ]),
   profile: () => ([
-    { type: "avatar", props: { name: "Alex Morgan" } },
-    { type: "text_block", props: { text: "Alex Morgan", fontSize: 20, fontWeight: "700", alignment: "center", color: "#1A1A2E" } },
-    { type: "text_block", props: { text: "alex@example.com · Lagos", fontSize: 12, fontWeight: "400", alignment: "center", color: "#6B7280" } },
-    { type: "divider", props: { color: "#E5E1E3", thickness: 1 } },
-    { type: "text_input", props: { label: "Full name", placeholder: "Alex Morgan", value: "Alex Morgan" } },
-    { type: "text_input", props: { label: "Phone", placeholder: "+234 …", value: "" } },
-    { type: "switch_toggle", props: { label: "Push notifications", checked: "true", color: "#2ECC71" } },
-    { type: "switch_toggle", props: { label: "Email receipts", checked: "false", color: "#2ECC71" } },
-    { type: "button", props: { label: "Save changes", variant: "filled", background: "#1A1A2E", color: "#FFFFFF" } },
-    { type: "button", props: { label: "Change password", variant: "outline", background: "#1A1A2E", color: "#1A1A2E" } },
+    { type: "text_block", props: { text: "Your DukaDesk account", fontSize: 20, fontWeight: "700", alignment: "center", color: "#1A1A2E" } },
+    { type: "text_block", props: { text: "Account details and privacy controls are managed securely in DukaDesk.", fontSize: 13, fontWeight: "400", alignment: "center", color: "#6B7280" } },
+    { type: "button", props: { label: "Manage account in DukaDesk", variant: "filled", background: "#1A1A2E", color: "#FFFFFF" } },
   ]),
   notifications: () => ([
     { type: "text_block", props: { text: "Notifications", fontSize: 22, fontWeight: "800", color: "#1A1A2E" } },
@@ -286,22 +263,25 @@ const GALLERY = {
   },
   Screens: {
     icon: Monitor,
-    hint: "Tap a screen to create it, link it to nav and load it — ready for Publish.",
+    hint: "Tap a screen to create and load it — ready for Publish. Add a navigation tab separately when you want it on the tab bar.",
     screenVariants: [
-      { id: "dashboard", label: "Dashboard", description: "Quick summary of key data, recent activity and shortcuts.", icon: LayoutDashboard, tabIcon: "LayoutGrid", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.dashboard },
-      { id: "login", label: "Login & Sign-Up", description: "Secure email + social login, OTP ready.", icon: LogIn, tabIcon: "Key", accent: "#0D9488", background: "#FFFFFF", build: SCREEN_BUILDERS.login },
-      { id: "notifications", label: "Notifications", description: "Alerts, updates and messages.", icon: Bell, tabIcon: "Bell", accent: "#F4A026", background: "#FCF8FA", build: SCREEN_BUILDERS.notifications },
-      { id: "support", label: "Help & Support", description: "FAQs, contact form and live chat.", icon: LifeBuoy, tabIcon: "HelpCircle", accent: "#0EA5E9", background: "#FFFFFF", build: SCREEN_BUILDERS.support },
-      { id: "billing", label: "Billing & Plan", description: "Payment methods, invoices and pricing plans.", icon: CreditCard, tabIcon: "CreditCard", accent: "#7C3AED", background: "#FCF8FA", build: SCREEN_BUILDERS.billing },
-      { id: "analytics", label: "Analytics & Reports", description: "Charts, metrics, sales data and graphs.", icon: BarChart3, tabIcon: "BarChart3", accent: "#0D9488", background: "#FCF8FA", build: SCREEN_BUILDERS.analytics },
-      { id: "inventory", label: "Inventory / Catalog", description: "Goods, stock levels and categories.", icon: Package, tabIcon: "Package", accent: "#EA580C", background: "#FCF8FA", build: SCREEN_BUILDERS.inventory },
-      { id: "orders", label: "Orders & History", description: "Past purchases, receipts and fulfillment.", icon: Receipt, tabIcon: "Receipt", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.orders },
-      { id: "calendar", label: "Calendar & Booking", description: "Bookings, meetings and deadlines.", icon: CalendarDays, tabIcon: "Calendar", accent: "#2ECC71", background: "#FFFFFF", build: SCREEN_BUILDERS.calendar },
-      { id: "checkout", label: "Checkout", description: "Cart summary with totals and Pay action.", icon: Monitor, tabIcon: "ShoppingCart", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.checkout },
-      { id: "sales", label: "Sales", description: "Simple product + price list starter.", icon: Monitor, tabIcon: "Tag", accent: "#6B7280", background: "#FCF8FA", build: SCREEN_BUILDERS.sales },
-      { id: "product", label: "Product", description: "Product detail page with photo, price, description and add-to-cart. No tab is created — hook one up from the Tabs editor if needed.", icon: Monitor, tabIcon: "", accent: "#F4A026", background: "#FCF8FA", build: SCREEN_BUILDERS.product },
-      { id: "home", label: "Home", description: "Hero + image + CTA starter.", icon: Monitor, tabIcon: "Home", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.home },
-      { id: "splash", label: "Splash", description: "App-entry logo screen (no nav tab).", icon: Monitor, tabIcon: "", accent: "#1A1A2E", background: "#1A1A2E", build: SCREEN_BUILDERS.splash },
+      { id: "dashboard", label: "Dashboard", description: "Quick summary of key data, recent activity and shortcuts.", icon: LayoutDashboard, accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.dashboard },
+      { id: "login", label: "Login & Sign-Up", description: "Secure email + social login, OTP ready.", icon: LogIn, accent: "#0D9488", background: "#FFFFFF", build: SCREEN_BUILDERS.login },
+      { id: "notifications", label: "Notifications", description: "Alerts, updates and messages.", icon: Bell, accent: "#F4A026", background: "#FCF8FA", build: SCREEN_BUILDERS.notifications },
+      { id: "support", label: "Help & Support", description: "FAQs, contact form and live chat.", icon: LifeBuoy, accent: "#0EA5E9", background: "#FFFFFF", build: SCREEN_BUILDERS.support },
+      { id: "billing", label: "Billing & Plan", description: "Payment methods, invoices and pricing plans.", icon: CreditCard, accent: "#7C3AED", background: "#FCF8FA", build: SCREEN_BUILDERS.billing },
+      { id: "analytics", label: "Analytics & Reports", description: "Charts, metrics, sales data and graphs.", icon: BarChart3, accent: "#0D9488", background: "#FCF8FA", build: SCREEN_BUILDERS.analytics },
+      { id: "inventory", label: "Inventory / Catalog", description: "Goods, stock levels and categories.", icon: Package, accent: "#EA580C", background: "#FCF8FA", build: SCREEN_BUILDERS.inventory },
+      { id: "orders", label: "Orders & History", description: "Live customer order history.", icon: Receipt, archetype: "orders", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.orders },
+      { id: "calendar", label: "Calendar & Booking", description: "Bookings, meetings and deadlines.", icon: CalendarDays, accent: "#2ECC71", background: "#FFFFFF", build: SCREEN_BUILDERS.calendar },
+      { id: "cart", label: "Cart", description: "Live backend cart with quantity and remove controls.", icon: ShoppingCart, archetype: "cart", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.cart },
+      { id: "checkout", label: "Checkout & Payment", description: "Merchant-configured payment methods and order summary.", icon: CreditCard, archetype: "checkout", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.checkout },
+      { id: "order-detail", label: "Order Detail / Confirmation", description: "Live order status, payment state and totals.", icon: Receipt, archetype: "order_detail", accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.orderDetail },
+      { id: "sales", label: "Sales", description: "Simple product + price list starter.", icon: Monitor, accent: "#6B7280", background: "#FCF8FA", build: SCREEN_BUILDERS.sales },
+      { id: "product", label: "Product Detail", description: "Product photo, price, favorite and quick cart actions.", icon: Monitor, archetype: "product_detail", accent: "#F4A026", background: "#FCF8FA", build: SCREEN_BUILDERS.product },
+      { id: "catalog", label: "Catalog", description: "Live categories and product cards.", icon: Package, archetype: "catalog", accent: "#0D9488", background: "#FCF8FA", build: () => [{ type: "category_pills", props: {} }, { type: "menu_grid", props: {} }] },
+      { id: "home", label: "Home", description: "Hero + image + CTA starter.", icon: Monitor, accent: "#1A1A2E", background: "#FCF8FA", build: SCREEN_BUILDERS.home },
+      { id: "splash", label: "Splash", description: "App-entry logo screen.", icon: Monitor, accent: "#1A1A2E", background: "#1A1A2E", build: SCREEN_BUILDERS.splash },
     ],
   },
   Accordion: { icon: ChevronDown, comingSoon: true },
@@ -409,19 +389,14 @@ export default function ElementGallery({ browseType, store, selectedSectionId, s
       ...(c.children ? { children: c.children } : {}),
     }));
     const sid = store.addScreen(null, variant.label);
+    if (variant.archetype) store.setScreenArchetype?.(sid, variant.archetype);
     // Apply the template's elegant background (style-aware) when supported.
     if (variant.background && store.setScreenBackgroundColor) {
       store.setScreenBackgroundColor(sid, variant.background);
     }
     store.addBodySection(sid, { name: `${variant.label} — Main`, backgroundColor: variant.background || "#FCF8FA", components });
-    // Link to bottom nav (publish-ready: tab label + icon + valid screenId)
-    if (variant.tabIcon !== "") {
-      const existingTabs = store.data?.navigation?.tabs || [];
-      const alreadyLinked = existingTabs.some((t) => t.screenId === sid);
-      if (!alreadyLinked) {
-        store.addTab({ label: variant.label, icon: variant.tabIcon || "Home", screenId: sid });
-      }
-    }
+    // Screens are created without touching navigation; tabs are a separate,
+    // explicit choice so adding a screen cannot silently change the tab bar.
     // Load it immediately so selection = loaded + ready for Publish.
     if (store.setCurrentScreenId) store.setCurrentScreenId(sid);
     onAdded?.(null, null);

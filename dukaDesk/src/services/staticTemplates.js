@@ -6,39 +6,6 @@ import { getProducts, hydrateDesignWithProducts } from "./api";
 
 const catalogCache = new Map();
 
-const TAB_EMOJI_MAP = {
-  "home-outline": "\uD83C\uDFE0",
-  "storefront-outline": "\uD83C\uDFEA",
-  "shop-outline": "\uD83C\uDFEA",
-  "cart-outline": "\uD83D\uDED2",
-  "receipt-outline": "\uD83D\uDCCB",
-  "clipboard-outline": "\uD83D\uDCCB",
-  "order-outline": "\uD83D\uDCCB",
-  "person-outline": "\uD83D\uDC64",
-  "parent-outline": "\uD83D\uDC64",
-  "calendar-outline": "\uD83D\uDCC5",
-  "tag-outline": "\uD83C\uDFF7\uFE0F",
-  "restaurant-outline": "\uD83C\uDF5F",
-  "information-outline": "\u2139\uFE0F",
-  "megaphone-outline": "\uD83D\uDCE3",
-  "trophy-outline": "\uD83C\uDFC6",
-  "heart-outline": "\uD83D\uDC96",
-  "book-outline": "\uD83D\uDCD6",
-  "people-outline": "\uD83C\uDF32",
-  "videocam-outline": "\uD83D\uDCF9",
-  "bag-outline": "\uD83D\uDC5C",
-  "card-outline": "\uD83D\uDCB3",
-  "grid-outline": "\uD83D\uDCCB",
-  "phone-outline": "\uD83D\uDCDE",
-  "bookings-outline": "\uD83D\uDCC5",
-};
-
-function tabEmoji(icon) {
-  if (!icon || typeof icon !== "string") return null;
-  if (TAB_EMOJI_MAP[icon]) return TAB_EMOJI_MAP[icon];
-  return null;
-}
-
 export function categoryFolder(category) {
   return String(category || "")
     .toLowerCase()
@@ -266,7 +233,7 @@ export function convertManifestToDesign(manifest, screens) {
       initialScreen: screensOut[nav.initialScreen] ? nav.initialScreen : Object.keys(screensOut)[0],
       style: nav.style || {},
       tabs: Array.isArray(nav.tabs)
-        ? nav.tabs.filter(t => screensOut[t.screenId]).map((t, i) => ({ id: `tab_${i}_${Date.now()}`, label: t.label || "Tab", icon: tabEmoji(t.icon) || t.icon || "\uD83D\uDCCB", screenId: t.screenId || "", color: t.color || undefined }))
+        ? nav.tabs.filter(t => screensOut[t.screenId]).map((t, i) => ({ id: `tab_${i}_${Date.now()}`, label: t.label || "Tab", icon: t.icon || "clipboard-outline", screenId: t.screenId || "", color: t.color || undefined }))
         : [],
     },
     shared: {
@@ -354,7 +321,7 @@ export function convertBackendTemplateToDesign(template) {
       return {
         id: `tab_${i}_${Date.now()}`,
         label: t.label || "Tab",
-        icon: tabEmoji(t.icon) || t.icon || "\uD83D\uDCCB",
+        icon: t.icon || "clipboard-outline",
         screenId: screensOut[target] ? target : "",
         color: t.color || undefined,
       };

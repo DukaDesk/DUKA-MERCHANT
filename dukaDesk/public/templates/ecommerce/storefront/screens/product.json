@@ -1,0 +1,17 @@
+{
+  "screenId": "product",
+  "archetype": "product_detail",
+  "title": "Product",
+  "layout": {
+    "kind": "scroll",
+    "gap": 0,
+    "padding": 0,
+    "children": [
+      {
+        "type": "product_detail",
+        "key": "product-detail",
+        "props": {}
+      }
+    ]
+  }
+}

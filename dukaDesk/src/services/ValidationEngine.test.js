@@ -40,6 +40,23 @@ describe('freeform builder validation', () => {
     const result = compileDesignToPublishedApp(draft, '1.0.0', '2026-09-29T00:00:00Z');
     expect(result.screens.book.layout.children[0].layout.children[0].props.tapAction.payload.screenId).toBe('book');
   });
+  it('accepts generated commerce aliases and warns about screens added during compilation', () => {
+    const draft = project([{ id: 'button', type: 'button', props: { tapAction: JSON.stringify({ type: 'navigate', payload: { push: '/product-detail?productId=p-1' } }) } }]);
+    draft.screens.book.archetype = 'catalog';
+
+    const validation = validateProject(draft);
+    const compiled = compileDesignToPublishedApp(draft, '1.0.0', '2026-09-29T00:00:00Z');
+
+    expect(validation.valid).toBe(true);
+    expect(validation.warnings.some(warning => warning.message.includes('product_detail'))).toBe(true);
+    expect(compiled.screens.book.layout.children[0].layout.children[0].props.tapAction.payload.productId).toBe('p-1');
+  });
+  it('rejects dead path-style destinations before compilation', () => {
+    const draft = project([{ id: 'button', type: 'button', props: { tapAction: JSON.stringify({ type: 'navigate', payload: { push: '/missing-page' } }) } }]);
+    const validation = validateProject(draft);
+    expect(validation.valid).toBe(false);
+    expect(validation.errors.some(error => error.message.includes('/missing-page'))).toBe(true);
+  });
   it('tells the merchant when no destination page was chosen yet', () => {
     const draft = project([
       { id: 'promo-banner', type: 'hero_banner', props: { offers: [{ tapAction: JSON.stringify({ type: 'navigate', payload: { screenId: '' } }) }, {}, {}] } },

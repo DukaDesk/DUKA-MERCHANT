@@ -1,7 +1,7 @@
 import { PreviewTabIcon } from "../section-editor/PreviewTabBar";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Palette, SlidersHorizontal, MousePointer } from "lucide-react";
+import { ArrowLeft, Palette, SlidersHorizontal, MousePointer, Smartphone } from "lucide-react";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { toast } from "react-toastify";
 import { getMyApp, getSetupData, getProducts, updateApp, mapProductToMenuItem, mapProductToOffer } from "../../services/api";
@@ -326,7 +326,7 @@ export default function MiniAppPreview() {
               />
             ) : (
               <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", background: "#fff" }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>📱</div>
+                <Smartphone size={40} color={AMBER} style={{ marginBottom: 12 }} />
                 <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: NAVY, marginBottom: 6 }}>
                   {loading ? "Preparing your app preview…" : "No app to preview yet"}
                 </div>

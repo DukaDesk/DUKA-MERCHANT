@@ -4,7 +4,7 @@
   "category": "Ecommerce",
   "tags": ["Clean", "Product-first"],
   "features": ["Products", "Cart", "Checkout", "Reviews"],
-  "preview": "🛍️",
+  "preview": "ShoppingBag",
   "theme": {
     "primaryColor": "#0D9488",
     "secondaryColor": "#0F0F1A",
@@ -24,7 +24,9 @@
   },
   "screens": [
     { "id": "shop", "path": "screens/shop.json" },
+    { "id": "product", "path": "screens/product.json" },
     { "id": "cart", "path": "screens/cart.json" },
+    { "id": "checkout", "path": "screens/checkout.json" },
     { "id": "orders", "path": "screens/orders.json" },
     { "id": "profile", "path": "screens/profile.json" }
   ]

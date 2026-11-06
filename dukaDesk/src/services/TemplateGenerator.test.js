@@ -52,7 +52,7 @@ describe("TemplateGenerator", () => {
   it("generates starters for new catalog verticals", () => {
     const pharmacy = generateShopTemplate(config("Pharmacy", "Care Plus"));
 
-    expect(pharmacy.screens.map(screen => screen.screenId).sort()).toEqual(["cart", "info", "orders", "shop"]);
+    expect(pharmacy.screens.map(screen => screen.screenId).sort()).toEqual(["cart", "checkout", "info", "order-detail", "orders", "product", "shop"]);
 
     const salon = generateShopTemplate(config("Salon & Beauty", "Glow Studio"));
 
@@ -62,11 +62,11 @@ describe("TemplateGenerator", () => {
   it("resolves taxonomy preset keys to catalog entries with legacy fallback", () => {
     const healthcare = generateShopTemplate(config("Healthcare", "Care Plus"));
 
-    expect(healthcare.screens.map(screen => screen.screenId).sort()).toEqual(["cart", "info", "orders", "shop"]);
+    expect(healthcare.screens.map(screen => screen.screenId).sort()).toEqual(["cart", "checkout", "info", "order-detail", "orders", "product", "shop"]);
 
     const unknown = generateShopTemplate(config("Does Not Exist", "Nope"));
 
-    expect(unknown.screens.map(screen => screen.screenId)).toEqual(["menu", "info", "orders", "services"]);
+    expect(unknown.screens.map(screen => screen.screenId).sort()).toEqual(["checkout", "info", "menu", "order-detail", "orders", "product", "services"]);
   });
 
   it("lists new verticals in the template catalog", () => {

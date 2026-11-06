@@ -7,6 +7,7 @@ import { NAVY, AMBER, cardStyle } from "../../theme";
 import { INTEGRATION_BADGE_COLORS, INTEGRATION_DETAILS } from "../../config/integrations";
 import { getIntegrations, toggleIntegration, getIntegrationConfig, setIntegrationConfig } from "../../services/api";
 import { useVertical } from "../../runtime/VerticalContext";
+import { getLucideIcon } from "../canvas-editor/componentTypes";
 import { Loading, Empty } from "../layout/States";
 import IntegrationConfigPanel from "./IntegrationConfigPanel";
 
@@ -49,9 +50,10 @@ export default function IntegrationDetails() {
   }, [configPanel]);
 
   if (loading) return <Loading message={`Loading ${name}...`} />;
-  if (!integration) return <Empty icon="🧩" message="Tool not found" sub="This tool doesn't exist or has been removed" action={<button onClick={() => navigate("/dashboard/more-tools")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Back to More Tools</button>} />;
+  if (!integration) return <Empty icon="Puzzle" message="Tool not found" sub="This tool doesn't exist or has been removed" action={<button onClick={() => navigate("/dashboard/more-tools")} style={{ background: AMBER, color: NAVY, border: "none", borderRadius: 10, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Back to More Tools</button>} />;
 
   const bc = INTEGRATION_BADGE_COLORS[integration.badge] || INTEGRATION_BADGE_COLORS.Free;
+  const IntegrationIcon = getLucideIcon(details?.preview || integration.icon) || Shield;
 
   const toggleType = (typeName) => {
     setSelectedTypes(prev =>
@@ -68,7 +70,7 @@ export default function IntegrationDetails() {
       <div style={{ ...cardStyle, marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: isMobile ? 14 : 20 }}>
           <div style={{ width: isMobile ? 64 : 80, height: isMobile ? 64 : 80, background: `${bc.bg}`, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 32 : 40, flexShrink: 0 }}>
-            {details?.preview || integration.icon}
+            <IntegrationIcon size={isMobile ? 32 : 40} color={AMBER} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
@@ -109,6 +111,7 @@ export default function IntegrationDetails() {
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
             {details.types.map((t, i) => {
               const selected = selectedTypes.includes(t.name);
+              const TypeIcon = getLucideIcon(t.icon) || Zap;
               return (
                 <div key={i} onClick={() => toggleType(t.name)} style={{
                   background: selected ? "#FFF8ED" : "#fff",
@@ -117,7 +120,7 @@ export default function IntegrationDetails() {
                   position: "relative",
                 }}>
                   {selected && <div style={{ position: "absolute", top: 8, right: 8, background: AMBER, color: NAVY, borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>âœ“</div>}
-                  <div style={{ fontSize: 28, marginBottom: 8 }}>{t.icon}</div>
+                  <div style={{ marginBottom: 8 }}><TypeIcon size={24} color={AMBER} /></div>
                   <div style={{ fontWeight: 600, fontSize: 14, color: NAVY, marginBottom: 4 }}>{t.name}</div>
                   <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.4 }}>{t.desc}</div>
                   {t.popular && <span style={{ display: "inline-block", background: "#FFF8ED", color: "#92400E", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, marginTop: 8 }}>âœ¦ Popular</span>}
@@ -130,7 +133,7 @@ export default function IntegrationDetails() {
 
       <div style={{ ...cardStyle, background: "#F9FAFB", border: "1px dashed #E5E7EB" }}>
         <div style={{ textAlign: "center", padding: "20px 0" }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>{details?.preview || integration.icon}</div>
+          <div style={{ marginBottom: 12 }}><IntegrationIcon size={40} color={AMBER} /></div>
           <h4 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, color: NAVY, margin: "0 0 6px" }}>{integration.name}</h4>
           <p style={{ color: "#6B7280", fontSize: 13, margin: "0 auto", maxWidth: 400, lineHeight: 1.5 }}>{details?.summary || integration.desc}</p>
           <button onClick={async () => {

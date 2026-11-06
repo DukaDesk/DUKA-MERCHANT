@@ -1,3 +1,11 @@
+import {
+  applyArchetypeDefaults,
+  archetypeRouteAliases,
+  inferScreenArchetype,
+  missingCommerceArchetypes,
+  REQUIRED_COMMERCE_ARCHETYPES,
+} from "./screenArchetypes";
+
 function slugify(value) {
   return String(value || "")
     .toLowerCase()
@@ -7,10 +15,101 @@ function slugify(value) {
     || "published-app";
 }
 
+function mergeRoutes(routes, screens) {
+  const base = Array.isArray(routes) && routes.length
+    ? routes
+    : Object.keys(screens).map(screenId => ({ routeId: screenId, screenId, path: `/${screenId}` }));
+  const known = new Set(base.map(route => route.screenId));
+  const generated = Object.keys(screens)
+    .filter(screenId => !known.has(screenId) && screens[screenId]?.archetype)
+    .map(screenId => ({ routeId: screenId, screenId, path: `/${screenId}` }));
+  return [...base, ...generated];
+}
+
+function normalizedPath(value) {
+  const path = String(value || "").split(/[?#]/)[0];
+  return `/${path.replace(/^\/+|\/+$/g, "")}`;
+}
+
+function aliasMatches(alias, path) {
+  const expected = normalizedPath(alias).split("/").filter(Boolean);
+  const actual = normalizedPath(path).split("/").filter(Boolean);
+  return expected.length === actual.length && expected.every((part, index) =>
+    part.startsWith(":") || (part.startsWith("[") && part.endsWith("]")) || part.toLowerCase() === actual[index].toLowerCase());
+}
+
+function resolveScreenTarget(target, screens, allowGeneratedCommerce) {
+  if (screens[target]) return { screenId: target };
+  const path = normalizedPath(target);
+  const direct = path.replace(/^\//, "");
+  if (screens[direct]) return { screenId: direct };
+  const byRoute = Object.entries(screens).find(([id, screen]) => [screen?.route, screen?.path, `/${id}`]
+    .some(route => route && normalizedPath(route).toLowerCase() === path.toLowerCase()));
+  if (byRoute) return { screenId: byRoute[0] };
+
+  const archetypes = ["product_detail", "order_detail", "checkout", "cart", "orders", "catalog", "profile"];
+  for (const archetype of archetypes) {
+    if (!archetypeRouteAliases(archetype).some(alias => aliasMatches(alias, path))) continue;
+    const existing = Object.entries(screens).find(([id, screen]) => inferScreenArchetype(id, screen) === archetype);
+    if (existing) return { screenId: existing[0], archetype, path };
+    if (allowGeneratedCommerce && REQUIRED_COMMERCE_ARCHETYPES.includes(archetype)) {
+      return { screenId: `__archetype_${archetype}__`, archetype, path };
+    }
+  }
+  return null;
+}
+
+function routeParamsFor(target, resolved) {
+  const query = target.includes("?") ? target.split("?")[1].split("#")[0] : "";
+  const params = Object.fromEntries(new URLSearchParams(query));
+  const segments = normalizedPath(target).split("/").filter(Boolean);
+  const lastSegment = segments[segments.length - 1];
+  if (resolved?.archetype === "product_detail" && lastSegment && !["product", "product-detail", "item-detail"].includes(lastSegment)) {
+    params.productId ||= lastSegment;
+  }
+  if (resolved?.archetype === "order_detail" && lastSegment && !["order", "order-detail"].includes(lastSegment)) {
+    params.orderId ||= lastSegment;
+  }
+  return params;
+}
+
+function generatedCompiledScreen(archetype) {
+  const titles = {
+    catalog: "Shop",
+    product_detail: "Product",
+    cart: "Cart",
+    checkout: "Checkout",
+    orders: "Orders",
+    order_detail: "Order Details",
+  };
+  const children = {
+    catalog: [{ type: "menu_grid", key: "generated-catalog", props: { columns: 2 } }],
+    product_detail: [{ type: "product_detail", key: "generated-product-detail" }],
+    cart: [{ type: "cart_content", key: "generated-cart" }],
+    checkout: [{ type: "checkout_form", key: "generated-checkout" }],
+    orders: [{ type: "order_history", key: "generated-orders" }],
+    order_detail: [{ type: "order_detail", key: "generated-order-detail" }],
+  }[archetype];
+  if (!children) return null;
+  const screenId = `__archetype_${archetype}__`;
+  return {
+    screenId,
+    archetype,
+    title: titles[archetype] || archetype,
+    layout: { kind: "scroll", padding: archetype === "product_detail" || archetype === "order_detail" ? 0 : 16, gap: 12, children: applyArchetypeDefaults(children, archetype) },
+    fixedTop: [],
+    fixedBottom: [],
+  };
+}
+
 export function compileDesignToPublishedApp(projectData, version, publishedAt, assetCatalog = []) {
   const source = JSON.parse(JSON.stringify(projectData || {}));
   const meta = source.meta || {};
   const sourceScreens = source.screens && typeof source.screens === "object" ? source.screens : {};
+  const canGenerateCommerce = Object.values(sourceScreens).some(screen => {
+    const archetype = screen?.archetype || inferScreenArchetype(screen?.screenId || screen?.name || "", screen || {});
+    return REQUIRED_COMMERCE_ARCHETYPES.includes(archetype);
+  });
   const libraries = Array.isArray(source.savedSections) ? source.savedSections : [];
   const libraryById = Object.fromEntries(libraries.map(section => [section.id, section]));
 
@@ -27,16 +126,19 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
         try { parsed = JSON.parse(value); } catch { throw new Error("Invalid component action: " + copy.key); }
       }
       if (!parsed || typeof parsed.type !== "string" || !parsed.type) throw new Error("Invalid component action: " + copy.key);
-      if (["navigate", "push", "replace", "switch_screen"].includes(parsed.type) && Object.prototype.hasOwnProperty.call(parsed.payload || {}, "screenId") && !sourceScreens[parsed.payload.screenId]) {
-        const dest = parsed.payload.screenId || "(no destination page chosen yet)";
-        throw new Error("Choose an existing destination page for: " + copy.key + " (\"" + dest + "\" is not a page — available: " + Object.keys(sourceScreens).join(", ") + ")");
-      }
-      // Canonicalize path-style destinations ("/shop") to screenId when they
-      // name an existing screen. The backend validator and mobile resolver
-      // both accept push, but screenId is the canonical contract form.
-      if (parsed.payload && typeof parsed.payload === "object" && !parsed.payload.screenId && typeof parsed.payload.push === "string") {
-        const match = parsed.payload.push.match(/^\/([A-Za-z0-9_-]+)$/);
-        if (match && sourceScreens[match[1]]) parsed.payload = { ...parsed.payload, screenId: match[1] };
+      if (["navigate", "push", "replace", "switch_screen"].includes(parsed.type)) {
+        const payload = { ...(parsed.payload || {}) };
+        const targetKey = ["screenId", "screen", "push", "target"].find(key => typeof payload[key] === "string" && payload[key]);
+        if (!targetKey) {
+          throw new Error("Choose an existing destination page for: " + copy.key + " (no destination page chosen yet)");
+        }
+        const target = payload[targetKey];
+        const resolved = resolveScreenTarget(target, sourceScreens, canGenerateCommerce);
+        if (!resolved) {
+          throw new Error("Choose an existing destination page for: " + copy.key + " (\"" + target + "\" is not a page — available: " + Object.keys(sourceScreens).join(", ") + ")");
+        }
+        const params = routeParamsFor(target, resolved);
+        parsed.payload = { ...payload, ...(Object.keys(params).length ? params : {}), screenId: resolved.screenId };
       }
       return parsed;
     };
@@ -78,29 +180,50 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
   };
   const screens = Object.fromEntries(Object.entries(sourceScreens).map(([id, screen]) => {
     const layout = screen.layout || {};
+    const archetype = inferScreenArchetype(id, screen);
+    const bodyChildren = screen.bodySections ? screen.bodySections.map(compileSection) : (layout.children || screen.children || []).map(compileNode);
     return [id, {
       ...screen, screenId: id, title: screen.title || screen.name || id,
+      ...(archetype ? { archetype } : {}),
       bodySections: undefined, chrome: undefined,
       layout: { kind: 'scroll', ...layout,
         backgroundColor: screen.backgroundColor ?? layout.backgroundColor,
-        children: screen.bodySections ? screen.bodySections.map(compileSection) : (layout.children || screen.children || []).map(compileNode),
+        children: archetype ? applyArchetypeDefaults(bodyChildren, archetype) : bodyChildren,
       },
-      fixedTop: screen.fixedTop?.map(compileNode) ?? chrome(screen, 'header'),
-      fixedBottom: screen.fixedBottom?.map(compileNode) ?? chrome(screen, 'footer'),
+      fixedTop: archetype ? applyArchetypeDefaults(screen.fixedTop?.map(compileNode) ?? chrome(screen, 'header'), archetype) : (screen.fixedTop?.map(compileNode) ?? chrome(screen, 'header')),
+      fixedBottom: archetype ? applyArchetypeDefaults(screen.fixedBottom?.map(compileNode) ?? chrome(screen, 'footer'), archetype) : (screen.fixedBottom?.map(compileNode) ?? chrome(screen, 'footer')),
       overlay: screen.overlay ? compileNode(screen.overlay) : undefined,
     }];
   }));
 
-  const initialRoute = source.navigation?.root?.initialRoute || source.navigation?.initialScreen || Object.keys(screens)[0] || "home";
-  const tabs = Array.isArray(source.navigation?.tabs) ? source.navigation.tabs.map((tab, index) => ({
-    ...tab,
-    tabId: tab.id || `tab_${index + 1}`,
-    label: tab.label || tab.screenId || `Tab ${index + 1}`,
-    icon: typeof tab.icon === "string" ? tab.icon : "storefront-outline",
-    screenId: tab.screenId || initialRoute,
-    guest: tab.guest ?? true,
-    protected: tab.protected ?? false,
-  })) : [];
+  // Commerce apps opt into archetypes: publish functional detail/cart/checkout/
+  // orders screens even when the merchant template omitted them.
+  const presentArchetypes = Object.values(screens).map(screen => screen.archetype).filter(Boolean);
+  if (presentArchetypes.some(archetype => REQUIRED_COMMERCE_ARCHETYPES.includes(archetype))) {
+    for (const archetype of missingCommerceArchetypes(presentArchetypes)) {
+      const generated = generatedCompiledScreen(archetype);
+      if (generated) screens[generated.screenId] = generated;
+    }
+  }
+
+  const requestedInitial = source.navigation?.root?.initialRoute || source.navigation?.initialScreen || Object.keys(screens)[0] || "home";
+  const initialTarget = resolveScreenTarget(requestedInitial, screens, false);
+  if (!initialTarget) throw new Error(`Initial screen "${requestedInitial}" does not exist`);
+  const initialRoute = initialTarget.screenId;
+  const tabs = Array.isArray(source.navigation?.tabs) ? source.navigation.tabs.map((tab, index) => {
+    const requestedScreen = tab.screenId || initialRoute;
+    const target = resolveScreenTarget(requestedScreen, screens, false);
+    if (!target) throw new Error(`Navigation tab "${tab.label || index + 1}" points to missing screen "${requestedScreen}"`);
+    return {
+      ...tab,
+      tabId: tab.id || `tab_${index + 1}`,
+      label: tab.label || target.screenId || `Tab ${index + 1}`,
+      icon: typeof tab.icon === "string" ? tab.icon : "storefront-outline",
+      screenId: target.screenId,
+      guest: tab.guest ?? true,
+      protected: tab.protected ?? false,
+    };
+  }) : [];
 
   const primary = meta.primaryColor || "#1A1A2E";
   const secondary = meta.secondaryColor || "#F4A026";
@@ -150,7 +273,11 @@ export function compileDesignToPublishedApp(projectData, version, publishedAt, a
       tabs,
       stacks: source.navigation?.stacks || [],
       modals: source.navigation?.modals || [],
-      routes: source.navigation?.routes || Object.keys(screens).map(screenId => ({ routeId: screenId, screenId, path: `/${screenId}` })),
+      routes: mergeRoutes((source.navigation?.routes || []).map(route => {
+        const target = resolveScreenTarget(route.screenId || route.path, screens, false);
+        if (!target) throw new Error(`Navigation route "${route.path || route.routeId}" points to missing screen "${route.screenId || route.path}"`);
+        return { ...route, screenId: target.screenId };
+      }), screens),
       deepLinks: source.navigation?.deepLinks || [],
       guestMode: source.navigation?.guestMode || { enabled: true, allowedScreens: Object.keys(screens), blockedActions: [], authPromptScreens: [] },
     },

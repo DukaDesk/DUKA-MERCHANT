@@ -32,8 +32,9 @@ describe("preview cart", () => {
     expect(cartItems(cart)).toEqual([]);
   });
 
-  it("ignores items without an id and phantom quantity updates", () => {
-    expect(addCartItem({}, { name: "No id", price: 10 })).toEqual({});
+  it("derives an id and parses formatted prices for hand-typed grid items", () => {
+    const cart = addCartItem({}, { name: "Jollof Rice", price: "₦2,500" });
+    expect(cartItems(cart)).toEqual([{ id: "jollof-rice", name: "Jollof Rice", price: 2500, qty: 1, img: "" }]);
     expect(addCartItem({}, { id: "x" })).toEqual({});
     expect(removeCartItem({}, "missing")).toEqual({});
   });
@@ -49,11 +50,14 @@ describe("product detection", () => {
   it("treats priced menu items and offers as products", () => {
     expect(isProductItem(shirt)).toBe(true);
     expect(isProductItem({ id: "o1", title: "Promo", price: 0 })).toBe(true);
+    expect(isProductItem({ name: "Jollof Rice", price: "₦2,500" })).toBe(true);
     expect(isProductItem({ label: "All" })).toBe(false);
   });
 
   it("normalizes product detail fields", () => {
     expect(normalizeProduct({ productId: 9, title: "Watch", description: "Steel", price: "45000", img: "watch.png" }))
       .toMatchObject({ id: "9", name: "Watch", description: "Steel", price: 45000, image: "watch.png" });
+    expect(normalizeProduct({ name: "Jollof Rice", price: "₦2,500" }))
+      .toMatchObject({ id: "jollof-rice", name: "Jollof Rice", price: 2500 });
   });
 });

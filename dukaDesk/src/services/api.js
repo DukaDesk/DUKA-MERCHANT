@@ -192,6 +192,17 @@ export async function uploadMediaAsset(file, metadata = {}) {
   };
 }
 
+export async function uploadAdminFeedMedia(tenantId, file) {
+  const form = new FormData();
+  form.append("file", file, file?.name || "promo-media");
+  const response = await httpClient.post(`/api/v1/admin/merchants/${encodeURIComponent(tenantId)}/feed/media`, form, {
+    headers: { "Content-Type": undefined },
+  });
+  const asset = unwrapMedia(response);
+  if (!asset?.id && !asset?.assetId) throw new Error("Media upload returned no asset ID");
+  return { ...asset, id: asset.id || asset.assetId, url: mediaUrl(asset) };
+}
+
 export async function getMediaAssets(params = {}) {
   const folderId = params.folderId && isUUID(params.folderId) ? params.folderId : undefined;
   const query = folderId ? { folderId, ...params } : { ...params };
@@ -1030,20 +1041,48 @@ export function hydrateDesignWithProducts(design, products) {
    ═══════════════════════════════════════════════════════════════════ */
 
 export async function getOrders() {
-  // [DEMO] const merchant = getMerchant();
-  // [DEMO] const tenantId = merchant?.tenantId;
-  // [DEMO] const res = await httpClient.get(`${tenantPath(tenantId)}/orders`);
-  // [DEMO] return unwrapList(res);
-  return demoStore().orders || [];
+  if (isDemoId(getMerchant()?.tenantId)) return [];
+  const response = await httpClient.get("/api/v1/app/commerce/orders");
+  return unwrapList(response?.data ?? response).map(normalizeMerchantOrder);
+}
+
+const ORDER_STATUS_LABELS = {
+  pending_payment: "Pending",
+  paid: "Paid",
+  processing: "Processing",
+  shipped: "Shipped",
+  ready_for_pickup: "Ready for Pickup",
+  delivered: "Delivered",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
+};
+
+function normalizeMerchantOrder(order) {
+  const items = Array.isArray(order?.orderItems) ? order.orderItems : Array.isArray(order?.items) ? order.items : [];
+  const paymentMethod = order?.paymentMethod || "bank_transfer";
+  const paymentStatus = order?.paymentStatus || "pending";
+  return {
+    ...order,
+    customer: order?.customerName || order?.customerEmail || "Customer",
+    items: items.map((item) => `${item.name || "Item"} x${item.quantity || 1}`).join(", "),
+    total: Number(order?.total) || 0,
+    paymentMethod,
+    paymentStatus,
+    payment: `${paymentMethod.replaceAll("_", " ")} · ${paymentStatus}`,
+    status: ORDER_STATUS_LABELS[order?.status] || order?.status || "Pending",
+    date: order?.createdAt ? new Date(order.createdAt).toLocaleString() : "",
+  };
 }
 
 export async function updateOrderStatus(id, status) {
-  // [DEMO] const res = await httpClient.post(`/api/v1/orders/${id}/status`, { status });
-  // [DEMO] return res.data || res;
-  const store = demoStore();
-  store.orders = (store.orders || []).map(o => (o.id === id ? { ...o, status } : o));
-  demoSave(store);
-  return { id, status };
+  const response = await httpClient.post(`/api/v1/app/commerce/orders/${encodeURIComponent(id)}/status`, { status });
+  return normalizeMerchantOrder(response?.data ?? response);
+}
+
+export async function confirmBankTransfer(id) {
+  const response = await httpClient.post(`/api/v1/app/commerce/orders/${encodeURIComponent(id)}/confirm-bank-transfer`, {});
+  return normalizeMerchantOrder(response?.data ?? response);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1476,6 +1515,28 @@ export async function getIntegrationConfig(name) {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return null;
+  const paymentProviders = { "Bank Transfer": "bank_transfer", Paystack: "paystack", Flutterwave: "flutterwave" };
+  const provider = paymentProviders[name];
+  if (provider) {
+    const response = await httpClient.get("/api/v1/app/payments/accounts");
+    const accounts = unwrapList(response?.data ?? response);
+    const account = accounts.find((item) => item.provider?.slug === provider);
+    if (!account) return null;
+    const metadata = account.metadata || {};
+    return {
+      enabled: account.enabled,
+      isDefault: account.isDefault,
+      environment: account.environment,
+      testMode: account.environment !== "live",
+      publicKey: account.publicKey || "",
+      secretConfigured: account.secretConfigured,
+      webhookConfigured: account.webhookConfigured,
+      secretKey: "",
+      webhookSecret: "",
+      ...metadata,
+      ...(metadata.paymentMethods || {}),
+    };
+  }
   const { data } = await readConfig(tenantId);
   return data.integrationConfigs?.[name] || null;
 }
@@ -1484,6 +1545,27 @@ export async function setIntegrationConfig(name, config) {
   const merchant = getMerchant();
   const tenantId = merchant?.tenantId;
   if (!tenantId) return;
+  const paymentProviders = { "Bank Transfer": "bank_transfer", Paystack: "paystack", Flutterwave: "flutterwave" };
+  const provider = paymentProviders[name];
+  if (provider) {
+    const metadata = provider === "bank_transfer"
+      ? { bankName: config.bankName, accountName: config.accountName, accountNumber: config.accountNumber, instructions: config.instructions }
+      : {
+        currency: config.currency || "NGN",
+        paymentMethods: Object.fromEntries(["cards", "bankTransfer", "ussd", "qr", "mobileMoneyGh", "mobileMoneyUg", "mpesa"].map((key) => [key, Boolean(config[key])])),
+      };
+    const response = await httpClient.post("/api/v1/app/payments/accounts", {
+      provider,
+      environment: provider === "bank_transfer" ? "live" : (config.testMode ? "sandbox" : config.environment || "live"),
+      publicKey: config.publicKey,
+      secretKey: config.secretKey || undefined,
+      webhookSecret: config.webhookSecret || undefined,
+      enabled: config.enabled !== false,
+      isDefault: Boolean(config.isDefault),
+      metadata,
+    });
+    return response?.data ?? response;
+  }
   const { data } = await readConfig(tenantId);
   await writeConfig(tenantId, {
     integrationConfigs: {
@@ -1776,6 +1858,11 @@ function serializeFeedPost(body) {
     productId: body.productId || undefined,
     ctaLabel: body.ctaLabel?.trim() || undefined,
     media,
+    ...(body.music !== undefined ? { music: body.music ? {
+      ...(body.music.mediaId ? { mediaId: body.music.mediaId } : {}),
+      url: body.music.url,
+      title: body.music.title || undefined,
+    } : null } : {}),
     status: body.status || undefined,
   };
 }
@@ -1800,9 +1887,15 @@ function mapBackendFeedPost(item) {
           posterUrl: (typeof m === "object" ? m?.posterUrl : null) || null,
         })).filter(m => m.url)
       : [],
+    music: item.music?.url ? {
+      mediaId: item.music.mediaId || null,
+      url: item.music.url,
+      title: item.music.title || "",
+    } : null,
     likeCount: Number(item.likeCount) || 0,
     shareCount: Number(item.shareCount) || 0,
     patronageCount: Number(item.patronageCount) || 0,
+    commentCount: Number(item.commentCount ?? item._count?.comments) || 0,
     createdAt: item.createdAt || null,
     updatedAt: item.updatedAt || null,
   };
@@ -1834,4 +1927,81 @@ export async function updateFeedPost(id, body) {
 export async function deleteFeedPost(id) {
   await httpClient.delete(`/api/v1/app/feed/posts/${encodeURIComponent(id)}`);
   return { id };
+}
+
+function mapBackendFeedComment(item) {
+  if (!item?.id) return null;
+  return {
+    id: item.id,
+    postId: item.postId,
+    body: item.body || "",
+    authorType: item.authorType || "customer",
+    authorName: item.authorName || "DukaDesk user",
+    createdAt: item.createdAt || null,
+  };
+}
+
+export async function getFeedPostComments(id) {
+  const response = await httpClient.get(`/api/v1/app/feed/posts/${encodeURIComponent(id)}/comments`);
+  return unwrapFeedList(response).map(mapBackendFeedComment).filter(Boolean);
+}
+
+export async function createFeedPostComment(id, body) {
+  const response = await httpClient.post(`/api/v1/app/feed/posts/${encodeURIComponent(id)}/comments`, { body });
+  const comment = mapBackendFeedComment(unwrapBody(response));
+  if (!comment?.id) throw new Error("Comment was not created");
+  return comment;
+}
+
+function adminFeedPath(tenantId) {
+  return `/api/v1/admin/merchants/${encodeURIComponent(tenantId)}/feed`;
+}
+
+export async function getAdminFeedTenants() {
+  const response = await httpClient.get("/api/v1/admin/feed/tenants");
+  return unwrapList(unwrapBody(response));
+}
+
+export async function getAdminFeedProducts(tenantId) {
+  const response = await httpClient.get(`${adminFeedPath(tenantId)}/products`);
+  return unwrapList(unwrapBody(response)).map(mapBackendProduct).filter(Boolean);
+}
+
+export async function getAdminFeedQuota(tenantId) {
+  const response = await httpClient.get(`${adminFeedPath(tenantId)}/quota`);
+  return unwrapBody(response);
+}
+
+export async function getAdminFeedPosts(tenantId) {
+  const response = await httpClient.get(`${adminFeedPath(tenantId)}/posts`, { params: { limit: 50 } });
+  return unwrapFeedList(response).map(mapBackendFeedPost).filter(Boolean);
+}
+
+export async function createAdminFeedPost(tenantId, body) {
+  const response = await httpClient.post(`${adminFeedPath(tenantId)}/posts`, serializeFeedPost(body));
+  const created = mapBackendFeedPost(unwrapBody(response));
+  if (!created?.id) throw new Error("Promo post was not created");
+  return created;
+}
+
+export async function updateAdminFeedPost(tenantId, id, body) {
+  const response = await httpClient.patch(`${adminFeedPath(tenantId)}/posts/${encodeURIComponent(id)}`, serializeFeedPost(body));
+  return mapBackendFeedPost(unwrapBody(response)) || { id };
+}
+
+export async function deleteAdminFeedPost(tenantId, id) {
+  await httpClient.delete(`${adminFeedPath(tenantId)}/posts/${encodeURIComponent(id)}`);
+  return { id };
+}
+
+export async function getAdminFeedPostComments(tenantId, postId) {
+  const response = await httpClient.get(`${adminFeedPath(tenantId)}/posts/${encodeURIComponent(postId)}/comments`);
+  return unwrapFeedList(response).map(mapBackendFeedComment).filter(Boolean);
+}
+
+export async function createAdminFeedPostComment(tenantId, postId, body) {
+  const response = await httpClient.post(`${adminFeedPath(tenantId)}/posts/${encodeURIComponent(postId)}/comments`, { body });
+  const comment = mapBackendFeedComment(unwrapBody(response));
+  if (!comment?.id) throw new Error("Comment was not created");
+  return comment;
 }

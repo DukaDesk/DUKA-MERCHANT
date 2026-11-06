@@ -1,6 +1,42 @@
 import { getRegisteredTypes } from "../runtime/ComponentRegistry";
 import { getTypeNames } from "../components/canvas-editor/componentTypes";
+import { archetypeRouteAliases, inferScreenArchetype, REQUIRED_COMMERCE_ARCHETYPES } from "./screenArchetypes";
 const supportedDraftTypes = () => [...new Set([...getTypeNames(), ...getRegisteredTypes()])];
+
+function normalizedRoute(value) {
+  return `/${String(value || "").split(/[?#]/)[0].replace(/^\/+|\/+$/g, "")}`.toLowerCase();
+}
+
+function routePatternMatches(pattern, route) {
+  const expected = normalizedRoute(pattern).split("/").filter(Boolean);
+  const actual = normalizedRoute(route).split("/").filter(Boolean);
+  return expected.length === actual.length && expected.every((part, index) =>
+    part.startsWith(":") || (part.startsWith("[") && part.endsWith("]")) || part.toLowerCase() === actual[index].toLowerCase());
+}
+
+function resolveScreenReference(target, screens, generatedArchetypes = []) {
+  if (typeof target !== "string" || !target.trim()) return null;
+  const screenIds = Object.keys(screens || {});
+  if (screens?.[target]) return target;
+  const normalized = normalizedRoute(target);
+  const direct = normalized.slice(1);
+  if (screens?.[direct]) return direct;
+  const byMetadata = screenIds.find(id => {
+    const screen = screens[id];
+    return [screen?.name, screen?.title, screen?.route, screen?.path, `/${id}`]
+      .some(value => value && normalizedRoute(value) === normalized);
+  });
+  if (byMetadata) return byMetadata;
+
+  const archetypes = [...new Set([...REQUIRED_COMMERCE_ARCHETYPES, "profile", "content"] )];
+  for (const archetype of archetypes) {
+    if (!archetypeRouteAliases(archetype).some(alias => routePatternMatches(alias, target))) continue;
+    const existing = screenIds.find(id => inferScreenArchetype(id, screens[id]) === archetype);
+    if (existing) return existing;
+    if (generatedArchetypes.includes(archetype)) return `__archetype_${archetype}__`;
+  }
+  return null;
+}
 
 export function validateProject(projectData) {
   const errors = [];
@@ -12,6 +48,21 @@ export function validateProject(projectData) {
   }
 
   const { meta, navigation, shared, screens } = projectData;
+  const screenIds = screens ? Object.keys(screens) : [];
+  const archetypes = screenIds.map(screenId => inferScreenArchetype(screenId, screens[screenId])).filter(Boolean);
+  const commerceEnabled = archetypes.some(archetype => REQUIRED_COMMERCE_ARCHETYPES.includes(archetype));
+  const generatedArchetypes = commerceEnabled
+    ? REQUIRED_COMMERCE_ARCHETYPES.filter(archetype => !archetypes.includes(archetype))
+    : [];
+  const validScreenIds = [...screenIds, ...generatedArchetypes.map(archetype => `__archetype_${archetype}__`)];
+  const targetScreen = target => resolveScreenReference(target, screens, generatedArchetypes);
+  if (generatedArchetypes.length > 0) {
+    warnings.push({
+      path: "screens",
+      message: `Publishing will add these missing commerce screens: ${generatedArchetypes.join(", ")}`,
+      severity: "warning",
+    });
+  }
 
   /* ── Meta checks ── */
   if (!meta) {
@@ -41,8 +92,7 @@ export function validateProject(projectData) {
     if (!navigation.initialScreen) {
       errors.push({ path: "navigation.initialScreen", message: "Initial screen is not set", severity: "error", fix: "Set a home screen in navigation settings" });
     }
-    const screenIds = screens ? Object.keys(screens) : [];
-    if (navigation.initialScreen && !screenIds.includes(navigation.initialScreen)) {
+    if (navigation.initialScreen && !targetScreen(navigation.initialScreen)) {
       errors.push({ path: "navigation.initialScreen", message: `Initial screen "${navigation.initialScreen}" does not exist`, severity: "error", fix: "Create a screen with that ID or change the initial screen" });
     }
     if (navigation.tabs) {
@@ -50,7 +100,7 @@ export function validateProject(projectData) {
         if (!tab.label || !tab.label.trim()) {
           errors.push({ path: `navigation.tabs[${i}].label`, message: `Tab ${i + 1} has no label`, severity: "error" });
         }
-        if (tab.screenId && !screenIds.includes(tab.screenId)) {
+        if (tab.screenId && !targetScreen(tab.screenId)) {
           errors.push({ path: `navigation.tabs[${i}].screenId`, message: `Tab "${tab.label}" points to screen "${tab.screenId}" which does not exist`, severity: "error" });
         }
       });
@@ -60,14 +110,14 @@ export function validateProject(projectData) {
   /* ── Shared checks ── */
   // Mobile apps often have no header/footer chrome — shared sections are optional.
   // Only validate them when they actually contain components; empty is intentional, not a warning.
-  const allScreenIds = screens ? Object.keys(screens) : [];
+  const allScreenIds = validScreenIds;
   if (shared) {
     const regTypes = supportedDraftTypes();
     if (shared.header?.components?.length > 0) {
-      validateSection(shared.header, "shared.header", errors, warnings, regTypes, allScreenIds);
+      validateSection(shared.header, "shared.header", errors, warnings, regTypes, allScreenIds, screens, generatedArchetypes);
     }
     if (shared.footer?.components?.length > 0) {
-      validateSection(shared.footer, "shared.footer", errors, warnings, regTypes, allScreenIds);
+      validateSection(shared.footer, "shared.footer", errors, warnings, regTypes, allScreenIds, screens, generatedArchetypes);
     }
   }
 
@@ -89,7 +139,7 @@ export function validateProject(projectData) {
         warnings.push({ path: `${prefix}.bodySections`, message: `Screen "${screen.name || screenId}" is empty — add sections or components`, severity: "warning" });
       }
       sections.forEach((sec, i) => {
-        validateSection(sec, `${prefix}.bodySections[${i}]`, errors, warnings, regTypes, allScreenIds);
+        validateSection(sec, `${prefix}.bodySections[${i}]`, errors, warnings, regTypes, allScreenIds, screens, generatedArchetypes);
       });
     });
   }
@@ -102,7 +152,7 @@ export function validateProject(projectData) {
   };
 }
 
-function validateSection(section, path, errors, warnings, regTypes, screenIds = []) {
+function validateSection(section, path, errors, warnings, regTypes, screenIds = [], screens = {}, generatedArchetypes = []) {
   if (!section) return;
 
 
@@ -129,7 +179,7 @@ function validateSection(section, path, errors, warnings, regTypes, screenIds = 
         warnings.push({ path: `${compPath}.props.offers`, message: `${unlinked} promotion${unlinked === 1 ? "" : "s"} ${unlinked === 1 ? "was" : "were"} typed by hand — pick store products so prices, photos and stock stay in sync`, severity: "warning" });
       }
     }
-    validateComponentActions(comp, compPath, screenIds, errors);
+    validateComponentActions(comp, compPath, screenIds, errors, screens, generatedArchetypes);
     (comp.children || []).forEach((child, i) => validateComponent(child, compPath + '.children[' + i + ']'));
     (comp.layout?.children || []).forEach((child, i) => validateComponent(child, compPath + '.layout.children[' + i + ']'));
   };
@@ -155,17 +205,15 @@ function asActionObject(value) {
   return null;
 }
 
-function checkNavAction(action, actionPath, compLabel, screenIds, errors) {
+function checkNavAction(action, actionPath, compLabel, screenIds, errors, screens, generatedArchetypes) {
   if (!action || typeof action.type !== "string" || !action.type) {
     errors.push({ path: actionPath, message: `Component "${compLabel}" has a malformed action (missing type)`, severity: "error", fix: "Re-link the tap action in the editor" });
     return;
   }
   if (!NAV_ACTION_TYPES.includes(action.type)) return;
   const payload = action.payload || {};
-  // Path-style destinations ("/shop") are canonicalized at compile time when
-  // they name an existing screen — only validate explicit screenIds here.
-  if (!Object.prototype.hasOwnProperty.call(payload, "screenId")) return;
-  if (!payload.screenId) {
+  const targetKey = ["screenId", "screen", "push", "target"].find(key => typeof payload[key] === "string" && payload[key]);
+  if (!targetKey) {
     errors.push({
       path: actionPath,
       message: `Component "${compLabel}" has no destination page chosen yet`,
@@ -174,17 +222,18 @@ function checkNavAction(action, actionPath, compLabel, screenIds, errors) {
     });
     return;
   }
-  if (!screenIds.includes(payload.screenId)) {
+  const target = payload[targetKey];
+  if (!resolveScreenReference(target, screens, generatedArchetypes)) {
     errors.push({
       path: actionPath,
-      message: `Component "${compLabel}" links to page "${payload.screenId}" which does not exist`,
+      message: `Component "${compLabel}" links to page "${target}" which does not exist`,
       severity: "error",
       fix: `Point it to one of: ${screenIds.join(", ") || "(no screens yet)"}`,
     });
   }
 }
 
-function validateComponentActions(comp, compPath, screenIds, errors) {
+function validateComponentActions(comp, compPath, screenIds, errors, screens, generatedArchetypes) {
   const label = comp.key || comp.id || comp.type || compPath;
   const merged = { ...(comp.actions || {}), ...(comp.props?.actions || {}) };
   for (const [name, raw] of Object.entries(merged)) {
@@ -194,19 +243,19 @@ function validateComponentActions(comp, compPath, screenIds, errors) {
       errors.push({ path: `${compPath}.actions.${name}`, message: `Component "${label}" has an unreadable action (not valid JSON)`, severity: "error", fix: "Re-link the tap action in the editor" });
       continue;
     }
-    if (action) checkNavAction(action, `${compPath}.actions.${name}`, label, screenIds, errors);
+    if (action) checkNavAction(action, `${compPath}.actions.${name}`, label, screenIds, errors, screens, generatedArchetypes);
   }
   const propAction = asActionObject(comp.props?.action);
   if (typeof comp.props?.action === "string" && comp.props.action && propAction?.__invalid) {
     errors.push({ path: `${compPath}.props.action`, message: `Component "${label}" has an unreadable action (not valid JSON)`, severity: "error", fix: "Re-link the tap action in the editor" });
   } else if (propAction && !propAction.__invalid) {
-    checkNavAction(propAction, `${compPath}.props.action`, label, screenIds, errors);
+    checkNavAction(propAction, `${compPath}.props.action`, label, screenIds, errors, screens, generatedArchetypes);
   }
   const tapAction = asActionObject(comp.props?.tapAction);
   if (typeof comp.props?.tapAction === "string" && comp.props.tapAction && tapAction?.__invalid) {
     errors.push({ path: `${compPath}.props.tapAction`, message: `Component "${label}" has an unreadable tap action (not valid JSON)`, severity: "error", fix: "Re-link the tap action in the editor" });
   } else if (tapAction && !tapAction.__invalid) {
-    checkNavAction(tapAction, `${compPath}.props.tapAction`, label, screenIds, errors);
+    checkNavAction(tapAction, `${compPath}.props.tapAction`, label, screenIds, errors, screens, generatedArchetypes);
   }
   for (const key of ["cats", "categories", "items", "offers", "orders", "rows", "services"]) {
     const list = comp.props?.[key];
@@ -217,7 +266,7 @@ function validateComponentActions(comp, compPath, screenIds, errors) {
       if (action?.__invalid) {
         errors.push({ path: `${compPath}.props.${key}[${i}].tapAction`, message: `Item ${i + 1} in "${label}" has an unreadable tap action`, severity: "error", fix: "Re-link the tap action in the editor" });
       } else if (action) {
-        checkNavAction(action, `${compPath}.props.${key}[${i}].tapAction`, `${label} › item ${i + 1}`, screenIds, errors);
+        checkNavAction(action, `${compPath}.props.${key}[${i}].tapAction`, `${label} › item ${i + 1}`, screenIds, errors, screens, generatedArchetypes);
       }
     });
   }

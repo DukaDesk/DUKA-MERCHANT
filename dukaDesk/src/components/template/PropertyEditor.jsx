@@ -36,6 +36,9 @@ export function PropertyEditor({ node, onUpdate, onClose }) {
     menu_grid: [
       { key: "columns", label: "Columns", type: "number", min: 1, max: 4, step: 1 },
       { key: "variant", label: "Variant", type: "select", options: ["default", "bold", "minimal", "dark"] },
+      { key: "addButtonStyle", label: "Add Button Style", type: "select", options: ["Filled", "Outline", "Ghost"] },
+      { key: "addButtonPosition", label: "Add Button Position", type: "select", options: ["Below price", "Beside price", "On image"] },
+      { key: "showFavorite", label: "Favorite Heart", type: "select", options: ["true", "false"] },
     ],
     order_history: [
       { key: "showStatus", label: "Show Status", type: "boolean" },

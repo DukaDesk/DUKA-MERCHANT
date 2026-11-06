@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import { CreditCard, X, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../contexts";
 import { useVertical } from "../../runtime/VerticalContext";
 import { toast } from "react-toastify";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NAVY, AMBER, inputStyle, labelStyle } from "../../theme";
+import { getLucideIcon } from "../canvas-editor/componentTypes";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -17,6 +18,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
   const isMobile = useIsMobile();
   const { merchant } = useAuth();
   const { categoryName = "Business", categoryLower = "business" } = useVertical();
+  const IntegrationIcon = getLucideIcon(integration.icon) || CreditCard;
   const setVal = (key, val) => onConfig(integration.name, { ...config, [key]: val });
   const getVal = (key, def) => config?.[key] ?? def;
 
@@ -61,19 +63,22 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
     </div>
   );
 
+  const defaultPaymentToggle = (isBankTransfer = false) =>
+    toggle("Use as default checkout method", "isDefault", isBankTransfer);
+
   const renderForm = () => {
     switch (integration.name) {
       case "Paystack":
         return (<>
           <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#92400E" }}> Your keys are encrypted at rest. Never share your secret key.</div>
+            <div style={{ fontSize: 13, color: "#92400E" }}>Your account keys are encrypted by DukaDesk. Leave the secret field blank to keep the saved key.</div>
           </div>
           {input(categoryName + " Name", "businessName", merchant?.business || "My Store")}
           {input("Public Key", "publicKey", "pk_live_xxxxxxxxxxxx")}
           <div style={fieldStyle}>
             <label style={labelStyle}>Secret Key</label>
             <div style={{ position: "relative" }}>
-              <input value={getVal("secretKey", "")} onChange={e => setVal("secretKey", e.target.value)} placeholder="sk_live_xxxxxxxxxxxx" type="password" style={inputStyle} />
+              <input value={getVal("secretKey", "")} onChange={e => setVal("secretKey", e.target.value)} placeholder={config?.secretConfigured ? "Saved securely; leave blank to keep" : "sk_live_xxxxxxxxxxxx"} type="password" style={inputStyle} />
             </div>
           </div>
           {select("Currency", "currency", ["NGN", "GHS", "USD", "ZAR"])}
@@ -89,6 +94,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
             <div style={{ fontSize: 13, fontWeight: 600, color: "#6B7280", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Settings</div>
             {toggle("Test Mode", "testMode", false)}
             {toggle("Charge transaction fee to customer", "chargeFee", false)}
+            {defaultPaymentToggle()}
           </div>
         </>);
 
@@ -101,9 +107,8 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
           {input("Public Key", "publicKey", "FLWPUBK-xxxxxxxxxxxx")}
           <div style={fieldStyle}>
             <label style={labelStyle}>Secret Key</label>
-            <input value={getVal("secretKey", "")} onChange={e => setVal("secretKey", e.target.value)} placeholder="FLWSECK-xxxxxxxxxxxx" type="password" style={inputStyle} />
+            <input value={getVal("secretKey", "")} onChange={e => setVal("secretKey", e.target.value)} placeholder={config?.secretConfigured ? "Saved securely; leave blank to keep" : "FLWSECK-xxxxxxxxxxxx"} type="password" style={inputStyle} />
           </div>
-          {input("Encryption Key", "encKey", "FLWSECK-xxxxxxxxxxxx")}
           {select("Currency", "currency", ["NGN", "GHS", "KES", "UGX", "ZAR", "USD"])}
           {input("Webhook URL", "webhookUrl", "https://yourdomain.com/webhook/flutterwave")}
           <div style={{ borderTop: "1px solid #E5E7EB", marginTop: 8, paddingTop: 8 }}>
@@ -114,6 +119,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
             {toggle("Mobile Money (Ghana)", "mobileMoneyGh", true)}
             {toggle("Mobile Money (Uganda)", "mobileMoneyUg", false)}
             {toggle("MPesa", "mpesa", false)}
+            {defaultPaymentToggle()}
           </div>
         </>);
 
@@ -127,15 +133,17 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
           {input("Account Number", "accountNumber", "0123456789")}
           {textarea("Payment Instructions", "instructions", `Pay into the account above and upload your receipt. We'll confirm within 30 minutes.`)}
           <div style={{ borderTop: "1px solid #E5E7EB", marginTop: 8, paddingTop: 8 }}>
-            {toggle("Auto-confirm on receipt upload", "autoConfirm", true)}
-            {toggle("Send SMS on confirmation", "smsNotify", false)}
+            {defaultPaymentToggle(true)}
+            <p style={{ fontSize: 12, color: "#6B7280", margin: "12px 0 0" }}>Bank-transfer orders remain pending until you verify receipt in Orders.</p>
           </div>
         </>);
 
       case "Product Cart":
+        const pickupStations = Array.isArray(getVal("pickupStations", [])) ? getVal("pickupStations", []) : [];
+        const updatePickupStation = (index, key, value) => setVal("pickupStations", pickupStations.map((station, stationIndex) => stationIndex === index ? { ...station, [key]: value } : station));
         return (<>
           <div style={{ background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#92400E" }}> Configure how customers add items and checkout.</div>
+            <div style={{ fontSize: 13, color: "#92400E" }}>DukaDesk manages checkout consent and payment. Configure the fulfillment choices customers can select.</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
@@ -148,10 +156,34 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
             </div>
           </div>
           <div style={{ borderTop: "1px solid #E5E7EB", marginTop: 8, paddingTop: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#6B7280", marginBottom: 8, textTransform: "uppercase" }}>Fulfillment options</div>
+            {toggle("Offer door delivery", "deliveryEnabled", true)}
+            {getVal("deliveryEnabled", true) && <>
+              {input("Delivery fee (₦)", "deliveryFee", "0", "number")}
+              {textarea("Delivery coverage / instructions", "deliveryNote", "Areas served and delivery timing")}
+            </>}
+            {toggle("Offer pickup", "pickupEnabled", false)}
+            {getVal("pickupEnabled", false) && (
+              <div style={{ marginTop: 12 }}>
+                {pickupStations.map((station, index) => (
+                  <div key={station.id || index} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: 12, marginBottom: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <strong style={{ fontSize: 13, color: NAVY }}>Pickup point {index + 1}</strong>
+                      <button type="button" title="Remove pickup point" onClick={() => setVal("pickupStations", pickupStations.filter((_, stationIndex) => stationIndex !== index))} style={{ ...smallBtn, padding: 5, display: "flex" }}><Trash2 size={14} /></button>
+                    </div>
+                    <div style={fieldStyle}><label style={labelStyle}>Name</label><input value={station.name || ""} onChange={event => updatePickupStation(index, "name", event.target.value)} placeholder="Main Store" style={inputStyle} /></div>
+                    <div style={fieldStyle}><label style={labelStyle}>Address</label><input value={station.address || ""} onChange={event => updatePickupStation(index, "address", event.target.value)} placeholder="Street, city, state" style={inputStyle} /></div>
+                    <div style={{ ...fieldStyle, marginBottom: 0 }}><label style={labelStyle}>Location / landmark</label><input value={station.location || ""} onChange={event => updatePickupStation(index, "location", event.target.value)} placeholder="Nearby landmark or area" style={inputStyle} /></div>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setVal("pickupStations", [...pickupStations, { id: `pickup-${Date.now()}`, name: "", address: "", location: "" }])} style={{ ...smallBtn, display: "inline-flex", alignItems: "center", gap: 6 }}><Plus size={14} /> Add pickup point</button>
+              </div>
+            )}
+          </div>
+          <div style={{ borderTop: "1px solid #E5E7EB", marginTop: 8, paddingTop: 8 }}>
             {toggle("Allow notes on order", "allowNotes", true)}
             {toggle("Show estimated delivery time", "showDelivery", true)}
             {toggle("Auto-confirm orders", "autoConfirm", false)}
-            {toggle("Guest checkout", "guestCheckout", true)}
             {toggle("Enable quantity increment/decrement", "qtyButtons", true)}
           </div>
         </>);
@@ -515,7 +547,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       default:
         return (
           <div style={{ textAlign: "center", padding: "40px 0", color: "#9CA3AF" }}>
-            <span style={{ fontSize: 48 }}>{integration.icon || ""}</span>
+            <IntegrationIcon size={48} color={AMBER} />
             <div style={{ fontSize: 16, fontWeight: 600, color: NAVY, marginTop: 12 }}>{integration.name}</div>
             <div style={{ fontSize: 13, marginTop: 4 }}>Configuration for this integration is coming soon.</div>
           </div>
@@ -529,7 +561,7 @@ export default function IntegrationConfigPanel({ integration, config, onConfig, 
       <div style={{ position: "fixed", right: 0, top: 0, width: isMobile ? "100%" : 520, maxWidth: "100vw", height: "100vh", background: "#fff", zIndex: 101, boxShadow: "-8px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "24px", borderBottom: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 32 }}>{integration.icon}</span>
+            <IntegrationIcon size={32} color={AMBER} />
             <div>
               <h3 style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 18, color: NAVY, margin: 0 }}>Configure {integration.name}</h3>
               <span style={{ fontSize: 12, color: "#2ECC71", fontWeight: 500 }}> Connected</span>

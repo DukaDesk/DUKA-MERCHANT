@@ -23,11 +23,10 @@
         "key": "account-info",
         "props": {
           "items": [
-            { "icon": "👤", "label": "My Account", "value": "Name, email & phone" },
-            { "icon": "📍", "label": "Shipping Addresses", "value": "2 addresses saved" },
-            { "icon": "💳", "label": "Payment Methods", "value": "Card, Bank Transfer" },
-            { "icon": "⭐", "label": "Wishlist", "value": "5 items saved" },
-            { "icon": "🛍️", "label": "Track Order", "value": "Live delivery status" }
+            { "icon": "User", "label": "My Account", "value": "Name, email & phone" },
+            { "icon": "MapPin", "label": "Shipping Addresses", "value": "2 addresses saved" },
+            { "icon": "CreditCard", "label": "Payment Methods", "value": "Card, Bank Transfer" },
+            { "icon": "Package", "label": "Track Order", "value": "Live delivery status" }
           ]
         },
         "actions": {

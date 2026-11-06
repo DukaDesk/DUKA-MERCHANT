@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateDraftMedia, engagementTotals, CTA_MAX, CAPTION_MAX } from "./Promotions";
+import { validateDraftMedia, validateDraftMusic, engagementTotals, CTA_MAX, CAPTION_MAX } from "./Promotions";
 
 describe("promo media validation", () => {
   it("demands at least one photo, a product photo or a video", () => {
@@ -16,6 +16,15 @@ describe("promo media validation", () => {
     const ten = Array.from({ length: 10 }, (_, i) => ({ url: `https://cdn.test/${i}.jpg`, type: "image" }));
     expect(validateDraftMedia(ten)).toBe("");
     expect(validateDraftMedia([...ten, { url: "https://cdn.test/x.jpg", type: "image" }])).toMatch(/up to 10/i);
+  });
+});
+
+describe("promo music validation", () => {
+  it("allows music on image posts and rejects video posts", () => {
+    const music = { url: "https://cdn.test/track.mp3", title: "Track" };
+    expect(validateDraftMusic([{ url: "https://cdn.test/a.jpg", type: "image" }], music)).toBe("");
+    expect(validateDraftMusic([{ url: "https://cdn.test/a.mp4", type: "video" }], music)).toMatch(/image posts/i);
+    expect(validateDraftMusic([], music)).toMatch(/add an image/i);
   });
 });
 

@@ -64,6 +64,24 @@ describe("ScreenSwitcher", () => {
     expect(store.addScreen).toHaveBeenCalledWith(null, "New Page");
   });
 
+  it("adds default commerce screens as routable screens without auto-adding tabs", () => {
+    const store = makeStore();
+    store.addBodySection = vi.fn();
+    store.setScreenArchetype = vi.fn();
+    render(<ScreenSwitcher store={store} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add commerce screen" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Cart" }));
+
+    expect(store.addScreen).toHaveBeenCalledWith(null, "Cart");
+    expect(store.setScreenArchetype).toHaveBeenCalledWith("new-screen", "cart");
+    expect(store.addBodySection).toHaveBeenCalledWith("new-screen", expect.objectContaining({
+      name: "Cart — Main",
+      components: [{ type: "cart_content", props: {} }],
+    }));
+    expect(store.addTab).not.toHaveBeenCalled();
+  });
+
   it("opens a right-click menu with edit, duplicate and delete for tabs", () => {
     const store = makeStore();
     render(<ScreenSwitcher store={store} />);

@@ -9,6 +9,8 @@
  * gives real feedback instead of silently doing nothing.
  */
 
+import { defaultActionsForNode, defaultRoleForNode, inferScreenArchetype } from "../../services/screenArchetypes";
+
 export function parseActionValue(raw) {
   if (!raw) return null;
   if (typeof raw === "object") return raw;
@@ -64,6 +66,12 @@ export function resolvePreviewChrome(screenDef, data, type) {
   return data?.shared?.[type] || null;
 }
 
+function previewDefaults(comp, data, screenId) {
+  const archetype = inferScreenArchetype(screenId, data?.screens?.[screenId] || {});
+  const role = comp?.role || comp?.props?.role || defaultRoleForNode(comp || {}, archetype);
+  return defaultActionsForNode({ ...(comp || {}), role }, archetype);
+}
+
 export function runPreviewAction(rawAction, context = {}) {
   const { data, currentScreenId, navigate, back, notify, openUrl, setLocation } = context;
   const action = parseActionValue(rawAction);
@@ -76,19 +84,50 @@ export function runPreviewAction(rawAction, context = {}) {
     case "back":
       back?.();
       return true;
-    case "add_to_cart":
+    case "add_to_cart": {
+      const item = payload.item || payload.product || payload;
+      const quantity = Number(payload.quantity ?? item.quantity ?? 1);
+      if (item?.id != null && item?.name && item?.price != null) context.addToCart?.(item, quantity);
+      else if (item?.id != null) context.addToCart?.(item, quantity);
       notify?.("Item added to cart", "success");
       return true;
-    case "remove_from_cart":
+    }
+    case "remove_from_cart": {
+      const id = payload.id ?? payload.productId ?? payload.itemId ?? payload.item?.id;
+      if (id != null) context.removeFromCart?.(id);
       notify?.("Item removed from cart", "info");
       return true;
-    case "checkout": {
+    }
+    case "checkout":
+    case "go_checkout": {
+      const checkoutScreen = findPreviewScreenId(data, "checkout");
       const cartScreen = findPreviewScreenId(data, "cart");
-      if (!cartScreen) {
+      const target = checkoutScreen || cartScreen;
+      if (!target) {
         notify?.("Checkout opened", "info");
         return true;
       }
-      if (cartScreen !== currentScreenId) navigate?.(cartScreen, "push");
+      if (target !== currentScreenId) navigate?.(target, "push");
+      return true;
+    }
+    case "place_order": {
+      if (context.placeOrder) context.placeOrder(payload);
+      else notify?.("Preview order submitted", "success");
+      return true;
+    }
+    case "view_item": {
+      const detail = findPreviewScreenId(data, "product") || findPreviewScreenId(data, "detail") || findPreviewScreenId(data, "menu");
+      if (detail) {
+        if (detail !== currentScreenId) navigate?.(detail, "push");
+      } else notify?.("Product selected", "info");
+      return true;
+    }
+    case "select_order": {
+      const orderId = payload.orderId ?? payload.id ?? payload.order?.id;
+      const orderScreen = findPreviewScreenId(data, "order-detail") || findPreviewScreenId(data, "order detail") || findPreviewScreenId(data, "order");
+      context.selectOrder?.(orderId);
+      if (orderScreen) navigate?.(orderScreen, "push");
+      else notify?.("Order selected", "info");
       return true;
     }
     case "refresh":
@@ -131,7 +170,11 @@ export function runPreviewAction(rawAction, context = {}) {
 
 export function runPreviewEvent(comp, eventKey, payload = {}, context = {}) {
   const { data, currentScreenId, navigate, back, notify } = context;
-  const configured = { ...(comp?.actions || {}), ...(comp?.props?.actions || {}) };
+  const configured = {
+    ...previewDefaults(comp, data, currentScreenId),
+    ...(comp?.actions || {}),
+    ...(comp?.props?.actions || {}),
+  };
   if (configured[eventKey] && runPreviewAction(configured[eventKey], context)) return true;
 
   /* Some components emit a raw action type (e.g. info_list item.action). */
@@ -186,5 +229,9 @@ export function runPreviewItemPress(comp, item, context = {}) {
     context.navigate?.(item.screen, "push");
     return true;
   }
+  const defaults = previewDefaults(comp, context.data, context.currentScreenId);
+  const configured = { ...defaults, ...(comp?.actions || {}), ...(comp?.props?.actions || {}) };
+  const fallback = configured.default || configured.tap || configured.viewDetails || configured.selectItem;
+  if (fallback) return runPreviewAction(fallback, context);
   return runPreviewAction(parsePreviewAction(comp), context);
 }

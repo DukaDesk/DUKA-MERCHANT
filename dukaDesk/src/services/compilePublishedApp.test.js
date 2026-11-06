@@ -83,6 +83,33 @@ it("canonicalizes path-style push destinations to screenId", () => {
   expect(node.props.tapAction.payload.screenId).toBe("details");
 });
 
+it("canonicalizes legacy product detail aliases and preserves route IDs", () => {
+  const project = fixture("merchant-project.json");
+  project.screens.home.archetype = "catalog";
+  project.screens.home.bodySections = [{ id: "section", components: [{
+    id: "product-link",
+    type: "button",
+    props: { tapAction: { type: "navigate", payload: { push: "/product-detail?productId=real-product" } } },
+  }] }];
+
+  const result = compileDesignToPublishedApp(project, "1", "now");
+  const action = result.screens.home.layout.children[0].layout.children[0].props.tapAction;
+
+  expect(result.screens[action.payload.screenId].archetype).toBe("product_detail");
+  expect(action.payload).toMatchObject({ screenId: action.payload.screenId, productId: "real-product" });
+});
+
+it("rejects dead path-style navigation targets before publication", () => {
+  const project = fixture("merchant-project.json");
+  project.screens.home.bodySections = [{ id: "section", components: [{
+    id: "dead-link",
+    type: "button",
+    props: { tapAction: { type: "navigate", payload: { push: "/deleted-screen" } } },
+  }] }];
+
+  expect(() => compileDesignToPublishedApp(project, "1", "now")).toThrow(/deleted-screen.*not a page/);
+});
+
 it("parses per-service tap actions on laundry_booking components", () => {
   const project = fixture("merchant-project.json");
   project.screens.home.bodySections = [{ id: "section", components: [{ id: "booking", type: "laundry_booking", actions: { confirm: { type: "book_service" } }, props: { services: [{ name: "Wash & Fold", price: 2500, tapAction: JSON.stringify({ type: "view_item", payload: { id: "svc1" } }) }] } }] }];
@@ -96,4 +123,20 @@ it('preserves the merchant data request in the published definition', () => {
  const project = fixture('merchant-project.json');
  project.meta.dataRequest = { enabled: true, purpose: 'Delivery updates', fields: ['name','phone'], requiredFor: ['checkout'] };
  expect(compileDesignToPublishedApp(project, '1', 'now').dataRequest).toEqual(project.meta.dataRequest);
+});
+
+it('injects commerce archetypes, roles, bindings, and missing screens', () => {
+  const project = fixture('merchant-project.json');
+  project.screens.home.archetype = 'catalog';
+  project.screens.home.bodySections = [{ id: 'section', components: [{ id: 'grid', type: 'menu_grid', props: { items: [] } }] }];
+  const result = compileDesignToPublishedApp(project, '1', 'now');
+  const node = result.screens.home.layout.children[0].layout.children[0];
+  expect(result.screens.home.archetype).toBe('catalog');
+  expect(node.role).toBe('select_product');
+  expect(node.binding).toEqual({ source: 'commerce.products' });
+  expect(node.actions.viewDetails.type).toBe('view_item');
+  expect(node.actions.addItem.type).toBe('add_to_cart');
+  for (const archetype of ['product_detail', 'cart', 'checkout', 'orders', 'order_detail']) {
+    expect(Object.values(result.screens).some(screen => screen.archetype === archetype)).toBe(true);
+  }
 });

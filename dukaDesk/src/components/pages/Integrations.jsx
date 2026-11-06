@@ -9,6 +9,7 @@ import { INTEGRATION_BADGE_COLORS } from "../../config/integrations";
 import { getTemplateIntegrationNames } from "../../config/wizard";
 import { PRIMITIVES, PRIMITIVE_GROUPS } from "../../config/primitives";
 import { useVertical } from "../../runtime/VerticalContext";
+import { getLucideIcon } from "../canvas-editor/componentTypes";
 import { Loading, Empty, ErrorState } from "../layout/States";
 import IntegrationConfigPanel from "./IntegrationConfigPanel";
 
@@ -97,7 +98,7 @@ export default function Integrations() {
 
   if (loading) return <Loading message="Loading tools..." />;
   if (error) return <ErrorState message={error} onRetry={loadIntegrations} />;
-  if (integrations.length === 0) return <Empty icon="🧩" message="No tools available" sub="Tool categories will appear here" />;
+  if (integrations.length === 0) return <Empty icon="Puzzle" message="No tools available" sub="Tool categories will appear here" />;
 
   return (
     <div style={{ position: "relative" }}>
@@ -183,7 +184,7 @@ export default function Integrations() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {activeItems.map((item, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "#F9FAFB", borderRadius: 10, borderLeft: `4px solid ${AMBER}`, transition: "all 0.2s", animation: `fadeIn 0.3s ease ${i * 0.04}s both` }}>
-              <span style={{ fontSize: 28 }}>{item.icon}</span>
+              {(() => { const Icon = getLucideIcon(item.icon) || Sparkles; return <Icon size={26} color={AMBER} />; })()}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 14, color: NAVY }}>{item.name}</div>
                 <div style={{ fontSize: 12, color: "#2ECC71", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Connected âœ“ {item.stat ? `â€” ${item.stat}` : ""}</div>
@@ -213,11 +214,12 @@ export default function Integrations() {
                 {cat.items.map((item, ii) => {
                   const itemIdx = integrations[catIdx].items.findIndex(x => x.name === item.name);
                   const bc = badgeStyle[item.badge] || badgeStyle.Free;
+                  const IntegrationIcon = getLucideIcon(item.icon) || Sparkles;
                   return (
                     <div key={item.name} onClick={() => navigate(`/dashboard/integrations/${encodeURIComponent(item.name)}`)} style={{ border: `2px solid ${item.active ? AMBER : item.locked ? "#E5E7EB" : "#E5E7EB"}`, background: item.active ? "#FFF8ED" : item.locked ? "#F9FAFB" : "#fff", borderRadius: 10, padding: 16, opacity: item.locked ? 0.75 : 1, position: "relative", transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)", cursor: "pointer", animation: `fadeIn 0.3s ease ${(ci * 3 + ii) * 0.04}s both` }}>
                       {item.locked && <div style={{ position: "absolute", top: 10, right: 10 }}><Lock size={14} color="#9CA3AF" /></div>}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                        <span style={{ fontSize: 28 }}>{item.icon}</span>
+                        <IntegrationIcon size={26} color={AMBER} />
                         <span style={{ background: bc.bg, color: bc.color, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10 }}>{item.badge}</span>
                       </div>
                       <div style={{ fontWeight: 600, fontSize: 14, color: NAVY, marginBottom: 4 }}>{item.name}</div>
@@ -226,9 +228,9 @@ export default function Integrations() {
                         onClick={(e) => { e.stopPropagation(); item.locked ? toast.info("Upgrade to Growth plan to unlock") : toggle(catIdx, itemIdx); }}
                         style={{ width: "100%", background: item.active ? "#2ECC71" : item.locked ? "#E5E7EB" : AMBER, color: item.active ? "#fff" : item.locked ? "#9CA3AF" : NAVY, border: "none", borderRadius: 20, padding: "8px 0", fontSize: 13, fontWeight: 600, cursor: item.locked ? "not-allowed" : "pointer" }}
                       >
-                        {item.active ? "âœ“ Added" : item.locked ? "ðŸ”’ Upgrade to Unlock" : "Add to App â†’"}
+                        {item.active ? "Added" : item.locked ? "Upgrade to Unlock" : "Add to App"}
                       </button>
-                      {item.active && <div style={{ fontSize: 11, color: AMBER, fontWeight: 600, marginTop: 8, textAlign: "center" }}>Click card for details â†’</div>}
+                      {item.active && <div style={{ fontSize: 11, color: AMBER, fontWeight: 600, marginTop: 8, textAlign: "center" }}>Click card for details</div>}
                     </div>
                   );
                 })}
@@ -238,7 +240,7 @@ export default function Integrations() {
         })}
 
         <div style={{ background: "#FFF8ED", border: "1px solid #F4A026", borderRadius: 10, padding: 16, marginTop: 8 }}>
-          <div style={{ fontSize: 13, color: "#92400E" }}>💡 You can add or remove tools anytime. Changes go live within seconds.</div>
+          <div style={{ fontSize: 13, color: "#92400E", display: "flex", alignItems: "center", gap: 8 }}><Lightbulb size={16} /> You can add or remove tools anytime. Changes go live within seconds.</div>
         </div>
       </div>
 

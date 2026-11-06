@@ -8,6 +8,7 @@ import { ONBOARDING_COMMERCE_CATEGORIES, resolveCanonicalCategory } from "../../
 import { useAuth } from "../../contexts";
 import { useVertical } from "../../runtime/VerticalContext";
 import { updateTenant, getMerchant, ensureTenant } from "../../services/api";
+import { getLucideIcon } from "../canvas-editor/componentTypes";
 import dukaLogo from "../../assets/image/Dukalogo.png";
 
 export default function Onboarding({ onAuth }) {
@@ -136,6 +137,7 @@ export default function Onboarding({ onAuth }) {
               {filtered.map(cat => {
                 const selected = categoryId === cat.key;
                 const active = selected;
+                const CategoryIcon = getLucideIcon(cat.icon) || Store;
                 return (
                   <button key={cat.key} onClick={() => pick(cat.key)} disabled={saving} style={{
                     display: "flex", alignItems: "center", gap: 14, textAlign: "left",
@@ -144,7 +146,7 @@ export default function Onboarding({ onAuth }) {
                     cursor: saving ? "wait" : "pointer", transition: "all 0.15s", position: "relative",
                     opacity: saving ? 0.6 : 1,
                   }}>
-                    <div style={{ width: 42, height: 42, background: active ? `${AMBER}18` : "#F5F5FA", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{cat.icon}</div>
+                    <div style={{ width: 42, height: 42, background: active ? `${AMBER}18` : "#F5F5FA", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><CategoryIcon size={22} color={active ? AMBER : "#6B7280"} /></div>
                     <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>{cat.label}</div>
                       <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>{cat.desc}</div>

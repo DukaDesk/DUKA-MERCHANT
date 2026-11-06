@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useDispatchAction } from "../../runtime/RuntimeContext";
 import { registerComponent } from "../../runtime/ComponentRegistry";
 import { useBrand } from "../../runtime/BrandThemeProvider";
-import { ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight, ChevronDown, Heart, Lock, Minus, Plus, ShoppingBag, Star, Image as ImageIcon } from "lucide-react";
+import { IconGlyph } from "../canvas-editor/componentTypes";
 
 function heroNum(value, fallback) {
   const n = Number(value);
@@ -122,8 +123,73 @@ function isImageUrl(src) {
   return typeof src === "string" && /^(https?:)?\/\//.test(src);
 }
 
-export function MenuGrid({ items = [], columns = 2, variant = "default", style = {}, onAction }) {
+function gridButtonStyle(value) {
+  const style = String(value || "filled").toLowerCase();
+  return style === "outline" || style === "ghost" ? style : "filled";
+}
+
+function gridButtonPosition(value) {
+  const position = String(value || "below price").toLowerCase();
+  if (position.includes("beside") || position.includes("right")) return "beside";
+  if (position.includes("image") || position.includes("overlay")) return "overlay";
+  return "below";
+}
+
+function gridFavoriteEnabled(value) {
+  return value == null || value === "" ? true : !(value === false || value === "false" || value === 0 || value === "0");
+}
+
+function gridPriceLabel(price) {
+  if (price == null || price === "") return "";
+  if (typeof price === "number") return `₦${price.toLocaleString()}`;
+  const raw = String(price);
+  const numeric = Number(raw.replace(/[^\d.-]/g, ""));
+  return Number.isFinite(numeric) && numeric > 0 ? `₦${numeric.toLocaleString()}` : raw;
+}
+
+export function MenuGrid({ items = [], columns = 2, variant = "default", style = {}, onAction, addButtonStyle, addButtonPosition, showFavorite }) {
   const brand = useBrand();
+  const [favorites, setFavorites] = useState({});
+  const buttonStyle = gridButtonStyle(addButtonStyle);
+  const buttonPosition = gridButtonPosition(addButtonPosition);
+  const favoriteVisible = gridFavoriteEnabled(showFavorite);
+  const buttonTheme = buttonStyle === "filled"
+    ? { background: brand.AMBER || "#F4A026", color: brand.NAVY || "#0F0F1A", border: "1px solid transparent" }
+    : buttonStyle === "outline"
+      ? { background: "transparent", color: "#B45309", border: "1.5px solid #F4A026" }
+      : { background: "transparent", color: "#B45309", border: "1px solid transparent" };
+  const itemKey = (item, index) => String(item.id ?? item.productId ?? item.name ?? item.title ?? index);
+  const isFavorite = (item, index) => Boolean(favorites[itemKey(item, index)]);
+  const toggleFavorite = (event, item, index) => {
+    event.stopPropagation();
+    const key = itemKey(item, index);
+    const next = !favorites[key];
+    setFavorites(prev => ({ ...prev, [key]: next }));
+    onAction?.("favoriteItem", { item, index, favorite: next });
+  };
+  const addButton = (item, index, compact) => (
+    <button
+      type="button"
+      aria-label={`Add ${item.name || "item"} to cart`}
+      onClick={(e) => { e.stopPropagation(); onAction?.("addItem", { item, index }); }}
+      style={{
+        ...buttonTheme,
+        borderRadius: 8,
+        padding: compact ? "5px 9px" : "8px 10px",
+        fontSize: compact ? 10 : 11,
+        fontWeight: 700,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        width: compact ? "auto" : "100%",
+        ...(buttonPosition === "overlay"
+          ? { position: "absolute", right: 8, bottom: 8, zIndex: 2, padding: "6px 10px", boxShadow: "0 2px 8px rgba(0,0,0,0.18)" }
+          : {}),
+      }}
+    >
+      {compact ? "Add" : "Add to cart"}
+    </button>
+  );
+
   if (!items.length) {
     return (
       <div style={{ background: brand.cardColor || "#fff", borderRadius: 14, padding: "32px 20px", border: `1px solid ${brand.GRAY?.[200] || '#E5E7EB'}`, textAlign: "center", color: brand.GRAY?.[500] || '#6B7280', fontSize: 13, ...style }}>
@@ -150,40 +216,47 @@ export function MenuGrid({ items = [], columns = 2, variant = "default", style =
             transition: "transform 0.2s, box-shadow 0.2s",
             display: "flex",
             flexDirection: "column",
-            gap: 8
+            gap: 8,
+            position: "relative",
           }}
           onClick={() => onAction?.("viewDetails", { item, index: i })}
           onDoubleClick={() => onAction?.("addItem", { item, index: i })}
         >
-          {isImageUrl(item.img) ? (
-            <img
-              src={item.img}
-              alt={item.name || "item"}
-              style={{ width: "100%", height: 96, objectFit: "cover", borderRadius: 10, display: "block" }}
-            />
-          ) : (
-            <div style={{ fontSize: 32, textAlign: "center" }}>{item.emoji || item.img || "Utensils"}</div>
-          )}
-          <div style={{ fontWeight: 700, fontSize: 14, color: brand.NAVY || '#0F0F1A' }}>{item.name}</div>
-          {item.desc && <div style={{ fontSize: 12, color: brand.GRAY?.[500] || '#6B7280' }}>{item.desc}</div>}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
-            <span style={{ fontWeight: 700, fontSize: 15, color: brand.AMBER || '#F4A026' }}>{item.price ? `₦${item.price.toLocaleString()}` : ""}</span>
+          {favoriteVisible && (
             <button
-              onClick={(e) => { e.stopPropagation(); onAction?.("addItem", { item, index: i }); }}
+              type="button"
+              aria-label={isFavorite(item, i) ? `Remove ${item.name || "item"} from favorites` : `Save ${item.name || "item"} to favorites`}
+              onClick={(e) => toggleFavorite(e, item, i)}
               style={{
-                background: brand.AMBER || '#F4A026',
-                color: brand.NAVY || '#0F0F1A',
-                border: "none",
-                borderRadius: 8,
-                padding: "6px 12px",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer"
+                position: "absolute", top: 8, right: 8, zIndex: 3,
+                width: 28, height: 28, padding: 0, borderRadius: "50%",
+                border: "none", background: "rgba(255,255,255,0.94)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.16)",
               }}
             >
-              Add
+              <Heart size={14} color="#E11D48" fill={isFavorite(item, i) ? "#E11D48" : "none"} />
             </button>
+          )}
+          <div style={{ position: "relative", marginBottom: 2 }}>
+            {isImageUrl(item.img) ? (
+              <img
+                src={item.img}
+                alt={item.name || "item"}
+                style={{ width: "100%", height: 96, objectFit: "cover", borderRadius: 10, display: "block" }}
+              />
+            ) : (
+              <div style={{ display: "flex", justifyContent: "center", padding: "4px 0" }}><IconGlyph name={item.emoji || item.icon || "Utensils"} size={32} /></div>
+            )}
+            {buttonPosition === "overlay" && addButton(item, i, true)}
           </div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: brand.NAVY || '#0F0F1A' }}>{item.name}</div>
+          {item.desc && <div style={{ fontSize: 12, color: brand.GRAY?.[500] || '#6B7280' }}>{item.desc}</div>}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, marginTop: "auto" }}>
+            <span style={{ fontWeight: 700, fontSize: 15, color: brand.AMBER || '#F4A026' }}>{gridPriceLabel(item.price)}</span>
+            {buttonPosition === "beside" && addButton(item, i, true)}
+          </div>
+          {buttonPosition === "below" && addButton(item, i, false)}
         </div>
       ))}
     </div>
@@ -572,7 +645,7 @@ export function CartSummary({ items = [], deliveryFee, style = {}, onAction }) {
   if (cartItems.length === 0) {
     return (
       <div style={{ background: brand.cardColor || "#fff", borderRadius: 18, padding: "40px 24px", border: `1px solid ${grayLine}`, textAlign: "center", ...style }}>
-        <div style={{ width: 72, height: 72, borderRadius: "50%", background: graySoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 32 }}>🛍️</div>
+        <div style={{ width: 72, height: 72, borderRadius: "50%", background: graySoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}><ShoppingBag size={32} color={grayText} /></div>
         <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 17, color: navy, marginBottom: 6 }}>Your cart is empty</div>
         <div style={{ fontSize: 13, color: grayText, lineHeight: 1.5 }}>Items you add will show up here, ready for checkout.</div>
       </div>
@@ -613,7 +686,7 @@ export function CartSummary({ items = [], deliveryFee, style = {}, onAction }) {
               {isImageUrl(item.img) ? (
                 <img src={item.img} alt={item.name} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
               ) : (
-                <div style={{ width: 56, height: 56, borderRadius: 12, background: "#fff", border: `1px solid ${grayLine}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{item.img || "🛍️"}</div>
+                <div style={{ width: 56, height: 56, borderRadius: 12, background: "#fff", border: `1px solid ${grayLine}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconGlyph name={item.icon || item.emoji || "ShoppingBag"} size={26} /></div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: navy, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</div>
@@ -622,9 +695,9 @@ export function CartSummary({ items = [], deliveryFee, style = {}, onAction }) {
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
                 <span style={{ fontWeight: 700, fontSize: 14, color: navy }}>₦{((item.price || 0) * qty).toLocaleString()}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 2, background: "#fff", border: `1px solid ${grayLine}`, borderRadius: 20, padding: "2px 4px" }}>
-                  <button onClick={() => onAction?.("removeItem", { id: item.id })} aria-label="Decrease quantity" style={{ background: "none", border: "none", cursor: "pointer", color: navy, fontSize: 15, fontWeight: 700, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                  <button onClick={() => onAction?.("removeItem", { id: item.id })} aria-label="Decrease quantity" style={{ background: "none", border: "none", cursor: "pointer", color: navy, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Minus size={14} /></button>
                   <span style={{ fontWeight: 700, fontSize: 13, color: navy, minWidth: 18, textAlign: "center" }}>{qty}</span>
-                  <button onClick={() => onAction?.("addItem", { id: item.id })} aria-label="Increase quantity" style={{ background: navy, border: "none", cursor: "pointer", color: "#fff", fontSize: 14, fontWeight: 700, width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                  <button onClick={() => onAction?.("addItem", { id: item.id })} aria-label="Increase quantity" style={{ background: navy, border: "none", cursor: "pointer", color: "#fff", width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}><Plus size={14} /></button>
                 </div>
               </div>
             </div>
@@ -664,9 +737,39 @@ export function CartSummary({ items = [], deliveryFee, style = {}, onAction }) {
             boxShadow: `0 8px 20px ${amber}55`,
           }}
         >
-          <span aria-hidden="true">🔒</span> Secure Checkout · ₦{total.toLocaleString()} <span aria-hidden="true">→</span>
+          <Lock size={15} aria-hidden="true" /> Secure Checkout · ₦{total.toLocaleString()} <ArrowRight size={16} aria-hidden="true" />
         </button>
-        <div style={{ textAlign: "center", fontSize: 11, color: grayText, marginTop: 10 }}>🔒 Encrypted checkout · Pay on delivery or online</div>
+        <div style={{ textAlign: "center", fontSize: 11, color: grayText, marginTop: 10 }}>Encrypted checkout · Pay on delivery or online</div>
+      </div>
+    </div>
+  );
+}
+
+export function ProductDetailPreview({ style = {} }) {
+  const brand = useBrand();
+  const navy = brand.NAVY || "#1A1A2E";
+  const muted = brand.GRAY?.[500] || "#6B7280";
+  return (
+    <div style={{ background: brand.cardColor || "#fff", borderRadius: 12, overflow: "hidden", border: `1px solid ${brand.GRAY?.[200] || "#E5E7EB"}`, ...style }}>
+      <div style={{ height: 230, background: "#F6F4F2", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <ImageIcon size={42} color="#B8B4B0" />
+        <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 6 }}>
+          {[0, 1, 2].map((item) => <span key={item} style={{ width: 7, height: 7, borderRadius: 7, background: item === 0 ? navy : "#C9C6CF" }} />)}
+        </div>
+        <button aria-label="Add to favorites" style={{ position: "absolute", top: 12, right: 12, width: 36, height: 36, border: 0, borderRadius: 18, background: "#fff", display: "grid", placeItems: "center" }}><Heart size={17} color={navy} /></button>
+      </div>
+      <div style={{ padding: 16 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: navy }}>Product name</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6, color: "#D28B16" }}><Star size={14} fill="currentColor" /><span style={{ fontSize: 12, fontWeight: 700 }}>4.8</span><span style={{ color: muted, fontSize: 12 }}>· 24 reviews</span></div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: navy, marginTop: 10 }}>₦12,500</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${brand.GRAY?.[200] || "#E5E7EB"}`, borderBottom: `1px solid ${brand.GRAY?.[200] || "#E5E7EB"}`, marginTop: 12, padding: "12px 0" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: navy }}>Description</span><ChevronDown size={16} color={muted} />
+        </div>
+        <div style={{ fontSize: 12, color: muted, marginTop: 14, fontWeight: 700 }}>More from this store</div>
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          {[0, 1].map(item => <div key={item} style={{ flex: 1, height: 54, borderRadius: 8, background: "#F6F4F2", border: `1px solid ${brand.GRAY?.[200] || "#E5E7EB"}` }} />)}
+        </div>
+        <div style={{ background: navy, color: "#fff", borderRadius: 8, marginTop: 14, padding: 12, textAlign: "center", fontSize: 13, fontWeight: 700 }}>Add to Cart</div>
       </div>
     </div>
   );
@@ -674,20 +777,12 @@ export function CartSummary({ items = [], deliveryFee, style = {}, onAction }) {
 
 export function AddressForm({ style = {}, onAction }) {
   const brand = useBrand();
-  const [form, setForm] = useState({ street: "", city: "", state: "", phone: "" });
   return (
     <div style={{ background: brand.cardColor || "#fff", borderRadius: 14, padding: 20, border: `1px solid ${brand.GRAY?.[200]}`, ...style }}>
-      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: brand.NAVY, marginBottom: 16 }}>Delivery Address</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <input placeholder="Street Address" value={form.street} onChange={e => setForm({ ...form, street: e.target.value })} style={{ padding: "12px", borderRadius: 10, border: `1px solid ${brand.GRAY?.[200]}`, fontSize: 14 }} />
-        <div style={{ display: "flex", gap: 12 }}>
-          <input placeholder="City" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${brand.GRAY?.[200]}`, fontSize: 14 }} />
-          <input placeholder="State" value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} style={{ flex: 1, padding: "12px", borderRadius: 10, border: `1px solid ${brand.GRAY?.[200]}`, fontSize: 14 }} />
-        </div>
-        <input placeholder="Phone Number" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={{ padding: "12px", borderRadius: 10, border: `1px solid ${brand.GRAY?.[200]}`, fontSize: 14 }} />
-      </div>
+      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: brand.NAVY, marginBottom: 8 }}>Secure checkout details</div>
+      <div style={{ fontSize: 13, color: brand.GRAY?.[500], lineHeight: 1.5 }}>DukaDesk collects checkout details only after you consent, then shares them with the merchant to fulfill your order.</div>
       <button
-        onClick={() => onAction?.("submit", { ...form })}
+        onClick={() => onAction?.("checkout", {})}
         style={{
           marginTop: 16,
           width: "100%",
@@ -702,7 +797,7 @@ export function AddressForm({ style = {}, onAction }) {
           cursor: "pointer"
         }}
       >
-        Save Address
+        Continue to checkout
       </button>
     </div>
   );

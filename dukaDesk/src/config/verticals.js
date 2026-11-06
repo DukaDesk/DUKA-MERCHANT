@@ -61,7 +61,7 @@ export const VERTICALS = {
   Business: {
     key: "Business",
     label: "Business",
-    icon: "🏢",
+    icon: "Store",
     deskLabel: "Business Desk",
     modules: [
       { id: "products", label: "Products", icon: "Package" },
@@ -82,7 +82,7 @@ export const VERTICALS = {
   Corporate: {
     key: "Corporate",
     label: "Corporate",
-    icon: "🏙️",
+    icon: "Building2",
     deskLabel: "Corporate Desk",
     modules: [
       { id: "products", label: "Services", icon: "Briefcase" },
@@ -180,7 +180,7 @@ export const VERTICALS = {
   Education: {
     key: "Education",
     label: "Education",
-    icon: "🏫",
+    icon: "GraduationCap",
     deskLabel: "Education Desk",
     modules: [
       { id: "products", label: "Timetable", icon: "CalendarDays" },
@@ -214,7 +214,7 @@ export const VERTICALS = {
   Healthcare: {
     key: "Healthcare",
     label: "Healthcare",
-    icon: "🩺",
+    icon: "Stethoscope",
     deskLabel: "Healthcare Desk",
     modules: [
       { id: "products", label: "Services", icon: "Sparkles" },
@@ -246,7 +246,7 @@ export const VERTICALS = {
   "Food & Hospitality": {
     key: "Food & Hospitality",
     label: "Food & Hospitality",
-    icon: "🍽️",
+    icon: "UtensilsCrossed",
     deskLabel: "Hospitality Desk",
     modules: [
       { id: "products", label: "Products", icon: "UtensilsCrossed" },
@@ -279,7 +279,7 @@ export const VERTICALS = {
   Services: {
     key: "Services",
     label: "Services",
-    icon: "📅",
+    icon: "CalendarDays",
     deskLabel: "Services Desk",
     modules: [
       { id: "products", label: "Services", icon: "Sparkles" },
@@ -312,7 +312,7 @@ export const VERTICALS = {
   Events: {
     key: "Events",
     label: "Events",
-    icon: "🎪",
+    icon: "Ticket",
     deskLabel: "Events Desk",
     modules: [
       { id: "products", label: "Events", icon: "Ticket" },
@@ -344,7 +344,7 @@ export const VERTICALS = {
   Nonprofit: {
     key: "Nonprofit",
     label: "Nonprofit",
-    icon: "🤝",
+    icon: "Handshake",
     deskLabel: "Causes Desk",
     modules: [
       { id: "products", label: "Campaigns", icon: "HeartHandshake" },
@@ -377,7 +377,7 @@ export const VERTICALS = {
   Personal: {
     key: "Personal",
     label: "Personal",
-    icon: "🌟",
+    icon: "Sparkles",
     deskLabel: "Portfolio Desk",
     modules: [
       { id: "products", label: "Showcase", icon: "Sparkles" },
@@ -410,7 +410,7 @@ export const VERTICAL_KEYS = Object.keys(VERTICALS);
 export const DEFAULT_VERTICAL = {
   key: "DEFAULT",
   label: "Business",
-  icon: "🏢",
+  icon: "Store",
   deskLabel: "Business Desk",
   modules: [
     ...commerceModules,
